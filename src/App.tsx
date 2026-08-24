@@ -1,0 +1,511 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowDownToLine, BookOpen, Check, ChevronDown, ChevronFirst, ChevronLast, ChevronLeft,
+  ChevronRight, CircleHelp, Code2, Download, FilePlus2, FlipHorizontal, FolderOpen, FolderPlus, GitBranch,
+  Home, Info, Layers3, Library, ListTree, Menu, MessageSquareText, MoreHorizontal, RotateCw, Search, Tag,
+  PenLine, Redo2, Save, Settings, Share2, Trash2, Undo2, Upload, X,
+} from "lucide-react";
+import {
+  addMove, addMoveAs, boardAt, coordinateName, createDocument, deleteVariation, depthOf,
+  forbiddenReason, lastOnPreferredLine, nextPlayerAt, otherPlayer, pathToNode, preferredNext, replaceMove, setLabelMark, toggleMark, updateNode,
+} from "./game";
+import { analyzeCandidates } from "./analysis";
+import { downloadText, exportJson, exportSgf, importRecordFile, mainLineLength } from "./formats";
+import { findPositionMatches, positionKey } from "./position-search";
+import { loadActive, loadLibrary, removeFromLibrary, saveManyToLibrary, saveToLibrary } from "./storage";
+import VcfWorker from "./vcf.worker?worker";
+import { verifyVcfProof } from "./vcf";
+import type { GameDocument, ImportResult, NodeEvaluation, Position, RecordNode } from "./types";
+import type { VcfResult } from "./vcf";
+import PuzzleAiWorker from "./puzzle-ai.worker?worker";
+import { winnerAt } from "./puzzle-ai";
+import { createPuzzleDocument, importKaibaoPuzzleJson, loadNativeKaibaoCollections, loadPuzzleCollections, loadPuzzleProgress, puzzleProgressKey, savePuzzleCollections, savePuzzleProgress } from "./puzzles";
+import type { Puzzle, PuzzleCollection } from "./puzzles";
+
+type Tab = "record" | "library" | "settings";
+type AppMode = "record" | "puzzle";
+type Sheet = "comment" | "boardText" | "branches" | "metadata" | "export" | "help" | "about" | "find" | "analysis" | "positionSearch" | null;
+type DockPanel = "moves" | "study" | "notes" | "view" | "play" | "puzzles" | null;
+type LibrarySection = "puzzles" | "records";
+
+interface LibraryFolders {
+  recordFolders: string[];
+  puzzleFolders: string[];
+  recordAssignments: Record<string, string>;
+  puzzleAssignments: Record<string, string>;
+}
+
+const LIBRARY_FOLDERS_KEY = "renju-note-library-folders-v1";
+const defaultLibraryFolders: LibraryFolders = {
+  recordFolders: ["未分类"],
+  puzzleFolders: ["内置题库", "我的题库"],
+  recordAssignments: {},
+  puzzleAssignments: {},
+};
+const loadLibraryFolders = (): LibraryFolders => {
+  try {
+    const value = JSON.parse(localStorage.getItem(LIBRARY_FOLDERS_KEY) || "null") as Partial<LibraryFolders> | null;
+    if (!value) return defaultLibraryFolders;
+    return {
+      recordFolders: value.recordFolders?.length ? value.recordFolders : defaultLibraryFolders.recordFolders,
+      puzzleFolders: value.puzzleFolders?.length ? value.puzzleFolders : defaultLibraryFolders.puzzleFolders,
+      recordAssignments: value.recordAssignments || {},
+      puzzleAssignments: value.puzzleAssignments || {},
+    };
+  } catch { return defaultLibraryFolders; }
+};
+
+const evaluationOptions: { value: NodeEvaluation; label: string; hint: string }[] = [
+  { value: "good", label: "好手", hint: "值得推荐" },
+  { value: "bad", label: "坏手", hint: "明显失误" },
+  { value: "doubtful", label: "疑问手", hint: "需要复盘" },
+  { value: "interesting", label: "趣着", hint: "有研究价值" },
+  { value: "forced", label: "胜着", hint: "形成强制胜势" },
+  { value: "only", label: "唯一手", hint: "只有此手成立" },
+  { value: "study", label: "研究点", hint: "待继续拆解" },
+];
+const evaluationLabel = (value?: NodeEvaluation) => evaluationOptions.find((option) => option.value === value)?.label || "未评价";
+
+const branchCount = (document: GameDocument) => Object.values(document.nodes).filter((node) => node.children.length > 1).length;
+const safeName = (value: string) => value.replace(/[\\/:*?"<>|]/g, "-").trim() || "未命名棋谱";
+const variationPreview = (document: GameDocument, nodeId: string, limit = 5) => {
+  const result: string[] = [];
+  let cursor = document.nodes[nodeId];
+  while (cursor && cursor.children.length && result.length < limit) {
+    const nextId = cursor.preferredChildId && cursor.children.includes(cursor.preferredChildId) ? cursor.preferredChildId : cursor.children[0];
+    const next = document.nodes[nextId];
+    if (!next?.move) break;
+    result.push(coordinateName(next.move));
+    cursor = next;
+  }
+  return result.join(" · ");
+};
+
+function Board({ document, currentId, showNumbers, showCoordinates, largeBoard, rotation, mirrored, initialDepth = 0, disabled = false, onPlay, onMark }: {
+  document: GameDocument; currentId: string; showNumbers: boolean; showCoordinates: boolean; largeBoard: boolean;
+  rotation: 0 | 90 | 180 | 270; mirrored: boolean;
+  initialDepth?: number; disabled?: boolean;
+  onPlay: (position: Position) => void; onMark: (position: Position) => void;
+}) {
+  const board = useMemo(() => boardAt(document, currentId), [document, currentId]);
+  const candidates = useMemo(() => analyzeCandidates(board, nextPlayerAt(document, currentId), 8), [board, document, currentId]);
+  const path = useMemo(() => pathToNode(document, currentId), [document, currentId]);
+  const numbers = new Map(path.filter((node) => node.move).map((node, index) => [`${node.move!.row},${node.move!.col}`, index + 1 > initialDepth ? index + 1 - initialDepth : undefined]));
+  const current = document.nodes[currentId];
+  const longPressTimer = useRef<number | null>(null);
+  const suppressClick = useRef(false);
+  const margin = 34, gap = 36, end = margin + gap * 14;
+  const stars = [[3, 3], [3, 11], [7, 7], [11, 3], [11, 11]];
+  return (
+    <div className={`board-scroller ${largeBoard ? "is-large" : ""}`}>
+      <svg className="renju-board" viewBox="0 0 572 572" role="grid" aria-label="十五路五子棋棋盘" style={{ transform: `${mirrored ? "scaleX(-1) " : ""}rotate(${rotation}deg)` }}>
+        <defs>
+          <radialGradient id="blackStone" cx="30%" cy="24%"><stop offset="0" stopColor="#5b5a55"/><stop offset=".42" stopColor="#242420"/><stop offset="1" stopColor="#090a09"/></radialGradient>
+          <radialGradient id="whiteStone" cx="30%" cy="24%"><stop offset="0" stopColor="#fffef8"/><stop offset=".6" stopColor="#e8e2d5"/><stop offset="1" stopColor="#aaa397"/></radialGradient>
+          <filter id="stoneShadow"><feDropShadow dx="0" dy="3" stdDeviation="2.5" floodOpacity=".38"/></filter>
+        </defs>
+        <rect x="4" y="4" width="564" height="564" rx="18" className="board-bg" />
+        {Array.from({ length: 15 }, (_, index) => <g key={index} className="grid-lines"><line x1={margin} y1={margin + index * gap} x2={end} y2={margin + index * gap}/><line x1={margin + index * gap} y1={margin} x2={margin + index * gap} y2={end}/></g>)}
+        {stars.map(([row, col]) => <circle key={`${row}-${col}`} cx={margin + col * gap} cy={margin + row * gap} r="4.2" className="star"/>)}
+        {showCoordinates && Array.from({ length: 15 }, (_, index) => <g key={`coord-${index}`} className="coordinates"><text x={margin + index * gap} y="20">{String.fromCharCode(65 + index)}</text><text x={margin + index * gap} y="560">{String.fromCharCode(65 + index)}</text><text x="18" y={margin + index * gap + 3}>{15 - index}</text><text x="554" y={margin + index * gap + 3}>{15 - index}</text></g>)}
+        {board.flatMap((row, rowIndex) => row.map((player, colIndex) => {
+          if (!player) return null;
+          const x = margin + colIndex * gap, y = margin + rowIndex * gap;
+          const number = numbers.get(`${rowIndex},${colIndex}`), isLast = current.move?.row === rowIndex && current.move?.col === colIndex;
+          return <g key={`stone-${rowIndex}-${colIndex}`} filter="url(#stoneShadow)"><circle cx={x} cy={y} r="15.6" fill={`url(#${player === "black" ? "blackStone" : "whiteStone"})`} className="stone"/>{showNumbers && <text x={x} y={y + 4.2} className={`move-number ${player}`}>{number}</text>}{isLast && !showNumbers && <circle cx={x} cy={y} r="4" className="last-dot"/>}</g>;
+        }))}
+        {current.marks.map((mark, index) => {
+          const x = margin + mark.col * gap, y = margin + mark.row * gap;
+          return mark.kind === "label" ? <g key={index} className="board-label"><circle cx={x} cy={y} r="13"/><text x={x} y={y + 4}>{mark.label || "?"}</text></g> : mark.kind === "circle" ? <circle key={index} cx={x} cy={y} r="19" className="board-mark"/> : mark.kind === "triangle" ? <path key={index} d={`M ${x} ${y - 20} L ${x - 18} ${y + 14} L ${x + 18} ${y + 14} Z`} className="board-mark"/> : <g key={index} className="board-mark"><line x1={x - 14} y1={y - 14} x2={x + 14} y2={y + 14}/><line x1={x + 14} y1={y - 14} x2={x - 14} y2={y + 14}/></g>;
+        })}
+        {Array.from({ length: 15 }, (_, row) => Array.from({ length: 15 }, (_, col) => <circle key={`hit-${row}-${col}`} cx={margin + col * gap} cy={margin + row * gap} r="17" className="board-hit" role="gridcell" aria-disabled={disabled} aria-label={`${coordinateName({ row, col })}${board[row][col] ? "已有棋子" : "空位"}`} onPointerDown={() => { if (disabled) return; longPressTimer.current = window.setTimeout(() => { suppressClick.current = true; onMark({ row, col }); }, 520); }} onPointerUp={() => { if (longPressTimer.current !== null) { window.clearTimeout(longPressTimer.current); longPressTimer.current = null; } }} onPointerCancel={() => { if (longPressTimer.current !== null) { window.clearTimeout(longPressTimer.current); longPressTimer.current = null; } }} onClick={() => { if (disabled) return; if (suppressClick.current) { suppressClick.current = false; return; } onPlay({ row, col }); }} onContextMenu={(event) => { event.preventDefault(); if (!disabled) onMark({ row, col }); }}/>))}
+      </svg>
+    </div>
+  );
+}
+
+function BottomSheet({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+  return <div className="sheet-backdrop" onMouseDown={onClose}><section className="bottom-sheet" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}><div className="sheet-handle"/><div className="sheet-head"><h2>{title}</h2><button className="icon-button" onClick={onClose} aria-label="关闭"><X size={20}/></button></div>{children}</section></div>;
+}
+
+export default function App() {
+  const [document, setDocument] = useState<GameDocument>(() => loadActive() || createDocument("瑞星定式研究"));
+  const [currentId, setCurrentId] = useState(document.rootId);
+  const [mode, setMode] = useState<AppMode>("record");
+  const [puzzleCollections, setPuzzleCollections] = useState<PuzzleCollection[]>(loadPuzzleCollections);
+  const [puzzleProgress, setPuzzleProgress] = useState(loadPuzzleProgress);
+  const [puzzleCollectionIndex, setPuzzleCollectionIndex] = useState(0);
+  const [puzzleIndex, setPuzzleIndex] = useState(0);
+  const [puzzleInitialId, setPuzzleInitialId] = useState("");
+  const [puzzleInitialDepth, setPuzzleInitialDepth] = useState(0);
+  const [aiThinking, setAiThinking] = useState(false);
+  const [puzzleOutcome, setPuzzleOutcome] = useState<"won" | "lost" | "stopped" | null>(null);
+  const [dockPanel, setDockPanel] = useState<DockPanel>("moves");
+  const [puzzleQuery, setPuzzleQuery] = useState("");
+  const [workspaceSelectorOpen, setWorkspaceSelectorOpen] = useState(false);
+  const [workspaceListExpanded, setWorkspaceListExpanded] = useState(false);
+  const [expandedCollectionId, setExpandedCollectionId] = useState<string | null>(null);
+  const [library, setLibrary] = useState(loadLibrary);
+  const [libraryQuery, setLibraryQuery] = useState("");
+  const [librarySection, setLibrarySection] = useState<LibrarySection>("records");
+  const [libraryFolders, setLibraryFolders] = useState<LibraryFolders>(loadLibraryFolders);
+  const [expandedLibraryFolder, setExpandedLibraryFolder] = useState<string | null>("未分类");
+  const [tab, setTab] = useState<Tab>("record");
+  const [sheet, setSheet] = useState<Sheet>(null);
+  const [showNumbers, setShowNumbers] = useState(true);
+  const [showCoordinates, setShowCoordinates] = useState(true);
+  const [showForbidden, setShowForbidden] = useState(true);
+  const [largeBoard, setLargeBoard] = useState(false);
+  const [rotation, setRotation] = useState<0 | 90 | 180 | 270>(0);
+  const [mirrored, setMirrored] = useState(false);
+  const [candidateLabel, setCandidateLabel] = useState<string | null>(null);
+  const [editMoveMode, setEditMoveMode] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [toast, setToast] = useState("");
+  const [saved, setSaved] = useState(true);
+  const [vcfRunning, setVcfRunning] = useState(false);
+  const [vcfResult, setVcfResult] = useState<VcfResult | null>(null);
+  const [matchSymmetry, setMatchSymmetry] = useState(true);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const singleFileInput = useRef<HTMLInputElement>(null);
+  const puzzleFileInput = useRef<HTMLInputElement>(null);
+  const vcfWorker = useRef<Worker | null>(null);
+  const puzzleAiWorker = useRef<Worker | null>(null);
+  const recordSession = useRef<{ document: GameDocument; currentId: string }>({ document, currentId });
+  const currentPuzzle = puzzleCollections[puzzleCollectionIndex]?.puzzles[puzzleIndex];
+  const current = document.nodes[currentId] || document.nodes[document.rootId];
+  const path = useMemo(() => pathToNode(document, currentId), [document, currentId]);
+  const board = useMemo(() => boardAt(document, currentId), [document, currentId]);
+  const currentPositionKey = useMemo(() => positionKey(board, nextPlayerAt(document, currentId), false), [board, document, currentId]);
+  const candidates = useMemo(() => analyzeCandidates(board, nextPlayerAt(document, currentId), 8), [board, document, currentId]);
+  const searchableDocuments = useMemo(() => [document, ...library.filter((item) => item.id !== document.id)], [document, library]);
+  const positionMatches = useMemo(() => sheet === "positionSearch" ? findPositionMatches(searchableDocuments, board, nextPlayerAt(document, currentId), matchSymmetry) : [], [sheet, searchableDocuments, board, document, currentId, matchSymmetry]);
+  const filteredLibrary = useMemo(() => {
+    const query = libraryQuery.trim().toLowerCase();
+    if (!query) return library;
+    return library.filter((item) => [item.metadata.title, item.metadata.black, item.metadata.white, item.metadata.event]
+      .some((value) => value.toLowerCase().includes(query)));
+  }, [library, libraryQuery]);
+  const findResults = useMemo(() => {
+    const query = findQuery.trim().toLowerCase();
+    if (!query) return [];
+    return Object.values(document.nodes).filter((node) => {
+      const coordinate = node.move ? coordinateName(node.move) : "起始局面";
+      return coordinate.toLowerCase().includes(query)
+        || node.comment.toLowerCase().includes(query)
+        || (node.boardText || "").toLowerCase().includes(query)
+        || evaluationLabel(node.evaluation).includes(query)
+        || String(depthOf(document, node.id)).includes(query);
+    }).sort((a, b) => depthOf(document, a.id) - depthOf(document, b.id)).slice(0, 20);
+  }, [document, findQuery]);
+
+  useEffect(() => {
+    if (mode === "puzzle") return;
+    setSaved(false);
+    const timer = window.setTimeout(() => { setLibrary(saveToLibrary(document)); setSaved(true); }, 450);
+    return () => window.clearTimeout(timer);
+  }, [document, mode]);
+  useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(""), 2600); return () => window.clearTimeout(timer); }, [toast]);
+  useEffect(() => { savePuzzleProgress(puzzleProgress); }, [puzzleProgress]);
+  useEffect(() => { localStorage.setItem(LIBRARY_FOLDERS_KEY, JSON.stringify(libraryFolders)); }, [libraryFolders]);
+  useEffect(() => {
+    let active = true;
+    void loadNativeKaibaoCollections().then((nativeCollections) => {
+      if (!active) return;
+      setPuzzleCollections((currentCollections) => {
+        const custom = currentCollections.filter((item) => !item.id.startsWith("native-kaibao-"));
+        return [...custom, ...nativeCollections];
+      });
+    }).catch(() => setToast("内置题库加载失败，可稍后重新打开应用"));
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    vcfWorker.current?.terminate(); vcfWorker.current = null; setVcfRunning(false); setVcfResult(null);
+  }, [currentPositionKey]);
+  useEffect(() => () => { vcfWorker.current?.terminate(); puzzleAiWorker.current?.terminate(); }, []);
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "ArrowLeft" && current.parentId) setCurrentId(current.parentId);
+      if (event.key === "ArrowRight") { const next = preferredNext(document, currentId); if (next) setCurrentId(next); }
+    };
+    window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key);
+  }, [document, currentId, current.parentId]);
+
+  const startAiReply = (afterDocument: GameDocument, afterId: string, puzzle: Puzzle) => {
+    puzzleAiWorker.current?.terminate();
+    const worker = new PuzzleAiWorker();
+    puzzleAiWorker.current = worker;
+    setAiThinking(true);
+    worker.onmessage = (event: MessageEvent<{ move: Position | null }>) => {
+      if (puzzleAiWorker.current !== worker) return;
+      puzzleAiWorker.current = null; worker.terminate(); setAiThinking(false);
+      if (!event.data.move) { setToast("陪练没有找到可落子点"); return; }
+      const reply = addMoveAs(afterDocument, afterId, event.data.move, otherPlayer(puzzle.player));
+      setDocument(reply.document); setCurrentId(reply.nodeId);
+      const replyBoard = boardAt(reply.document, reply.nodeId);
+      if (winnerAt(replyBoard, event.data.move)) { setPuzzleOutcome("lost"); recordPuzzleAttempt(false); }
+    };
+    worker.onerror = () => { if (puzzleAiWorker.current === worker) puzzleAiWorker.current = null; worker.terminate(); setAiThinking(false); setToast("陪练线程异常，已安全停止"); };
+    worker.postMessage({ board: boardAt(afterDocument, afterId), player: otherPlayer(puzzle.player) });
+  };
+
+  const openPuzzle = (collectionIndex: number, nextPuzzleIndex: number, collections = puzzleCollections) => {
+    const collection = collections[collectionIndex];
+    const puzzle = collection?.puzzles[nextPuzzleIndex];
+    if (!puzzle) return;
+    puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null;
+    const session = createPuzzleDocument(puzzle);
+    setPuzzleCollectionIndex(collectionIndex); setPuzzleIndex(nextPuzzleIndex);
+    setDocument(session.document); setCurrentId(session.initialNodeId);
+    setPuzzleInitialId(session.initialNodeId); setPuzzleInitialDepth(session.initialDepth);
+    setAiThinking(false); setPuzzleOutcome(null); setMode("puzzle"); setDockPanel("play"); setTab("record");
+    setWorkspaceSelectorOpen(false); setWorkspaceListExpanded(false); setExpandedCollectionId(null); setPuzzleQuery("");
+  };
+  const recordPuzzleAttempt = (solved: boolean) => {
+    if (!currentPuzzle) return;
+    const key = puzzleProgressKey(puzzleCollections[puzzleCollectionIndex].id, currentPuzzle.id);
+    setPuzzleProgress((currentProgress) => ({ ...currentProgress, [key]: { solved: solved || !!currentProgress[key]?.solved, attempts: (currentProgress[key]?.attempts || 0) + 1, updatedAt: new Date().toISOString() } }));
+  };
+  const switchMode = (nextMode: AppMode) => {
+    if (nextMode === mode) return;
+    setWorkspaceSelectorOpen(false); setWorkspaceListExpanded(false); setExpandedCollectionId(null); setPuzzleQuery("");
+    if (nextMode === "puzzle") {
+      recordSession.current = { document, currentId };
+      openPuzzle(puzzleCollectionIndex, puzzleIndex);
+    } else {
+      puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null; setAiThinking(false);
+      setDocument(recordSession.current.document); setCurrentId(recordSession.current.currentId); setMode("record"); setDockPanel("moves"); setPuzzleOutcome(null);
+    }
+  };
+  const stopPuzzleAi = () => {
+    if (!puzzleAiWorker.current) return;
+    puzzleAiWorker.current.terminate(); puzzleAiWorker.current = null; setAiThinking(false); setPuzzleOutcome("stopped"); setToast("已强制停止陪练，可悔棋或重启本题");
+  };
+  const restartPuzzle = () => {
+    puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null; setAiThinking(false); setPuzzleOutcome(null);
+    setCurrentId(puzzleInitialId); setToast("已恢复到本题初始局面");
+  };
+  const undoPuzzleTurn = () => {
+    puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null; setAiThinking(false); setPuzzleOutcome(null);
+    let cursor = currentId;
+    const first = document.nodes[cursor];
+    let steps = first?.move?.player === currentPuzzle?.player ? 1 : 2;
+    while (steps > 0 && cursor !== puzzleInitialId) { cursor = document.nodes[cursor]?.parentId || puzzleInitialId; steps -= 1; }
+    setCurrentId(cursor); setToast("已撤销上一回合");
+  };
+  const movePuzzle = (delta: number) => {
+    const collection = puzzleCollections[puzzleCollectionIndex];
+    if (!collection?.puzzles.length) return;
+    const next = (puzzleIndex + delta + collection.puzzles.length) % collection.puzzles.length;
+    openPuzzle(puzzleCollectionIndex, next);
+  };
+
+  const play = (position: Position) => {
+    if (mode === "puzzle") {
+      if (!currentPuzzle || aiThinking || puzzleOutcome) return;
+      if (board[position.row][position.col]) return;
+      const result = addMoveAs(document, currentId, position, currentPuzzle.player);
+      setDocument(result.document); setCurrentId(result.nodeId);
+      if (winnerAt(boardAt(result.document, result.nodeId), position)) { setPuzzleOutcome("won"); recordPuzzleAttempt(true); return; }
+      startAiReply(result.document, result.nodeId, currentPuzzle);
+      return;
+    }
+    if (candidateLabel) {
+      if (board[position.row][position.col]) { setToast("候选点应放在空位，请选择棋盘上的空交叉点"); return; }
+      setDocument(updateNode(document, currentId, { marks: setLabelMark(current.marks, position, candidateLabel) }));
+      setCandidateLabel(null);
+      setToast(`已记录候选点 ${candidateLabel} · ${coordinateName(position)}`);
+      return;
+    }
+    if (editMoveMode) {
+      const result = replaceMove(document, currentId, position);
+      if (result.changed) {
+        setDocument(result.document); setEditMoveMode(false); setToast(`已将第 ${depthOf(document, currentId)} 手改为 ${coordinateName(position)}`);
+      } else setToast(result.reason || "当前着法无法修改");
+      return;
+    }
+    if (board[position.row][position.col]) { const node = [...path].reverse().find((item) => item.move?.row === position.row && item.move.col === position.col); if (node) setCurrentId(node.id); return; }
+    if (showForbidden && document.metadata.rule === "renju" && (depthOf(document, currentId) % 2 === 0)) { const reason = forbiddenReason(board, position); if (reason) setToast(`禁手辅助：${coordinateName(position)} 可能是${reason}（仍允许研究落子）`); }
+    const result = addMove(document, currentId, position); setDocument(result.document); setCurrentId(result.nodeId);
+    if (!result.created) setToast("该变化已经存在，已跳转到对应节点");
+  };
+  const mark = (position: Position) => { if (mode === "record") setDocument(updateNode(document, currentId, { marks: toggleMark(current.marks, position) })); };
+  const markCandidate = (index: number) => {
+    const candidate = candidates[index];
+    if (!candidate) return;
+    const label = String.fromCharCode(65 + index);
+    setDocument(updateNode(document, currentId, { marks: setLabelMark(current.marks, candidate.position, label) }));
+    setToast(`已标记候选 ${label} · ${coordinateName(candidate.position)}`);
+  };
+  const markTopCandidates = () => {
+    const marks = candidates.slice(0, 5).reduce((result, candidate, index) => setLabelMark(result, candidate.position, String.fromCharCode(65 + index)), current.marks);
+    setDocument(updateNode(document, currentId, { marks }));
+    setToast(`已标记前 ${Math.min(5, candidates.length)} 个候选点`);
+  };
+  const runVcf = () => {
+    vcfWorker.current?.terminate();
+    setVcfRunning(true); setVcfResult(null);
+    const worker = new VcfWorker(); vcfWorker.current = worker;
+    worker.onmessage = (event: MessageEvent<VcfResult>) => {
+      const result = event.data;
+      if (result.status === "win") {
+        const verified = verifyVcfProof(board, result.proof, result.attacker, document.metadata.rule);
+        if (!verified.valid) { setToast(`VCF 证明复验失败：${verified.error || "未知原因"}`); setVcfResult({ ...result, status: "budget", proof: undefined, principalVariation: [] }); }
+        else setVcfResult(result);
+      } else setVcfResult(result);
+      setVcfRunning(false); worker.terminate(); if (vcfWorker.current === worker) vcfWorker.current = null;
+    };
+    worker.onerror = () => { setVcfRunning(false); setToast("VCF 搜索线程启动失败"); worker.terminate(); if (vcfWorker.current === worker) vcfWorker.current = null; };
+    worker.postMessage({ board, attacker: nextPlayerAt(document, currentId), options: { rule: document.metadata.rule, maxAttackMoves: 5, timeBudgetMs: 700, nodeBudget: 50000 } });
+  };
+  const goPrev = () => { if (current.parentId) setCurrentId(current.parentId); };
+  const goNext = () => { const next = preferredNext(document, currentId); if (next) setCurrentId(next); };
+  const chooseChild = (id: string, pivotId = currentId) => { setDocument(updateNode(document, pivotId, { preferredChildId: id })); setCurrentId(id); setSheet(null); };
+  const closeWorkspaceSelector = () => { setWorkspaceSelectorOpen(false); setWorkspaceListExpanded(false); setExpandedCollectionId(null); setPuzzleQuery(""); };
+  const newRecord = () => { const next = createDocument(); puzzleAiWorker.current?.terminate(); recordSession.current = { document: next, currentId: next.rootId }; setDocument(next); setCurrentId(next.rootId); setMode("record"); setDockPanel("moves"); setTab("record"); closeWorkspaceSelector(); setToast("已新建空白棋谱"); };
+  const openRecord = (next: GameDocument, nodeId = next.rootId) => { puzzleAiWorker.current?.terminate(); recordSession.current = { document: next, currentId: nodeId }; setDocument(next); setCurrentId(nodeId); setMode("record"); setDockPanel("moves"); setTab("record"); closeWorkspaceSelector(); setToast("棋谱已打开"); };
+  const createLibraryFolder = (kind: LibrarySection) => {
+    const name = window.prompt(`新建${kind === "records" ? "棋谱" : "题库"}文件夹名称`)?.trim();
+    if (!name) return;
+    const key = kind === "records" ? "recordFolders" : "puzzleFolders";
+    if (libraryFolders[key].includes(name)) { setToast("已经有同名文件夹"); return; }
+    setLibraryFolders((currentFolders) => ({ ...currentFolders, [key]: [...currentFolders[key], name] }));
+    setExpandedLibraryFolder(name); setToast(`已创建文件夹“${name}”`);
+  };
+  const assignLibraryItem = (kind: LibrarySection, id: string, folder: string) => {
+    const key = kind === "records" ? "recordAssignments" : "puzzleAssignments";
+    setLibraryFolders((currentFolders) => ({ ...currentFolders, [key]: { ...currentFolders[key], [id]: folder } }));
+    setToast(`已移动到“${folder}”`);
+  };
+  const handleFiles = async (files?: FileList | File[]) => {
+    const requested = files ? Array.from(files) : [];
+    if (!requested.length) return;
+    const failures: { file: string; reason: unknown }[] = requested.slice(50).map((file) => ({ file: file.name, reason: new Error("单次最多导入 50 份棋谱") }));
+    let totalBytes = 0;
+    const selected = requested.slice(0, 50).filter((file) => {
+      const reason = file.size > 25 * 1024 * 1024 ? "单个文件不能超过 25MB" : totalBytes + file.size > 100 * 1024 * 1024 ? "本批文件总计不能超过 100MB" : "";
+      if (reason) failures.push({ file: file.name, reason: new Error(reason) });
+      else totalBytes += file.size;
+      return !reason;
+    });
+    const imported: ImportResult[] = [];
+    for (let index = 0; index < selected.length; index += 4) {
+      const batch = selected.slice(index, index + 4);
+      const settled = await Promise.allSettled(batch.map((file) => importRecordFile(file)));
+      settled.forEach((result, resultIndex) => {
+        if (result.status === "fulfilled") imported.push(result.value);
+        else failures.push({ file: batch[resultIndex].name, reason: result.reason });
+      });
+    }
+    if (!imported.length) {
+      const first = failures[0]?.reason;
+      setToast(first instanceof Error ? first.message : "所选文件均导入失败");
+      return;
+    }
+    let saved: ReturnType<typeof saveManyToLibrary>;
+    try {
+      saved = saveManyToLibrary(imported.map((result) => result.document));
+      setLibrary(saved.library);
+    } catch (error) {
+      setToast(error instanceof DOMException && error.name === "QuotaExceededError" ? "本机存储空间不足，棋谱尚未保存" : "棋谱已解析，但写入本地棋谱库失败");
+      return;
+    }
+    const warningCount = imported.reduce((count, result) => count + result.warnings.length, 0);
+    if (requested.length === 1) {
+      const active = saved.resolved[0];
+      setLibrary(saveToLibrary(active));
+      if (tab === "library") { setLibrarySection("records"); setExpandedLibraryFolder(libraryFolders.recordAssignments[active.id] || "未分类"); }
+      else { setDocument(active); setCurrentId(active.rootId); setTab("record"); }
+      setToast(saved.duplicates ? "该棋谱已存在于棋谱库" : `已导入 ${imported[0].format}${warningCount ? `，${warningCount} 条提示` : ""}`);
+      return;
+    }
+    setTab("library");
+    setToast(`新增 ${saved.inserted} 份${saved.duplicates ? `，跳过 ${saved.duplicates} 份重复` : ""}${failures.length ? `，${failures.length} 份失败` : ""}${warningCount ? `，${warningCount} 条提示` : ""}`);
+  };
+
+  const handlePuzzleFile = async (file?: File) => {
+    if (!file) return;
+    try {
+      const report = importKaibaoPuzzleJson(await file.text(), file.name.replace(/\.json$/i, ""));
+      const nextCollections = [...puzzleCollections, report.collection];
+      setPuzzleCollections(nextCollections); savePuzzleCollections(nextCollections);
+      setLibraryFolders((currentFolders) => ({ ...currentFolders, puzzleAssignments: { ...currentFolders.puzzleAssignments, [report.collection.id]: "我的题库" } }));
+      if (tab === "library") { setLibrarySection("puzzles"); setExpandedLibraryFolder("我的题库"); }
+      else openPuzzle(nextCollections.length - 1, 0, nextCollections);
+      setToast(`已导入 ${report.collection.puzzles.length} 题${report.skipped ? `，跳过 ${report.skipped} 个空项` : ""}${report.warnings.length ? `，${report.warnings.length} 条提示` : ""}`);
+    } catch (error) { setToast(error instanceof Error ? error.message : "题库导入失败"); }
+  };
+
+  const sheetTitle = sheet === "comment" ? "节点注释" : sheet === "boardText" ? "局面文字与评价" : sheet === "branches" ? "变化分支" : sheet === "metadata" ? "棋谱信息" : sheet === "export" ? "导出与分享" : sheet === "about" ? "关于半步五子棋" : sheet === "find" ? "查找本谱" : sheet === "analysis" ? "局面分析" : sheet === "positionSearch" ? "跨谱局面检索" : "使用提示";
+  // When sitting on a leaf, show its parent's siblings so the user can switch
+  // variations without first navigating back to the split point.
+  const branchView = current.children.length || !current.parentId ? current : (document.nodes[current.parentId] || current);
+  const branchPivotId = current.children.length ? current.id : current.parentId;
+  const visiblePositionMatches = positionMatches.filter((match) => match.documentId !== document.id || match.nodeId !== currentId);
+  return <div className="app-shell">
+    <input ref={fileInput} type="file" hidden multiple accept=".sgf,.fgf,.pos,.txt,.ren,.renjs,.wzq,.lib,.renju,.json" onChange={(event) => { void handleFiles(event.target.files || undefined); event.target.value = ""; }}/>
+    <input ref={singleFileInput} type="file" hidden accept=".sgf,.fgf,.pos,.txt,.ren,.renjs,.wzq,.lib,.renju,.json" onChange={(event) => { void handleFiles(event.target.files || undefined); event.target.value = ""; }}/>
+    <input ref={puzzleFileInput} type="file" hidden accept=".json,application/json" onChange={(event) => { void handlePuzzleFile(event.target.files?.[0]); event.target.value = ""; }}/>
+    <header className="topbar"><div className="brand"><span className="brand-mark">半</span><div><b>半步五子棋</b><small>{mode === "puzzle" ? `${puzzleCollections.reduce((sum, item) => sum + item.puzzles.length, 0)} 道题已就绪` : saved ? <><Check size={12}/> 已自动保存</> : "保存中…"}</small></div></div><div className="top-actions"><button className="icon-button" onClick={() => mode === "puzzle" ? puzzleFileInput.current?.click() : fileInput.current?.click()} aria-label={mode === "puzzle" ? "导入题库" : "导入棋谱"}><Upload size={20}/></button>{mode === "record" && <button className="icon-button save-action" onClick={() => setSheet("metadata")} aria-label="保存棋谱信息"><Save size={20}/></button>}</div></header>
+
+    <main className="app-main">
+      {tab === "record" && <div className="record-page">
+        <section className="workspace-bar"><button className={`workspace-current ${workspaceSelectorOpen ? "open" : ""}`} onClick={() => { setWorkspaceSelectorOpen((open) => !open); if (workspaceSelectorOpen) { setWorkspaceListExpanded(false); setExpandedCollectionId(null); } }}><span>{mode === "record" ? "谱" : "题"}</span><div><b>{mode === "record" ? document.metadata.title : currentPuzzle?.title || "选择题目"}</b><small>{mode === "record" ? `${document.metadata.black} vs ${document.metadata.white} · 第 ${depthOf(document, currentId)} 手` : `${puzzleCollections[puzzleCollectionIndex]?.title || "题库"} · ${puzzleIndex + 1}/${puzzleCollections[puzzleCollectionIndex]?.puzzles.length || 0}`}</small></div><ChevronDown size={18}/></button><button className={`workspace-mode-toggle ${mode}`} onClick={() => switchMode(mode === "record" ? "puzzle" : "record")} role="switch" aria-checked={mode === "puzzle"} aria-label={`当前${mode === "record" ? "打谱" : "做题"}模式，点击切换`}><i/><span>打谱</span><span>做题</span></button></section>
+        {workspaceSelectorOpen && <section className="inline-workspace-selector" aria-label={mode === "record" ? "本页切换棋谱" : "本页切换题目"}>
+          <button className="selector-master-toggle" onClick={() => setWorkspaceListExpanded((expanded) => !expanded)}><span><b>{mode === "record" ? "选择棋谱" : "选择题集与题目"}</b><small>{mode === "record" ? `${searchableDocuments.length} 份棋谱，可上下滑动` : `${puzzleCollections.length} 个题集，可上下滑动`}</small></span><span>{workspaceListExpanded ? "收起" : "展开全部"}<ChevronDown size={17}/></span></button>
+          {workspaceListExpanded && mode === "record" && <div className="inline-record-list">{searchableDocuments.map((item) => <button key={item.id} className={item.id === document.id ? "current" : ""} onClick={() => openRecord(item)}><span className="picker-record-stone">{mainLineLength(item)}</span><div><b>{item.metadata.title}</b><small>{item.metadata.black} vs {item.metadata.white} · {item.metadata.rule === "renju" ? "连珠" : "五子棋"}</small></div>{item.id === document.id ? <Check size={17}/> : <ChevronRight size={17}/>}</button>)}</div>}
+          {workspaceListExpanded && mode === "puzzle" && <div className="inline-collection-list">{puzzleCollections.map((collection, collectionIndex) => { const solved = collection.puzzles.filter((puzzle) => puzzleProgress[puzzleProgressKey(collection.id, puzzle.id)]?.solved).length; const expanded = expandedCollectionId === collection.id; const query = expanded ? puzzleQuery.trim().toLowerCase() : ""; const visiblePuzzles = collection.puzzles.filter((puzzle, index) => !query || puzzle.title.toLowerCase().includes(query) || puzzle.prompt.toLowerCase().includes(query) || String(index + 1).includes(query)); return <section key={collection.id} className={expanded ? "expanded" : ""}><button className="collection-accordion-head" onClick={() => { setExpandedCollectionId(expanded ? null : collection.id); setPuzzleQuery(""); }}><span className="puzzle-folder-icon"><FolderOpen size={18}/></span><div><b>{collection.title}</b><small>{solved}/{collection.puzzles.length} 已完成</small></div><ChevronDown size={18}/></button>{expanded && <div className="collection-accordion-body"><label className="picker-search"><Search size={16}/><input value={puzzleQuery} onChange={(event) => setPuzzleQuery(event.target.value)} placeholder="输入题号或关键词"/><button onClick={() => setPuzzleQuery("")} aria-label="清除"><X size={15}/></button></label><div className="inline-puzzle-list">{visiblePuzzles.map((puzzle) => { const actualIndex = collection.puzzles.indexOf(puzzle); const solvedPuzzle = puzzleProgress[puzzleProgressKey(collection.id, puzzle.id)]?.solved; return <button key={puzzle.id} className={collectionIndex === puzzleCollectionIndex && actualIndex === puzzleIndex ? "current" : ""} onClick={() => openPuzzle(collectionIndex, actualIndex)}><span className={solvedPuzzle ? "solved" : ""}>{solvedPuzzle ? <Check size={14}/> : actualIndex + 1}</span><div><b>{puzzle.title || `第 ${actualIndex + 1} 题`}</b><small>{puzzle.player === "black" ? "黑先" : "白先"} · {puzzle.prompt}</small></div><ChevronRight size={16}/></button>; })}</div></div>}</section>; })}</div>}
+        </section>}
+        <Board document={document} currentId={currentId} showNumbers={showNumbers} showCoordinates={showCoordinates} largeBoard={largeBoard} rotation={rotation} mirrored={mirrored} initialDepth={mode === "puzzle" ? puzzleInitialDepth : 0} disabled={mode === "puzzle" && (aiThinking || !!puzzleOutcome)} onPlay={play} onMark={mode === "record" ? mark : () => undefined}/>
+        <div className={`workspace-status ${puzzleOutcome || ""}`}>{mode === "record" ? <><span>{candidateLabel ? `放置候选 ${candidateLabel}` : current.move ? `${current.move.player === "black" ? "黑" : "白"} · ${coordinateName(current.move)}` : "起始局面"}</span><small>{depthOf(document, currentId)} / {mainLineLength(document)} 手 · {branchCount(document)} 处分支</small></> : <><span>{puzzleOutcome === "won" ? "挑战成功" : puzzleOutcome === "lost" ? "本题失败" : puzzleOutcome === "stopped" ? "思考已停止" : aiThinking ? "陪练思考中" : `${currentPuzzle?.player === "black" ? "黑" : "白"}方由你落子`}</span><small>{puzzleOutcome ? "可悔棋或重启本题" : currentPuzzle?.prompt}</small>{aiThinking && <i/>}</>}</div>
+        <section className="context-dock">
+          <nav className="dock-tabs">{mode === "record" ? <><button className={dockPanel === "moves" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "moves" ? null : "moves")}><Redo2/>行棋</button><button className={dockPanel === "study" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "study" ? null : "study")}><Search/>研究</button><button className={dockPanel === "notes" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "notes" ? null : "notes")}><MessageSquareText/>记录</button><button className={dockPanel === "view" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "view" ? null : "view")}><RotateCw/>视图</button></> : <><button className={dockPanel === "play" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "play" ? null : "play")}><Undo2/>应战</button><button className={dockPanel === "puzzles" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "puzzles" ? null : "puzzles")}><BookOpen/>题目</button><button className={dockPanel === "view" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "view" ? null : "view")}><RotateCw/>视图</button></>}</nav>
+          {dockPanel && <div className="dock-panel">
+            {mode === "record" && dockPanel === "moves" && <><button onClick={() => setCurrentId(document.rootId)} aria-label="到第一手"><ChevronFirst/><span>起点</span></button><button onClick={goPrev} disabled={!current.parentId} aria-label="上一手"><ChevronLeft/><span>上一手</span></button><button className="accent" onClick={goNext} disabled={!preferredNext(document, currentId)} aria-label="下一手"><ChevronRight/><span>下一手</span></button><button onClick={() => setCurrentId(lastOnPreferredLine(document, currentId))} aria-label="到最后一手"><ChevronLast/><span>终点</span></button><button onClick={() => setSheet("branches")}><GitBranch/><span>变化</span></button></>}
+            {mode === "record" && dockPanel === "study" && <><button className={editMoveMode ? "selected" : ""} onClick={() => { if (!current.move) { setToast("起始局面没有可修改的着法"); return; } setCandidateLabel(null); setEditMoveMode((value) => !value); }}><PenLine/><span>改着</span></button><button onClick={() => { setEditMoveMode(false); setSheet("analysis"); }}><Search/><span>候选</span></button><button onClick={() => setSheet("positionSearch")}><ListTree/><span>同局</span></button><button onClick={() => setSheet("find")}><Search/><span>查找</span></button></>}
+            {mode === "record" && dockPanel === "notes" && <><button onClick={() => setSheet("comment")}><MessageSquareText/><span>注释</span></button><button onClick={() => setSheet("boardText")}><Tag/><span>评价</span></button><button onClick={() => setSheet("metadata")}><Save/><span>信息</span></button><button onClick={() => setSheet("export")}><Share2/><span>导出</span></button></>}
+            {dockPanel === "view" && <><button onClick={() => setShowNumbers((value) => !value)}><Tag/><span>{showNumbers ? "隐藏手数" : "显示手数"}</span></button><button onClick={() => setShowCoordinates((value) => !value)}><Menu/><span>{showCoordinates ? "隐藏坐标" : "显示坐标"}</span></button><button onClick={() => setRotation((value) => ((value + 90) % 360) as 0 | 90 | 180 | 270)}><RotateCw/><span>旋转</span></button><button onClick={() => setMirrored((value) => !value)}><FlipHorizontal/><span>镜像</span></button></>}
+            {mode === "puzzle" && dockPanel === "play" && <><button onClick={undoPuzzleTurn} disabled={depthOf(document, currentId) <= puzzleInitialDepth}><Undo2/><span>悔棋</span></button><button onClick={restartPuzzle}><RotateCw/><span>重启</span></button><button className={aiThinking ? "danger" : "accent"} onClick={aiThinking ? stopPuzzleAi : () => movePuzzle(1)}>{aiThinking ? <X/> : <ChevronRight/>}<span>{aiThinking ? "停止" : "下一题"}</span></button></>}
+{mode === "puzzle" && dockPanel === "puzzles" && <><button onClick={() => movePuzzle(-1)}><ChevronLeft/><span>上一题</span></button><button className="accent" onClick={() => { setWorkspaceSelectorOpen(true); setWorkspaceListExpanded(true); setExpandedCollectionId(puzzleCollections[puzzleCollectionIndex]?.id || null); window.scrollTo({ top: 0, behavior: "smooth" }); }}><BookOpen/><span>选题</span></button><button onClick={() => movePuzzle(1)}><ChevronRight/><span>下一题</span></button></>}
+          </div>}
+        </section>
+      </div>}
+
+      {tab === "library" && <div className="library-page page-padding">
+        <div className="page-title"><div><span>LOCAL LIBRARY</span><h1>棋谱库</h1><p>题库和棋谱分开管理，均可建立文件夹</p></div><button className="round-add" onClick={() => createLibraryFolder(librarySection)} aria-label="新建文件夹"><FolderPlus size={20}/></button></div>
+        <div className="library-segment" role="tablist"><button className={librarySection === "puzzles" ? "active" : ""} onClick={() => { setLibrarySection("puzzles"); setExpandedLibraryFolder("内置题库"); }} role="tab">题库 <small>{puzzleCollections.length}</small></button><button className={librarySection === "records" ? "active" : ""} onClick={() => { setLibrarySection("records"); setExpandedLibraryFolder("未分类"); }} role="tab">棋谱 <small>{library.length}</small></button></div>
+        {librarySection === "records" ? <>
+          <div className="library-actions three"><button onClick={() => singleFileInput.current?.click()}><Upload/>导入棋谱<small>单个 LIB / SGF / JSON</small></button><button onClick={() => fileInput.current?.click()}><FolderOpen/>批量导入<small>一次选择多份</small></button><button onClick={newRecord}><FilePlus2/>新建棋谱<small>从空棋盘开始</small></button></div>
+          <label className="library-search"><Search size={17}/><input value={libraryQuery} onChange={(event) => setLibraryQuery(event.target.value)} placeholder="搜索棋谱名、棋手或主题"/><button type="button" onClick={() => setLibraryQuery("")} aria-label="清除搜索"><X size={15}/></button></label>
+          <div className="folder-library-list">{libraryFolders.recordFolders.map((folder) => { const items = filteredLibrary.filter((item) => (libraryFolders.recordAssignments[item.id] || "未分类") === folder); const expanded = expandedLibraryFolder === folder; return <section key={folder}><button className="library-folder-head" onClick={() => setExpandedLibraryFolder(expanded ? null : folder)}><FolderOpen size={19}/><span><b>{folder}</b><small>{items.length} 份棋谱</small></span><ChevronDown size={18}/></button>{expanded && <div className="record-list folder-items">{items.map((item) => <article key={item.id} onClick={() => openRecord(item)}><div className="mini-board"><span>●</span><span>○</span><b>{mainLineLength(item)}</b></div><div className="record-info"><h3>{item.metadata.title}</h3><p>{item.metadata.black} vs {item.metadata.white}</p><select value={folder} onClick={(event) => event.stopPropagation()} onChange={(event) => assignLibraryItem("records", item.id, event.target.value)}>{libraryFolders.recordFolders.map((name) => <option key={name}>{name}</option>)}</select></div><button className="delete-record" onClick={(event) => { event.stopPropagation(); setLibrary(removeFromLibrary(item.id)); }} aria-label="删除"><Trash2 size={17}/></button></article>)}{!items.length && <p className="folder-empty">这个文件夹还是空的</p>}</div>}</section>; })}</div>
+        </> : <>
+          <div className="library-actions puzzle-actions"><button onClick={() => puzzleFileInput.current?.click()}><Upload/>导入 JSON 题库<small>支持开宝题集数组格式</small></button><button onClick={() => createLibraryFolder("puzzles")}><FolderPlus/>新建文件夹<small>自由整理题集</small></button></div>
+          <div className="folder-library-list">{libraryFolders.puzzleFolders.map((folder) => { const collections = puzzleCollections.filter((collection) => (libraryFolders.puzzleAssignments[collection.id] || (collection.id.startsWith("native-") || collection.id === "original-tactics" ? "内置题库" : "我的题库")) === folder); const expanded = expandedLibraryFolder === folder; return <section key={folder}><button className="library-folder-head" onClick={() => setExpandedLibraryFolder(expanded ? null : folder)}><FolderOpen size={19}/><span><b>{folder}</b><small>{collections.length} 个题集</small></span><ChevronDown size={18}/></button>{expanded && <div className="puzzle-collection-list folder-items">{collections.map((collection) => { const collectionIndex = puzzleCollections.indexOf(collection); const solved = collection.puzzles.filter((puzzle) => puzzleProgress[puzzleProgressKey(collection.id, puzzle.id)]?.solved).length; return <article key={collection.id}><button onClick={() => { if (mode === "record") recordSession.current = { document, currentId }; openPuzzle(collectionIndex, 0); }}><span className="puzzle-folder-icon">題</span><div><b>{collection.title}</b><small>{solved} / {collection.puzzles.length} 已完成 · {collection.source}</small></div><ChevronRight size={18}/></button><select value={folder} onChange={(event) => assignLibraryItem("puzzles", collection.id, event.target.value)} aria-label="移动题集到文件夹">{libraryFolders.puzzleFolders.map((name) => <option key={name}>{name}</option>)}</select></article>; })}{!collections.length && <p className="folder-empty">这个文件夹还是空的</p>}</div>}</section>; })}</div>
+        </>}
+      </div>}
+
+      {tab === "settings" && <div className="settings-page page-padding"><div className="page-title"><div><span>WORKSPACE</span><h1>打谱设置</h1><p>针对手机小屏优化显示与操作</p></div></div><section className="settings-group"><h2>棋盘显示</h2><SettingRow title="显示手数" text="在棋子上显示落子序号" checked={showNumbers} onChange={setShowNumbers}/><SettingRow title="显示坐标" text="棋盘边缘显示 A–O / 1–15" checked={showCoordinates} onChange={setShowCoordinates}/><SettingRow title="禁手辅助" text="提示黑方常见三三、四四与长连" checked={showForbidden} onChange={setShowForbidden}/></section><section className="settings-group"><h2>数据与兼容</h2><button className="settings-link" onClick={() => fileInput.current?.click()}><span><Upload/><b>导入棋谱</b><small>SGF / FGF / POS / TXT / REN / WZQ</small></span><ChevronRight/></button><button className="settings-link" onClick={() => setSheet("export")}><span><Download/><b>导出棋谱</b><small>标准 SGF 或跨端 RENJU JSON</small></span><ChevronRight/></button><button className="settings-link" onClick={() => setSheet("help")}><span><Info/><b>格式兼容说明</b><small>查看 LIB、JSON 等格式的支持情况</small></span><ChevronRight/></button></section><section className="settings-group"><h2>关于</h2><button className="settings-link" onClick={() => setSheet("about")}><span><Info/><b>关于半步五子棋</b><small>参考项目、技术架构、致谢与源代码</small></span><ChevronRight/></button></section><div className="version-note">半步五子棋 1.0.0 · Web / PWA / Android</div></div>}
+    </main>
+
+    <nav className="bottom-nav"><button className={tab === "record" ? "active" : ""} onClick={() => setTab("record")}><Home/><span>{mode === "puzzle" ? "做题" : "打谱"}</span></button><button className={tab === "library" ? "active" : ""} onClick={() => setTab("library")}><Library/><span>棋谱库</span></button><button className="nav-center" onClick={() => mode === "puzzle" ? puzzleFileInput.current?.click() : fileInput.current?.click()}><Upload/><span>导入</span></button><button className={tab === "record" && dockPanel ? "active" : ""} onClick={() => { setTab("record"); setDockPanel((panel) => panel ? null : mode === "puzzle" ? "play" : "moves"); }}><Menu/><span>工具</span></button><button className={tab === "settings" ? "active" : ""} onClick={() => setTab("settings")}><Settings/><span>设置</span></button></nav>
+    {toast && <div className="toast">{toast}</div>}
+
+    {sheet && <BottomSheet title={sheetTitle} onClose={() => setSheet(null)}>
+      {sheet === "find" && <div className="sheet-body find-sheet"><label className="find-input"><Search size={17}/><input autoFocus value={findQuery} onChange={(event) => setFindQuery(event.target.value)} placeholder="坐标、手数、注释或局面文字"/><button type="button" onClick={() => setFindQuery("")} aria-label="清除查找"><X size={15}/></button></label>{findQuery && <p className="section-note">找到 {findResults.length} 个节点（最多显示 20 个）</p>}{findQuery && !findResults.length && <div className="sheet-empty"><Search/><b>没有找到匹配节点</b><span>可以试试 H8、2、好手，或注释中的关键词。</span></div>}{findResults.length > 0 && <div className="find-results">{findResults.map((node) => <button key={node.id} onClick={() => { setCurrentId(node.id); setSheet(null); }}><span className={`branch-stone ${node.move?.player || "black"}`}>{node.move ? depthOf(document, node.id) : "起"}</span><div><b>{node.move ? coordinateName(node.move) : "起始局面"}{node.evaluation ? ` · ${evaluationLabel(node.evaluation)}` : ""}</b><small>{node.boardText || node.comment || "无局面文字或注释"}</small></div><ChevronRight/></button>)}</div>}<p className="helper">查找会覆盖当前棋谱的主线与所有变化，点击结果即可跳到对应节点。</p></div>}
+      {sheet === "positionSearch" && <div className="sheet-body position-search-sheet"><label className="match-toggle"><span><b>包含旋转与镜像</b><small>不同棋盘朝向也视为同一局面</small></span><input type="checkbox" checked={matchSymmetry} onChange={(event) => setMatchSymmetry(event.target.checked)}/><i/></label><p className="section-note">已扫描 {searchableDocuments.length} 份本地棋谱的主线和全部变化，找到 {visiblePositionMatches.length} 个其他节点{positionMatches.length >= 60 ? "（只显示前 60 个）" : ""}。</p><div className="position-match-list">{visiblePositionMatches.map((match) => <button key={`${match.documentId}-${match.nodeId}`} onClick={() => { const target = searchableDocuments.find((item) => item.id === match.documentId); if (!target) return; setDocument(target); setCurrentId(match.nodeId); setTab("record"); setSheet(null); setToast(`已跳转到《${match.title}》第 ${match.depth} 手`); }}><span>{match.depth}</span><div><b>{match.title}</b><small>第 {match.depth} 手{match.coordinate ? ` · ${match.coordinate}` : " · 起始局面"}</small></div><ChevronRight size={18}/></button>)}</div>{!visiblePositionMatches.length && <div className="sheet-empty"><Search/><b>棋谱库中没有其他相同局面</b><span>{matchSymmetry ? "已同时比较旋转与镜像方向。" : "可开启旋转与镜像后再试。"}</span></div>}<p className="helper">匹配同时比较黑白棋位置和下一手行棋方；点击结果会直接打开对应棋谱节点。</p></div>}
+      {sheet === "analysis" && <div className="sheet-body analysis-sheet"><section className="vcf-panel"><div className="vcf-heading"><div><span>强制胜证明</span><b>VCF · 连续冲四</b></div><em>最多 5 次进攻</em></div>{!vcfResult && !vcfRunning && <p>穷举进攻方的成五与冲四，并验证防守方所有合法挡点；只有全部防守都失败才报告胜法。</p>}{vcfRunning && <div className="vcf-running"><i/><span>正在搜索合法冲四与全部防点…</span></div>}{vcfResult?.status === "win" && <div className="vcf-result win"><b><Check size={17}/>已找到连续冲四胜法</b><div className="proof-line">{vcfResult.principalVariation.map((move, index) => <span key={`${move.row}-${move.col}-${index}`} className={move.player}>{index + 1}. {coordinateName(move)}</span>)}</div><small>搜索 {vcfResult.nodes.toLocaleString()} 节点 · {Math.round(vcfResult.elapsedMs)}ms</small><button onClick={() => { const first = vcfResult.principalVariation[0]; if (first) { setSheet(null); play(first); } }}>从证明首手创建变化</button></div>}{vcfResult?.status === "not-found" && <div className="vcf-result neutral"><b>当前深度未找到 VCF</b><span>这不代表局面无胜，只表示最多 5 次连续冲四内没有证明。</span><small>搜索 {vcfResult.nodes.toLocaleString()} 节点 · {Math.round(vcfResult.elapsedMs)}ms</small></div>}{vcfResult?.status === "budget" && <div className="vcf-result warning"><b>达到手机计算预算</b><span>搜索已安全中止，没有把未完成结果当作胜法。</span><small>检查 {vcfResult.nodes.toLocaleString()} 节点 · {Math.round(vcfResult.elapsedMs)}ms</small></div>}<button className="vcf-search-button" disabled={vcfRunning} onClick={() => { void runVcf(); }}><Search size={16}/>{vcfRunning ? "搜索中…" : vcfResult ? "重新搜索 VCF" : "搜索 VCF 胜法"}</button></section><button className="position-search-entry" onClick={() => setSheet("positionSearch")}><span><Search size={18}/></span><div><b>跨谱查找相同局面</b><small>支持旋转、镜像和所有变化节点</small></div><ChevronRight size={18}/></button><p className="section-note">下面是启发式候选排序：综合成五、活四、冲四、活三与防守点，用于研究和标记，不等同于 VCF/VCT 证明。</p><div className="analysis-list">{candidates.map((candidate, index) => <div className="analysis-row" key={`${candidate.position.row}-${candidate.position.col}`}><div className="analysis-rank">{String.fromCharCode(65 + index)}</div><div className="analysis-copy"><b>{coordinateName(candidate.position)} <small>{Math.round(candidate.score)} 分</small></b><span>{candidate.reasons.join(" · ")}</span></div><button className="analysis-mark" onClick={() => markCandidate(index)}>标记</button></div>)}</div>{!candidates.length && <div className="sheet-empty"><Search/><b>当前没有可评估的候选点</b><span>棋盘可能已满，或局面没有明显的局部连接。</span></div>}<div className="analysis-actions"><button className="primary-button" onClick={markTopCandidates}>标记前五候选</button><button className="secondary-button" onClick={() => { setCandidateLabel(null); setSheet(null); }}>手动放置候选点</button></div><p className="helper">候选点会保存到当前节点，可导出为 SGF 的 LB 标记。</p></div>}
+      {sheet === "comment" && <div className="sheet-body"><textarea autoFocus value={current.comment} placeholder="例如：这里白棋若防在 J9，黑棋可以继续冲四…" onChange={(event) => setDocument(updateNode(document, currentId, { comment: event.target.value }))}/><p className="helper">注释保存在当前节点，导出 SGF 时会写入 C 属性。</p><button className="primary-button" onClick={() => setSheet(null)}><Check/>完成</button></div>}
+      {sheet === "boardText" && <div className="sheet-body position-note-sheet"><label className="position-text-field"><span>局面文字（节点名）</span><input autoFocus maxLength={80} value={current.boardText || ""} placeholder="例如：白方唯一防点、黑方强攻起点" onChange={(event) => setDocument(updateNode(document, currentId, { boardText: event.target.value }))}/><small>{(current.boardText || "").length} / 80 · 导出为 SGF 的 N 属性</small></label>{current.move ? <><div className="evaluation-heading"><b>着法评价</b><button type="button" onClick={() => setDocument(updateNode(document, currentId, { evaluation: undefined, evaluationLevel: undefined }))}>清除评价</button></div><div className="evaluation-grid">{evaluationOptions.map((option) => <button key={option.value} className={current.evaluation === option.value ? "selected" : ""} onClick={() => setDocument(updateNode(document, currentId, { evaluation: current.evaluation === option.value ? undefined : option.value, evaluationLevel: option.value === "good" || option.value === "bad" ? 1 : undefined }))}><span>{option.label}</span><small>{option.hint}</small></button>)}</div><p className="helper">好手、坏手、疑问手和趣着写入通用 SGF 属性；其他评价使用兼容扩展属性并完整保留在 RENJU 文件中。</p></> : <div className="root-evaluation-note"><Info size={18}/><span>起始局面没有着法，因此只保存局面文字，不添加“好手/坏手”等着法评价。</span></div>}<button className="primary-button" onClick={() => setSheet(null)}><Check/>完成</button></div>}
+      {sheet === "branches" && <div className="sheet-body"><p className="section-note">当前支点后续有 {branchView.children.length} 个变化。选择一个变化会将它设为默认主线；在棋盘空位落子，就能创建新的分支。</p><div className="branch-list">{branchView.children.map((id, index) => { const node = document.nodes[id]; const preview = variationPreview(document, id); return <button key={id} onClick={() => chooseChild(id, branchView.id)}><span className={`branch-stone ${node.move?.player}`}>{index + 1}</span><div><b>{node.move ? coordinateName(node.move) : "未知"}</b><small>{node.comment || `变化 ${index + 1} · 后续 ${node.children.length} 支`}</small>{preview && <small className="branch-preview">续：{preview}</small>}</div>{branchView.preferredChildId === id && <em>主线</em>}<ChevronRight/></button>; })}{!branchView.children.length && <div className="sheet-empty"><GitBranch/><b>这里还没有后续变化</b><span>关闭面板，在棋盘空位落子即可创建。</span></div>}</div>{branchPivotId && <button className="branch-create-button" onClick={() => { setCurrentId(branchPivotId); setSheet(null); setToast("已回到分叉支点，在棋盘空位落子即可创建新变化"); }}><GitBranch/>回到分叉支点创建变化</button>}{current.parentId && <button className="danger-button" onClick={() => { const result = deleteVariation(document, currentId); setDocument(result.document); setCurrentId(result.nextId); setSheet(null); }}><Trash2/>删除当前变化及后续</button>}</div>}
+      {sheet === "metadata" && <div className="sheet-body form-grid"><label>棋谱名称<input value={document.metadata.title} onChange={(event) => setDocument({ ...document, metadata: { ...document.metadata, title: event.target.value } })}/></label><div className="two-cols"><label>黑方<input value={document.metadata.black} onChange={(event) => setDocument({ ...document, metadata: { ...document.metadata, black: event.target.value } })}/></label><label>白方<input value={document.metadata.white} onChange={(event) => setDocument({ ...document, metadata: { ...document.metadata, white: event.target.value } })}/></label></div><label>赛事 / 主题<input value={document.metadata.event} onChange={(event) => setDocument({ ...document, metadata: { ...document.metadata, event: event.target.value } })}/></label><div className="two-cols"><label>日期<input type="date" value={document.metadata.date} onChange={(event) => setDocument({ ...document, metadata: { ...document.metadata, date: event.target.value } })}/></label><label>规则<select value={document.metadata.rule} onChange={(event) => setDocument({ ...document, metadata: { ...document.metadata, rule: event.target.value as GameDocument["metadata"]["rule"] } })}><option value="renju">连珠规则</option><option value="standard">标准五子棋</option><option value="freestyle">无禁手</option></select></label></div><button className="primary-button" onClick={() => setSheet(null)}><Save/>保存信息</button></div>}
+      {sheet === "export" && <div className="sheet-body export-options"><button onClick={() => { downloadText(exportSgf(document), `${safeName(document.metadata.title)}.sgf`, "application/x-go-sgf;charset=utf-8"); setToast("SGF 已导出"); }}><span className="format-icon">SGF</span><div><b>标准 SGF 棋谱</b><small>兼容变着、注释和棋盘标记</small></div><ArrowDownToLine/></button><button onClick={() => { downloadText(exportJson(document), `${safeName(document.metadata.title)}.renju`, "application/json;charset=utf-8"); setToast("跨端棋谱已导出"); }}><span className="format-icon json">R</span><div><b>RENJU 跨端文件</b><small>完整保留全部移动端数据</small></div><ArrowDownToLine/></button><p className="helper">未来桌面端和网页版将直接读取 RENJU 文件；SGF 用于与现有五子棋软件交换。</p></div>}
+      {sheet === "help" && <div className="sheet-body help-content"><div className="support-row"><b>已支持导入</b><span>SGF / FGF、POS / TXT、REN / RENJS / WZQ（SGF 语法）、RENJU JSON、RenLib 3.x / 旧版无头 .lib</span></div><div className="support-row warning"><b>LIB 兼容边界</b><span>已读取主线、分支、常见节点注释和标记控制字节；超出 3.4 的版本或扩展文本会安全跳过并显示提示。</span></div><h3>手机快捷操作</h3><ul><li>点空交叉点：落子；点已有棋子：跳到该手</li><li>长按交叉点：圆圈 → 三角 → 叉号 → 清除</li><li>左右方向键（外接键盘）：前后导航</li><li>所有改动约 0.5 秒内自动保存到本机</li></ul><button className="primary-button" onClick={() => setSheet(null)}>知道了</button></div>}
+      {sheet === "about" && <div className="sheet-body about-sheet"><section className="about-hero"><span>半</span><div><b>半步五子棋</b><small>版本 1.0.0 · 移动优先的打谱与做题工具</small></div></section><section className="creator-message"><b>写在前面</b><p>这是一个 Vibecoding 的产物，也是一款永久免费、开放源代码的五子棋软件。希望它能让手机打谱和做题更方便；如果内容涉及侵权，请通过 GitHub 联系，我会及时处理或删除。</p></section><section className="about-card"><h3><Code2 size={17}/>参考与致谢</h3><p>打谱功能参考了爱五子棋打谱软件与 RenLib / SGF 生态；做题交互和题集格式参考了开宝五子棋；AI 搜索思路参考了 SlowRenju 等公开项目。感谢这些前辈软件与开源社区。</p></section><section className="about-card"><h3><Layers3 size={17}/>技术架构</h3><p>React 19 + TypeScript + Vite · PWA / Workbox 离线网页 · Capacitor 8 Android · Web Worker 本地 AI 与 VCF 搜索。棋谱采用变化树模型，为网页、安卓和未来桌面端共享。</p></section><a className="github-link" href="https://github.com/gugujiao953-ship-it/banbu-gomoku" target="_blank" rel="noreferrer"><Code2 size={20}/><span><b>GitHub 源代码</b><small>gugujiao953-ship-it/banbu-gomoku</small></span><ChevronRight size={18}/></a><button className="primary-button" onClick={() => setSheet(null)}>完成</button></div>}
+      {sheet === "analysis" && <div className="sheet-body manual-candidate-sheet"><h3>手动放置标签</h3><div className="candidate-grid">{["A", "B", "C", "D", "E"].map((label) => <button key={label} className={candidateLabel === label ? "selected" : ""} onClick={() => { setCandidateLabel(label); setSheet(null); }}><span>{label}</span><small>点棋盘放置</small></button>)}</div><p className="helper">选择标签后点击棋盘空位，不会生成落子。</p></div>}
+    </BottomSheet>}
+  </div>;
+}
+
+function SettingRow({ title, text, checked, onChange }: { title: string; text: string; checked: boolean; onChange: (value: boolean) => void }) {
+  return <label className="setting-row"><span><b>{title}</b><small>{text}</small></span><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)}/><i/></label>;
+}

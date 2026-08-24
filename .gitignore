@@ -1,0 +1,23 @@
+node_modules/
+dist/
+artifacts/
+graphify-out/
+*.log
+.DS_Store
+Thumbs.db
+tsconfig.tsbuildinfo
+
+# Android / Gradle local and generated files
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+*.jks
+*.keystore
+
+# Local tooling
+.codex/
+.claude/
+.env
+.env.*
