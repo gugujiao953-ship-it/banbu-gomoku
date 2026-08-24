@@ -1,0 +1,55 @@
+import type { GameDocument } from "./types";
+const LIBRARY_KEY = "renju-note-library-v1";
+const ACTIVE_KEY = "renju-note-active-v1";
+export const loadLibrary = (): GameDocument[] => {
+  try {
+    const value = JSON.parse(localStorage.getItem(LIBRARY_KEY) || "[]");
+    return Array.isArray(value) ? value.filter((item): item is GameDocument => Boolean(item?.id && item?.rootId && item?.nodes?.[item.rootId] && item?.metadata?.title && typeof item?.updatedAt === "string")) : [];
+  } catch { return []; }
+};
+export const saveToLibrary = (document: GameDocument) => {
+  const next = [document, ...loadLibrary().filter((item) => item.id !== document.id)].sort((a, b) => (Date.parse(b.updatedAt || "") || 0) - (Date.parse(a.updatedAt || "") || 0) || a.id.localeCompare(b.id));
+  localStorage.setItem(LIBRARY_KEY, JSON.stringify(next)); localStorage.setItem(ACTIVE_KEY, JSON.stringify(document)); return next;
+};
+const canonicalNode = (document: GameDocument, nodeId: string, seen = new Set<string>()): unknown => {
+  if (seen.has(nodeId)) return { cycle: true };
+  seen.add(nodeId);
+  const node = document.nodes[nodeId];
+  if (!node) return { missing: true };
+  const marks = [...(node.marks || [])].sort((a, b) => a.row - b.row || a.col - b.col || a.kind.localeCompare(b.kind) || (a.label || "").localeCompare(b.label || ""));
+  return {
+    move: node.move, comment: node.comment || "", boardText: node.boardText || "",
+    evaluation: node.evaluation || "", evaluationLevel: node.evaluationLevel || 0, marks,
+    preferredChildIndex: node.preferredChildId ? node.children.indexOf(node.preferredChildId) : -1,
+    children: node.children.map((childId) => canonicalNode(document, childId, new Set(seen))),
+  };
+};
+export const documentSignature = (document: GameDocument) => JSON.stringify({
+  metadata: document.metadata,
+  tree: canonicalNode(document, document.rootId),
+});
+export const saveManyToLibrary = (documents: GameDocument[]) => {
+  const existing = loadLibrary();
+  const merged = new Map(existing.map((document) => [document.id, document]));
+  const bySignature = new Map(existing.map((document) => [documentSignature(document), document]));
+  const resolved: GameDocument[] = [];
+  let inserted = 0, duplicates = 0, conflicts = 0;
+  documents.forEach((document, index) => {
+    const signature = documentSignature(document);
+    const duplicate = bySignature.get(signature);
+    if (duplicate) { duplicates += 1; resolved.push(duplicate); return; }
+    let candidate = document;
+    if (merged.has(candidate.id)) {
+      conflicts += 1;
+      candidate = { ...candidate, id: `${candidate.id}-import-${Date.now().toString(36)}-${index}` };
+    }
+    merged.set(candidate.id, candidate); bySignature.set(signature, candidate); resolved.push(candidate); inserted += 1;
+  });
+  const next = [...merged.values()].sort((a, b) => (Date.parse(b.updatedAt || "") || 0) - (Date.parse(a.updatedAt || "") || 0) || a.id.localeCompare(b.id));
+  localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
+  return { library: next, resolved, inserted, duplicates, conflicts };
+};
+export const loadActive = (): GameDocument | null => {
+  try { const value = JSON.parse(localStorage.getItem(ACTIVE_KEY) || "null"); return value?.rootId && value?.nodes?.[value.rootId] && value?.metadata?.title ? value : null; } catch { return null; }
+};
+export const removeFromLibrary = (id: string) => { const next = loadLibrary().filter((document) => document.id !== id); localStorage.setItem(LIBRARY_KEY, JSON.stringify(next)); return next; };
