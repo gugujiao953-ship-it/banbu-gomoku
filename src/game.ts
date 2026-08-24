@@ -161,7 +161,7 @@ export const toggleMark = (marks: BoardMark[], position: Position): BoardMark[] 
  * intentionally kept as node-local marks so each variation can carry its own
  * candidate set without changing the underlying move tree. */
 export const setLabelMark = (marks: BoardMark[], position: Position, label: string): BoardMark[] => {
-  const normalized = label.trim().slice(0, 2);
+  const normalized = Array.from(label.trim()).slice(0, 4).join("");
   if (!normalized) return marks;
   const existing = marks.find((mark) => mark.row === position.row && mark.col === position.col);
   if (existing?.kind === "label" && existing.label === normalized) {

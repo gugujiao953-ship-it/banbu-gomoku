@@ -78,7 +78,7 @@ const applySgfAnnotations = (node: RecordNode, props: Record<string, string[]>, 
     node.marks = [...node.marks, ...(props.LB || []).flatMap((value) => {
       const separator = value.indexOf(":");
       const point = sgfPosition(separator >= 0 ? value.slice(0, separator) : value);
-      return point ? [{ ...point, kind: "label" as const, label: separator >= 0 ? value.slice(separator + 1).slice(0, 2) : "?" }] : [];
+      return point ? [{ ...point, kind: "label" as const, label: separator >= 0 ? Array.from(value.slice(separator + 1)).slice(0, 4).join("") : "?" }] : [];
     })];
   }
 };
@@ -149,6 +149,7 @@ const importRenLib = (buffer: ArrayBuffer, title: string): ImportResult => {
   let document = createDocument(title.replace(/\.[^.]+$/, ""));
   let parentId = document.rootId;
   const branchStack: string[] = [];
+  const depths = new Map<string, number>([[document.rootId, 0]]);
   let firstRecord = true;
   let moveCount = 0;
   let commentCount = 0;
@@ -188,10 +189,20 @@ const importRenLib = (buffer: ArrayBuffer, title: string): ImportResult => {
     const validPosition = position && position.col >= 0 && position.col < 15 && position.row >= 0 && position.row < 15;
     const isMove = (info & 0x02) === 0;
     if (!(firstRecord && !validPosition) && isMove && validPosition) {
-      const result = addMove(document, parentId, position);
-      document = result.document;
-      nodeId = result.nodeId;
-      moveCount += result.created ? 1 : 0;
+      const parent = document.nodes[parentId];
+      const existingId = parent.children.find((id) => {
+        const move = document.nodes[id]?.move;
+        return move?.row === position.row && move.col === position.col;
+      });
+      if (existingId) nodeId = existingId;
+      else {
+        nodeId = `renlib-${document.id}-${moveCount.toString(36)}`;
+        const depth = (depths.get(parentId) || 0) + 1;
+        document.nodes[nodeId] = { id: nodeId, parentId, children: [], move: { ...position, player: depth % 2 ? "black" : "white" }, comment: "", marks: [] };
+        parent.children.push(nodeId);
+        if (!parent.preferredChildId) parent.preferredChildId = nodeId;
+        depths.set(nodeId, depth); moveCount += 1;
+      }
     } else if (isMove && !validPosition) {
       warnings.push(`跳过无效 RenLib 坐标字节：${positionByte}`);
     }
