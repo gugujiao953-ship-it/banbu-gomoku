@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/check-dist-size.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "android:sync": "npm run build && cap sync android",
