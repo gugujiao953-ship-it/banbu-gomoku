@@ -5,6 +5,7 @@ import { exportSgf, importRecordFile } from "./formats";
 import { findPositionMatches, positionKey } from "./position-search";
 import { isWinningMove, searchVcf, verifyVcfProof } from "./vcf";
 import { createPuzzleDocument, importKaibaoPuzzleJson } from "./puzzles";
+import { documentFingerprint } from "./large-storage";
 
 describe("game tree", () => {
   it("imports Kaibao setup JSON and restarts without clearing the puzzle", () => {
@@ -109,6 +110,29 @@ describe("record formats", () => {
     const imported = await importRecordFile(new File([sgf], "candidate.sgf"));
     const importedFirst = Object.values(imported.document.nodes).find((node) => node.move?.row === 7 && node.move?.col === 7);
     expect(importedFirst?.marks[0]).toMatchObject({ kind: "label", label: "A", row: 6, col: 8 });
+  });
+
+  it("keeps multi-character result labels used by mobile marking tools", async () => {
+    let document = createDocument("结论标注");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 });
+    document = first.document;
+    document.nodes[first.nodeId].marks = setLabelMark([], { row: 7, col: 7 }, "平衡");
+    const sgf = exportSgf(document);
+    expect(sgf).toContain("LB[hh:平衡]");
+    const imported = await importRecordFile(new File([sgf], "result-label.sgf"));
+    const importedFirst = Object.values(imported.document.nodes).find((node) => node.move?.row === 7 && node.move?.col === 7);
+    expect(importedFirst?.marks[0]).toMatchObject({ kind: "label", label: "平衡", row: 7, col: 7 });
+  });
+
+  it("distinguishes preferred branches and evaluation levels in large-record fingerprints", () => {
+    let document = createDocument("指纹");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 }); document = first.document;
+    const second = addMove(document, document.rootId, { row: 7, col: 8 }); document = second.document;
+    const original = documentFingerprint(document);
+    const preferredChanged = { ...document, nodes: { ...document.nodes, [document.rootId]: { ...document.nodes[document.rootId], preferredChildId: first.nodeId } } };
+    expect(documentFingerprint(preferredChanged)).not.toBe(original);
+    const evaluated = { ...document, nodes: { ...document.nodes, [first.nodeId]: { ...document.nodes[first.nodeId], evaluation: "good" as const, evaluationLevel: 2 as const } } };
+    expect(documentFingerprint(evaluated)).not.toBe(original);
   });
 
   it("round-trips board text and structured evaluations through SGF", async () => {

@@ -19,7 +19,7 @@
 1. 当前：浏览器 localStorage + `.renju` 完整文件，Android / PWA 共用。
 2. 下一阶段：桌面壳和网页版账户体系复用 `GameDocument`，加入 IndexedDB 与增量同步。
 3. 云同步：文档版本号、节点稳定 ID、软删除与冲突合并；离线创建的变化可在联网后合并。
-4. 专业能力：继续完善 RenLib `.lib` 扩展文本/标记映射、跨谱局面搜索、VCF/VCT 引擎、IndexedDB 大型棋谱库和图片识谱。
+4. 专业能力：继续完善 RenLib `.lib` 扩展文本/标记映射、二进制懒加载索引、跨谱局面搜索、VCF/VCT 引擎和图片识谱；大型棋谱现已使用 Worker + IndexedDB，并在启动时只载入摘要。
 
 ## 明确边界
 
