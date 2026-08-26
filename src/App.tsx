@@ -904,7 +904,7 @@ export default function App() {
   const handleFiles = async (files?: FileList | File[]) => {
     const requested = files ? Array.from(files) : [];
     if (!requested.length) return;
-    const supported = new Set(["sgf", "fgf", "pos", "txt", "ren", "renjs", "wzq", "lib", "renju", "json"]);
+    const supported = new Set(["sgf", "fgf", "pos", "txt", "ren", "renjs", "wzq", "lib", "renju", "json", "db", "dp"]);
     const failures: { file: string; reason: unknown }[] = requested.slice(50).map((file) => ({ file: file.name, reason: new Error("单次最多导入 50 份棋谱") }));
     let totalBytes = 0;
     const selected = requested.slice(0, 50).filter((file) => {

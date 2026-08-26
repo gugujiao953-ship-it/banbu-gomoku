@@ -80,6 +80,49 @@ describe("game tree", () => {
 });
 
 describe("record formats", () => {
+  const dpFrame = (payload: Uint8Array, extension = "db", compressed = false) => {
+    const block = compressed ? (() => {
+      const lengthBytes: number[] = [];
+      for (let remaining = payload.length - 15; remaining >= 0;) {
+        const part = Math.min(255, remaining); lengthBytes.push(part); remaining -= part;
+        if (part < 255) break;
+      }
+      return Uint8Array.from([0xf0, ...lengthBytes, ...payload]);
+    })() : payload;
+    const bytes = new Uint8Array(7 + 4 + block.length + 4);
+    bytes.set([0x04, 0x22, 0x4d, 0x18, 0x60, 0x40, 0], 0);
+    const blockLength = (block.length | (compressed ? 0 : 0x80000000)) >>> 0;
+    bytes.set([blockLength & 0xff, (blockLength >>> 8) & 0xff, (blockLength >>> 16) & 0xff, (blockLength >>> 24) & 0xff], 7);
+    bytes.set(block, 11);
+    return new File([bytes], `fixture.${extension}`);
+  };
+
+  it("imports LZ4 DP/DB records as a merged variation tree", async () => {
+    const payload = new TextEncoder().encode("@BTXT@header\n88天元\n89\n@BTXT@header\n88\n99分支\n@BTXT@header\nAA孤立\n");
+    for (const [extension, compressed] of [["db", false], ["dp", true]] as const) {
+      const imported = await importRecordFile(dpFrame(payload, extension, compressed));
+      expect(imported.format).toBe("DP/DB LZ4 棋谱数据库");
+      const root = imported.document.nodes[imported.document.rootId];
+      expect(root.children).toHaveLength(1);
+      const first = imported.document.nodes[root.children[0]];
+      expect(first.move).toMatchObject({ row: 7, col: 7, player: "black" });
+      expect(first.boardText).toBe("天元");
+      expect(first.children).toHaveLength(2);
+      expect(first.children.map((id) => imported.document.nodes[id].move)).toEqual(expect.arrayContaining([
+        expect.objectContaining({ row: 7, col: 8, player: "white" }),
+        expect.objectContaining({ row: 8, col: 8, player: "white" }),
+      ]));
+      expect(Object.values(imported.document.nodes).filter((node) => node.move)).toHaveLength(3);
+      expect(imported.warnings.join(" ")).toContain("跳过 1 条");
+    }
+  });
+
+  it("rejects truncated or non-LZ4 DP databases", async () => {
+    await expect(importRecordFile(new File([new Uint8Array([1, 2, 3])], "broken.db"))).rejects.toThrow("不是受支持的 LZ4");
+    const valid = new Uint8Array(await dpFrame(new TextEncoder().encode("@BTXT@header\n88\n99\n")).arrayBuffer());
+    await expect(importRecordFile(new File([valid.subarray(0, valid.length - 4)], "truncated.dp"))).rejects.toThrow("结束标记");
+  });
+
   it("round-trips SGF moves, comments and branches", async () => {
     let document = createDocument("瑞星研究");
     const first = addMove(document, document.rootId, { row: 7, col: 7 });

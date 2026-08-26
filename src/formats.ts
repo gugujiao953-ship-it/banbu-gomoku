@@ -4,6 +4,194 @@ import { RenLibArrayBuilder, createLazyDocument } from "./compact-index";
 
 interface SgfNode { props: Record<string, string[]>; children: SgfNode[] }
 
+const readU32LE = (bytes: Uint8Array, offset: number) => (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+const MAX_DP_DECODED_BYTES = 64 * 1024 * 1024;
+const appendLz4History = (dictionary: number[], block: Uint8Array) => {
+  const keepFromDictionary = Math.max(0, 65536 - block.length);
+  const history = keepFromDictionary ? dictionary.slice(-keepFromDictionary) : [];
+  const blockStart = Math.max(0, block.length - 65536);
+  for (let index = blockStart; index < block.length; index += 1) history.push(block[index]);
+  return history.slice(-65536);
+};
+
+/** Minimal LZ4 block decoder used by the small DP/DB database adapter. */
+const decodeLz4Block = (bytes: Uint8Array, dictionary: number[] = [], maximumOutput = MAX_DP_DECODED_BYTES) => {
+  const history = dictionary.slice(-65536);
+  const output: number[] = [...history];
+  const historyLength = output.length;
+  let offset = 0;
+  while (offset < bytes.length) {
+    const token = bytes[offset++];
+    let literalLength = token >>> 4;
+    if (literalLength === 15) {
+      let extra = 255;
+      while (extra === 255) {
+        if (offset >= bytes.length) throw new Error("DP 数据库的 LZ4 字面量长度不完整");
+        extra = bytes[offset++]; literalLength += extra;
+      }
+    }
+    if (offset + literalLength > bytes.length) throw new Error("DP 数据库的 LZ4 字面量不完整");
+    if (output.length - historyLength + literalLength > maximumOutput) throw new Error("DP 数据库解压后超过 64MB 安全上限");
+    for (let index = 0; index < literalLength; index += 1) output.push(bytes[offset++]);
+    if (offset >= bytes.length) break;
+    if (offset + 1 >= bytes.length) throw new Error("DP 数据库的 LZ4 区块不完整");
+    const distance = bytes[offset] | (bytes[offset + 1] << 8); offset += 2;
+    if (!distance || distance > output.length) throw new Error("DP 数据库的 LZ4 回溯距离无效");
+    let matchLength = (token & 0x0f) + 4;
+    if ((token & 0x0f) === 15) {
+      let extra = 255;
+      while (extra === 255) {
+        if (offset >= bytes.length) throw new Error("DP 数据库的 LZ4 匹配长度不完整");
+        extra = bytes[offset++]; matchLength += extra;
+      }
+    }
+    if (output.length - historyLength + matchLength > maximumOutput) throw new Error("DP 数据库解压后超过 64MB 安全上限");
+    const start = output.length - distance;
+    for (let index = 0; index < matchLength; index += 1) output.push(output[start + index]);
+  }
+  return { decoded: Uint8Array.from(output.slice(historyLength)), history: output.slice(-65536) };
+};
+
+const decodeLz4Frame = (bytes: Uint8Array) => {
+  if (bytes.length < 7 || readU32LE(bytes, 0) !== 0x184d2204) throw new Error("不是受支持的 LZ4 数据库");
+  const flags = bytes[4];
+  if ((flags >>> 6) !== 1) throw new Error("DP 数据库使用了未知的 LZ4 版本");
+  const independentBlocks = Boolean(flags & 0x20);
+  const blockSizeCode = bytes[5] >>> 4;
+  const maximumBlockSize = ({ 4: 64 * 1024, 5: 256 * 1024, 6: 1024 * 1024, 7: 4 * 1024 * 1024 } as Record<number, number>)[blockSizeCode];
+  if (!maximumBlockSize) throw new Error("DP 数据库使用了无效的 LZ4 区块尺寸");
+  const hasContentSize = Boolean(flags & 0x08), hasBlockChecksum = Boolean(flags & 0x10), hasContentChecksum = Boolean(flags & 0x04);
+  let offset = 6;
+  if (hasContentSize) offset += 8;
+  if (flags & 0x01) offset += 4;
+  offset += 1; // header checksum
+  if (offset > bytes.length) throw new Error("DP 数据库的 LZ4 文件头不完整");
+  const chunks: Uint8Array[] = [];
+  let outputLength = 0;
+  let dictionary: number[] = [];
+  let ended = false;
+  while (offset + 4 <= bytes.length) {
+    const blockHeader = readU32LE(bytes, offset); offset += 4;
+    if (blockHeader === 0) { ended = true; break; }
+    const uncompressed = Boolean(blockHeader & 0x80000000);
+    const blockLength = blockHeader & 0x7fffffff;
+    if (!blockLength || offset + blockLength > bytes.length) throw new Error("DP 数据库的 LZ4 数据块不完整");
+    if (blockLength > maximumBlockSize) throw new Error("DP 数据库的 LZ4 数据块超过声明上限");
+    const block = bytes.subarray(offset, offset + blockLength); offset += blockLength;
+    const blockDictionary = independentBlocks ? [] : dictionary;
+    const remaining = MAX_DP_DECODED_BYTES - outputLength;
+    if (remaining <= 0 || (uncompressed && block.length > remaining)) throw new Error("DP 数据库解压后超过 64MB 安全上限");
+    const decoded = uncompressed ? { decoded: block, history: appendLz4History(blockDictionary, block) } : decodeLz4Block(block, blockDictionary, Math.min(remaining, maximumBlockSize));
+    chunks.push(decoded.decoded);
+    outputLength += decoded.decoded.length;
+    dictionary = decoded.history;
+    if (hasBlockChecksum) {
+      if (offset + 4 > bytes.length) throw new Error("DP 数据库缺少 LZ4 区块校验段");
+      offset += 4;
+    }
+  }
+  if (!ended) throw new Error("DP 数据库缺少 LZ4 结束标记");
+  if (hasContentChecksum) {
+    if (offset + 4 > bytes.length) throw new Error("DP 数据库缺少内容校验段");
+    offset += 4;
+  }
+  const output = new Uint8Array(outputLength);
+  let outputOffset = 0;
+  for (const chunk of chunks) { output.set(chunk, outputOffset); outputOffset += chunk.length; }
+  return output;
+};
+
+const dpCoordinate = (value: number) => value >= 49 && value <= 57 ? value - 49 : value >= 65 && value <= 70 ? value - 65 + 9 : -1;
+const isDpCoordinate = (value: number) => dpCoordinate(value) >= 0;
+
+interface DpLine { position: Position; label: string }
+const decodeDpLabel = (bytes: Uint8Array) => {
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(bytes).trim(); }
+  catch { return new TextDecoder("gb18030").decode(bytes).trim(); }
+};
+
+/** Extracts the line-oriented coordinate records used by the supplied .db. */
+const extractDpLines = (bytes: Uint8Array) => {
+  const marker = [64, 66, 84, 88, 84, 64]; // @BTXT@
+  const markerOffsets: number[] = [];
+  for (let index = 0; index + marker.length <= bytes.length; index += 1) {
+    if (marker.every((value, markerIndex) => bytes[index + markerIndex] === value)) markerOffsets.push(index);
+  }
+  const records: DpLine[][] = [];
+  for (let recordIndex = 0; recordIndex < markerOffsets.length; recordIndex += 1) {
+    const markerAt = markerOffsets[recordIndex];
+    const recordEnd = markerOffsets[recordIndex + 1] ?? bytes.length;
+    const lines: DpLine[] = [];
+    let cursor = markerAt + marker.length;
+    let lineStart = true;
+    while (cursor < recordEnd) {
+      if (!lineStart) { cursor += 1; lineStart = bytes[cursor - 1] === 10; continue; }
+      if (!isDpCoordinate(bytes[cursor]) || !isDpCoordinate(bytes[cursor + 1])) { lineStart = false; cursor += 1; continue; }
+      const row = dpCoordinate(bytes[cursor]);
+      const col = dpCoordinate(bytes[cursor + 1]);
+      cursor += 2;
+      const labelStart = cursor;
+      while (cursor < recordEnd && bytes[cursor] !== 0 && bytes[cursor] !== 10 && bytes[cursor] !== 13) cursor += 1;
+      const label = decodeDpLabel(bytes.subarray(labelStart, cursor));
+      lines.push({ position: { row, col }, label });
+      while (cursor < recordEnd && (bytes[cursor] === 0 || bytes[cursor] === 10 || bytes[cursor] === 13)) cursor += 1;
+      lineStart = true;
+    }
+    if (lines.length) records.push(lines);
+  }
+  return records;
+};
+
+export const importDpDatabase = async (source: Blob, title: string): Promise<ImportResult> => {
+  const compressed = new Uint8Array(await source.arrayBuffer());
+  const bytes = decodeLz4Frame(compressed);
+  const records = extractDpLines(bytes);
+  if (!records.length) throw new Error("DP 数据库中没有找到可识别的棋谱记录");
+  const document = createDocument(title.replace(/\.[^.]+$/, ""), 15);
+  let importedRecords = 0;
+  let skippedRecords = 0;
+  const labels: string[] = [];
+  for (const record of records) {
+    const usable: DpLine[] = [];
+    const unique = new Set<string>();
+    for (const line of record) {
+      const key = `${line.position.row},${line.position.col}`;
+      if (unique.has(key)) break;
+      unique.add(key);
+      usable.push(line);
+    }
+    if (usable.length < 2) { skippedRecords += 1; continue; }
+    let currentId = document.rootId;
+    let accepted = 0;
+    for (const line of usable) {
+      const parent = document.nodes[currentId];
+      if (!parent) break;
+      const existing = parent.children.map((id) => document.nodes[id]).find((child) => child?.move?.row === line.position.row && child.move.col === line.position.col);
+      if (existing) currentId = existing.id;
+      else {
+        const id = `dp-${importedRecords}-${accepted}-${Object.keys(document.nodes).length}`;
+        const node: RecordNode = { id, parentId: currentId, children: [], move: { ...line.position, player: accepted % 2 === 0 ? "black" : "white" }, comment: "", marks: [] };
+        document.nodes[id] = node;
+        parent.children.push(id);
+        if (!parent.preferredChildId) parent.preferredChildId = id;
+        currentId = id;
+      }
+      if (line.label && /[^0-9*?]/.test(line.label)) {
+        document.nodes[currentId].boardText = line.label;
+        labels.push(line.label);
+      }
+      accepted += 1;
+    }
+    if (accepted >= 2) importedRecords += 1; else skippedRecords += 1;
+  }
+  if (!importedRecords) throw new Error("DP 数据库中没有找到至少两步的有效棋谱记录");
+  document.updatedAt = new Date().toISOString();
+  const warnings = [`已读取 DP 数据库 ${importedRecords} 条棋谱记录，合并为一棵变化树`];
+  if (skippedRecords) warnings.push(`跳过 ${skippedRecords} 条不足两步或格式不完整的记录`);
+  if (labels.length) warnings.push(`保留 ${labels.length} 个节点文字标记`);
+  return { document, warnings, format: "DP/DB LZ4 棋谱数据库" };
+};
+
 const decodeText = (buffer: ArrayBuffer) => {
   const bytes = new Uint8Array(buffer);
   if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder("utf-16le").decode(bytes.subarray(2));
@@ -499,6 +687,7 @@ const hasBytes = (buffer: ArrayBuffer, values: number[]) => {
 
 export const importRecordFile = async (file: File): Promise<ImportResult> => {
   const extension = file.name.split(".").pop()?.toLowerCase() || "";
+  if (extension === "db" || extension === "dp") return importDpDatabase(file, file.name);
   if (extension === "lib") {
     const prefix = await file.slice(0, 8).arrayBuffer();
     if (hasBytes(prefix, [0x21, 0x3c, 0x61, 0x72, 0x63, 0x68, 0x3e, 0x0a])) throw new Error("该 .lib 文件是 ar 静态库，不是 RenLib 棋谱");
