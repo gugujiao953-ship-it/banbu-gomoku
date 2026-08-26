@@ -1,0 +1,55 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify web app
+        run: npm test -- --run
+
+      - name: Sync Capacitor Android project
+        run: npm run android:sync
+
+      - name: Build signed debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew clean assembleDebug --no-daemon
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/banbu-gomoku-${GITHUB_REF_NAME}-android.apk
+          cd release
+          sha256sum banbu-gomoku-${GITHUB_REF_NAME}-android.apk > banbu-gomoku-${GITHUB_REF_NAME}-android.apk.sha256
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" release/* --title "半步五子棋 ${GITHUB_REF_NAME}" --notes-file RELEASE_NOTES.md
