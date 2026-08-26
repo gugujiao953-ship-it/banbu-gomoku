@@ -1039,7 +1039,7 @@ export default function App() {
       result.board.forEach((row, r) => row.forEach((player, c) => { if (player) root.setup?.[player].push({ row: r, col: c }); }));
       performOpenRecord(next);
       setSaved(false);
-      setToast(`${result.boardSize}路图片识谱完成：识别 ${result.board.flat().filter(Boolean).length} 子，置信度 ${Math.round(result.confidence * 100)}%${result.numberedMoves.length ? "，已恢复顺序" : "；未检测到可靠数字，请人工确认"}`);
+      setToast(`${result.boardSize}路图片识谱完成：识别 ${result.board.flat().filter(Boolean).length} 子，置信度 ${Math.round(result.confidence * 100)}%${result.ignoredColoredMarkers ? `，忽略 ${result.ignoredColoredMarkers} 个彩色分析点` : ""}${result.numberedMoves.length ? "，已恢复顺序" : "；未检测到可靠数字，请人工确认"}`);
     } catch (error) { setToast(error instanceof Error ? error.message : "图片识谱失败，请使用清晰的棋盘截图"); }
     finally { setImageRecognizing(false); }
   };
