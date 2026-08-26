@@ -78,6 +78,11 @@ const evaluationOptions: { value: NodeEvaluation; label: string; hint: string }[
   { value: "study", label: "研究点", hint: "待继续拆解" },
 ];
 const evaluationLabel = (value?: NodeEvaluation) => evaluationOptions.find((option) => option.value === value)?.label || "未评价";
+const nodeKindLabel = (node: RecordNode) => node.move
+  ? coordinateName(node.move)
+  : node.passPlayer ? `${node.passPlayer === "black" ? "黑" : "白"}方过手`
+  : node.setup ? "设置局面"
+  : node.parentId ? "注释节点" : "起始局面";
 
 const branchCount = (document: GameDocument) => compactBranchCount(document) ?? Object.values(document.nodes).filter((node) => node.children.length > 1).length;
 const safeName = (value: string) => value.replace(/[\\/:*?"<>|]/g, "-").trim() || "未命名棋谱";
@@ -87,8 +92,11 @@ const variationPreview = (document: GameDocument, nodeId: string, limit = 5) => 
   while (cursor && cursor.children.length && result.length < limit) {
     const nextId = cursor.preferredChildId && cursor.children.includes(cursor.preferredChildId) ? cursor.preferredChildId : cursor.children[0];
     const next = document.nodes[nextId];
-    if (!next?.move) break;
-    result.push(coordinateName(next.move));
+    if (!next) break;
+    if (next.move) result.push(coordinateName(next.move));
+    else if (next.passPlayer) result.push(`${next.passPlayer === "black" ? "黑" : "白"}过手`);
+    else if (next.setup) result.push("设置局面");
+    else result.push("注释节点");
     cursor = next;
   }
   return result.join(" · ");
@@ -106,7 +114,12 @@ const Board = memo(function Board({ document, currentId, showNumbers, showCoordi
   const safeCurrentId = document.nodes[currentId] ? currentId : document.rootId;
   const board = useMemo(() => boardAt(document, safeCurrentId), [document, safeCurrentId]);
   const path = useMemo(() => pathToNode(document, safeCurrentId), [document, safeCurrentId]);
-  const numbers = new Map(path.filter((node) => node.move).map((node, index) => [`${node.move!.row},${node.move!.col}`, index + 1 > initialDepth ? index + 1 - initialDepth : undefined]));
+  let turn = 0;
+  const numbers = new Map<string, number | undefined>();
+  path.forEach((node) => {
+    if (node.move || node.passPlayer) turn += 1;
+    if (node.move) numbers.set(`${node.move.row},${node.move.col}`, turn > initialDepth ? turn - initialDepth : undefined);
+  });
   const current = document.nodes[currentId] || document.nodes[document.rootId] || { id: document.rootId, parentId: null, children: [], move: null, comment: "", marks: [] };
   // RenLib/爱五子棋 shows the children of the current position directly on
   // the board as small variation points. Keep this separate from user marks:
@@ -488,6 +501,7 @@ export default function App() {
     if (!puzzle) return;
     puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null;
     const session = createPuzzleDocument(puzzle);
+    setDraft(emptyDraft());
     setPuzzleCollectionIndex(collectionIndex); setPuzzleIndex(nextPuzzleIndex);
     setDocument(session.document); setCurrentId(session.initialNodeId);
     setPuzzleInitialId(session.initialNodeId); setPuzzleInitialDepth(session.initialDepth);
@@ -503,8 +517,7 @@ export default function App() {
     if (nextMode === mode) return;
     setWorkspaceSelectorOpen(false); setWorkspaceListExpanded(false); setExpandedCollectionId(null); setPuzzleQuery("");
     if (nextMode === "puzzle") {
-      recordSession.current = { document, currentId };
-      openPuzzle(puzzleCollectionIndex, puzzleIndex);
+      guardedOpenPuzzle(puzzleCollectionIndex, puzzleIndex);
     } else {
       puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null; setAiThinking(false);
       setDocument(recordSession.current.document); setCurrentId(recordSession.current.currentId); setMode("record"); setDockPanel("moves"); setPuzzleOutcome(null);
@@ -771,6 +784,10 @@ export default function App() {
     if (hasDraft(draft)) { setPendingSwitch(() => action); return; }
     action();
   };
+  const guardedOpenPuzzle = (collectionIndex: number, nextPuzzleIndex: number, collections = puzzleCollections) => withDraftGuard(() => {
+    if (mode === "record") recordSession.current = { document, currentId };
+    openPuzzle(collectionIndex, nextPuzzleIndex, collections);
+  });
   const savePendingSwitch = () => {
     const action = pendingSwitch; setPendingSwitch(null);
     if (compactIndexOf(document)) void commitCompactDraft().then((ok) => { if (ok) action?.(); });
@@ -782,7 +799,14 @@ export default function App() {
     setDraft(emptyDraft()); setPendingSwitch(null); action?.();
   };
   const newRecord = () => withDraftGuard(() => { const next = createDocument(); performOpenRecord(next); setToast("已新建空白棋谱"); });
-  const openRecord = (next: GameDocument, nodeId = next.rootId) => withDraftGuard(() => performOpenRecord(next, nodeId));
+  const openRecord = (
+    next: GameDocument,
+    nodeId = next.rootId,
+    options?: { largeId?: string; onOpened?: () => void },
+  ) => withDraftGuard(() => {
+    performOpenRecord(next, nodeId, options?.largeId);
+    options?.onOpened?.();
+  });
   const openLargeRecord = async (summary: LargeDocumentSummary) => {
     setImportingFile(`正在读取 ${summary.metadata.title}`);
     try {
@@ -800,26 +824,28 @@ export default function App() {
     } catch { setToast("大型棋谱读取失败，请检查本机存储"); }
     finally { setImportingFile(""); }
   };
-  const deleteRecord = (item: GameDocument) => {
+  const performDeleteRecord = (item: GameDocument) => {
     if (mode === "record" && document.id === item.id) {
       const replacement = createDocument("新建棋谱");
       recordSession.current = { document: replacement, currentId: replacement.rootId };
-      setDocument(replacement); setCurrentId(replacement.rootId);
+      setDocument(replacement); setCurrentId(replacement.rootId); setDraft(emptyDraft());
     }
     setLibrary(removeFromLibrary(item.id));
   };
-  const deleteLargeRecord = (item: LargeDocumentSummary) => {
+  const deleteRecord = (item: GameDocument) => withDraftGuard(() => performDeleteRecord(item));
+  const performDeleteLargeRecord = (item: LargeDocumentSummary) => {
     if (localStorage.getItem(ACTIVE_LARGE_RECORD_KEY) === item.id) localStorage.removeItem(ACTIVE_LARGE_RECORD_KEY);
     largeSaveVersions.current.set(item.id, (largeSaveVersions.current.get(item.id) || 0) + 1);
     if (mode === "record" && document.id === item.id) {
       const replacement = createDocument("新建棋谱");
       recordSession.current = { document: replacement, currentId: replacement.rootId };
-      setDocument(replacement); setCurrentId(replacement.rootId);
+      setDocument(replacement); setCurrentId(replacement.rootId); setDraft(emptyDraft());
     }
     void removeLargeDocument(item.id)
       .then(() => setLargeSummaries((items) => items.filter((entry) => entry.id !== item.id)))
       .catch(() => setToast("大型棋谱删除失败，棋谱仍保留在库中"));
   };
+  const deleteLargeRecord = (item: LargeDocumentSummary) => withDraftGuard(() => performDeleteLargeRecord(item));
   const createLibraryFolder = (kind: LibrarySection) => {
     setFolderCreationSection(kind);
     setNewFolderName("");
@@ -890,14 +916,26 @@ export default function App() {
       else totalBytes += file.size;
       return !reason;
     });
-    const imported: { file: File; result: ImportResult; summary?: LargeDocumentSummary; compactIndex?: CompactRenLibIndex }[] = [];
+    const imported: { file: File; result: ImportResult; summary?: LargeDocumentSummary; compactIndex?: CompactRenLibIndex; sourceBytes: number; isPrimary: boolean }[] = [];
     setImportState("file-selected", { names: selected.map((file) => file.name), sizes: selected.map((file) => file.size) });
     setImportingFile(selected.length === 1 ? selected[0]?.name || "" : `正在导入 ${selected.length} 份棋谱`);
     for (let index = 0; index < selected.length; index += 2) {
       const batch = selected.slice(index, index + 2);
       const settled = await Promise.allSettled(batch.map((file) => parseRecordFile(file)));
       settled.forEach((result, resultIndex) => {
-        if (result.status === "fulfilled") imported.push({ file: batch[resultIndex], result: result.value.result, summary: result.value.summary, compactIndex: result.value.compactIndex });
+        if (result.status === "fulfilled") {
+          const file = batch[resultIndex], parsed = result.value.result;
+          const documents = [parsed.document, ...(parsed.additionalDocuments || [])];
+          const sourceBytes = Math.ceil(file.size / documents.length);
+          documents.forEach((document, documentIndex) => imported.push({
+            file,
+            result: { ...parsed, document, additionalDocuments: undefined, warnings: documentIndex === 0 ? parsed.warnings : [] },
+            summary: documentIndex === 0 ? result.value.summary : undefined,
+            compactIndex: documentIndex === 0 ? result.value.compactIndex : undefined,
+            sourceBytes,
+            isPrimary: documentIndex === 0,
+          }));
+        }
         else failures.push({ file: batch[resultIndex].name, reason: result.reason });
       });
     }
@@ -907,7 +945,7 @@ export default function App() {
       setToast(first instanceof Error ? first.message : "所选文件均导入失败");
       return;
     }
-    const largeImports = imported.filter(({ file, summary, compactIndex }) => file.size >= 4 * 1024 * 1024 || (summary?.nodeCount || compactIndex?.nodeCount || 0) >= 40000);
+    const largeImports = imported.filter(({ result, sourceBytes, summary, compactIndex }) => sourceBytes >= 4 * 1024 * 1024 || (summary?.nodeCount || compactIndex?.nodeCount || Object.keys(result.document.nodes).length) >= 40000);
     const normalImports = imported.filter((item) => !largeImports.includes(item));
     let saved = { library: loadLibrary(), resolved: [] as GameDocument[], inserted: 0, duplicates: 0, conflicts: 0 };
     let largeInserted = 0, largeDuplicates = 0, largeConflicts = 0;
@@ -920,7 +958,10 @@ export default function App() {
           return { ...result.document, id: `${result.document.id}-import-${Date.now().toString(36)}-normal-${index}` };
         });
         saved = saveManyToLibrary(normalCandidates);
-        if (requested.length === 1) resolvedSingle = saved.resolved[0] || null;
+        if (requested.length === 1) {
+          const primaryIndex = normalImports.findIndex((item) => item.isPrimary);
+          if (primaryIndex >= 0) resolvedSingle = saved.resolved[primaryIndex] || null;
+        }
       }
       const summaryPool = [...largeSummaries];
       const occupiedIds = new Set([...saved.library.map((item) => item.id), ...summaryPool.map((item) => item.id)]);
@@ -933,7 +974,7 @@ export default function App() {
         const ordinaryDuplicate = ordinaryFingerprints.get(fingerprint);
         if (duplicate || ordinaryDuplicate) {
           largeDuplicates += 1;
-          if (requested.length === 1) resolvedSingle = ordinaryDuplicate || (duplicate ? await loadLargeDocument(duplicate.id) : null);
+          if (requested.length === 1 && largeImports[index].isPrimary) resolvedSingle = ordinaryDuplicate || (duplicate ? await loadLargeDocument(duplicate.id) : null);
           continue;
         }
         let candidate = original;
@@ -949,11 +990,11 @@ export default function App() {
           setImportState(compactIndex ? "compact-saved" : "document-saved", { id: candidate.id, nodeCount: summary.nodeCount, storageMode: summary.storageMode });
           (window as Window & { __banbuStorageDiagnostic?: unknown }).__banbuStorageDiagnostic = { ok: true, id: candidate.id, storageMode: summary.storageMode, nodeCount: summary.nodeCount };
           summaryPool.push(summary); occupiedIds.add(candidate.id); largeInserted += 1;
-          if (requested.length === 1) resolvedSingle = candidate;
+          if (requested.length === 1 && largeImports[index].isPrimary) resolvedSingle = candidate;
         } catch (error) {
           failures.push({ file: largeImports[index].file.name, reason: error });
           (window as Window & { __banbuStorageDiagnostic?: unknown }).__banbuStorageDiagnostic = { ok: false, id: candidate.id, error: error instanceof Error ? error.message : String(error) };
-          if (requested.length === 1) { resolvedSingle = candidate; setImportState("compact-created", { id: candidate.id, nodeCount: largeImports[index].compactIndex?.nodeCount || 0, storageError: error instanceof Error ? error.message : String(error) }); }
+          if (requested.length === 1 && largeImports[index].isPrimary) { resolvedSingle = null; setImportState("compact-created", { id: candidate.id, nodeCount: largeImports[index].compactIndex?.nodeCount || 0, storageError: error instanceof Error ? error.message : String(error) }); }
         }
       }
       setLargeSummaries(summaryPool.sort((a, b) => (Date.parse(b.updatedAt || "") || 0) - (Date.parse(a.updatedAt || "") || 0)));
@@ -967,7 +1008,10 @@ export default function App() {
       const active = resolvedSingle;
       if (!active) { setToast("棋谱已解析，但写入大型棋谱库失败"); return; }
       if (active && tab === "library") { setLibrarySection("records"); setExpandedLibraryFolder(libraryFolders.recordAssignments[active.id] || "未分类"); }
-      else if (active) { openRecord(active); setImportState("document-opened", { id: active.id, title: active.metadata.title }); if (largeImports.length && !saved.library.some((item) => item.id === active.id) ) localStorage.setItem(ACTIVE_LARGE_RECORD_KEY, active.id); }
+      else if (active) {
+        const largeId = largeImports.length && !saved.library.some((item) => item.id === active.id) ? active.id : undefined;
+        openRecord(active, active.rootId, { largeId, onOpened: () => setImportState("document-opened", { id: active.id, title: active.metadata.title }) });
+      }
       setImportState("import-success", { id: active.id, title: active.metadata.title });
       setToast(`${saved.duplicates + largeDuplicates ? "该棋谱已存在" : `已导入 ${imported[0].result.format}`}${largeInserted ? "，已存入大型棋谱库" : ""}${warningCount ? `，${warningCount} 条提示` : ""}`);
       return;
@@ -984,7 +1028,7 @@ export default function App() {
       setPuzzleCollections(nextCollections); savePuzzleCollections(nextCollections);
       setLibraryFolders((currentFolders) => ({ ...currentFolders, puzzleAssignments: { ...currentFolders.puzzleAssignments, [report.collection.id]: "我的题库" } }));
       if (tab === "library") { setLibrarySection("puzzles"); setExpandedLibraryFolder("我的题库"); }
-      else openPuzzle(nextCollections.length - 1, 0, nextCollections);
+      else guardedOpenPuzzle(nextCollections.length - 1, 0, nextCollections);
       setToast(`已导入 ${report.collection.puzzles.length} 题${report.skipped ? `，跳过 ${report.skipped} 个空项` : ""}${report.warnings.length ? `，${report.warnings.length} 条提示` : ""}`);
     } catch (error) { setToast(error instanceof Error ? error.message : "题库导入失败"); }
   };
@@ -1032,7 +1076,7 @@ export default function App() {
           {workspaceListExpanded && mode === "puzzle" && <div className="inline-collection-list">{puzzleCollections.map((collection, collectionIndex) => { const solved = collection.puzzles.filter((puzzle) => puzzleProgress[puzzleProgressKey(collection.id, puzzle.id)]?.solved).length; const expanded = expandedCollectionId === collection.id; const query = expanded ? puzzleQuery.trim().toLowerCase() : ""; const visiblePuzzles = collection.puzzles.filter((puzzle, index) => !query || puzzle.title.toLowerCase().includes(query) || puzzle.prompt.toLowerCase().includes(query) || String(index + 1).includes(query)); return <section key={collection.id} className={expanded ? "expanded" : ""}><button className="collection-accordion-head" onClick={() => { setExpandedCollectionId(expanded ? null : collection.id); setPuzzleQuery(""); }}><span className="puzzle-folder-icon"><FolderOpen size={18}/></span><div><b>{collection.title}</b><small>{solved}/{collection.puzzles.length} 已完成</small></div><ChevronDown size={18}/></button>{expanded && <div className="collection-accordion-body"><label className="picker-search"><Search size={16}/><input value={puzzleQuery} onChange={(event) => setPuzzleQuery(event.target.value)} placeholder="输入题号或关键词"/><button onClick={() => setPuzzleQuery("")} aria-label="清除"><X size={15}/></button></label><div className="inline-puzzle-list">{visiblePuzzles.map((puzzle) => { const actualIndex = collection.puzzles.indexOf(puzzle); const solvedPuzzle = puzzleProgress[puzzleProgressKey(collection.id, puzzle.id)]?.solved; return <button key={puzzle.id} className={collectionIndex === puzzleCollectionIndex && actualIndex === puzzleIndex ? "current" : ""} onClick={() => openPuzzle(collectionIndex, actualIndex)}><span className={solvedPuzzle ? "solved" : ""}>{solvedPuzzle ? <Check size={14}/> : actualIndex + 1}</span><div><b>{puzzle.title || `第 ${actualIndex + 1} 题`}</b><small>{puzzle.player === "black" ? "黑先" : "白先"} · {puzzle.prompt}</small></div><ChevronRight size={16}/></button>; })}</div></div>}</section>; })}</div>}
         </section>}
         <Board document={viewDocument} currentId={currentId} showNumbers={showNumbers} showCoordinates={showCoordinates} largeBoard={largeBoard} rotation={rotation} mirrored={mirrored} initialDepth={mode === "puzzle" ? puzzleInitialDepth : 0} disabled={mode === "puzzle" && (aiThinking || !!puzzleOutcome)} onPlay={play} onMark={mode === "record" ? mark : () => undefined}/>
-        <div className={`workspace-status ${puzzleOutcome || ""}`}>{mode === "record" ? <><div className="workspace-status-copy"><span>{hasDraft(draft) ? "有未保存草稿" : candidateLabel ? `点棋盘放置标注「${candidateLabel}」` : current.move ? `${current.move.player === "black" ? "黑" : "白"} · ${coordinateName(current.move)}` : "起始局面"}</span><small>{depthOf(viewDocument, currentId)} / {compactNodeCount(document) ? "大型" : mainLineLength(document)} 手 · {branchCount(viewDocument)} 处分支</small></div><div className="record-command-bar" aria-label="常驻打谱工具">
+        <div className={`workspace-status ${puzzleOutcome || ""}`}>{mode === "record" ? <><div className="workspace-status-copy"><span>{hasDraft(draft) ? "有未保存草稿" : candidateLabel ? `点棋盘放置标注「${candidateLabel}」` : current.move ? `${current.move.player === "black" ? "黑" : "白"} · ${coordinateName(current.move)}` : nodeKindLabel(current)}</span><small>{depthOf(viewDocument, currentId)} / {compactNodeCount(document) ? "大型" : mainLineLength(document)} 手 · {branchCount(viewDocument)} 处分支</small></div><div className="record-command-bar" aria-label="常驻打谱工具">
             <button className={`command-save ${hasDraft(draft) ? "pending" : ""}`} onClick={saveCurrentDraft} aria-label={hasDraft(draft) ? `保存当前棋谱修改（${draft.operations.length} 项）` : "当前棋谱已保存"} title={hasDraft(draft) ? "保存修改" : "已保存"}><Save/></button>
             <button className="command-delete" onClick={deleteCurrentVariation} disabled={!current.parentId} aria-label="删除当前一步及后续变化" title={current.parentId ? "删除本步及后续变化" : "起始局面不可删除"}><Trash2/></button>
             <div className={`stone-color-switch ${activePlacementPlayer} ${placementLocked ? "locked" : "following"}`} role="radiogroup" aria-label="落子颜色">
@@ -1064,7 +1108,7 @@ export default function App() {
           <div className="folder-library-list">{libraryFolders.recordFolders.map((folder) => { const items = filteredLibrary.filter((item) => (libraryFolders.recordAssignments[item.id] || "未分类") === folder); const largeItems = filteredLargeSummaries.filter((item) => (libraryFolders.recordAssignments[item.id] || "未分类") === folder); const expanded = expandedLibraryFolder === folder; return <section key={folder}><button className="library-folder-head" onClick={() => setExpandedLibraryFolder(expanded ? null : folder)}><FolderOpen size={19}/><span><b>{folder}</b><small>{items.length + largeItems.length} 份棋谱</small></span><ChevronDown size={18}/></button>{expanded && <div className="record-list folder-items">{items.map((item) => <article key={item.id} onClick={() => openRecord(item)}><div className="mini-board"><span>●</span><span>○</span><b>{mainLineLength(item)}</b></div><div className="record-info"><h3>{item.metadata.title}</h3><p>{item.metadata.black} vs {item.metadata.white}</p><select value={folder} onClick={(event) => event.stopPropagation()} onChange={(event) => assignLibraryItem("records", item.id, event.target.value)}>{libraryFolders.recordFolders.map((name) => <option key={name}>{name}</option>)}</select></div><button className="delete-record" onClick={(event) => { event.stopPropagation(); deleteRecord(item); }} aria-label="删除"><Trash2 size={17}/></button></article>)}{largeItems.map((item) => <article key={item.id} onClick={() => { void openLargeRecord(item); }}><div className="mini-board"><span>●</span><span>○</span><b>{item.mainLineLength}</b></div><div className="record-info"><h3>{item.metadata.title}</h3><p>{item.metadata.black} vs {item.metadata.white} · 大型棋谱 · {item.nodeCount.toLocaleString()} 节点</p><select value={folder} onClick={(event) => event.stopPropagation()} onChange={(event) => assignLibraryItem("records", item.id, event.target.value)}>{libraryFolders.recordFolders.map((name) => <option key={name}>{name}</option>)}</select></div><button className="delete-record" onClick={(event) => { event.stopPropagation(); deleteLargeRecord(item); }} aria-label="删除"><Trash2 size={17}/></button></article>)}{!items.length && !largeItems.length && <p className="folder-empty">这个文件夹还是空的</p>}</div>}</section>; })}</div>
         </> : <>
           <div className="library-actions puzzle-actions"><button onClick={() => puzzleFileInput.current?.click()}><Upload/>导入 JSON 题库<small>支持开宝题集数组格式</small></button><button onClick={() => createLibraryFolder("puzzles")}><FolderPlus/>新建文件夹<small>自由整理题集</small></button></div>
-          <div className="folder-library-list">{libraryFolders.puzzleFolders.map((folder) => { const collections = puzzleCollections.filter((collection) => (libraryFolders.puzzleAssignments[collection.id] || (collection.id.startsWith("native-") || collection.id === "original-tactics" ? "内置题库" : "我的题库")) === folder); const expanded = expandedLibraryFolder === folder; return <section key={folder}><button className="library-folder-head" onClick={() => setExpandedLibraryFolder(expanded ? null : folder)}><FolderOpen size={19}/><span><b>{folder}</b><small>{collections.length} 个题集</small></span><ChevronDown size={18}/></button>{expanded && <div className="puzzle-collection-list folder-items">{collections.map((collection) => { const collectionIndex = puzzleCollections.indexOf(collection); const solved = collection.puzzles.filter((puzzle) => puzzleProgress[puzzleProgressKey(collection.id, puzzle.id)]?.solved).length; return <article key={collection.id}><button onClick={() => { if (mode === "record") recordSession.current = { document, currentId }; openPuzzle(collectionIndex, 0); }}><span className="puzzle-folder-icon">題</span><div><b>{collection.title}</b><small>{solved} / {collection.puzzles.length} 已完成 · {collection.source}</small></div><ChevronRight size={18}/></button><select value={folder} onChange={(event) => assignLibraryItem("puzzles", collection.id, event.target.value)} aria-label="移动题集到文件夹">{libraryFolders.puzzleFolders.map((name) => <option key={name}>{name}</option>)}</select></article>; })}{!collections.length && <p className="folder-empty">这个文件夹还是空的</p>}</div>}</section>; })}</div>
+          <div className="folder-library-list">{libraryFolders.puzzleFolders.map((folder) => { const collections = puzzleCollections.filter((collection) => (libraryFolders.puzzleAssignments[collection.id] || (collection.id.startsWith("native-") || collection.id === "original-tactics" ? "内置题库" : "我的题库")) === folder); const expanded = expandedLibraryFolder === folder; return <section key={folder}><button className="library-folder-head" onClick={() => setExpandedLibraryFolder(expanded ? null : folder)}><FolderOpen size={19}/><span><b>{folder}</b><small>{collections.length} 个题集</small></span><ChevronDown size={18}/></button>{expanded && <div className="puzzle-collection-list folder-items">{collections.map((collection) => { const collectionIndex = puzzleCollections.indexOf(collection); const solved = collection.puzzles.filter((puzzle) => puzzleProgress[puzzleProgressKey(collection.id, puzzle.id)]?.solved).length; return <article key={collection.id}><button onClick={() => guardedOpenPuzzle(collectionIndex, 0)}><span className="puzzle-folder-icon">題</span><div><b>{collection.title}</b><small>{solved} / {collection.puzzles.length} 已完成 · {collection.source}</small></div><ChevronRight size={18}/></button><select value={folder} onChange={(event) => assignLibraryItem("puzzles", collection.id, event.target.value)} aria-label="移动题集到文件夹">{libraryFolders.puzzleFolders.map((name) => <option key={name}>{name}</option>)}</select></article>; })}{!collections.length && <p className="folder-empty">这个文件夹还是空的</p>}</div>}</section>; })}</div>
         </>}
       </div>}
 
@@ -1080,16 +1124,16 @@ export default function App() {
     {sheet && <BottomSheet title={sheetTitle} onClose={() => setSheet(null)}>
       {sheet === "folder" && <div className="sheet-body form-grid folder-sheet"><label>文件夹名称<input autoFocus value={newFolderName} onChange={(event) => setNewFolderName(event.target.value)} placeholder={`例如：${folderCreationSection === "records" ? "我的实战棋谱" : "冲四题库"}`} onKeyDown={(event) => { if (event.key === "Enter") confirmCreateLibraryFolder(); }}/></label><p className="helper">新建后可在保存棋谱或题库时选择这个分组。</p><button className="primary-button" onClick={confirmCreateLibraryFolder}><FolderPlus/>创建文件夹</button></div>}
       {sheet === "marks" && <div className="annotation-options"><p className="section-note">默认直接显示原棋谱文字；也可以切换圆圈、三角或叉号，并选择标注颜色。</p><h3>显示样式</h3><div className="annotation-style-grid">{([['text','文字'],['circle','圆圈'],['triangle','三角'],['cross','叉号']] as const).map(([style, label]) => <button key={style} className={annotationStyle === style ? "selected" : ""} onClick={() => setAnnotationStyle(style)}><span className={`annotation-preview ${style}`}>{style === "text" ? "A" : style === "circle" ? "○" : style === "triangle" ? "△" : "×"}</span><small>{label}</small></button>)}</div><h3>标注颜色</h3><div className="annotation-color-grid">{[["#2872b8","蓝"],["#b94b3f","红"],["#365e4b","绿"],["#b27b18","金"]].map(([color, label]) => <button key={color} className={annotationColor === color ? "selected" : ""} style={{ "--annotation-color": color } as React.CSSProperties} onClick={() => setAnnotationColor(color)} aria-label={`${label}色`}><span/></button>)}</div></div>}
-      {sheet === "find" && <div className="sheet-body find-sheet"><label className="find-input"><Search size={17}/><input autoFocus value={findQuery} onChange={(event) => setFindQuery(event.target.value)} placeholder="坐标、手数、注释或局面文字"/><button type="button" onClick={() => setFindQuery("")} aria-label="清除查找"><X size={15}/></button></label>{findQuery && <p className="section-note">找到 {findResults.length} 个节点（最多显示 20 个）</p>}{findQuery && !findResults.length && <div className="sheet-empty"><Search/><b>没有找到匹配节点</b><span>可以试试 H8、2、好手，或注释中的关键词。</span></div>}{findResults.length > 0 && <div className="find-results">{findResults.map((node) => <button key={node.id} onClick={() => { setCurrentId(node.id); setSheet(null); }}><span className={`branch-stone ${node.move?.player || "black"}`}>{node.move ? depthOf(document, node.id) : "起"}</span><div><b>{node.move ? coordinateName(node.move) : "起始局面"}{node.evaluation ? ` · ${evaluationLabel(node.evaluation)}` : ""}</b><small>{node.boardText || node.comment || "无局面文字或注释"}</small></div><ChevronRight/></button>)}</div>}<p className="helper">查找会覆盖当前棋谱的主线与所有变化，点击结果即可跳到对应节点。</p></div>}
-      {sheet === "positionSearch" && <div className="sheet-body position-search-sheet"><label className="match-toggle"><span><b>包含旋转与镜像</b><small>不同棋盘朝向也视为同一局面</small></span><input type="checkbox" checked={matchSymmetry} onChange={(event) => setMatchSymmetry(event.target.checked)}/><i/></label><p className="section-note">已扫描 {searchableDocuments.length} 份本地棋谱的主线和全部变化，找到 {visiblePositionMatches.length} 个其他节点{positionMatches.length >= 60 ? "（只显示前 60 个）" : ""}。</p><div className="position-match-list">{visiblePositionMatches.map((match) => <button key={`${match.documentId}-${match.nodeId}`} onClick={() => { const target = searchableDocuments.find((item) => item.id === match.documentId); if (!target) return; setDocument(target); setCurrentId(match.nodeId); setTab("record"); setSheet(null); setToast(`已跳转到《${match.title}》第 ${match.depth} 手`); }}><span>{match.depth}</span><div><b>{match.title}</b><small>第 {match.depth} 手{match.coordinate ? ` · ${match.coordinate}` : " · 起始局面"}</small></div><ChevronRight size={18}/></button>)}</div>{!visiblePositionMatches.length && <div className="sheet-empty"><Search/><b>棋谱库中没有其他相同局面</b><span>{matchSymmetry ? "已同时比较旋转与镜像方向。" : "可开启旋转与镜像后再试。"}</span></div>}<p className="helper">匹配同时比较黑白棋位置和下一手行棋方；点击结果会直接打开对应棋谱节点。</p></div>}
+      {sheet === "find" && <div className="sheet-body find-sheet"><label className="find-input"><Search size={17}/><input autoFocus value={findQuery} onChange={(event) => setFindQuery(event.target.value)} placeholder="坐标、手数、注释或局面文字"/><button type="button" onClick={() => setFindQuery("")} aria-label="清除查找"><X size={15}/></button></label>{findQuery && <p className="section-note">找到 {findResults.length} 个节点（最多显示 20 个）</p>}{findQuery && !findResults.length && <div className="sheet-empty"><Search/><b>没有找到匹配节点</b><span>可以试试 H8、2、好手，或注释中的关键词。</span></div>}{findResults.length > 0 && <div className="find-results">{findResults.map((node) => <button key={node.id} onClick={() => { setCurrentId(node.id); setSheet(null); }}><span className={`branch-stone ${node.move?.player || node.passPlayer || "black"}`}>{node.move || node.passPlayer ? depthOf(document, node.id) : node.parentId ? "·" : "起"}</span><div><b>{nodeKindLabel(node)}{node.evaluation ? ` · ${evaluationLabel(node.evaluation)}` : ""}</b><small>{node.boardText || node.comment || "无局面文字或注释"}</small></div><ChevronRight/></button>)}</div>}<p className="helper">查找会覆盖当前棋谱的主线与所有变化，点击结果即可跳到对应节点。</p></div>}
+      {sheet === "positionSearch" && <div className="sheet-body position-search-sheet"><label className="match-toggle"><span><b>包含旋转与镜像</b><small>不同棋盘朝向也视为同一局面</small></span><input type="checkbox" checked={matchSymmetry} onChange={(event) => setMatchSymmetry(event.target.checked)}/><i/></label><p className="section-note">已扫描 {searchableDocuments.length} 份本地棋谱的主线和全部变化，找到 {visiblePositionMatches.length} 个其他节点{positionMatches.length >= 60 ? "（只显示前 60 个）" : ""}。</p><div className="position-match-list">{visiblePositionMatches.map((match) => <button key={`${match.documentId}-${match.nodeId}`} onClick={() => { const target = searchableDocuments.find((item) => item.id === match.documentId); if (!target) return; openRecord(target, match.nodeId, { onOpened: () => { setSheet(null); setToast(`已跳转到《${match.title}》第 ${match.depth} 手`); } }); }}><span>{match.depth}</span><div><b>{match.title}</b><small>第 {match.depth} 手{match.coordinate ? ` · ${match.coordinate}` : " · 起始局面"}</small></div><ChevronRight size={18}/></button>)}</div>{!visiblePositionMatches.length && <div className="sheet-empty"><Search/><b>棋谱库中没有其他相同局面</b><span>{matchSymmetry ? "已同时比较旋转与镜像方向。" : "可开启旋转与镜像后再试。"}</span></div>}<p className="helper">匹配同时比较黑白棋位置和下一手行棋方；点击结果会直接打开对应棋谱节点。</p></div>}
       {sheet === "analysis" && <div className="sheet-body analysis-sheet"><section className="vcf-panel"><div className="vcf-heading"><div><span>强制胜证明</span><b>VCF · 连续冲四</b></div><em>最多 5 次进攻</em></div>{!vcfResult && !vcfRunning && <p>穷举进攻方的成五与冲四，并验证防守方所有合法挡点；只有全部防守都失败才报告胜法。</p>}{vcfRunning && <div className="vcf-running"><i/><span>正在搜索合法冲四与全部防点…</span></div>}{vcfResult?.status === "win" && <div className="vcf-result win"><b><Check size={17}/>已找到连续冲四胜法</b><div className="proof-line">{vcfResult.principalVariation.map((move, index) => <span key={`${move.row}-${move.col}-${index}`} className={move.player}>{index + 1}. {coordinateName(move)}</span>)}</div><small>搜索 {vcfResult.nodes.toLocaleString()} 节点 · {Math.round(vcfResult.elapsedMs)}ms</small><button onClick={() => { const first = vcfResult.principalVariation[0]; if (first) { setSheet(null); play(first); } }}>从证明首手创建变化</button></div>}{vcfResult?.status === "not-found" && <div className="vcf-result neutral"><b>当前深度未找到 VCF</b><span>这不代表局面无胜，只表示最多 5 次连续冲四内没有证明。</span><small>搜索 {vcfResult.nodes.toLocaleString()} 节点 · {Math.round(vcfResult.elapsedMs)}ms</small></div>}{vcfResult?.status === "budget" && <div className="vcf-result warning"><b>达到手机计算预算</b><span>搜索已安全中止，没有把未完成结果当作胜法。</span><small>检查 {vcfResult.nodes.toLocaleString()} 节点 · {Math.round(vcfResult.elapsedMs)}ms</small></div>}<button className="vcf-search-button" disabled={vcfRunning} onClick={() => { void runVcf(); }}><Search size={16}/>{vcfRunning ? "搜索中…" : vcfResult ? "重新搜索 VCF" : "搜索 VCF 胜法"}</button></section><button className="position-search-entry" onClick={() => setSheet("positionSearch")}><span><Search size={18}/></span><div><b>跨谱查找相同局面</b><small>支持旋转、镜像和所有变化节点</small></div><ChevronRight size={18}/></button><p className="section-note">下面是启发式候选排序：综合成五、活四、冲四、活三与防守点，用于研究和标记，不等同于 VCF/VCT 证明。</p><div className="analysis-list">{candidates.map((candidate, index) => <div className="analysis-row" key={`${candidate.position.row}-${candidate.position.col}`}><div className="analysis-rank">{String.fromCharCode(65 + index)}</div><div className="analysis-copy"><b>{coordinateName(candidate.position)} <small>{Math.round(candidate.score)} 分</small></b><span>{candidate.reasons.join(" · ")}</span></div><button className="analysis-mark" onClick={() => markCandidate(index)}>标记</button></div>)}</div>{!candidates.length && <div className="sheet-empty"><Search/><b>当前没有可评估的候选点</b><span>棋盘可能已满，或局面没有明显的局部连接。</span></div>}<div className="analysis-actions"><button className="primary-button" onClick={markTopCandidates}>标记前五候选</button><button className="secondary-button" onClick={() => setSheet("marks")}>打开标注面板</button></div><p className="helper">候选点会保存到当前节点，可导出为 SGF 的 LB 标记。</p></div>}
       {sheet === "comment" && <div className="sheet-body"><textarea autoFocus value={current.comment} placeholder="例如：这里白棋若防在 J9，黑棋可以继续冲四…" onChange={(event) => safeUpdateNode({ comment: event.target.value })}/><p className="helper">注释保存在当前节点，导出 SGF 时会写入 C 属性。</p><button className="primary-button" onClick={() => setSheet(null)}><Check/>完成</button></div>}
       {sheet === "boardText" && <div className="sheet-body position-note-sheet"><label className="position-text-field"><span>局面文字（节点名）</span><input autoFocus maxLength={80} value={current.boardText || ""} placeholder="例如：白方唯一防点、黑方强攻起点" onChange={(event) => safeUpdateNode({ boardText: event.target.value })}/><small>{(current.boardText || "").length} / 80 · 导出为 SGF 的 N 属性</small></label>{current.move ? <><div className="evaluation-heading"><b>着法评价</b><button type="button" onClick={() => safeUpdateNode({ evaluation: undefined, evaluationLevel: undefined })}>清除评价</button></div><div className="evaluation-grid">{evaluationOptions.map((option) => <button key={option.value} className={current.evaluation === option.value ? "selected" : ""} onClick={() => safeUpdateNode({ evaluation: current.evaluation === option.value ? undefined : option.value, evaluationLevel: option.value === "good" || option.value === "bad" ? 1 : undefined })}><span>{option.label}</span><small>{option.hint}</small></button>)}</div><p className="helper">好手、坏手、疑问手和趣着写入通用 SGF 属性；其他评价使用兼容扩展属性并完整保留在 RENJU 文件中。</p></> : <div className="root-evaluation-note"><Info size={18}/><span>起始局面没有着法，因此只保存局面文字，不添加“好手/坏手”等着法评价。</span></div>}<button className="primary-button" onClick={() => setSheet(null)}><Check/>完成</button></div>}
-      {sheet === "branches" && <div className="sheet-body"><p className="section-note">当前支点后续有 {branchTotal.toLocaleString()} 个变化。选择一个变化会将它设为默认主线；列表采用固定窗口渲染。</p><div ref={branchListRef} className="branch-list branch-list-virtual" onScroll={(event) => setBranchScrollTop(event.currentTarget.scrollTop)}>{branchTotal > 0 && <div style={{ height: branchTotal * BRANCH_ROW_HEIGHT, position: "relative" }}>{branchWindow.ids.map((id, offset) => { const index = branchWindow.start + offset; const node = viewDocument.nodes[id]; if (!node) return null; const preview = variationPreview(viewDocument, id, 3); return <button key={id} style={{ position: "absolute", top: index * BRANCH_ROW_HEIGHT, left: 0, right: 0, height: BRANCH_ROW_HEIGHT }} onClick={() => chooseChild(id, branchView.id)}><span className={`branch-stone ${node.move?.player}`}>{index + 1}</span><div><b>{node.move ? coordinateName(node.move) : "未知"}</b><small>{node.comment || `变化 ${index + 1} · 后续 ${node.children.length} 支`}</small>{preview && <small className="branch-preview">续：{preview}</small>}</div>{branchView.preferredChildId === id && <em>主线</em>}<ChevronRight/></button>; })}</div>}{!branchTotal && <div className="sheet-empty"><GitBranch/><b>这里还没有后续变化</b><span>关闭面板，在棋盘空位落子即可创建。</span></div>}</div>{branchPivotId && <button className="branch-create-button" onClick={() => { setCurrentId(branchPivotId); setSheet(null); setToast("已回到分叉支点，在棋盘空位落子即可创建新变化"); }}><GitBranch/>回到分叉支点创建变化</button>}{current.parentId && <button className="danger-button" onClick={() => { recordDraft({ type: "delete-subtree", parentId: current.parentId || document.rootId, rootId: currentId }); setCurrentId(current.parentId || document.rootId); setSheet(null); setToast("已加入删除草稿，点击保存后提交"); }}><Trash2/>删除当前变化及后续</button>}</div>}
+      {sheet === "branches" && <div className="sheet-body"><p className="section-note">当前支点后续有 {branchTotal.toLocaleString()} 个变化。选择一个变化会将它设为默认主线；列表采用固定窗口渲染。</p><div ref={branchListRef} className="branch-list branch-list-virtual" onScroll={(event) => setBranchScrollTop(event.currentTarget.scrollTop)}>{branchTotal > 0 && <div style={{ height: branchTotal * BRANCH_ROW_HEIGHT, position: "relative" }}>{branchWindow.ids.map((id, offset) => { const index = branchWindow.start + offset; const node = viewDocument.nodes[id]; if (!node) return null; const preview = variationPreview(viewDocument, id, 3); return <button key={id} style={{ position: "absolute", top: index * BRANCH_ROW_HEIGHT, left: 0, right: 0, height: BRANCH_ROW_HEIGHT }} onClick={() => chooseChild(id, branchView.id)}><span className={`branch-stone ${node.move?.player || node.passPlayer || "black"}`}>{index + 1}</span><div><b>{nodeKindLabel(node)}</b><small>{node.comment || `变化 ${index + 1} · 后续 ${node.children.length} 支`}</small>{preview && <small className="branch-preview">续：{preview}</small>}</div>{branchView.preferredChildId === id && <em>主线</em>}<ChevronRight/></button>; })}</div>}{!branchTotal && <div className="sheet-empty"><GitBranch/><b>这里还没有后续变化</b><span>关闭面板，在棋盘空位落子即可创建。</span></div>}</div>{branchPivotId && <button className="branch-create-button" onClick={() => { setCurrentId(branchPivotId); setSheet(null); setToast("已回到分叉支点，在棋盘空位落子即可创建新变化"); }}><GitBranch/>回到分叉支点创建变化</button>}{current.parentId && <button className="danger-button" onClick={() => { recordDraft({ type: "delete-subtree", parentId: current.parentId || document.rootId, rootId: currentId }); setCurrentId(current.parentId || document.rootId); setSheet(null); setToast("已加入删除草稿，点击保存后提交"); }}><Trash2/>删除当前变化及后续</button>}</div>}
       {sheet === "save" && <div className="sheet-body form-grid save-sheet"><label>保存名称<input autoFocus value={viewDocument.metadata.title} onChange={(event) => updateMetadata({ title: event.target.value })}/></label><div className="save-destination" role="tablist" aria-label="保存类型"><button className={saveDestination === "records" ? "selected" : ""} onClick={() => { setSaveDestination("records"); setSaveFolder(libraryFolders.recordFolders[0] || "未分类"); }} role="tab">棋谱</button><button className={saveDestination === "puzzles" ? "selected" : ""} onClick={() => { setSaveDestination("puzzles"); setSaveFolder(libraryFolders.puzzleFolders[0] || "我的题库"); }} role="tab">题库</button></div><label>保存到分组<select value={saveFolder} onChange={(event) => setSaveFolder(event.target.value)}>{(saveDestination === "records" ? libraryFolders.recordFolders : libraryFolders.puzzleFolders).map((folder) => <option key={folder}>{folder}</option>)}</select></label>{saveDestination === "puzzles" && <p className="helper">将当前局面保存为一道练习题，保留当前棋盘上的全部棋子。</p>}<button className="primary-button" onClick={() => { void confirmSave(); }}><Save/>确认保存</button></div>}
       {sheet === "metadata" && <div className="sheet-body form-grid"><label>棋谱名称<input value={viewDocument.metadata.title} onChange={(event) => updateMetadata({ title: event.target.value })}/></label><div className="two-cols"><label>黑方<input value={viewDocument.metadata.black} onChange={(event) => updateMetadata({ black: event.target.value })}/></label><label>白方<input value={viewDocument.metadata.white} onChange={(event) => updateMetadata({ white: event.target.value })}/></label></div><label>赛事 / 主题<input value={viewDocument.metadata.event} onChange={(event) => updateMetadata({ event: event.target.value })}/></label><div className="two-cols"><label>日期<input type="date" value={viewDocument.metadata.date} onChange={(event) => updateMetadata({ date: event.target.value })}/></label><label>规则<select value={viewDocument.metadata.rule} onChange={(event) => updateMetadata({ rule: event.target.value as GameDocument["metadata"]["rule"] })}><option value="renju">连珠规则</option><option value="standard">标准五子棋</option><option value="freestyle">无禁手</option></select></label></div><button className="primary-button" onClick={() => setSheet(null)}><Save/>保存信息</button></div>}
       {sheet === "export" && <div className="sheet-body export-options"><button onClick={() => { const exportDoc = hasDraft(draft) ? viewDocument : document; downloadText(exportSgf(exportDoc), `${safeName(exportDoc.metadata.title)}.sgf`, "application/x-go-sgf;charset=utf-8"); setToast("SGF 已导出"); }}><span className="format-icon">SGF</span><div><b>标准 SGF 棋谱</b><small>兼容变着、注释和棋盘标记</small></div><ArrowDownToLine/></button><button onClick={() => { const exportDoc = hasDraft(draft) ? viewDocument : document; downloadText(exportJson(exportDoc), `${safeName(exportDoc.metadata.title)}.renju`, "application/json;charset=utf-8"); setToast("跨端棋谱已导出"); }}><span className="format-icon json">R</span><div><b>RENJU 跨端文件</b><small>完整保留全部移动端数据</small></div><ArrowDownToLine/></button><p className="helper">未来桌面端和网页版将直接读取 RENJU 文件；SGF 用于与现有五子棋软件交换。</p></div>}
-      {sheet === "help" && <div className="sheet-body help-content"><div className="support-row"><b>棋谱导入</b><span>RenLib 3.x / 旧版无头 LIB（单文件最大 200MB）、SGF / FGF、REN / RENJS / WZQ（SGF 语法）、RENJU JSON、POS，以及 TXT 坐标序列。</span></div><div className="support-row"><b>JSON 的两种用途</b><span>棋谱库读取本软件的 RENJU JSON 完整变化树；题库页读取开宝兼容的 JSON 题集数组。普通任意 JSON 不能当作棋谱直接导入。</span></div><div className="support-row warning"><b>TXT 不是统一棋谱标准</b><span>TXT 仅作为纯文本坐标序列兼容入口，例如 H8 I8 H9；带专有结构的文本应使用原软件导出的 SGF。</span></div><div className="support-row warning"><b>LIB 兼容边界</b><span>大型 LIB 在后台线程解析并存入 IndexedDB，不再受普通浏览器存储容量限制。已读取主线、分支、常见节点注释和标记控制字节；超出 RenLib 3.4 的扩展仍会提示。 200MB 是手机端完整变化树的安全上限；压缩包大小不等于解压后的 LIB 大小，解压后更大的超大型开局库需要在桌面端分卷或裁剪。</span></div><h3>手机快捷操作</h3><ul><li>点空交叉点：落子；点已有棋子：跳到该手</li><li>底部“标注”：放置数字、胜败平衡和自定义文字</li><li>长按交叉点：圆圈 → 三角 → 叉号 → 清除</li><li>左右方向键（外接键盘）：前后导航</li></ul><button className="primary-button" onClick={() => setSheet(null)}>知道了</button></div>}
+      {sheet === "help" && <div className="sheet-body help-content"><div className="support-row"><b>棋谱导入</b><span>RenLib 3.x / 旧版无头 LIB（单文件最大 200MB）、SGF / FGF、REN / RENJS / WZQ（SGF 语法）、RENJU JSON、POS，以及 TXT 坐标序列。SGF 支持设置局面、过手、UTF-16 和同文件多盘棋。</span></div><div className="support-row"><b>JSON 的三种用途</b><span>棋谱库读取本软件的 RENJU 完整变化树或带明确 moves 字段的落子列表对象；题库页读取开宝兼容数组。数字坐标列表必须声明 coordinateBase，不猜测任意数组。</span></div><div className="support-row warning"><b>十五路边界</b><span>当前棋盘、规则与题库固定为十五路；其他 SGF SZ 会明确拒绝，不会缩放后生成错误棋谱。</span></div><div className="support-row warning"><b>TXT 不是统一棋谱标准</b><span>TXT 仅作为纯文本坐标序列兼容入口，例如 H8 I8 H9；带专有结构的文本应使用原软件导出的 SGF。</span></div><div className="support-row warning"><b>LIB 兼容边界</b><span>大型 LIB 在后台线程解析并存入 IndexedDB，不再受普通浏览器存储容量限制。已读取主线、分支、常见节点注释和标记控制字节；超出 RenLib 3.4 的扩展仍会提示。 200MB 是手机端完整变化树的安全上限；压缩包大小不等于解压后的 LIB 大小，解压后更大的超大型开局库需要在桌面端分卷或裁剪。</span></div><h3>手机快捷操作</h3><ul><li>点空交叉点：落子；点已有棋子：跳到该手</li><li>底部“标注”：放置数字、胜败平衡和自定义文字</li><li>长按交叉点：圆圈 → 三角 → 叉号 → 清除</li><li>左右方向键（外接键盘）：前后导航</li></ul><button className="primary-button" onClick={() => setSheet(null)}>知道了</button></div>}
       {sheet === "about" && <div className="sheet-body about-sheet"><section className="about-hero"><span>半</span><div><b>半步五子棋</b><small>版本 1.0.0 · 移动优先的打谱与做题工具</small></div></section><section className="creator-message"><b>写在前面</b><p>这是一个 Vibecoding 的产物，也是一款永久免费、开放源代码的五子棋软件。希望它能让手机打谱和做题更方便；如果内容涉及侵权，请通过 GitHub 联系，我会及时处理或删除。</p></section><section className="about-card"><h3><Code2 size={17}/>参考与致谢</h3><p>打谱功能参考了爱五子棋打谱软件与 RenLib / SGF 生态；做题交互和题集格式参考了开宝五子棋；AI 搜索思路参考了 SlowRenju 等公开项目。感谢这些前辈软件与开源社区。</p></section><section className="about-card"><h3><Layers3 size={17}/>技术架构</h3><p>React 19 + TypeScript + Vite · PWA / Workbox 离线网页 · Capacitor 8 Android · Web Worker 本地 AI 与 VCF 搜索。棋谱采用变化树模型，为网页、安卓和未来桌面端共享。</p></section><a className="github-link" href="https://github.com/gugujiao953-ship-it/banbu-gomoku" target="_blank" rel="noreferrer"><Code2 size={20}/><span><b>GitHub 源代码</b><small>gugujiao953-ship-it/banbu-gomoku</small></span><ChevronRight size={18}/></a><button className="primary-button" onClick={() => setSheet(null)}>完成</button></div>}
       {sheet === "marks" && <div className="sheet-body mark-sheet"><p className="section-note">标注属于当前局面，与注释、着法评价相互独立；可放在空点或棋子上，并随 SGF 的 LB / CR / TR / MA 属性导入导出。</p><section><h3>数字标注</h3><div className="mark-preset-grid numbers">{["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((label) => <button key={label} onClick={() => { setCandidateLabel(label); setSheet(null); }}><span>{label}</span></button>)}</div></section><section><h3>局面结论</h3><div className="mark-preset-grid words">{["胜", "败", "平", "平衡", "攻", "守", "要", "疑"].map((label) => <button key={label} onClick={() => { setCandidateLabel(label); setSheet(null); }}><span>{label}</span></button>)}</div></section><section><h3>字母与自定义</h3><div className="mark-preset-grid letters">{["A", "B", "C", "D", "E"].map((label) => <button key={label} onClick={() => { setCandidateLabel(label); setSheet(null); }}><span>{label}</span></button>)}</div><div className="custom-mark-row"><input maxLength={4} value={customMarkLabel} onChange={(event) => setCustomMarkLabel(event.target.value)} placeholder="最多 4 个字"/><button disabled={!customMarkLabel.trim()} onClick={() => { setCandidateLabel(Array.from(customMarkLabel.trim()).slice(0, 4).join("")); setSheet(null); }}>使用</button></div></section><div className="mark-shape-tip"><b>形状标记</b><span>在棋盘交叉点长按，可依次切换圆圈、三角、叉号和清除。</span></div>{current.marks.length > 0 && <button className="danger-button" onClick={() => { safeClearMarks(); setCandidateLabel(null); setSheet(null); setToast("已清除当前局面的全部标注"); }}><Trash2/>清除当前局面全部标注（{current.marks.length}）</button>}</div>}
     </BottomSheet>}

@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { addMove, addMoveAs, boardAt, createDocument, deleteVariation, depthOf, emptyBoard, insertMove, parseCoordinate, preferredNext, replaceMove, setLabelMark } from "./game";
+import { addMove, addMoveAs, boardAt, createDocument, deleteVariation, depthOf, emptyBoard, insertMove, nextPlayerAt, parseCoordinate, preferredNext, replaceMove, setLabelMark } from "./game";
 import { analyzeCandidates } from "./analysis";
 import { exportSgf, importRecordFile } from "./formats";
 import { findPositionMatches, positionKey } from "./position-search";
 import { isWinningMove, searchVcf, verifyVcfProof } from "./vcf";
 import { createPuzzleDocument, importKaibaoPuzzleJson } from "./puzzles";
-import { documentFingerprint } from "./large-storage";
+import { assembleCompactIndex, documentFingerprint } from "./large-storage";
 import { buildCompactRenLibIndex, compactBranchCount, compactChildWindow, compactDiagnostics, compactFirstBranchNodeId, compactIndexBytes, compactIndexOf, compactNodeCount, compactSearch, createLazyDocument } from "./compact-index";
 import { renLibDisplayMark } from "./renlib-display";
 import { applyDraftToDocument, buildDraftOverlay, emptyDraft, hasDraft, overlayNode, overlayPreferredChild, projectedDocument, pushDraft, redoDraft, undoDraft } from "./draft-operations";
+import { documentSignature } from "./storage";
 
 describe("game tree", () => {
   it("imports Kaibao setup JSON and restarts without clearing the puzzle", () => {
@@ -103,6 +104,78 @@ describe("record formats", () => {
     expect(Object.values(imported.document.nodes).filter((node) => node.move)).toHaveLength(3);
   });
 
+  it("rejects disguised libraries, arbitrary arrays, prose, and unknown binaries", async () => {
+    await expect(importRecordFile(new File([new Uint8Array([0x21, 0x3c, 0x61, 0x72, 0x63, 0x68, 0x3e, 0x0a])], "jvm.lib"))).rejects.toThrow("ar 静态库");
+    await expect(importRecordFile(new File([JSON.stringify([["H8"]])], "puzzles.json"))).rejects.toThrow("题库页面");
+    await expect(importRecordFile(new File(["theme=H8; this is configuration text"], "theme.txt"))).rejects.toThrow("没有识别到");
+    await expect(importRecordFile(new File([new Uint8Array([0, 1, 2, 3])], "book.dat"))).rejects.toThrow("不支持 .dat 格式");
+  });
+
+  it("accepts coordinate TXT separators and numeric-leading SGF extensions", async () => {
+    const text = await importRecordFile(new File(["H8, I8; H9"], "moves.txt"));
+    expect(Object.values(text.document.nodes).filter((node) => node.move)).toHaveLength(3);
+    const legacy = await importRecordFile(new File(["(;5A[]PW[白];B[hh];W[ii])"], "legacy.SGF"));
+    expect(Object.values(legacy.document.nodes).filter((node) => node.move)).toHaveLength(2);
+  });
+
+  it("imports a move stored directly on the SGF root node", async () => {
+    const imported = await importRecordFile(new File(["(;GM[4]SZ[15]GN[根节点着法]B[hh]C[首手])"], "root-move.sgf"));
+    const moves = Object.values(imported.document.nodes).filter((node) => node.move);
+    expect(moves).toHaveLength(1);
+    expect(moves[0]).toMatchObject({ move: { row: 7, col: 7, player: "black" }, comment: "首手" });
+  });
+
+  it("imports every top-level game and rejects malformed SGF boundaries", async () => {
+    const imported = await importRecordFile(new File(["(;SZ[15]GN[一];B[hh])(;SZ[15]GN[二];W[ii])"], "collection.sgf"));
+    expect(imported.format).toBe("SGF Collection (2)");
+    expect(imported.document.metadata.title).toBe("一");
+    expect(imported.additionalDocuments?.map((document) => document.metadata.title)).toEqual(["二"]);
+    await expect(importRecordFile(new File(["(;B[hh;W[ii)"], "broken.sgf"))).rejects.toThrow("结束括号");
+    await expect(importRecordFile(new File(["(;B;W[ii])"], "broken-property.sgf"))).rejects.toThrow("缺少值");
+  });
+
+  it("preserves setup positions and passes through SGF round-trips", async () => {
+    const source = "(;GM[4]FF[4]SZ[15]GN[设置]AB[hh][ii]AW[jj]PL[W];W[]C[白过手];AE[ii]PL[B]N[清除一子];B[kk])";
+    const imported = await importRecordFile(new File([source], "setup-pass.sgf"));
+    const final = Object.values(imported.document.nodes).find((node) => node.move?.row === 10 && node.move.col === 10)!;
+    const board = boardAt(imported.document, final.id);
+    expect(board[7][7]).toBe("black"); expect(board[8][8]).toBeNull();
+    expect(board[9][9]).toBe("white"); expect(board[10][10]).toBe("black");
+    expect(depthOf(imported.document, final.id)).toBe(2);
+    expect(nextPlayerAt(imported.document, final.id)).toBe("white");
+    const exported = exportSgf(imported.document);
+    expect(exported).toContain("AB[hh][ii]AW[jj]PL[W]");
+    expect(exported).toContain("W[]"); expect(exported).toContain("AE[ii]PL[B]");
+    const roundTrip = await importRecordFile(new File([exported], "roundtrip.sgf"));
+    expect(Object.values(roundTrip.document.nodes).some((node) => node.passPlayer === "white")).toBe(true);
+    const matches = findPositionMatches([imported.document], board, nextPlayerAt(imported.document, final.id), false);
+    expect(matches.find((match) => match.nodeId === final.id)?.depth).toBe(2);
+  });
+
+  it("rejects invalid setup points instead of silently changing the position", async () => {
+    await expect(importRecordFile(new File(["(;SZ[15]AB[pp];B[hh])"], "invalid-setup.sgf"))).rejects.toThrow("设置坐标");
+    await expect(importRecordFile(new File(["(;SZ[15]PL[X];B[hh])"], "invalid-player.sgf"))).rejects.toThrow("无效行棋方");
+  });
+
+  it("decodes UTF-16 SGF and rejects unsupported board sizes", async () => {
+    const source = "(;GM[4]FF[4]CA[UTF-16LE]SZ[15]GN[中文棋谱];B[hh])";
+    const bytes = new Uint8Array(2 + source.length * 2); bytes.set([0xff, 0xfe]);
+    Array.from(source).forEach((character, index) => { const code = character.charCodeAt(0); bytes[2 + index * 2] = code & 0xff; bytes[3 + index * 2] = code >> 8; });
+    const imported = await importRecordFile(new File([bytes], "utf16.sgf"));
+    expect(imported.document.metadata.title).toBe("中文棋谱");
+    await expect(importRecordFile(new File(["(;SZ[19];B[hh])"], "nineteen.sgf"))).rejects.toThrow("仅支持十五路");
+  });
+
+  it("adapts only explicit JSON move-list schemas", async () => {
+    const strings = await importRecordFile(new File([JSON.stringify({ title: "列表", moves: ["H8", { coordinate: "I8", player: "white" }] })], "moves.json"));
+    expect(strings.format).toBe("JSON Move List");
+    expect(Object.values(strings.document.nodes).filter((node) => node.move)).toHaveLength(2);
+    const numeric = await importRecordFile(new File([JSON.stringify({ coordinateBase: 1, moves: [{ row: 8, col: 8, color: 1 }] })], "numeric.json"));
+    expect(Object.values(numeric.document.nodes).find((node) => node.move)?.move).toMatchObject({ row: 7, col: 7, player: "black" });
+    await expect(importRecordFile(new File([JSON.stringify({ moves: [{ row: 8, col: 8 }] })], "ambiguous.json"))).rejects.toThrow("coordinateBase");
+    await expect(importRecordFile(new File([JSON.stringify({ coordinateBase: 0, moves: [{ row: 7.5, col: 8 }] })], "fractional.json"))).rejects.toThrow("坐标无效");
+  });
+
   it("round-trips labelled candidate points through SGF LB", async () => {
     let document = createDocument("候选点");
     const first = addMove(document, document.rootId, { row: 7, col: 7 });
@@ -136,6 +209,32 @@ describe("record formats", () => {
     expect(documentFingerprint(preferredChanged)).not.toBe(original);
     const evaluated = { ...document, nodes: { ...document.nodes, [first.nodeId]: { ...document.nodes[first.nodeId], evaluation: "good" as const, evaluationLevel: 2 as const } } };
     expect(documentFingerprint(evaluated)).not.toBe(original);
+  });
+
+  it("distinguishes setup and pass semantics in fingerprints and duplicate signatures", () => {
+    const base = createDocument("语义指纹");
+    const setup = structuredClone(base);
+    setup.nodes[setup.rootId].setup = { black: [{ row: 7, col: 7 }], white: [], empty: [], nextPlayer: "white" };
+    const pass = structuredClone(base);
+    pass.nodes[pass.rootId].passPlayer = "black";
+    expect(documentFingerprint(setup)).not.toBe(documentFingerprint(base));
+    expect(documentFingerprint(pass)).not.toBe(documentFingerprint(base));
+    expect(documentSignature(setup)).not.toBe(documentSignature(base));
+    expect(documentSignature(pass)).not.toBe(documentSignature(base));
+  });
+
+  it("reassembles setup tables from chunked large-record storage", () => {
+    const setup = { black: [{ row: 7, col: 7 }], white: [], empty: [], nextPlayer: "white" as const };
+    const stored = { nodeCount: 1, rootId: "root" };
+    const chunks = [
+      { field: "parent", offset: 0, value: Int32Array.from([-1]).buffer },
+      { field: "setupRefs", offset: 0, value: Int32Array.from([0]).buffer },
+      { field: "ids", offset: 0, value: ["root"] },
+      { field: "setups", offset: 0, value: [setup] },
+    ];
+    const restored = assembleCompactIndex(stored, chunks);
+    expect(restored?.setupRefs?.[0]).toBe(0);
+    expect(restored?.setups?.[0]).toEqual(setup);
   });
 
   it("round-trips board text and structured evaluations through SGF", async () => {
@@ -173,11 +272,14 @@ describe("record formats", () => {
     expect(exportSgf(imported.document)).toContain(property);
   });
 
-  it("keeps move evaluation across independent no-move nodes and reports conflicts", async () => {
+  it("keeps move evaluation and preserves independent no-move nodes", async () => {
     const source = "(;GM[4]SZ[15];B[hh]TE[1]XEV[bad];N[关键 局面];W[ii])";
     const imported = await importRecordFile(new File([source], "conflict.sgf"));
     const first = Object.values(imported.document.nodes).find((node) => node.move?.row === 7 && node.move?.col === 7);
-    expect(first).toMatchObject({ evaluation: "good", boardText: "关键 局面" });
+    expect(first).toMatchObject({ evaluation: "good" });
+    const note = Object.values(imported.document.nodes).find((node) => node.boardText === "关键 局面");
+    expect(note?.move).toBeNull();
+    expect(note?.parentId).toBe(first?.id);
     expect(imported.warnings.some((warning) => warning.includes("冲突"))).toBe(true);
   });
 

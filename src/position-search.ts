@@ -46,18 +46,31 @@ export const findPositionMatches = (documents: GameDocument[], target: Cell[][],
       if (path.has(nodeId)) return;
       const node = document.nodes[nodeId];
       if (!node) return;
-      if (node.move && (node.move.row < 0 || node.move.row >= BOARD_SIZE || node.move.col < 0 || node.move.col >= BOARD_SIZE || board[node.move.row][node.move.col])) return;
-      if (node.move) board[node.move.row][node.move.col] = node.move.player;
-      const next = node.move ? (node.move.player === "black" ? "white" : "black") : player;
+      const previous = new Map<string, Cell>();
+      const write = (position: Position, value: Cell) => {
+        const key = `${position.row},${position.col}`;
+        if (!previous.has(key)) previous.set(key, board[position.row][position.col]);
+        board[position.row][position.col] = value;
+      };
+      const restore = () => previous.forEach((value, key) => { const [row, col] = key.split(",").map(Number); board[row][col] = value; });
+      node.setup?.empty.forEach((position) => write(position, null));
+      node.setup?.black.forEach((position) => write(position, "black"));
+      node.setup?.white.forEach((position) => write(position, "white"));
+      if (node.move && (node.move.row < 0 || node.move.row >= BOARD_SIZE || node.move.col < 0 || node.move.col >= BOARD_SIZE || board[node.move.row][node.move.col])) { restore(); return; }
+      if (node.move) write(node.move, node.move.player);
+      let next = node.setup?.nextPlayer || player;
+      const turnPlayer = node.move?.player || node.passPlayer;
+      if (turnPlayer) next = turnPlayer === "black" ? "white" : "black";
+      const nodeDepth = depth + (turnPlayer ? 1 : 0);
       if (positionKey(board, next, includeSymmetry) === wanted) {
         matches.push({
-          documentId: document.id, nodeId, depth, title: document.metadata.title,
+          documentId: document.id, nodeId, depth: nodeDepth, title: document.metadata.title,
           coordinate: node.move ? `${String.fromCharCode(65 + node.move.col)}${BOARD_SIZE - node.move.row}` : undefined,
         });
       }
       const nextPath = new Set(path); nextPath.add(nodeId);
-      node.children.forEach((childId) => visit(childId, depth + 1, next, nextPath));
-      if (node.move) board[node.move.row][node.move.col] = null;
+      node.children.forEach((childId) => visit(childId, nodeDepth, next, nextPath));
+      restore();
     };
     visit(document.rootId, 0, "black", new Set());
     if (matches.length >= limit) break;

@@ -1,4 +1,4 @@
-import { addMove, createDocument, otherPlayer, toggleMark } from "./game";
+import { addMove, addMoveAs, createDocument, otherPlayer, parseCoordinate, toggleMark } from "./game";
 import type { CompactRenLibDraftNode, CompactRenLibIndex, GameDocument, ImportResult, NodeEvaluation, Player, Position, RecordNode } from "./types";
 import { RenLibArrayBuilder, createLazyDocument } from "./compact-index";
 
@@ -6,27 +6,38 @@ interface SgfNode { props: Record<string, string[]>; children: SgfNode[] }
 
 const decodeText = (buffer: ArrayBuffer) => {
   const bytes = new Uint8Array(buffer);
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder("utf-16le").decode(bytes.subarray(2));
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder("utf-16be").decode(bytes.subarray(2));
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) return new TextDecoder("utf-8").decode(bytes.subarray(3));
+  const sample = bytes.subarray(0, Math.min(bytes.length, 256));
+  const evenZeros = sample.filter((byte, index) => index % 2 === 0 && byte === 0).length;
+  const oddZeros = sample.filter((byte, index) => index % 2 === 1 && byte === 0).length;
+  if (oddZeros > sample.length / 8 && oddZeros > evenZeros * 2) return new TextDecoder("utf-16le").decode(bytes);
+  if (evenZeros > sample.length / 8 && evenZeros > oddZeros * 2) return new TextDecoder("utf-16be").decode(bytes);
   try { return new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
   catch { return new TextDecoder("gb18030").decode(bytes); }
 };
 
-const parseSgfTree = (text: string): SgfNode => {
+const parseSgfCollection = (text: string): SgfNode[] => {
   let index = 0;
   const skipSpace = () => { while (/\s/.test(text[index] ?? "")) index += 1; };
   const value = () => {
-    index += 1; let result = "";
+    index += 1; let result = "", closed = false;
     while (index < text.length) {
-      const char = text[index++]; if (char === "]") break;
+      const char = text[index++]; if (char === "]") { closed = true; break; }
       if (char === "\\" && index < text.length) { const escaped = text[index++]; if (escaped === "\r" && text[index] === "\n") index += 1; else if (escaped !== "\n") result += escaped; }
       else result += char;
     }
+    if (!closed) throw new Error("SGF 属性值缺少结束括号 ]");
     return result;
   };
   const node = (): SgfNode => {
     index += 1; const props: Record<string, string[]> = {}; skipSpace();
-    while (/[A-Za-z]/.test(text[index] ?? "")) {
-      let key = ""; while (/[A-Za-z]/.test(text[index] ?? "")) key += text[index++].toUpperCase();
-      skipSpace(); props[key] = []; while (text[index] === "[") { props[key].push(value()); skipSpace(); }
+    while (/[A-Za-z0-9]/.test(text[index] ?? "")) {
+      let key = ""; while (/[A-Za-z0-9]/.test(text[index] ?? "")) key += text[index++].toUpperCase();
+      skipSpace();
+      if (text[index] !== "[") throw new Error(`SGF 属性 ${key} 缺少值`);
+      props[key] = []; while (text[index] === "[") { props[key].push(value()); skipSpace(); }
     }
     return { props, children: [] };
   };
@@ -38,14 +49,56 @@ const parseSgfTree = (text: string): SgfNode => {
     if (text[index] !== ")") throw new Error("SGF 游戏树没有闭合"); index += 1;
     if (!root) throw new Error("SGF 中没有节点"); return root;
   };
-  while (index < text.length && text[index] !== "(") index += 1;
-  return tree();
+  skipSpace();
+  const trees: SgfNode[] = [];
+  while (index < text.length) {
+    if (text[index] !== "(") throw new Error("SGF 顶层包含无法识别的尾部内容");
+    trees.push(tree()); skipSpace();
+  }
+  if (!trees.length) throw new Error("SGF 中没有游戏树");
+  return trees;
 };
 
 const sgfPosition = (value?: string): Position | null => {
   if (!value || value.length < 2) return null;
   const col = value.charCodeAt(0) - 97, row = value.charCodeAt(1) - 97;
   return row >= 0 && row < 15 && col >= 0 && col < 15 ? { row, col } : null;
+};
+
+const sgfPoints = (value: string): Position[] => {
+  const separator = value.indexOf(":");
+  if (separator < 0) { const point = sgfPosition(value); return point ? [point] : []; }
+  const start = sgfPosition(value.slice(0, separator)), end = sgfPosition(value.slice(separator + 1));
+  if (!start || !end) return [];
+  const points: Position[] = [];
+  for (let row = Math.min(start.row, end.row); row <= Math.max(start.row, end.row); row += 1) {
+    for (let col = Math.min(start.col, end.col); col <= Math.max(start.col, end.col); col += 1) points.push({ row, col });
+  }
+  return points;
+};
+
+const setupFromSgf = (props: Record<string, string[]>) => {
+  const readPoints = (key: "AB" | "AW" | "AE") => (props[key] || []).flatMap((value) => {
+    const points = sgfPoints(value);
+    if (!points.length) throw new Error(`SGF ${key} 含有无法识别的设置坐标：${value || "（空）"}`);
+    return points;
+  });
+  if (props.PL?.[0] !== undefined && props.PL[0] !== "B" && props.PL[0] !== "W") throw new Error(`SGF PL 含有无效行棋方：${props.PL[0]}`);
+  const setup = {
+    black: readPoints("AB"),
+    white: readPoints("AW"),
+    empty: readPoints("AE"),
+    nextPlayer: props.PL?.[0] === "W" ? "white" as const : props.PL?.[0] === "B" ? "black" as const : undefined,
+  };
+  const occupied = new Map<string, string>();
+  for (const [kind, points] of [["AB", setup.black], ["AW", setup.white], ["AE", setup.empty]] as const) {
+    for (const point of points) {
+      const key = `${point.row},${point.col}`, previous = occupied.get(key);
+      if (previous && previous !== kind) throw new Error(`SGF 设置局面在 ${key} 同时包含 ${previous}/${kind}`);
+      occupied.set(key, kind);
+    }
+  }
+  return setup.black.length || setup.white.length || setup.empty.length || setup.nextPlayer ? setup : undefined;
 };
 
 const hasProp = (props: Record<string, string[]>, key: string) => Object.prototype.hasOwnProperty.call(props, key);
@@ -84,33 +137,60 @@ const applySgfAnnotations = (node: RecordNode, props: Record<string, string[]>, 
   }
 };
 
-const importSgf = (text: string): ImportResult => {
-  const tree = parseSgfTree(text); const document = createDocument(tree.props.GN?.[0] || "导入棋谱");
+const importSgfTree = (tree: SgfNode, fallbackTitle: string): { document: GameDocument; warnings: string[] } => {
+  const rawSize = tree.props.SZ?.[0];
+  if (rawSize && rawSize !== "15" && rawSize !== "15:15") throw new Error(`当前仅支持十五路五子棋，无法导入 SZ[${rawSize}]`);
+  const warnings: string[] = [];
+  if (!rawSize) warnings.push("SGF 未声明 SZ，已按十五路读取");
+  if (rawSize === "15:15") warnings.push("SGF 使用了 SZ[15:15]，已按十五路方形棋盘读取");
+  const document = createDocument(tree.props.GN?.[0] || fallbackTitle);
   document.metadata.black = tree.props.PB?.[0] || "黑方"; document.metadata.white = tree.props.PW?.[0] || "白方";
   document.metadata.event = tree.props.EV?.[0] || ""; document.metadata.date = tree.props.DT?.[0] || document.metadata.date;
   document.metadata.result = tree.props.RE?.[0] || "";
   const rule = (tree.props.RU?.[0] || "").toLowerCase(); document.metadata.rule = rule.includes("free") ? "freestyle" : rule.includes("standard") ? "standard" : "renju";
-  const warnings: string[] = [];
-  applySgfAnnotations(document.nodes[document.rootId], tree.props, warnings, false);
-  const walk = (source: SgfNode, parentId: string, inheritedPlayer: Player = "black") => {
-    let currentId = parentId, player = inheritedPlayer; const moveValue = source.props.B?.[0] ?? source.props.W?.[0];
-    if (moveValue !== undefined) {
-      player = source.props.B ? "black" : "white"; const position = sgfPosition(moveValue);
-      if (position) {
-        const added = addMove(document, currentId, position); Object.assign(document, added.document); currentId = added.nodeId;
-        const current = document.nodes[currentId]; current.move = { ...position, player }; applySgfAnnotations(current, source.props, warnings, true);
-      } else warnings.push(`忽略了无法识别的落子坐标：${moveValue}`);
-    } else {
-      applySgfAnnotations(document.nodes[currentId], source.props, warnings, false);
-    }
-    source.children.forEach((child) => walk(child, currentId, player === "black" ? "white" : "black"));
+  const appendNode = (parentId: string, source: SgfNode) => {
+    const hasBlack = hasProp(source.props, "B"), hasWhite = hasProp(source.props, "W");
+    if (hasBlack && hasWhite) throw new Error("SGF 同一节点不能同时包含黑白着法");
+    const setup = setupFromSgf(source.props);
+    if ((hasBlack || hasWhite) && setup) throw new Error("SGF 同一节点不能同时包含着法和设置局面属性");
+    const player: Player | undefined = hasBlack ? "black" : hasWhite ? "white" : undefined;
+    const moveValue = player ? (hasBlack ? source.props.B[0] : source.props.W[0]) : undefined;
+    const position = moveValue ? sgfPosition(moveValue) : null;
+    if (moveValue && !position) throw new Error(`SGF 含有无法识别的落子坐标：${moveValue}`);
+    const id = `sgf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    const node: RecordNode = {
+      id, parentId, children: [], move: player && position ? { ...position, player } : null,
+      passPlayer: player && moveValue === "" ? player : undefined, setup, comment: "", marks: [],
+    };
+    applySgfAnnotations(node, source.props, warnings, Boolean(player));
+    document.nodes[id] = node;
+    const parent = document.nodes[parentId]; parent.children.push(id); if (!parent.preferredChildId) parent.preferredChildId = id;
+    source.children.forEach((child) => appendNode(id, child));
   };
-  tree.children.forEach((child) => walk(child, document.rootId)); document.updatedAt = new Date().toISOString();
-  return { document, warnings, format: "SGF" };
+  if (hasProp(tree.props, "B") || hasProp(tree.props, "W")) appendNode(document.rootId, tree);
+  else {
+    const root = document.nodes[document.rootId]; root.setup = setupFromSgf(tree.props);
+    applySgfAnnotations(root, tree.props, warnings, false);
+    tree.children.forEach((child) => appendNode(document.rootId, child));
+  }
+  document.updatedAt = new Date().toISOString();
+  return { document, warnings };
+};
+
+const importSgf = (text: string): ImportResult => {
+  const trees = parseSgfCollection(text);
+  const imported = trees.map((tree, index) => importSgfTree(tree, trees.length > 1 ? `导入棋谱（${index + 1}）` : "导入棋谱"));
+  return {
+    document: imported[0].document,
+    additionalDocuments: imported.slice(1).map((item) => item.document),
+    warnings: imported.flatMap((item, index) => item.warnings.map((warning) => trees.length > 1 ? `第 ${index + 1} 盘：${warning}` : warning)),
+    format: trees.length > 1 ? `SGF Collection (${trees.length})` : "SGF",
+  };
 };
 
 const parsePosMoves = (text: string): Position[] => {
-  const compact = text.replace(/[,;\s-]+/g, "");
+  const compact = text.replace(/[\uFEFF,;\s-]+/g, "");
+  if (!compact || !/^(?:[a-oA-O](?:1[0-5]|[1-9]))+$/.test(compact)) return [];
   return [...compact.matchAll(/([a-oA-O])(1[0-5]|[1-9])/g)].map((match) => ({ col: match[1].toLowerCase().charCodeAt(0) - 97, row: 15 - Number(match[2]) }));
 };
 const importPos = (text: string, title: string): ImportResult => {
@@ -328,12 +408,30 @@ const validateJsonDocument = (value: unknown): GameDocument => {
   if (!document.metadata || typeof document.metadata.title !== "string" || typeof document.metadata.black !== "string" || typeof document.metadata.white !== "string" || !["renju", "standard", "freestyle"].includes(document.metadata.rule) || document.metadata.boardSize !== 15) throw new Error("RENJU 文件的棋谱信息不完整或规则无效");
   if (typeof document.createdAt !== "string" || typeof document.updatedAt !== "string" || !Number.isFinite(Date.parse(document.createdAt)) || !Number.isFinite(Date.parse(document.updatedAt))) throw new Error("RENJU 文件的时间信息无效");
   const root = document.nodes[document.rootId];
-  if (!root || root.parentId !== null || root.move !== null) throw new Error("RENJU 文件的根节点无效");
+  if (!root || root.parentId !== null || root.move !== null || root.passPlayer) throw new Error("RENJU 文件的根节点无效");
   const evaluationKinds: NodeEvaluation[] = ["good", "bad", "doubtful", "interesting", "forced", "only", "study"];
   Object.entries(document.nodes).forEach(([id, node]) => {
     if (!node || node.id !== id || !Array.isArray(node.children) || typeof node.comment !== "string" || !Array.isArray(node.marks)) throw new Error(`RENJU 节点 ${id} 结构无效`);
     if (node.parentId !== null && typeof node.parentId !== "string") throw new Error(`RENJU 节点 ${id} 的父节点无效`);
     if (node.move && (!Number.isInteger(node.move.row) || !Number.isInteger(node.move.col) || node.move.row < 0 || node.move.row >= 15 || node.move.col < 0 || node.move.col >= 15 || !["black", "white"].includes(node.move.player))) throw new Error(`RENJU 节点 ${id} 的落子无效`);
+    if (node.passPlayer && !["black", "white"].includes(node.passPlayer)) throw new Error(`RENJU 节点 ${id} 的过手方无效`);
+    if (node.move && node.passPlayer) throw new Error(`RENJU 节点 ${id} 不能同时包含落子和过手`);
+    if (node.setup) {
+      if (!Array.isArray(node.setup.black) || !Array.isArray(node.setup.white) || !Array.isArray(node.setup.empty)) throw new Error(`RENJU 节点 ${id} 的设置局面结构无效`);
+      if (node.move || node.passPlayer) throw new Error(`RENJU 节点 ${id} 不能同时包含设置局面与着法`);
+      const occupied = new Map<string, string>();
+      for (const [kind, points] of [["black", node.setup.black], ["white", node.setup.white], ["empty", node.setup.empty]] as const) {
+        for (const point of points) {
+          const key = `${point.row},${point.col}`, previous = occupied.get(key);
+          if (previous && previous !== kind) throw new Error(`RENJU 节点 ${id} 的设置局面在 ${key} 发生冲突`);
+          occupied.set(key, kind);
+        }
+      }
+      for (const point of [...node.setup.black, ...node.setup.white, ...node.setup.empty]) {
+        if (!Number.isInteger(point.row) || !Number.isInteger(point.col) || point.row < 0 || point.row >= 15 || point.col < 0 || point.col >= 15) throw new Error(`RENJU 节点 ${id} 的设置局面坐标无效`);
+      }
+      if (node.setup.nextPlayer && !["black", "white"].includes(node.setup.nextPlayer)) throw new Error(`RENJU 节点 ${id} 的设置行棋方无效`);
+    }
     if (node.evaluation && !evaluationKinds.includes(node.evaluation)) throw new Error(`RENJU 节点 ${id} 的评价无效`);
     if (node.evaluationLevel && node.evaluationLevel !== 1 && node.evaluationLevel !== 2) throw new Error(`RENJU 节点 ${id} 的评价级别无效`);
     node.marks.forEach((mark) => {
@@ -359,16 +457,67 @@ const validateJsonDocument = (value: unknown): GameDocument => {
   return document;
 };
 
+const importJsonMoveList = (value: unknown): ImportResult | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const source = value as { title?: unknown; boardSize?: unknown; coordinateBase?: unknown; moves?: unknown };
+  if (!Array.isArray(source.moves)) return null;
+  if (source.boardSize !== undefined && source.boardSize !== 15) throw new Error(`当前仅支持十五路五子棋，无法导入 boardSize=${source.boardSize}`);
+  let document = createDocument(typeof source.title === "string" ? source.title : "JSON 落子列表"), currentId = document.rootId;
+  const warnings: string[] = [];
+  source.moves.forEach((raw, index) => {
+    let position: Position | null = null, player: Player | undefined;
+    if (typeof raw === "string") position = parseCoordinate(raw);
+    else if (raw && typeof raw === "object") {
+      const move = raw as Record<string, unknown>;
+      if (typeof move.coordinate === "string") position = parseCoordinate(move.coordinate);
+      else {
+        if (source.coordinateBase !== 0 && source.coordinateBase !== 1) throw new Error("数字坐标 JSON 必须声明 coordinateBase 为 0 或 1");
+        const row = typeof move.row === "number" ? move.row : move.y, col = typeof move.col === "number" ? move.col : move.x;
+        if (typeof row === "number" && typeof col === "number") position = { row: row - Number(source.coordinateBase), col: col - Number(source.coordinateBase) };
+      }
+      const rawPlayer = move.player ?? move.color;
+      if (["black", "b", "B", 1].includes(rawPlayer as never)) player = "black";
+      if (["white", "w", "W", 2].includes(rawPlayer as never)) player = "white";
+    }
+    if (!position || !Number.isInteger(position.row) || !Number.isInteger(position.col) || position.row < 0 || position.row >= 15 || position.col < 0 || position.col >= 15) throw new Error(`JSON 第 ${index + 1} 手坐标无效`);
+    const added = player ? addMoveAs(document, currentId, position, player) : addMove(document, currentId, position);
+    if (!added.created) throw new Error(`JSON 第 ${index + 1} 手与已有棋子冲突`);
+    document = added.document; currentId = added.nodeId;
+    if (!player && raw && typeof raw === "object" && ("player" in raw || "color" in raw)) warnings.push(`第 ${index + 1} 手颜色无法识别，已按轮次处理`);
+  });
+  if (!source.moves.length) throw new Error("JSON 落子列表为空");
+  return { document, warnings, format: "JSON Move List" };
+};
+
+const hasBytes = (buffer: ArrayBuffer, values: number[]) => {
+  const bytes = new Uint8Array(buffer, 0, Math.min(values.length, buffer.byteLength));
+  return values.every((value, index) => bytes[index] === value);
+};
+
 export const importRecordFile = async (file: File): Promise<ImportResult> => {
   const extension = file.name.split(".").pop()?.toLowerCase() || "";
-  if (extension === "lib") return importRenLib(file, file.name);
-  const buffer = await file.arrayBuffer();
-  if (extension === "renju" || extension === "json") {
-    const parsed = validateJsonDocument(JSON.parse(decodeText(buffer)));
-    return { document: parsed, warnings: [], format: "RENJU JSON" };
+  if (extension === "lib") {
+    const prefix = await file.slice(0, 8).arrayBuffer();
+    if (hasBytes(prefix, [0x21, 0x3c, 0x61, 0x72, 0x63, 0x68, 0x3e, 0x0a])) throw new Error("该 .lib 文件是 ar 静态库，不是 RenLib 棋谱");
+    if (!hasBytes(prefix, [0xff, 0x52, 0x65, 0x6e, 0x4c, 0x69, 0x62, 0xff]) && new Uint8Array(prefix)[0] !== 0x78) throw new Error("该 .lib 文件不是可识别的 RenLib 棋谱（未找到 FF RenLib FF 头）");
+    return importRenLib(file, file.name);
   }
+  const buffer = await file.arrayBuffer();
   const text = decodeText(buffer);
-  if (["sgf", "fgf", "ren", "renjs", "wzq"].includes(extension) || text.trimStart().startsWith("(")) return importSgf(text);
+  const trimmed = text.trimStart();
+  if (extension === "renju" || extension === "json") {
+    let parsed: unknown;
+    try { parsed = JSON.parse(text); } catch { throw new Error(`${extension.toUpperCase()} 文件内容不是有效 JSON`); }
+    if (extension === "renju") return { document: validateJsonDocument(parsed), warnings: [], format: "RENJU JSON" };
+    try { return { document: validateJsonDocument(parsed), warnings: [], format: "RENJU JSON" }; }
+    catch (nativeError) {
+      const adapted = importJsonMoveList(parsed); if (adapted) return adapted;
+      if (Array.isArray(parsed)) throw new Error("JSON 数组不是可确认的棋谱格式；题集请在题库页面导入");
+      throw nativeError;
+    }
+  }
+  if (["sgf", "fgf", "ren", "renjs", "wzq"].includes(extension) || trimmed.startsWith("(")) return importSgf(text);
+  if (!["pos", "txt", ""].includes(extension)) throw new Error(`不支持 .${extension} 格式；请使用 SGF、LIB、RENJU JSON、POS 或 TXT`);
   return importPos(text, file.name);
 };
 
@@ -376,13 +525,19 @@ const escapeSgf = (value: string) => value.replace(/\\/g, "\\\\").replace(/]/g, 
 const escapeSgfSimpleText = (value: string) => escapeSgf(value.replace(/[\t\r\n ]+/g, " ").trim());
 const toSgfCoord = ({ row, col }: Position) => `${String.fromCharCode(97 + col)}${String.fromCharCode(97 + row)}`;
 const evaluationSgf = (node: RecordNode) => {
-  if (!node.move || !node.evaluation) return "";
+  if (!(node.move || node.passPlayer) || !node.evaluation) return "";
   const level = node.evaluationLevel === 2 ? 2 : 1;
   if (node.evaluation === "good") return `TE[${level}]`;
   if (node.evaluation === "bad") return `BM[${level}]`;
   if (node.evaluation === "doubtful") return "DO[]";
   if (node.evaluation === "interesting") return "IT[]";
   return `XEV[${node.evaluation}]`;
+};
+const setupSgf = (node: RecordNode) => {
+  if (!node.setup) return "";
+  const points = (key: "AB" | "AW" | "AE", values: Position[]) => values.length ? `${key}${values.map((point) => `[${toSgfCoord(point)}]`).join("")}` : "";
+  const player = node.setup.nextPlayer ? `PL[${node.setup.nextPlayer === "black" ? "B" : "W"}]` : "";
+  return `${points("AB", node.setup.black)}${points("AW", node.setup.white)}${points("AE", node.setup.empty)}${player}`;
 };
 const annotationSgf = (node: RecordNode) => {
   const comment = node.comment ? `C[${escapeSgf(node.comment)}]` : "";
@@ -392,14 +547,17 @@ const annotationSgf = (node: RecordNode) => {
 };
 export const exportSgf = (document: GameDocument) => {
   const nodeText = (node: RecordNode): string => {
-    if (!node.move) return "";
-    const move = `${node.move.player === "black" ? "B" : "W"}[${toSgfCoord(node.move)}]`;
+    const move = node.move
+      ? `${node.move.player === "black" ? "B" : "W"}[${toSgfCoord(node.move)}]`
+      : node.passPlayer ? `${node.passPlayer === "black" ? "B" : "W"}[]` : "";
     const children = node.children.map((id) => document.nodes[id]).filter(Boolean);
-    return children.length <= 1 ? `;${move}${annotationSgf(node)}${children[0] ? nodeText(children[0]) : ""}` : `;${move}${annotationSgf(node)}${children.map((child) => `(${nodeText(child)})`).join("")}`;
+    const own = `;${move}${setupSgf(node)}${annotationSgf(node)}`;
+    return children.length <= 1 ? `${own}${children[0] ? nodeText(children[0]) : ""}` : `${own}${children.map((child) => `(${nodeText(child)})`).join("")}`;
   };
   const meta = document.metadata, root = document.nodes[document.rootId];
-  const props = `(;GM[4]FF[4]CA[UTF-8]AP[RenjuNote:1.0]SZ[15]GN[${escapeSgf(meta.title)}]PB[${escapeSgf(meta.black)}]PW[${escapeSgf(meta.white)}]DT[${escapeSgf(meta.date)}]EV[${escapeSgf(meta.event)}]RE[${escapeSgf(meta.result)}]RU[${meta.rule}]${annotationSgf(root)}`;
-  return `${props}${root.children.map((id) => document.nodes[id]).filter(Boolean).map((child, index) => index === 0 ? nodeText(child) : `(${nodeText(child)})`).join("")})`;
+  const props = `(;GM[4]FF[4]CA[UTF-8]AP[RenjuNote:1.0]SZ[15]GN[${escapeSgf(meta.title)}]PB[${escapeSgf(meta.black)}]PW[${escapeSgf(meta.white)}]DT[${escapeSgf(meta.date)}]EV[${escapeSgf(meta.event)}]RE[${escapeSgf(meta.result)}]RU[${meta.rule}]${setupSgf(root)}${annotationSgf(root)}`;
+  const children = root.children.map((id) => document.nodes[id]).filter(Boolean);
+  return `${props}${children.length <= 1 ? (children[0] ? nodeText(children[0]) : "") : children.map((child) => `(${nodeText(child)})`).join("")})`;
 };
 export const exportJson = (document: GameDocument) => JSON.stringify(document, null, 2);
 export const downloadText = (content: string, filename: string, type: string) => {
@@ -408,6 +566,6 @@ export const downloadText = (content: string, filename: string, type: string) =>
 };
 export const mainLineLength = (document: GameDocument) => {
   let count = 0, node = document.nodes[document.rootId];
-  while (node?.children.length) { count += 1; node = document.nodes[node.preferredChildId || node.children[0]]; }
+  while (node?.children.length) { node = document.nodes[node.preferredChildId || node.children[0]]; if (node?.move || node?.passPlayer) count += 1; }
   return count;
 };

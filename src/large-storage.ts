@@ -48,7 +48,8 @@ export const documentFingerprint = (document: GameDocument) => {
     const node = stack.pop();
     if (!node) continue;
     const preferredIndex = node.preferredChildId ? node.children.indexOf(node.preferredChildId) : -1;
-    const value = `${node.move?.player || "-"}:${node.move?.row ?? -1},${node.move?.col ?? -1}|${node.comment}|${node.boardText || ""}|${node.evaluation || ""}:${node.evaluationLevel || 0}|${node.marks.map((mark) => `${mark.row},${mark.col},${mark.kind},${mark.label || ""}`).join(";")}|${node.children.length}:${preferredIndex}`;
+    const setup = node.setup ? `${node.setup.black.map((point) => `${point.row},${point.col}`).join(";")}/${node.setup.white.map((point) => `${point.row},${point.col}`).join(";")}/${node.setup.empty.map((point) => `${point.row},${point.col}`).join(";")}/${node.setup.nextPlayer || ""}` : "";
+    const value = `${node.move?.player || "-"}:${node.move?.row ?? -1},${node.move?.col ?? -1}|pass:${node.passPlayer || "-"}|setup:${setup}|${node.comment}|${node.boardText || ""}|${node.evaluation || ""}:${node.evaluationLevel || 0}|${node.marks.map((mark) => `${mark.row},${mark.col},${mark.kind},${mark.label || ""}`).join(";")}|${node.children.length}:${preferredIndex}`;
     first = hashText(first, value); second = hashText(second, `${value.length}:${value}`);
     for (let index = node.children.length - 1; index >= 0; index -= 1) { const child = document.nodes[node.children[index]]; if (child) stack.push(child); }
   }
@@ -61,7 +62,7 @@ export const summarizeLargeDocument = (document: GameDocument): LargeDocumentSum
   while (cursor) {
     const nextId = cursor.preferredChildId && cursor.children.includes(cursor.preferredChildId) ? cursor.preferredChildId : cursor.children[0];
     if (!nextId) break;
-    cursor = document.nodes[nextId]; length += 1;
+    cursor = document.nodes[nextId]; if (cursor?.move || cursor?.passPlayer) length += 1;
   }
   return { id: document.id, metadata: document.metadata, updatedAt: document.updatedAt, mainLineLength: compactNodeCount(document) ? 0 : length, nodeCount: compactNodeCount(document) ?? 0, fingerprint: compactIndexOf(document) ? `compact-${document.id}-${compactNodeCount(document)}` : documentFingerprint(document) };
 };
@@ -87,7 +88,7 @@ export const assembleCompactIndex = (stored: any, chunks: Array<{ field: string;
   const objectFields = new Map<string, unknown[]>();
   for (const chunk of chunks) {
     if (chunk.field === "ids" || chunk.field === "texts") { const list = textFields.get(chunk.field) || []; const values = chunk.value as string[]; for (const value of values) list.push(value); textFields.set(chunk.field, list); }
-    else if (chunk.field === "marks") { const list = objectFields.get(chunk.field) || []; list.push(...(chunk.value as unknown[])); objectFields.set(chunk.field, list); }
+    else if (chunk.field === "marks" || chunk.field === "setups") { const list = objectFields.get(chunk.field) || []; list.push(...(chunk.value as unknown[])); objectFields.set(chunk.field, list); }
     else { const list = typedFields.get(chunk.field) || []; list.push(chunk); typedFields.set(chunk.field, list); }
   }
   const nums = (field: string, Type: any) => {
@@ -95,7 +96,7 @@ export const assembleCompactIndex = (stored: any, chunks: Array<{ field: string;
     let offset = 0; for (const chunk of list.sort((a, b) => a.offset - b.offset)) { const part = new Type(chunk.value as ArrayBuffer); result.set(part, offset); offset += part.length; } return result;
   };
   if (!typedFields.has("parent")) return null;
-  return { version: 2, nodeCount: stored.nodeCount, rootId: stored.rootId, ids: textFields.get("ids") || [], parent: nums("parent", Int32Array), firstChild: nums("firstChild", Int32Array), nextSibling: nums("nextSibling", Int32Array), childCount: nums("childCount", Int32Array), preferredChild: nums("preferredChild", Int32Array), moveCode: nums("moveCode", Uint16Array), anchorCode: nums("anchorCode", Uint16Array), state: nums("state", Uint8Array), evaluation: nums("evaluation", Int8Array), evaluationLevel: nums("evaluationLevel", Uint8Array), markRefs: nums("markRefs", Int32Array), textRefs: nums("textRefs", Int32Array), marks: (objectFields.get("marks") || []) as BoardMark[], texts: textFields.get("texts") || [] };
+  return { version: 2, nodeCount: stored.nodeCount, rootId: stored.rootId, ids: textFields.get("ids") || [], parent: nums("parent", Int32Array), firstChild: nums("firstChild", Int32Array), nextSibling: nums("nextSibling", Int32Array), childCount: nums("childCount", Int32Array), preferredChild: nums("preferredChild", Int32Array), moveCode: nums("moveCode", Uint16Array), anchorCode: nums("anchorCode", Uint16Array), state: nums("state", Uint8Array), evaluation: nums("evaluation", Int8Array), evaluationLevel: nums("evaluationLevel", Uint8Array), markRefs: nums("markRefs", Int32Array), textRefs: nums("textRefs", Int32Array), setupRefs: nums("setupRefs", Int32Array), setups: (objectFields.get("setups") || []) as NonNullable<CompactRenLibIndex["setups"]>, marks: (objectFields.get("marks") || []) as BoardMark[], texts: textFields.get("texts") || [] };
 };
 
 const transactionDone = (transaction: IDBTransaction) => new Promise<void>((resolve, reject) => {
@@ -210,8 +211,11 @@ export async function saveCompactIndex(document: GameDocument, index: CompactRen
     const transaction = database.transaction([DOCUMENT_STORE, SUMMARY_STORE, CHUNK_STORE], "readwrite");
     if (index.nodeCount > 1000000) {
       const store = transaction.objectStore(CHUNK_STORE);
-      const fields: Record<string, any> = { parent: index.parent, firstChild: index.firstChild, nextSibling: index.nextSibling, childCount: index.childCount, preferredChild: index.preferredChild, moveCode: index.moveCode, anchorCode: index.anchorCode, state: index.state, evaluation: index.evaluation, evaluationLevel: index.evaluationLevel, markRefs: index.markRefs, textRefs: index.textRefs, ids: index.ids, texts: index.texts, marks: index.marks };
-      for (const [field, value] of Object.entries(fields)) for (let offset = 0; offset < value.length; offset += INDEX_CHUNK_SIZE) store.put({ key: `${document.id}:${field}:${offset}`, id: document.id, field, offset, value: Array.isArray(value) ? value.slice(offset, offset + INDEX_CHUNK_SIZE) : value.slice(offset, offset + INDEX_CHUNK_SIZE).buffer });
+      const fields: Record<string, any> = { parent: index.parent, firstChild: index.firstChild, nextSibling: index.nextSibling, childCount: index.childCount, preferredChild: index.preferredChild, moveCode: index.moveCode, anchorCode: index.anchorCode, state: index.state, evaluation: index.evaluation, evaluationLevel: index.evaluationLevel, markRefs: index.markRefs, textRefs: index.textRefs, setupRefs: index.setupRefs, ids: index.ids, texts: index.texts, marks: index.marks, setups: index.setups };
+      for (const [field, value] of Object.entries(fields)) {
+        if (!value) continue;
+        for (let offset = 0; offset < value.length; offset += INDEX_CHUNK_SIZE) store.put({ key: `${document.id}:${field}:${offset}`, id: document.id, field, offset, value: Array.isArray(value) ? value.slice(offset, offset + INDEX_CHUNK_SIZE) : value.slice(offset, offset + INDEX_CHUNK_SIZE).buffer });
+      }
       transaction.objectStore(DOCUMENT_STORE).put({ id: document.id, version: document.version, rootId: document.rootId, metadata: document.metadata, createdAt: document.createdAt, updatedAt: document.updatedAt, chunkedIndex: true, nodeCount: index.nodeCount });
     } else transaction.objectStore(DOCUMENT_STORE).put({ id: document.id, version: document.version, rootId: document.rootId, metadata: document.metadata, createdAt: document.createdAt, updatedAt: document.updatedAt, compactIndex: index });
     transaction.objectStore(SUMMARY_STORE).put(summary);

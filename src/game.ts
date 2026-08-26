@@ -44,19 +44,33 @@ export const boardAt = (document: GameDocument, nodeId: string): Cell[][] => {
   const board = parentBoard
     ? parentBoard.map((row) => row.slice())
     : emptyBoard();
-  if (node?.move) board[node.move.row][node.move.col] = node.move.player;
+  const applyNode = (target: Cell[][], entry?: RecordNode) => {
+    if (!entry) return;
+    entry.setup?.empty.forEach(({ row, col }) => { target[row][col] = null; });
+    entry.setup?.black.forEach(({ row, col }) => { target[row][col] = "black"; });
+    entry.setup?.white.forEach(({ row, col }) => { target[row][col] = "white"; });
+    if (entry.move) target[entry.move.row][entry.move.col] = entry.move.player;
+  };
+  applyNode(board, node);
   if (!parentBoard && node?.parentId) {
-    pathToNode(document, nodeId).slice(1).forEach((pathNode) => {
-      if (pathNode.move) board[pathNode.move.row][pathNode.move.col] = pathNode.move.player;
-    });
+    board.forEach((row) => row.fill(null));
+    pathToNode(document, nodeId).forEach((pathNode) => applyNode(board, pathNode));
   }
   let cache = boardCache.get(document.nodes);
   if (!cache) { cache = new Map(); boardCache.set(document.nodes, cache); }
   cache.set(nodeId, board);
   return board;
 };
-export const depthOf = (document: GameDocument, nodeId: string) => Math.max(0, pathToNode(document, nodeId).length - 1);
-export const nextPlayerAt = (document: GameDocument, nodeId: string): Player => document.nodes[nodeId]?.move ? otherPlayer(document.nodes[nodeId].move!.player) : "black";
+export const depthOf = (document: GameDocument, nodeId: string) => pathToNode(document, nodeId).filter((node) => Boolean(node.move || node.passPlayer)).length;
+export const nextPlayerAt = (document: GameDocument, nodeId: string): Player => {
+  let player: Player = "black";
+  pathToNode(document, nodeId).forEach((node) => {
+    if (node.setup?.nextPlayer) player = node.setup.nextPlayer;
+    const turnPlayer = node.move?.player || node.passPlayer;
+    if (turnPlayer) player = otherPlayer(turnPlayer);
+  });
+  return player;
+};
 
 export const addMove = (document: GameDocument, currentId: string, position: Position) => {
   const parent = document.nodes[currentId];

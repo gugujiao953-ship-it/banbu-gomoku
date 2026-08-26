@@ -40,6 +40,7 @@ export const buildCompactRenLibIndexFromDraft = (draft: CompactRenLibDraft): Com
   const moves = new Uint16Array(count), anchors = new Uint16Array(count), state = new Uint8Array(count);
   const evaluation = new Int8Array(count), evaluationLevel = new Uint8Array(count);
   const textRefs = new Int32Array(count * 2).fill(-1), markRefs = new Int32Array(count * 2).fill(-1);
+  const setupRefs = new Int32Array(count).fill(-1); const setups: NonNullable<CompactRenLibIndex["setups"]> = [];
   parent.fill(-1); firstChild.fill(-1); nextSibling.fill(-1); preferredChild.fill(-1);
   const texts = draft.texts ? [...draft.texts] : [], textIndex = new Map(texts.map((text, i) => [text, i]));
   const intern = (value?: string) => { if (!value) return -1; const found = textIndex.get(value); if (found !== undefined) return found; const i = texts.length; texts.push(value); textIndex.set(value, i); return i; };
@@ -47,13 +48,15 @@ export const buildCompactRenLibIndexFromDraft = (draft: CompactRenLibDraft): Com
   draft.nodes.forEach((node, i) => {
     parent[i] = node.parent; firstChild[i] = node.firstChild; nextSibling[i] = node.nextSibling; childCount[i] = node.childCount; preferredChild[i] = node.preferredChild;
     if (node.move) { moves[i] = node.move.row * 16 + node.move.col + 1; state[i] = 1 | (node.move.player === "white" ? 2 : 0); }
+    if (node.passPlayer) state[i] |= node.passPlayer === "black" ? 16 : 32;
+    if (node.setup) { setupRefs[i] = setups.length; setups.push(node.setup); }
     if (node.anchor) anchors[i] = node.anchor.row * 16 + node.anchor.col + 1;
     if (node.renLibMark) state[i] |= 4; if (node.startPosition) state[i] |= 8;
     evaluation[i] = evaluationValues[node.evaluation || ""] || 0; evaluationLevel[i] = node.evaluationLevel || 0;
     textRefs[i * 2] = intern(node.comment); textRefs[i * 2 + 1] = intern(node.boardText);
     if (node.marks.length) { markRefs[i * 2] = marks.length; markRefs[i * 2 + 1] = node.marks.length; marks.push(...node.marks); }
   });
-  return { version: 2, nodeCount: count, rootId: draft.rootId, ids, parent, firstChild, nextSibling, childCount, preferredChild, moveCode: moves, anchorCode: anchors, state, evaluation, evaluationLevel, markRefs, marks, textRefs, texts };
+  return { version: 2, nodeCount: count, rootId: draft.rootId, ids, parent, firstChild, nextSibling, childCount, preferredChild, moveCode: moves, anchorCode: anchors, state, evaluation, evaluationLevel, markRefs, marks, textRefs, texts, setupRefs, setups };
 };
 interface LazyDocumentInfo { index: CompactRenLibIndex; branchCount: number }
 const lazyDocumentInfo = new WeakMap<object, LazyDocumentInfo>();
@@ -82,6 +85,8 @@ export const buildCompactRenLibIndex = (document: GameDocument): CompactRenLibIn
   const evaluationLevel = new Uint8Array(ids.length);
   const textRefs = new Int32Array(ids.length * 2).fill(-1);
   const markRefs = new Int32Array(ids.length * 2).fill(-1);
+  const setupRefs = new Int32Array(ids.length).fill(-1);
+  const setups: NonNullable<CompactRenLibIndex["setups"]> = [];
   const texts: string[] = [];
   const marks: RecordNode["marks"] = [];
   const textIndex = new Map<string, number>();
@@ -97,6 +102,8 @@ export const buildCompactRenLibIndex = (document: GameDocument): CompactRenLibIn
     moves[nodeIndex] = moveCode(node);
     if (node.anchor) anchorCode[nodeIndex] = node.anchor.row * 16 + node.anchor.col + 1;
     if (node.move) state[nodeIndex] |= 1 | (node.move.player === "white" ? 2 : 0);
+    if (node.passPlayer) state[nodeIndex] |= node.passPlayer === "black" ? 16 : 32;
+    if (node.setup) { setupRefs[nodeIndex] = setups.length; setups.push(structuredClone(node.setup)); }
     if (node.renLibMark) state[nodeIndex] |= 4;
     if (node.startPosition) state[nodeIndex] |= 8;
     const evaluationValues: Record<string, number> = { good: 1, bad: 2, doubtful: 3, interesting: 4, forced: 5, only: 6, study: 7 };
@@ -121,10 +128,10 @@ export const buildCompactRenLibIndex = (document: GameDocument): CompactRenLibIn
       });
     }
   });
-  return { version: 2, nodeCount: ids.length, rootId: document.rootId, ids, parent, firstChild, nextSibling, childCount, preferredChild, moveCode: moves, anchorCode, state, evaluation, evaluationLevel, markRefs, marks, textRefs, texts };
+  return { version: 2, nodeCount: ids.length, rootId: document.rootId, ids, parent, firstChild, nextSibling, childCount, preferredChild, moveCode: moves, anchorCode, state, evaluation, evaluationLevel, markRefs, marks, textRefs, texts, setupRefs, setups };
 };
 
-export const compactIndexBytes = (index: CompactRenLibIndex) => index.parent.byteLength + index.firstChild.byteLength + index.nextSibling.byteLength + (index.preferredChild?.byteLength || 0) + index.moveCode.byteLength + index.anchorCode.byteLength + index.state.byteLength + index.evaluation.byteLength + index.evaluationLevel.byteLength + index.markRefs.byteLength + index.textRefs.byteLength;
+export const compactIndexBytes = (index: CompactRenLibIndex) => index.parent.byteLength + index.firstChild.byteLength + index.nextSibling.byteLength + (index.preferredChild?.byteLength || 0) + index.moveCode.byteLength + index.anchorCode.byteLength + index.state.byteLength + index.evaluation.byteLength + index.evaluationLevel.byteLength + index.markRefs.byteLength + index.textRefs.byteLength + (index.setupRefs?.byteLength || 0);
 
 const textAt = (index: CompactRenLibIndex, nodeIndex: number, offset: 0 | 1) => {
   const textIndex = index.textRefs[nodeIndex * 2 + offset];
@@ -214,6 +221,8 @@ export const createLazyDocument = (base: Omit<GameDocument, "nodes">, index: Com
       parentId: parentIndex >= 0 ? index.ids[parentIndex] : null,
       children: childrenAt(nodeIndex),
       move: hasMove && point ? { ...point, player: state & 2 ? "white" : "black" } : null,
+      passPlayer: state & 16 ? "black" : state & 32 ? "white" : undefined,
+      setup: index.setupRefs && index.setups && index.setupRefs[nodeIndex] >= 0 ? structuredClone(index.setups[index.setupRefs[nodeIndex]]) : undefined,
       anchor: index.anchorCode?.[nodeIndex] ? decodeMoveCode(index.anchorCode[nodeIndex]) : undefined,
       comment: textAt(index, nodeIndex, 0),
       boardText: textAt(index, nodeIndex, 1) || undefined,

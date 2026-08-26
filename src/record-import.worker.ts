@@ -19,7 +19,7 @@ self.onmessage = async (event: MessageEvent<File>) => {
     const message = { ok: true, result: transferableResult, summary, compactIndex: undefined, compactDiagnostic: compactIndex ? { hasCompact: true, nodeCount: compactIndex.nodeCount, rootId: compactIndex.rootId, rootIndex: compactIndex.ids.indexOf(compactIndex.rootId), rootFirstChild: compactIndex.firstChild[compactIndex.ids.indexOf(compactIndex.rootId)] ?? null, parseMs } : { hasCompact: false, parseMs } };
     if (compactIndex) {
       const transferables: ArrayBuffer[] = [];
-      for (const value of [compactIndex.parent, compactIndex.firstChild, compactIndex.nextSibling, compactIndex.childCount, compactIndex.preferredChild, compactIndex.moveCode, compactIndex.anchorCode, compactIndex.state, compactIndex.evaluation, compactIndex.evaluationLevel, compactIndex.markRefs, compactIndex.textRefs]) { if (value?.buffer instanceof ArrayBuffer) transferables.push(value.buffer); }
+      for (const value of [compactIndex.parent, compactIndex.firstChild, compactIndex.nextSibling, compactIndex.childCount, compactIndex.preferredChild, compactIndex.moveCode, compactIndex.anchorCode, compactIndex.state, compactIndex.evaluation, compactIndex.evaluationLevel, compactIndex.markRefs, compactIndex.textRefs, compactIndex.setupRefs]) { if (value?.buffer instanceof ArrayBuffer) transferables.push(value.buffer); }
       self.postMessage({ ...message, compactIndex }, transferables);
     } else self.postMessage(message);
   } catch (error) {

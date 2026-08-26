@@ -32,7 +32,8 @@ const canonicalNode = (document: GameDocument, nodeId: string, seen = new Set<st
   if (!node) return { missing: true };
   const marks = [...(node.marks || [])].sort((a, b) => a.row - b.row || a.col - b.col || a.kind.localeCompare(b.kind) || (a.label || "").localeCompare(b.label || ""));
   return {
-    move: node.move, comment: node.comment || "", boardText: node.boardText || "",
+    move: node.move, passPlayer: node.passPlayer || null, setup: node.setup || null,
+    comment: node.comment || "", boardText: node.boardText || "",
     evaluation: node.evaluation || "", evaluationLevel: node.evaluationLevel || 0, marks,
     preferredChildIndex: node.preferredChildId ? node.children.indexOf(node.preferredChildId) : -1,
     children: node.children.map((childId) => canonicalNode(document, childId, new Set(seen))),
@@ -66,4 +67,13 @@ export const saveManyToLibrary = (documents: GameDocument[]) => {
 export const loadActive = (): GameDocument | null => {
   try { const value = JSON.parse(localStorage.getItem(ACTIVE_KEY) || "null"); return value?.rootId && value?.nodes?.[value.rootId] && value?.metadata?.title ? value : null; } catch { return null; }
 };
-export const removeFromLibrary = (id: string) => { const next = loadLibrary().filter((document) => document.id !== id); localStorage.setItem(LIBRARY_KEY, JSON.stringify(next)); return next; };
+export const removeFromLibrary = (id: string) => {
+  const next = loadLibrary().filter((document) => document.id !== id);
+  localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
+  try {
+    const active = JSON.parse(localStorage.getItem(ACTIVE_KEY) || "null") as GameDocument | null;
+    if (active?.id === id) localStorage.removeItem(ACTIVE_KEY);
+  } catch { localStorage.removeItem(ACTIVE_KEY); }
+  removeDraftFromLocal(id);
+  return next;
+};
