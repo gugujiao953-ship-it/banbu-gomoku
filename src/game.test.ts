@@ -157,13 +157,22 @@ describe("record formats", () => {
     await expect(importRecordFile(new File(["(;SZ[15]PL[X];B[hh])"], "invalid-player.sgf"))).rejects.toThrow("无效行棋方");
   });
 
-  it("decodes UTF-16 SGF and rejects unsupported board sizes", async () => {
+  it("decodes UTF-16 SGF and preserves non-15 board sizes", async () => {
     const source = "(;GM[4]FF[4]CA[UTF-16LE]SZ[15]GN[中文棋谱];B[hh])";
     const bytes = new Uint8Array(2 + source.length * 2); bytes.set([0xff, 0xfe]);
     Array.from(source).forEach((character, index) => { const code = character.charCodeAt(0); bytes[2 + index * 2] = code & 0xff; bytes[3 + index * 2] = code >> 8; });
     const imported = await importRecordFile(new File([bytes], "utf16.sgf"));
     expect(imported.document.metadata.title).toBe("中文棋谱");
-    await expect(importRecordFile(new File(["(;SZ[19];B[hh])"], "nineteen.sgf"))).rejects.toThrow("仅支持十五路");
+    const nineteen = await importRecordFile(new File(["(;SZ[19];B[hh])"], "nineteen.sgf"));
+    expect(nineteen.document.metadata.boardSize).toBe(19);
+  });
+
+  it("renders and round-trips a 19路 SGF without shrinking coordinates", async () => {
+    const imported = await importRecordFile(new File(["(;SZ[19];B[ss];W[aa])"], "nineteen.sgf"));
+    expect(imported.document.metadata.boardSize).toBe(19);
+    const nodes = Object.values(imported.document.nodes);
+    expect(nodes.some((node) => node.move?.row === 18 && node.move?.col === 18)).toBe(true);
+    expect(exportSgf(imported.document)).toContain("SZ[19]");
   });
 
   it("adapts only explicit JSON move-list schemas", async () => {

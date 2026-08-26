@@ -381,3 +381,20 @@
   .workspace-bar, .workspace-status, .context-dock { margin-inline: 2px; }
   .dock-panel > button { min-height: 50px; }
 }
+
+/* Import picker: two clear, thumb-friendly choices rather than generic rows. */
+.import-options { padding: 12px 0 4px; }
+.import-options::before { content: "选择你手上的棋谱来源"; display: block; margin: 0 4px 12px; color: #716a60; font-size: 11px; font-weight: 700; }
+.import-choice { width: 100%; min-height: 82px; display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 12px; border: 1px solid #e1dbd0; border-radius: 18px; background: #fff; text-align: left; box-shadow: 0 5px 14px #675d4a0b; transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease; }
+.import-choice:active { transform: scale(.985); }
+.import-choice:first-of-type { border-color: var(--green); background: linear-gradient(135deg, var(--green), #416c57); color: #fff; box-shadow: 0 9px 20px #365e4b2e; }
+.import-choice .format-icon { width: 48px; height: 48px; flex: 0 0 48px; border-radius: 15px; background: #ffffff24; display: grid; place-items: center; }
+.import-choice .format-icon svg { width: 22px; height: 22px; }
+.import-choice:not(:first-of-type) .format-icon { background: #f1e7d5; color: #986d25; }
+.import-choice > div { min-width: 0; flex: 1; }
+.import-choice b { display: block; font-size: 14px; line-height: 1.25; }
+.import-choice small { display: block; margin-top: 5px; color: #918a80; font-size: 10px; line-height: 1.35; }
+.import-choice:first-of-type small { color: #dce9e1; }
+.import-choice > svg { flex: 0 0 auto; color: #aaa197; }
+.import-choice:first-of-type > svg { color: #dce9e1; }
+.import-options .helper { margin: 14px 4px 0; padding: 10px 12px; border-radius: 12px; background: #f1eee7; line-height: 1.6; }

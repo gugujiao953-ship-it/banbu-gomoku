@@ -1,4 +1,4 @@
-import { addMove, addMoveAs, createDocument, otherPlayer, parseCoordinate, toggleMark } from "./game";
+import { addMove, addMoveAs, createDocument, isSupportedBoardSize, otherPlayer, parseCoordinate, toggleMark } from "./game";
 import type { CompactRenLibDraftNode, CompactRenLibIndex, GameDocument, ImportResult, NodeEvaluation, Player, Position, RecordNode } from "./types";
 import { RenLibArrayBuilder, createLazyDocument } from "./compact-index";
 
@@ -59,16 +59,16 @@ const parseSgfCollection = (text: string): SgfNode[] => {
   return trees;
 };
 
-const sgfPosition = (value?: string): Position | null => {
+const sgfPosition = (value?: string, size = 15): Position | null => {
   if (!value || value.length < 2) return null;
   const col = value.charCodeAt(0) - 97, row = value.charCodeAt(1) - 97;
-  return row >= 0 && row < 15 && col >= 0 && col < 15 ? { row, col } : null;
+  return row >= 0 && row < size && col >= 0 && col < size ? { row, col } : null;
 };
 
-const sgfPoints = (value: string): Position[] => {
+const sgfPoints = (value: string, size = 15): Position[] => {
   const separator = value.indexOf(":");
-  if (separator < 0) { const point = sgfPosition(value); return point ? [point] : []; }
-  const start = sgfPosition(value.slice(0, separator)), end = sgfPosition(value.slice(separator + 1));
+  if (separator < 0) { const point = sgfPosition(value, size); return point ? [point] : []; }
+  const start = sgfPosition(value.slice(0, separator), size), end = sgfPosition(value.slice(separator + 1), size);
   if (!start || !end) return [];
   const points: Position[] = [];
   for (let row = Math.min(start.row, end.row); row <= Math.max(start.row, end.row); row += 1) {
@@ -77,9 +77,9 @@ const sgfPoints = (value: string): Position[] => {
   return points;
 };
 
-const setupFromSgf = (props: Record<string, string[]>) => {
+const setupFromSgf = (props: Record<string, string[]>, size = 15) => {
   const readPoints = (key: "AB" | "AW" | "AE") => (props[key] || []).flatMap((value) => {
-    const points = sgfPoints(value);
+    const points = sgfPoints(value, size);
     if (!points.length) throw new Error(`SGF ${key} 含有无法识别的设置坐标：${value || "（空）"}`);
     return points;
   });
@@ -102,7 +102,7 @@ const setupFromSgf = (props: Record<string, string[]>) => {
 };
 
 const hasProp = (props: Record<string, string[]>, key: string) => Object.prototype.hasOwnProperty.call(props, key);
-const applySgfAnnotations = (node: RecordNode, props: Record<string, string[]>, warnings: string[], hasMove: boolean) => {
+const applySgfAnnotations = (node: RecordNode, props: Record<string, string[]>, warnings: string[], hasMove: boolean, size = 15) => {
   if (props.C?.[0] !== undefined) node.comment = props.C[0];
   if (props.N?.[0] !== undefined) node.boardText = props.N[0];
   const standard = (["TE", "BM", "DO", "IT"] as const).filter((key) => hasProp(props, key));
@@ -126,12 +126,12 @@ const applySgfAnnotations = (node: RecordNode, props: Record<string, string[]>, 
   if (markKeys.some((key) => hasProp(props, key))) {
     const shapeMarks = [["CR", "circle"], ["TR", "triangle"], ["MA", "cross"]] as const;
     node.marks = shapeMarks.flatMap(([key, kind]) => (props[key] || [])
-      .map((point) => sgfPosition(point))
+      .map((point) => sgfPosition(point, size))
       .filter((point): point is Position => Boolean(point))
       .map((point) => ({ ...point, kind })));
     node.marks = [...node.marks, ...(props.LB || []).flatMap((value) => {
       const separator = value.indexOf(":");
-      const point = sgfPosition(separator >= 0 ? value.slice(0, separator) : value);
+      const point = sgfPosition(separator >= 0 ? value.slice(0, separator) : value, size);
       return point ? [{ ...point, kind: "label" as const, label: separator >= 0 ? Array.from(value.slice(separator + 1)).slice(0, 4).join("") : "?" }] : [];
     })];
   }
@@ -139,11 +139,12 @@ const applySgfAnnotations = (node: RecordNode, props: Record<string, string[]>, 
 
 const importSgfTree = (tree: SgfNode, fallbackTitle: string): { document: GameDocument; warnings: string[] } => {
   const rawSize = tree.props.SZ?.[0];
-  if (rawSize && rawSize !== "15" && rawSize !== "15:15") throw new Error(`当前仅支持十五路五子棋，无法导入 SZ[${rawSize}]`);
+  const sizeParts = rawSize?.split(":") || [];
+  const size = rawSize ? Number(sizeParts[0]) : 15;
+  if (!isSupportedBoardSize(size) || (sizeParts[1] && Number(sizeParts[1]) !== size)) throw new Error(`不支持的 SGF 棋盘尺寸：SZ[${rawSize || "?"}]（支持 5-25 路方形棋盘）`);
   const warnings: string[] = [];
   if (!rawSize) warnings.push("SGF 未声明 SZ，已按十五路读取");
-  if (rawSize === "15:15") warnings.push("SGF 使用了 SZ[15:15]，已按十五路方形棋盘读取");
-  const document = createDocument(tree.props.GN?.[0] || fallbackTitle);
+  const document = createDocument(tree.props.GN?.[0] || fallbackTitle, size);
   document.metadata.black = tree.props.PB?.[0] || "黑方"; document.metadata.white = tree.props.PW?.[0] || "白方";
   document.metadata.event = tree.props.EV?.[0] || ""; document.metadata.date = tree.props.DT?.[0] || document.metadata.date;
   document.metadata.result = tree.props.RE?.[0] || "";
@@ -151,26 +152,26 @@ const importSgfTree = (tree: SgfNode, fallbackTitle: string): { document: GameDo
   const appendNode = (parentId: string, source: SgfNode) => {
     const hasBlack = hasProp(source.props, "B"), hasWhite = hasProp(source.props, "W");
     if (hasBlack && hasWhite) throw new Error("SGF 同一节点不能同时包含黑白着法");
-    const setup = setupFromSgf(source.props);
+    const setup = setupFromSgf(source.props, size);
     if ((hasBlack || hasWhite) && setup) throw new Error("SGF 同一节点不能同时包含着法和设置局面属性");
     const player: Player | undefined = hasBlack ? "black" : hasWhite ? "white" : undefined;
     const moveValue = player ? (hasBlack ? source.props.B[0] : source.props.W[0]) : undefined;
-    const position = moveValue ? sgfPosition(moveValue) : null;
+    const position = moveValue ? sgfPosition(moveValue, size) : null;
     if (moveValue && !position) throw new Error(`SGF 含有无法识别的落子坐标：${moveValue}`);
     const id = `sgf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     const node: RecordNode = {
       id, parentId, children: [], move: player && position ? { ...position, player } : null,
       passPlayer: player && moveValue === "" ? player : undefined, setup, comment: "", marks: [],
     };
-    applySgfAnnotations(node, source.props, warnings, Boolean(player));
+    applySgfAnnotations(node, source.props, warnings, Boolean(player), size);
     document.nodes[id] = node;
     const parent = document.nodes[parentId]; parent.children.push(id); if (!parent.preferredChildId) parent.preferredChildId = id;
     source.children.forEach((child) => appendNode(id, child));
   };
   if (hasProp(tree.props, "B") || hasProp(tree.props, "W")) appendNode(document.rootId, tree);
   else {
-    const root = document.nodes[document.rootId]; root.setup = setupFromSgf(tree.props);
-    applySgfAnnotations(root, tree.props, warnings, false);
+    const root = document.nodes[document.rootId]; root.setup = setupFromSgf(tree.props, size);
+    applySgfAnnotations(root, tree.props, warnings, false, size);
     tree.children.forEach((child) => appendNode(document.rootId, child));
   }
   document.updatedAt = new Date().toISOString();
@@ -405,7 +406,7 @@ const validateJsonDocument = (value: unknown): GameDocument => {
   if (!value || typeof value !== "object") throw new Error("RENJU 文件不是有效对象");
   const document = value as GameDocument;
   if (document.version !== 1 || typeof document.id !== "string" || typeof document.rootId !== "string" || !document.nodes || typeof document.nodes !== "object") throw new Error("RENJU 文件缺少有效的版本、ID 或节点表");
-  if (!document.metadata || typeof document.metadata.title !== "string" || typeof document.metadata.black !== "string" || typeof document.metadata.white !== "string" || !["renju", "standard", "freestyle"].includes(document.metadata.rule) || document.metadata.boardSize !== 15) throw new Error("RENJU 文件的棋谱信息不完整或规则无效");
+  if (!document.metadata || typeof document.metadata.title !== "string" || typeof document.metadata.black !== "string" || typeof document.metadata.white !== "string" || !["renju", "standard", "freestyle"].includes(document.metadata.rule) || !isSupportedBoardSize(document.metadata.boardSize)) throw new Error("RENJU 文件的棋谱信息不完整或规则无效");
   if (typeof document.createdAt !== "string" || typeof document.updatedAt !== "string" || !Number.isFinite(Date.parse(document.createdAt)) || !Number.isFinite(Date.parse(document.updatedAt))) throw new Error("RENJU 文件的时间信息无效");
   const root = document.nodes[document.rootId];
   if (!root || root.parentId !== null || root.move !== null || root.passPlayer) throw new Error("RENJU 文件的根节点无效");
@@ -413,7 +414,8 @@ const validateJsonDocument = (value: unknown): GameDocument => {
   Object.entries(document.nodes).forEach(([id, node]) => {
     if (!node || node.id !== id || !Array.isArray(node.children) || typeof node.comment !== "string" || !Array.isArray(node.marks)) throw new Error(`RENJU 节点 ${id} 结构无效`);
     if (node.parentId !== null && typeof node.parentId !== "string") throw new Error(`RENJU 节点 ${id} 的父节点无效`);
-    if (node.move && (!Number.isInteger(node.move.row) || !Number.isInteger(node.move.col) || node.move.row < 0 || node.move.row >= 15 || node.move.col < 0 || node.move.col >= 15 || !["black", "white"].includes(node.move.player))) throw new Error(`RENJU 节点 ${id} 的落子无效`);
+    const size = document.metadata.boardSize;
+    if (node.move && (!Number.isInteger(node.move.row) || !Number.isInteger(node.move.col) || node.move.row < 0 || node.move.row >= size || node.move.col < 0 || node.move.col >= size || !["black", "white"].includes(node.move.player))) throw new Error(`RENJU 节点 ${id} 的落子无效`);
     if (node.passPlayer && !["black", "white"].includes(node.passPlayer)) throw new Error(`RENJU 节点 ${id} 的过手方无效`);
     if (node.move && node.passPlayer) throw new Error(`RENJU 节点 ${id} 不能同时包含落子和过手`);
     if (node.setup) {
@@ -428,14 +430,14 @@ const validateJsonDocument = (value: unknown): GameDocument => {
         }
       }
       for (const point of [...node.setup.black, ...node.setup.white, ...node.setup.empty]) {
-        if (!Number.isInteger(point.row) || !Number.isInteger(point.col) || point.row < 0 || point.row >= 15 || point.col < 0 || point.col >= 15) throw new Error(`RENJU 节点 ${id} 的设置局面坐标无效`);
+        if (!Number.isInteger(point.row) || !Number.isInteger(point.col) || point.row < 0 || point.row >= size || point.col < 0 || point.col >= size) throw new Error(`RENJU 节点 ${id} 的设置局面坐标无效`);
       }
       if (node.setup.nextPlayer && !["black", "white"].includes(node.setup.nextPlayer)) throw new Error(`RENJU 节点 ${id} 的设置行棋方无效`);
     }
     if (node.evaluation && !evaluationKinds.includes(node.evaluation)) throw new Error(`RENJU 节点 ${id} 的评价无效`);
     if (node.evaluationLevel && node.evaluationLevel !== 1 && node.evaluationLevel !== 2) throw new Error(`RENJU 节点 ${id} 的评价级别无效`);
     node.marks.forEach((mark) => {
-      if (!Number.isInteger(mark.row) || !Number.isInteger(mark.col) || mark.row < 0 || mark.row >= 15 || mark.col < 0 || mark.col >= 15 || !["circle", "triangle", "cross", "label"].includes(mark.kind)) throw new Error(`RENJU 节点 ${id} 含有无效棋盘标记`);
+      if (!Number.isInteger(mark.row) || !Number.isInteger(mark.col) || mark.row < 0 || mark.row >= size || mark.col < 0 || mark.col >= size || !["circle", "triangle", "cross", "label"].includes(mark.kind)) throw new Error(`RENJU 节点 ${id} 含有无效棋盘标记`);
     });
   });
   const visited = new Set<string>(), active = new Set<string>();
@@ -461,15 +463,16 @@ const importJsonMoveList = (value: unknown): ImportResult | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const source = value as { title?: unknown; boardSize?: unknown; coordinateBase?: unknown; moves?: unknown };
   if (!Array.isArray(source.moves)) return null;
-  if (source.boardSize !== undefined && source.boardSize !== 15) throw new Error(`当前仅支持十五路五子棋，无法导入 boardSize=${source.boardSize}`);
-  let document = createDocument(typeof source.title === "string" ? source.title : "JSON 落子列表"), currentId = document.rootId;
+  const size = source.boardSize === undefined ? 15 : Number(source.boardSize);
+  if (!isSupportedBoardSize(size)) throw new Error(`不支持的棋盘尺寸：boardSize=${source.boardSize}`);
+  let document = createDocument(typeof source.title === "string" ? source.title : "JSON 落子列表", size), currentId = document.rootId;
   const warnings: string[] = [];
   source.moves.forEach((raw, index) => {
     let position: Position | null = null, player: Player | undefined;
-    if (typeof raw === "string") position = parseCoordinate(raw);
+    if (typeof raw === "string") position = parseCoordinate(raw, size);
     else if (raw && typeof raw === "object") {
       const move = raw as Record<string, unknown>;
-      if (typeof move.coordinate === "string") position = parseCoordinate(move.coordinate);
+      if (typeof move.coordinate === "string") position = parseCoordinate(move.coordinate, size);
       else {
         if (source.coordinateBase !== 0 && source.coordinateBase !== 1) throw new Error("数字坐标 JSON 必须声明 coordinateBase 为 0 或 1");
         const row = typeof move.row === "number" ? move.row : move.y, col = typeof move.col === "number" ? move.col : move.x;
@@ -479,7 +482,7 @@ const importJsonMoveList = (value: unknown): ImportResult | null => {
       if (["black", "b", "B", 1].includes(rawPlayer as never)) player = "black";
       if (["white", "w", "W", 2].includes(rawPlayer as never)) player = "white";
     }
-    if (!position || !Number.isInteger(position.row) || !Number.isInteger(position.col) || position.row < 0 || position.row >= 15 || position.col < 0 || position.col >= 15) throw new Error(`JSON 第 ${index + 1} 手坐标无效`);
+    if (!position || !Number.isInteger(position.row) || !Number.isInteger(position.col) || position.row < 0 || position.row >= size || position.col < 0 || position.col >= size) throw new Error(`JSON 第 ${index + 1} 手坐标无效`);
     const added = player ? addMoveAs(document, currentId, position, player) : addMove(document, currentId, position);
     if (!added.created) throw new Error(`JSON 第 ${index + 1} 手与已有棋子冲突`);
     document = added.document; currentId = added.nodeId;
@@ -555,7 +558,7 @@ export const exportSgf = (document: GameDocument) => {
     return children.length <= 1 ? `${own}${children[0] ? nodeText(children[0]) : ""}` : `${own}${children.map((child) => `(${nodeText(child)})`).join("")}`;
   };
   const meta = document.metadata, root = document.nodes[document.rootId];
-  const props = `(;GM[4]FF[4]CA[UTF-8]AP[RenjuNote:1.0]SZ[15]GN[${escapeSgf(meta.title)}]PB[${escapeSgf(meta.black)}]PW[${escapeSgf(meta.white)}]DT[${escapeSgf(meta.date)}]EV[${escapeSgf(meta.event)}]RE[${escapeSgf(meta.result)}]RU[${meta.rule}]${setupSgf(root)}${annotationSgf(root)}`;
+  const props = `(;GM[4]FF[4]CA[UTF-8]AP[RenjuNote:1.0]SZ[${meta.boardSize}]GN[${escapeSgf(meta.title)}]PB[${escapeSgf(meta.black)}]PW[${escapeSgf(meta.white)}]DT[${escapeSgf(meta.date)}]EV[${escapeSgf(meta.event)}]RE[${escapeSgf(meta.result)}]RU[${meta.rule}]${setupSgf(root)}${annotationSgf(root)}`;
   const children = root.children.map((id) => document.nodes[id]).filter(Boolean);
   return `${props}${children.length <= 1 ? (children[0] ? nodeText(children[0]) : "") : children.map((child) => `(${nodeText(child)})`).join("")})`;
 };

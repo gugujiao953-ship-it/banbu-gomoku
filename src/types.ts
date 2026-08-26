@@ -32,7 +32,7 @@ export interface RecordNode {
 }
 export interface GameMetadata {
   title: string; black: string; white: string; event: string; date: string;
-  result: string; rule: RuleSet; boardSize: 15; tags: string[];
+  result: string; rule: RuleSet; boardSize: number; tags: string[];
 }
 export interface GameDocument {
   id: string; version: 1; rootId: string; nodes: Record<string, RecordNode>;

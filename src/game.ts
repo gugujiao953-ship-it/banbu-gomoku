@@ -1,17 +1,21 @@
 import type { BoardMark, Cell, GameDocument, Player, Position, RecordNode } from "./types";
 
 export const BOARD_SIZE = 15;
+export const MIN_BOARD_SIZE = 5;
+export const MAX_BOARD_SIZE = 25;
+export const isSupportedBoardSize = (size: number): boolean => Number.isInteger(size) && size >= MIN_BOARD_SIZE && size <= MAX_BOARD_SIZE;
 const makeId = (prefix = "node") => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 export const otherPlayer = (player: Player): Player => player === "black" ? "white" : "black";
-export const emptyBoard = (): Cell[][] => Array.from({ length: BOARD_SIZE }, () => Array<Cell>(BOARD_SIZE).fill(null));
+export const emptyBoard = (size = BOARD_SIZE): Cell[][] => Array.from({ length: size }, () => Array<Cell>(size).fill(null));
 
-export const createDocument = (title = "未命名棋谱"): GameDocument => {
+export const createDocument = (title = "未命名棋谱", boardSize = BOARD_SIZE): GameDocument => {
+  if (!isSupportedBoardSize(boardSize)) throw new Error(`不支持的棋盘尺寸：${boardSize}`);
   const rootId = makeId("root");
   const now = new Date().toISOString();
   return {
     id: makeId("record"), version: 1, rootId,
     nodes: { [rootId]: { id: rootId, parentId: null, children: [], move: null, comment: "", marks: [] } },
-    metadata: { title, black: "黑方", white: "白方", event: "", date: now.slice(0, 10), result: "", rule: "renju", boardSize: 15, tags: [] },
+    metadata: { title, black: "黑方", white: "白方", event: "", date: now.slice(0, 10), result: "", rule: "renju", boardSize, tags: [] },
     createdAt: now, updatedAt: now,
   };
 };
@@ -43,7 +47,7 @@ export const boardAt = (document: GameDocument, nodeId: string): Cell[][] => {
   const parentBoard = parentId ? boardCache.get(document.nodes)?.get(parentId) : undefined;
   const board = parentBoard
     ? parentBoard.map((row) => row.slice())
-    : emptyBoard();
+    : emptyBoard(document.metadata.boardSize);
   const applyNode = (target: Cell[][], entry?: RecordNode) => {
     if (!entry) return;
     entry.setup?.empty.forEach(({ row, col }) => { target[row][col] = null; });
@@ -104,7 +108,8 @@ export const addMoveAs = (document: GameDocument, currentId: string, position: P
 /** Replace a node's coordinate while preserving its entire descendant tree. */
 export const replaceMove = (document: GameDocument, nodeId: string, position: Position) => {
   const node = document.nodes[nodeId];
-  if (!node?.move || !node.parentId || position.row < 0 || position.row >= BOARD_SIZE || position.col < 0 || position.col >= BOARD_SIZE) {
+  const size = document.metadata.boardSize || BOARD_SIZE;
+  if (!node?.move || !node.parentId || position.row < 0 || position.row >= size || position.col < 0 || position.col >= size) {
     return { document, changed: false, reason: "只能修改已有着法" };
   }
   const parentBoard = boardAt(document, node.parentId);
@@ -160,11 +165,12 @@ export const lastOnPreferredLine = (document: GameDocument, fromId: string) => {
   while (!seen.has(current)) { seen.add(current); const next = preferredNext(document, current); if (!next) break; current = next; }
   return current;
 };
-export const coordinateName = ({ row, col }: Position) => `${String.fromCharCode(65 + col)}${BOARD_SIZE - row}`;
-export const parseCoordinate = (text: string): Position | null => {
-  const match = text.trim().toUpperCase().match(/^([A-O])(1[0-5]|[1-9])$/);
+export const coordinateName = ({ row, col }: Position, size = BOARD_SIZE) => `${String.fromCharCode(65 + col)}${size - row}`;
+export const parseCoordinate = (text: string, size = BOARD_SIZE): Position | null => {
+  const match = text.trim().toUpperCase().match(/^([A-Y])(\d{1,2})$/);
   if (!match) return null;
-  return { col: match[1].charCodeAt(0) - 65, row: BOARD_SIZE - Number(match[2]) };
+  const col = match[1].charCodeAt(0) - 65, row = size - Number(match[2]);
+  return col < size && row >= 0 ? { col, row } : null;
 };
 
 const lineThrough = (board: Cell[][], position: Position, dr: number, dc: number) => {
