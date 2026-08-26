@@ -19,5 +19,6 @@ android/.idea/
 # Local tooling
 .codex/
 .claude/
+.mimosa/
 .env
 .env.*

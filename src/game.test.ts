@@ -6,6 +6,9 @@ import { findPositionMatches, positionKey } from "./position-search";
 import { isWinningMove, searchVcf, verifyVcfProof } from "./vcf";
 import { createPuzzleDocument, importKaibaoPuzzleJson } from "./puzzles";
 import { documentFingerprint } from "./large-storage";
+import { buildCompactRenLibIndex, compactBranchCount, compactChildWindow, compactDiagnostics, compactFirstBranchNodeId, compactIndexBytes, compactIndexOf, compactNodeCount, compactSearch, createLazyDocument } from "./compact-index";
+import { renLibDisplayMark } from "./renlib-display";
+import { applyDraftToDocument, buildDraftOverlay, emptyDraft, hasDraft, overlayNode, overlayPreferredChild, projectedDocument, pushDraft, redoDraft, undoDraft } from "./draft-operations";
 
 describe("game tree", () => {
   it("imports Kaibao setup JSON and restarts without clearing the puzzle", () => {
@@ -197,6 +200,212 @@ describe("record formats", () => {
     expect(imported.warnings.some((warning) => warning.includes("注释"))).toBe(true);
     const commented = Object.values(imported.document.nodes).find((node) => node.comment);
     expect(commented?.comment).toBe("AB");
+  });
+
+  it("keeps RenLib extension text and node flags instead of flattening them", async () => {
+    const bytes = new Uint8Array([
+      255, 82, 101, 110, 76, 105, 98, 255, 3, 0, ...Array(10).fill(255),
+      0, 0,
+      120, 0x15, 0x00, 0x01, // H8 + extension + mark + start + board-text
+      84, 0, 0, 0, // board text "T"
+    ]);
+    const imported = await importRecordFile(new File([bytes], "flags.lib"));
+    const move = Object.values(imported.document.nodes).find((node) => node.move);
+    expect(move?.move).toMatchObject({ row: 7, col: 7, player: "black" });
+    expect(move?.boardText).toBe("T");
+    expect(move?.renLibMark).toBe(true);
+    expect(move?.startPosition).toBe(true);
+  });
+
+  it("builds a compact parent/child/sibling index for large-library storage", () => {
+    let document = createDocument("index");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 }); document = first.document;
+    const main = addMove(document, first.nodeId, { row: 7, col: 8 }); document = main.document;
+    const variation = addMove(document, first.nodeId, { row: 8, col: 7 }); document = variation.document;
+    const index = buildCompactRenLibIndex(document);
+    expect(index.nodeCount).toBe(4);
+    expect(index.parent[1]).toBe(0);
+    expect(index.firstChild[1]).toBe(2);
+    expect(index.nextSibling[2]).toBe(3);
+    expect(index.preferredChild?.[1]).toBe(3);
+    expect(compactIndexBytes(index)).toBeGreaterThan(0);
+
+    const { nodes: _nodes, ...base } = document;
+    const lazy = createLazyDocument(base, index);
+    expect(lazy.nodes[lazy.rootId].children).toEqual([first.nodeId]);
+    expect(lazy.nodes[main.nodeId].parentId).toBe(first.nodeId);
+    expect(lazy.nodes[first.nodeId].children).toEqual([main.nodeId, variation.nodeId]);
+    expect(compactBranchCount(lazy)).toBe(1);
+    expect(compactFirstBranchNodeId(lazy)).toBe(first.nodeId);
+    expect(compactNodeCount({ ...lazy, metadata: { ...lazy.metadata, title: "renamed" } })).toBe(4);
+    expect(compactIndexOf({ ...lazy, updatedAt: new Date().toISOString() })).toBe(index);
+    expect(Object.keys(lazy.nodes)).toHaveLength(4);
+  });
+
+  it("round-trips compact marks, anchors, and evaluations", () => {
+    let document = createDocument("metadata index");
+    const created = addMove(document, document.rootId, { row: 7, col: 7 });
+    document = created.document;
+    const node = document.nodes[created.nodeId];
+    node.marks = [{ row: 6, col: 6, kind: "circle" }, { row: 5, col: 5, kind: "label", label: "A" }];
+    node.anchor = { row: 4, col: 4 };
+    node.evaluation = "interesting";
+    node.evaluationLevel = 2;
+    const index = buildCompactRenLibIndex(document);
+    const { nodes: _nodes, ...base } = document;
+    const lazy = createLazyDocument(base, index);
+    expect(lazy.nodes[created.nodeId]).toMatchObject({
+      anchor: { row: 4, col: 4 },
+      marks: node.marks,
+      evaluation: "interesting",
+      evaluationLevel: 2,
+    });
+  });
+
+  it("guards documentFingerprint on compact documents", () => {
+    let document = createDocument("compact fingerprint");
+    document = addMove(document, document.rootId, { row: 7, col: 7 }).document;
+    document = addMove(document, document.rootId, { row: 8, col: 8 }).document;
+    const index = buildCompactRenLibIndex(document);
+    const { nodes: _nodes, ...base } = document;
+    const lazy = createLazyDocument(base, index);
+    expect(documentFingerprint(lazy)).toMatch(/^compact-/);
+  });
+
+  it("computes compact diagnostics on a branched tree", () => {
+    let document = createDocument("branch diagnostics");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 }); document = first.document;
+    document = addMove(document, first.nodeId, { row: 7, col: 8 }).document;
+    document = addMove(document, first.nodeId, { row: 8, col: 7 }).document;
+    const index = buildCompactRenLibIndex(document);
+    const { nodes: _nodes, ...base } = document;
+    const lazy = createLazyDocument(base, index);
+    const diag = compactDiagnostics(lazy);
+    expect(diag.hasCompact).toBe(true);
+    expect(diag.nodeCount).toBe(4);
+    expect(diag.branchCount).toBe(1);
+    expect(diag.firstBranchId).toBe(first.nodeId);
+  });
+
+  it("maps RenLib display semantics while preserving raw values", () => {
+    expect(renLibDisplayMark("a")).toMatchObject({ semantic: "good", displayKind: "text", displayText: "a", rawText: "a" });
+    expect(renLibDisplayMark("c")).toMatchObject({ semantic: "bad", displayText: "c" });
+    expect(renLibDisplayMark("ccc")).toMatchObject({ semantic: "bad", displayText: "c", rawText: "ccc" });
+    expect(renLibDisplayMark("黑").displayKind).toBe("black-dot");
+    expect(renLibDisplayMark("白").displayKind).toBe("white-dot");
+    expect(renLibDisplayMark("蓝").displayKind).toBe("blue-dot");
+    expect(renLibDisplayMark("未知")).toMatchObject({ semantic: "unknown", displayKind: "text", rawText: "未知" });
+    expect(renLibDisplayMark().displayKind).toBe("neutral-dot");
+  });
+
+  it("supports draft operation undo and redo without changing the committed document", () => {
+    const initial = emptyDraft();
+    const committedBase = createDocument("commit");
+    const node = { id: "draft-node", parentId: committedBase.rootId, children: [], move: { row: 7, col: 7, player: "black" as const }, comment: "", marks: [] };
+    const added = pushDraft(initial, { type: "add-move", parentId: committedBase.rootId, node });
+    expect(hasDraft(added)).toBe(true);
+    const undone = undoDraft(added);
+    expect(undone.operations).toHaveLength(0);
+    const redone = redoDraft(undone);
+    expect(redone.operations).toHaveLength(1);
+    const committed = applyDraftToDocument(committedBase, redone.operations);
+    expect(committed.nodes[node.id]?.move).toMatchObject({ row: 7, col: 7 });
+  });
+
+  it("applies delete-subtree via applyDraftToDocument", () => {
+    let document = createDocument("delete");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 }); document = first.document;
+    document = addMove(document, first.nodeId, { row: 7, col: 8 }).document;
+    document = addMove(document, first.nodeId, { row: 8, col: 7 }).document;
+    const result = applyDraftToDocument(document, [
+      { type: "delete-subtree", parentId: document.rootId, rootId: first.nodeId },
+    ]);
+    expect(result.nodes[first.nodeId]).toBeUndefined();
+    expect(result.nodes[document.rootId]?.children).toHaveLength(0);
+  });
+
+  it("applies set-mainline via applyDraftToDocument", () => {
+    let document = createDocument("mainline");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 }); document = first.document;
+    const second = addMove(document, first.nodeId, { row: 7, col: 8 }); document = second.document;
+    document = addMove(document, first.nodeId, { row: 8, col: 7 }).document;
+    const result = applyDraftToDocument(document, [
+      { type: "set-mainline", parentId: first.nodeId, childId: second.nodeId },
+    ]);
+    expect(result.nodes[first.nodeId]?.preferredChildId).toBe(second.nodeId);
+  });
+
+  it("overlayNode removes deleted subtree descendants", () => {
+    let document = createDocument("overlay-delete");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 }); document = first.document;
+    document = addMove(document, first.nodeId, { row: 7, col: 8 }).document;
+    const overlay = buildDraftOverlay({ operations: [{ type: "delete-subtree", parentId: first.nodeId, rootId: document.nodes[first.nodeId].children[0] }], redo: [] }, document);
+    expect(overlayNode(document, overlay, document.nodes[first.nodeId].children[0])).toBeUndefined();
+    expect(overlay.deleted.has(document.nodes[first.nodeId].children[0])).toBe(true);
+  });
+
+  it("projectedDocument includes draft-added nodes", () => {
+    let document = createDocument("projected");
+    const draftId = "draft-add-1";
+    const overlay = buildDraftOverlay({
+      operations: [{ type: "add-move", parentId: document.rootId, node: { id: draftId, parentId: document.rootId, children: [], move: { row: 7, col: 7, player: "black" }, comment: "", marks: [] } }],
+      redo: [],
+    }, document);
+    const projected = projectedDocument(document, overlay);
+    expect(projected.nodes[draftId]).toBeDefined();
+    expect(projected.nodes[draftId]?.move?.row).toBe(7);
+    expect(projected.nodes[document.rootId]?.children).toContain(draftId);
+  });
+
+  it("projectedDocument respects overlayPreferredChild", () => {
+    let document = createDocument("preferred-overlay");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 }); document = first.document;
+    const second = addMove(document, first.nodeId, { row: 7, col: 8 }); document = second.document;
+    document = addMove(document, first.nodeId, { row: 8, col: 7 }).document;
+    const overlay = buildDraftOverlay({
+      operations: [{ type: "set-mainline", parentId: first.nodeId, childId: second.nodeId }],
+      redo: [],
+    }, document);
+    expect(overlayPreferredChild(document, overlay, first.nodeId)).toBe(second.nodeId);
+  });
+
+  it("overlayNode excludes deleted children and includes draft-added children", () => {
+    let document = createDocument("overlay-children");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 }); document = first.document;
+    const child = document.nodes[first.nodeId].children[0];
+    const draftId = "draft-child-1";
+    const overlay = buildDraftOverlay({
+      operations: [
+        { type: "delete-subtree", parentId: child, rootId: child },
+        { type: "add-move", parentId: first.nodeId, node: { id: draftId, parentId: first.nodeId, children: [], move: { row: 7, col: 8, player: "white" }, comment: "", marks: [] } },
+      ],
+      redo: [],
+    }, document);
+    const resolved = overlayNode(document, overlay, first.nodeId);
+    expect(resolved?.children).not.toContain(child);
+    expect(resolved?.children).toContain(draftId);
+  });
+
+  it("buildDraftOverlay without document context still collects root IDs", () => {
+    const overlay = buildDraftOverlay({
+      operations: [{ type: "delete-subtree", parentId: "root", rootId: "child-1" }],
+      redo: [],
+    });
+    expect(overlay.deleted.has("child-1")).toBe(true);
+  });
+
+  it("reads a child window within compact index", () => {
+    let document = createDocument("child window");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 }); document = first.document;
+    document = addMove(document, first.nodeId, { row: 7, col: 8 }).document;
+    document = addMove(document, first.nodeId, { row: 8, col: 7 }).document;
+    document = addMove(document, first.nodeId, { row: 9, col: 9 }).document;
+    const index = buildCompactRenLibIndex(document);
+    const { nodes: _nodes, ...base } = document;
+    const lazy = createLazyDocument(base, index);
+    // nodeIndex 1 is first.nodeId; its children are ids[2], ids[3], ids[4].
+    expect(compactChildWindow(index, 1, 0, 2)).toEqual([index.ids[2], index.ids[3]]);
+    expect(compactChildWindow(index, 1, 0, 3)).toHaveLength(3);
   });
 });
 

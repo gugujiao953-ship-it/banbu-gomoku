@@ -1,6 +1,20 @@
 import type { GameDocument } from "./types";
+import type { DraftState } from "./draft-operations";
 const LIBRARY_KEY = "renju-note-library-v1";
 const ACTIVE_KEY = "renju-note-active-v1";
+const DRAFT_PREFIX = "renju-note-draft-v2:";
+export const saveDraftToLocal = (documentId: string, draft: DraftState) => {
+  localStorage.setItem(`${DRAFT_PREFIX}${documentId}`, JSON.stringify({ ...draft, updatedAt: new Date().toISOString() }));
+};
+export const loadDraftFromLocal = (documentId: string): DraftState => {
+  try {
+    const value = JSON.parse(localStorage.getItem(`${DRAFT_PREFIX}${documentId}`) || "null");
+    return value && Array.isArray(value.operations) && Array.isArray(value.redo)
+      ? { operations: value.operations, redo: value.redo, metadata: value.metadata }
+      : { operations: [], redo: [] };
+  } catch { return { operations: [], redo: [] }; }
+};
+export const removeDraftFromLocal = (documentId: string) => localStorage.removeItem(`${DRAFT_PREFIX}${documentId}`);
 export const loadLibrary = (): GameDocument[] => {
   try {
     const value = JSON.parse(localStorage.getItem(LIBRARY_KEY) || "[]");

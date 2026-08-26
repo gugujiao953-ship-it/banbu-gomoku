@@ -1,5 +1,6 @@
-import { addMove, createDocument, toggleMark } from "./game";
-import type { GameDocument, ImportResult, NodeEvaluation, Player, Position, RecordNode } from "./types";
+import { addMove, createDocument, otherPlayer, toggleMark } from "./game";
+import type { CompactRenLibDraftNode, CompactRenLibIndex, GameDocument, ImportResult, NodeEvaluation, Player, Position, RecordNode } from "./types";
+import { RenLibArrayBuilder, createLazyDocument } from "./compact-index";
 
 interface SgfNode { props: Record<string, string[]>; children: SgfNode[] }
 
@@ -123,113 +124,201 @@ const importPos = (text: string, title: string): ImportResult => {
   return { document, warnings, format: "POS/TXT" };
 };
 
+/** A byte reader that keeps the LIB import off the main thread without ever
+ * materialising the whole file. RenLib records are always two-byte aligned,
+ * but text payloads can be split across arbitrary Blob stream chunks. */
+class RenLibByteReader {
+  private readonly reader: ReadableStreamDefaultReader<Uint8Array>;
+  private chunk: Uint8Array<ArrayBufferLike> = new Uint8Array();
+  private offset = 0;
+  private eof = false;
+  constructor(source: Blob) { this.reader = source.stream().getReader(); }
+  setPrefix(prefix: Uint8Array<ArrayBufferLike>) { this.chunk = prefix; this.offset = 0; }
+  private available() { return this.chunk.length - this.offset; }
+  private async refill(minimum: number) {
+    while (this.available() < minimum && !this.eof) {
+      const next = await this.reader.read();
+      if (next.done) { this.eof = true; break; }
+      const remaining = this.chunk.subarray(this.offset);
+      const merged = new Uint8Array(remaining.length + next.value.length);
+      merged.set(remaining); merged.set(next.value, remaining.length);
+      this.chunk = merged; this.offset = 0;
+    }
+  }
+  readPair(): readonly [number, number] | null | Promise<readonly [number, number] | null> {
+    if (this.available() >= 2) {
+      const pair: readonly [number, number] = [this.chunk[this.offset], this.chunk[this.offset + 1]];
+      this.offset += 2;
+      return pair;
+    }
+    if (this.eof && this.available() < 2) return null;
+    return this.refill(2).then(() => this.readPair() as readonly [number, number] | null);
+  }
+  async readUpTo(count: number) {
+    const result: number[] = [];
+    while (result.length < count) {
+      if (this.available() === 0) await this.refill(1);
+      if (this.available() === 0) break;
+      const amount = Math.min(count - result.length, this.available());
+      result.push(...this.chunk.subarray(this.offset, this.offset + amount));
+      this.offset += amount;
+    }
+    return Uint8Array.from(result);
+  }
+}
+
+const decodeRenLibText = (bytes: number[]) => {
+  if (!bytes.length) return "";
+  try { return new TextDecoder("gb18030").decode(Uint8Array.from(bytes)); }
+  catch { return String.fromCharCode(...bytes); }
+};
+
+const decodeOldRenLibText = (bytes: number[]) => {
+  const replacements: Record<number, string> = { 0x7d: "å", 0x7b: "ä", 0x7c: "ö", 0x5d: "Å", 0x5b: "Ä", 0x5c: "Ö" };
+  return bytes.map((byte) => replacements[byte] || String.fromCharCode(byte)).join("");
+};
+
+const readRenLibNullText = async (reader: RenLibByteReader, oldFormat: boolean) => {
+  const bytes: number[] = [];
+  while (true) {
+    const pending = reader.readPair();
+    const pair = pending instanceof Promise ? await pending : pending;
+    if (!pair) break;
+    const [first, second] = pair;
+    if (oldFormat) {
+      bytes.push(first & 0x7f);
+      if (first & 0x80) break;
+      bytes.push(second & 0x7f);
+      if (second & 0x80) break;
+    } else {
+      if (first === 0) break;
+      bytes.push(first);
+      if (second === 0) break;
+      bytes.push(second);
+    }
+  }
+  return oldFormat ? decodeOldRenLibText(bytes) : decodeRenLibText(bytes);
+};
+
 /**
- * RenLib's .lib stream is a compact pre-order traversal. Each node is stored
- * as a position byte plus a flags byte; DOWN pushes the current branch before
- * descending, while RIGHT pops back to the next sibling. The format is
- * documented by the open-source RenLib reader and has a 20-byte `RenLib`
- * header in modern files.
+ * RenLib is a compact depth-first stream, not a flat move list. The official
+ * reader uses `DOWN` to push the current node and `RIGHT` to pop to its parent;
+ * comments are old-format-first, and extension flags are stored one byte
+ * higher than the two-byte extension pair appears on disk.
  */
-const importRenLib = (buffer: ArrayBuffer, title: string): ImportResult => {
-  const bytes = new Uint8Array(buffer);
+const importRenLib = async (source: Blob, title: string): Promise<ImportResult> => {
+  const reader = new RenLibByteReader(source);
+  const header = await reader.readUpTo(20);
   const modernHeader = [0xff, 82, 101, 110, 76, 105, 98, 0xff];
-  const isModern = bytes.length >= 20 && modernHeader.every((value, index) => bytes[index] === value);
-  let cursor = 0;
+  const isModern = header.length >= 20 && modernHeader.every((value, index) => header[index] === value);
   const warnings: string[] = [];
   if (isModern) {
-    const major = bytes[8], minor = bytes[9];
+    const major = header[8], minor = header[9];
     if (major * 100 + minor > 304) throw new Error(`暂不支持 RenLib ${major}.${minor}（当前最高支持 3.4）`);
-    cursor = 20;
-  } else if (bytes[0] !== 0x78) {
-    throw new Error("文件没有有效的 RenLib 头（FF RenLib FF）");
   } else {
+    if (header[0] !== 0x78) throw new Error("文件没有有效的 RenLib 头（FF RenLib FF）");
     warnings.push("这是旧版无头 RenLib 文件，已按兼容模式读取");
+    reader.setPrefix(header);
   }
 
-  let document = createDocument(title.replace(/\.[^.]+$/, ""));
-  let parentId = document.rootId;
-  const branchStack: string[] = [];
-  const depths = new Map<string, number>([[document.rootId, 0]]);
+  const baseDocument = createDocument(title.replace(/\.[^.]+$/, ""));
+  const arrays = new RenLibArrayBuilder(baseDocument.rootId);
+  let parentId = 0;
+
+  const branchStack: number[] = [];
+  const nextPlayer: Player[] = ["black"];
   let firstRecord = true;
+  let recordCount = 0;
   let moveCount = 0;
   let commentCount = 0;
-  const readPair = () => {
-    if (cursor + 1 >= bytes.length) return null;
-    return [bytes[cursor++], bytes[cursor++]] as const;
-  };
-  const readText = (oldFormat: boolean) => {
-    let text = "";
-    while (true) {
-      const pair = readPair();
-      if (!pair) break;
-      for (const raw of pair) {
-        if (!oldFormat && raw === 0) return text;
-        if (oldFormat && raw & 0x80) return text + String.fromCharCode(raw & 0x7f);
-        text += String.fromCharCode(raw);
-      }
-    }
-    return text;
-  };
-
-  while (cursor < bytes.length) {
-    const pair = readPair();
+  let boardTextCount = 0;
+  let markedNodeCount = 0;
+  let edgeCount = 0, branchCount = 0, maxChildren = 0, maxDepth = 0;
+  const nodeDepth: number[] = [0];
+  while (true) {
+    const pending = reader.readPair();
+    const pair = pending instanceof Promise ? await pending : pending;
     if (!pair) break;
     const [positionByte, info] = pair;
-    let extended = 0;
+    let extendedFlags = 0;
     if (info & 0x01) {
-      const extension = readPair();
+      const extension = await reader.readPair();
       if (!extension) break;
-      extended = (extension[0] << 8) | extension[1];
+      // MoveNode::setExtendedInfo(info2, info1) stores the pair at bits 8..23.
+      extendedFlags = (extension[0] << 16) | (extension[1] << 8);
     }
+
     const position = positionByte === 0 ? null : {
       col: (positionByte % 16) - 1,
       row: Math.floor(positionByte / 16),
     };
-    let nodeId = parentId;
     const validPosition = position && position.col >= 0 && position.col < 15 && position.row >= 0 && position.row < 15;
     const isMove = (info & 0x02) === 0;
-    if (!(firstRecord && !validPosition) && isMove && validPosition) {
-      const parent = document.nodes[parentId];
-      const existingId = parent.children.find((id) => {
-        const move = document.nodes[id]?.move;
-        return move?.row === position.row && move.col === position.col;
-      });
-      if (existingId) nodeId = existingId;
-      else {
-        nodeId = `renlib-${document.id}-${moveCount.toString(36)}`;
-        const depth = (depths.get(parentId) || 0) + 1;
-        document.nodes[nodeId] = { id: nodeId, parentId, children: [], move: { ...position, player: depth % 2 ? "black" : "white" }, comment: "", marks: [] };
-        parent.children.push(nodeId);
-        if (!parent.preferredChildId) parent.preferredChildId = nodeId;
-        depths.set(nodeId, depth); moveCount += 1;
+    let nodeId = parentId;
+    if (!(firstRecord && !validPosition)) {
+      if (!validPosition && position) {
+        warnings.push(`跳过无效 RenLib 坐标字节：${positionByte}`);
+      } else {
+        const parentIndex = parentId;
+        const player = nextPlayer[parentIndex] || "black";
+        const move = isMove && validPosition; const code = validPosition ? position!.row * 16 + position!.col + 1 : 0;
+        const state = move ? 1 | (player === "white" ? 2 : 0) : 0;
+        const newIndex = arrays.addNode(parentIndex, move ? code : 0, state, validPosition ? code : 0);
+        nodeId = newIndex;
+        const previous = arrays.lastChild[parentIndex];
+        if (previous < 0) arrays.firstChild[parentIndex] = newIndex;
+        else arrays.nextSibling[previous] = newIndex;
+        arrays.lastChild[parentIndex] = newIndex;
+        arrays.childCount[parentIndex] += 1; edgeCount += 1; if (arrays.childCount[parentIndex] === 2) branchCount += 1; maxChildren = Math.max(maxChildren, arrays.childCount[parentIndex]);
+        const depth = (nodeDepth[parentIndex] || 0) + 1; nodeDepth[newIndex] = depth; maxDepth = Math.max(maxDepth, depth);
+        if (arrays.preferredChild[parentIndex] < 0) arrays.preferredChild[parentIndex] = newIndex;
+        nextPlayer[newIndex] = isMove ? otherPlayer(player) : player;
+        if (move) moveCount += 1; recordCount += 1;
       }
-    } else if (isMove && !validPosition) {
-      warnings.push(`跳过无效 RenLib 坐标字节：${positionByte}`);
     }
     firstRecord = false;
-    const node = document.nodes[nodeId];
-    if (info & 0x08) {
-      node.comment = readText(false);
-      if (node.comment) commentCount += 1;
-    } else if (info & 0x20) {
-      node.comment = readText(true);
-      if (node.comment) commentCount += 1;
+    if (nodeId < 0 || nodeId >= arrays.ids.length) break;
+
+    // RenLib 2.x/3.0 files may carry both bits; the official reader gives old
+    // comments precedence, otherwise the payload gets consumed at the wrong
+    // byte boundary and every following node becomes garbage.
+    if (info & 0x20) {
+      const text = await readRenLibNullText(reader, true); arrays.setText(nodeId, text); if (text) commentCount += 1;
+    } else if (info & 0x08) {
+      const text = await readRenLibNullText(reader, false); arrays.setText(nodeId, text); if (text) commentCount += 1;
     }
-    if (extended & 0x100) readText(false);
-    if (info & 0x10 && validPosition) node.marks = toggleMark(node.marks, position);
-    if (info & 0x80) {
-      branchStack.push(parentId);
-      parentId = nodeId;
-    } else if (info & 0x40) {
-      parentId = branchStack.pop() || document.rootId;
-    } else if (nodeId !== document.rootId) {
+    if (extendedFlags & 0x100) {
+      const text = await readRenLibNullText(reader, false); arrays.textRefs[nodeId * 2 + 1] = arrays.intern(text); if (text) boardTextCount += 1;
+    }
+    if (info & 0x10) { arrays.state[nodeId] |= 4; markedNodeCount += 1; }
+    if (info & 0x04) arrays.state[nodeId] |= 8;
+
+    // These two transitions intentionally are independent: a node may have a
+    // sibling and also be the end of a branch (DOWN + RIGHT).
+    if (info & 0x80) branchStack.push(nodeId);
+    if (info & 0x40) {
+      const branchNodeId = branchStack.pop();
+      parentId = branchNodeId !== undefined ? arrays.parent[branchNodeId] ?? 0 : 0;
+    } else {
       parentId = nodeId;
     }
   }
+
   if (!moveCount) throw new Error("RenLib 文件中没有可识别的落子");
-  document.updatedAt = new Date().toISOString();
+  baseDocument.updatedAt = new Date().toISOString();
   if (commentCount) warnings.push(`已读取 ${commentCount} 个节点注释`);
-  return { document, warnings, format: "RenLib LIB" };
+  if (boardTextCount) warnings.push(`已读取 ${boardTextCount} 个节点文字`);
+  if (markedNodeCount) warnings.push(`已读取 ${markedNodeCount} 个节点标记`);
+  // Produce the compact representation at the parser boundary so workers do not
+  // need to traverse/materialize the tree a second time.
+  const compactIndex = arrays.toIndex(baseDocument.rootId, `renlib-${baseDocument.id}`);
+  const stats = { nodeCount: recordCount + 1, edgeCount, branchCount, maxChildren, maxDepth };
+  // V8 errors on > ~686k enumerable properties. Strip the object-tree nodes
+  // when the caller already has a compact index, so the return value does not
+  // trigger "Too many properties to enumerate" during construction.
+  const base = { id: baseDocument.id, version: baseDocument.version, rootId: baseDocument.rootId, metadata: baseDocument.metadata, createdAt: baseDocument.createdAt, updatedAt: baseDocument.updatedAt };
+  const lazyDocument = createLazyDocument(base, compactIndex);
+  return { document: lazyDocument, compactIndex, warnings, format: "RenLib LIB", stats };
 };
 
 const validateJsonDocument = (value: unknown): GameDocument => {
@@ -272,8 +361,8 @@ const validateJsonDocument = (value: unknown): GameDocument => {
 
 export const importRecordFile = async (file: File): Promise<ImportResult> => {
   const extension = file.name.split(".").pop()?.toLowerCase() || "";
+  if (extension === "lib") return importRenLib(file, file.name);
   const buffer = await file.arrayBuffer();
-  if (extension === "lib") return importRenLib(buffer, file.name);
   if (extension === "renju" || extension === "json") {
     const parsed = validateJsonDocument(JSON.parse(decodeText(buffer)));
     return { document: parsed, warnings: [], format: "RENJU JSON" };

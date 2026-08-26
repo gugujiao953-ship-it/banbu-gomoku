@@ -16,7 +16,12 @@ export const createDocument = (title = "未命名棋谱"): GameDocument => {
   };
 };
 
+const pathCache = new WeakMap<object, Map<string, RecordNode[]>>();
+const boardCache = new WeakMap<object, Map<string, Cell[][]>>();
+
 export const pathToNode = (document: GameDocument, nodeId: string): RecordNode[] => {
+  const cached = pathCache.get(document.nodes)?.get(nodeId);
+  if (cached) return cached;
   const result: RecordNode[] = [];
   let node: RecordNode | undefined = document.nodes[nodeId];
   const seen = new Set<string>();
@@ -24,12 +29,30 @@ export const pathToNode = (document: GameDocument, nodeId: string): RecordNode[]
     seen.add(node.id); result.unshift(node);
     node = node.parentId ? document.nodes[node.parentId] : undefined;
   }
+  let cache = pathCache.get(document.nodes);
+  if (!cache) { cache = new Map(); pathCache.set(document.nodes, cache); }
+  cache.set(nodeId, result);
   return result;
 };
 
 export const boardAt = (document: GameDocument, nodeId: string): Cell[][] => {
-  const board = emptyBoard();
-  pathToNode(document, nodeId).forEach((node) => { if (node.move) board[node.move.row][node.move.col] = node.move.player; });
+  const cached = boardCache.get(document.nodes)?.get(nodeId);
+  if (cached) return cached;
+  const node = document.nodes[nodeId];
+  const parentId = node?.parentId;
+  const parentBoard = parentId ? boardCache.get(document.nodes)?.get(parentId) : undefined;
+  const board = parentBoard
+    ? parentBoard.map((row) => row.slice())
+    : emptyBoard();
+  if (node?.move) board[node.move.row][node.move.col] = node.move.player;
+  if (!parentBoard && node?.parentId) {
+    pathToNode(document, nodeId).slice(1).forEach((pathNode) => {
+      if (pathNode.move) board[pathNode.move.row][pathNode.move.col] = pathNode.move.player;
+    });
+  }
+  let cache = boardCache.get(document.nodes);
+  if (!cache) { cache = new Map(); boardCache.set(document.nodes, cache); }
+  cache.set(nodeId, board);
   return board;
 };
 export const depthOf = (document: GameDocument, nodeId: string) => Math.max(0, pathToNode(document, nodeId).length - 1);
@@ -160,7 +183,7 @@ export const toggleMark = (marks: BoardMark[], position: Position): BoardMark[] 
 /** Set or clear a labelled analysis candidate at a board point. Labels are
  * intentionally kept as node-local marks so each variation can carry its own
  * candidate set without changing the underlying move tree. */
-export const setLabelMark = (marks: BoardMark[], position: Position, label: string): BoardMark[] => {
+export const setLabelMark = (marks: BoardMark[], position: Position, label: string, style: BoardMark["style"] = "text", color?: string): BoardMark[] => {
   const normalized = Array.from(label.trim()).slice(0, 4).join("");
   if (!normalized) return marks;
   const existing = marks.find((mark) => mark.row === position.row && mark.col === position.col);
@@ -169,6 +192,6 @@ export const setLabelMark = (marks: BoardMark[], position: Position, label: stri
   }
   return [
     ...marks.filter((mark) => mark.row !== position.row || mark.col !== position.col),
-    { ...position, kind: "label", label: normalized },
+    { ...position, kind: "label", label: normalized, style, color },
   ];
 };
