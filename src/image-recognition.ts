@@ -44,6 +44,9 @@ const meanPatch = (ctx: CanvasRenderingContext2D, x: number, y: number, radius: 
   const pixels = ctx.getImageData(left, top, size, size).data;
   let light = 0;
   let saturation = 0;
+  let red = 0;
+  let green = 0;
+  let blue = 0;
   let count = 0;
   for (let index = 0; index < pixels.length; index += 4) {
     const pixel = index / 4;
@@ -53,11 +56,20 @@ const meanPatch = (ctx: CanvasRenderingContext2D, x: number, y: number, radius: 
     const r = pixels[index];
     const g = pixels[index + 1];
     const b = pixels[index + 2];
+    red += r;
+    green += g;
+    blue += b;
     light += luminance(r, g, b);
     saturation += Math.max(r, g, b) - Math.min(r, g, b);
     count += 1;
   }
-  return { light: count ? light / count : 0, saturation: count ? saturation / count : 0 };
+  return {
+    light: count ? light / count : 0,
+    saturation: count ? saturation / count : 0,
+    red: count ? red / count : 0,
+    green: count ? green / count : 0,
+    blue: count ? blue / count : 0,
+  };
 };
 
 /**
@@ -117,11 +129,13 @@ export const recognizeBoardImage = async (file: File, boardSize = 15): Promise<I
         // Green/blue AI candidates are analysis annotations, not stones. A
         // saturation gate prevents labels such as 49, 51 and 100 from entering
         // the imported position as white stones.
-        if (inner.saturation > 42 && inner.light > 70 && contrast > 3) {
+        const greenMarker = inner.green > inner.red * 1.12 && inner.green > inner.blue * 1.05;
+        const blueMarker = inner.blue > inner.red * 1.10 && inner.blue > inner.green * 1.02;
+        if (inner.saturation > 42 && inner.light > 70 && contrast > 3 && (greenMarker || blueMarker)) {
           ignoredColoredMarkers += 1;
           continue;
         }
-        if (contrast < -12 && inner.light < 150) {
+        if (contrast < -12 && inner.light < 110) {
           board[row][col] = "black";
           occupied += 1;
           score += Math.min(1, Math.abs(contrast) / 60);
