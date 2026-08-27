@@ -1,0 +1,31 @@
+import { chromium } from "playwright";
+const file = process.argv[2] || String.raw`D:\五子棋\定式谱\九天指南v5-1.db`;
+const base = process.env.QA_BASE_URL || "http://127.0.0.1:5173/";
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage({ viewport: { width: 375, height: 812 }, serviceWorkers: "block" });
+const errors = [];
+page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+page.on("pageerror", (e) => errors.push(String(e)));
+await page.goto(base, { waitUntil: "domcontentloaded" });
+await page.locator('input[type="file"]').first().setInputFiles(file);
+await page.waitForFunction(() => Boolean(window.__banbuImportDiagnostic) || Boolean(document.querySelector(".toast")), null, { timeout: 120000 });
+await page.waitForTimeout(1000);
+const snapshots = [];
+for (let step = 0; step < 30; step += 1) {
+  const before = await page.locator(".workspace-status").textContent();
+  const stones = await page.locator(".stone").count();
+  const next = page.locator('button[aria-label="下一手"]');
+  const enabled = await next.isEnabled().catch(() => false);
+  snapshots.push({ step, before: before?.trim() || "", stones, enabled });
+  if (!enabled) break;
+  await next.click();
+  await page.waitForTimeout(80);
+  const afterStones = await page.locator(".stone").count();
+  if (afterStones < stones) throw new Error(`第 ${step + 1} 步棋子数回退：${stones} -> ${afterStones}`);
+}
+const branchCount = await page.locator(".renlib-variation").count();
+const result = { file, steps: snapshots.length, branchCount, snapshots, finalStatus: await page.locator(".workspace-status").textContent(), errors };
+if (snapshots.length < 2) throw new Error(`连续导航不足：${snapshots.length}`);
+console.log(JSON.stringify(result, null, 2));
+if (errors.length) process.exitCode = 1;
+await browser.close();

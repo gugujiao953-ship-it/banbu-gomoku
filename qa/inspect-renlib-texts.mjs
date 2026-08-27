@@ -1,0 +1,2 @@
+import { readFile } from 'node:fs/promises'; import { basename } from 'node:path'; import { importRecordFile } from '../src/formats.ts';
+const p=process.argv[2]; const r=await importRecordFile(new File([await readFile(p)],basename(p))); const i=r.compactIndex; const out=[]; for(let n=0;n<i.nodeCount&&out.length<30;n++){const c=i.textRefs[n*2],b=i.textRefs[n*2+1]; if(c>=0||b>=0) out.push({n,id:i.ids[n],comment:c>=0?i.texts[c]:'',board:b>=0?i.texts[b]:''});} console.log(JSON.stringify({stats:r.stats,warnings:r.warnings,out},null,2));

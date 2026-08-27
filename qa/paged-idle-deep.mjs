@@ -1,0 +1,32 @@
+import { chromium } from "playwright";
+const file = process.argv[2] || String.raw`D:\五子棋\定式谱\斜月.lib`;
+const base = process.env.QA_BASE_URL || "http://localhost:5173/";
+const browser = await chromium.launch({ headless: true });
+const page = await browser.newPage({ viewport: { width: 412, height: 915 }, serviceWorkers: "block" });
+const longTasks = [], errors = [];
+page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+page.on("pageerror", (e) => errors.push(String(e)));
+await page.exposeFunction("recordLongTask", (entry) => longTasks.push({ ...entry, at: Date.now() }));
+await page.addInitScript(() => new PerformanceObserver((list) => list.getEntries().forEach((e) => window.recordLongTask({ duration: e.duration }))).observe({ type: "longtask", buffered: true }));
+await page.goto(base, { waitUntil: "domcontentloaded" });
+await page.locator('input[type="file"]').first().setInputFiles(file);
+const t0 = Date.now();
+await page.waitForFunction(() => window.__banbuImportDiagnostic?.hasCompact === true, null, { timeout: 600000 });
+const previewAt = Date.now() - t0;
+await page.waitForTimeout(20000);
+const idle = { elapsed: Date.now() - t0, longTasks: longTasks.slice(), title: await page.locator('.workspace-current b').textContent(), status: await page.locator('.workspace-status').textContent() };
+const steps = [];
+for (let i = 0; i < 30; i++) {
+  const before = await page.locator('.workspace-status').textContent();
+  const beforeStones = await page.locator('.stone').count();
+  const beforeTime = Date.now();
+  const next = page.locator('button[aria-label="下一手"]');
+  if (!(await next.isEnabled())) break;
+  await next.click();
+  await page.waitForTimeout(120);
+  const after = await page.locator('.workspace-status').textContent();
+  const afterStones = await page.locator('.stone').count();
+  steps.push({ i: i + 1, ms: Date.now() - beforeTime, before: before?.trim(), after: after?.trim(), beforeStones, afterStones });
+}
+console.log(JSON.stringify({ file, previewAt, idle, steps, errors }, null, 2));
+await browser.close();

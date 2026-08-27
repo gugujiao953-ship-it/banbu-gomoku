@@ -2,6 +2,10 @@ node_modules/
 dist/
 artifacts/
 graphify-out/
+tmp/
+experiments/
+prototype/
+.zcode/
 *.log
 .DS_Store
 Thumbs.db

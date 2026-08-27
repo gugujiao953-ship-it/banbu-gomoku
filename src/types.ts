@@ -6,7 +6,17 @@ export type BoardMarkStyle = "text" | "circle" | "triangle" | "cross";
 export type RenLibSemantic = "good" | "bad" | "special" | "unknown";
 export type RenLibDisplayKind = "text" | "black-dot" | "white-dot" | "blue-dot" | "neutral-dot";
 export interface RenLibDisplayMark { rawText?: string; rawMark?: number | string; rawColor?: string | number; semantic: RenLibSemantic; displayKind: RenLibDisplayKind; displayText?: string; }
-export interface BoardMark extends Position { kind: BoardMarkKind; label?: string; style?: BoardMarkStyle; color?: string }
+export type NativeAnnotationKind = "one-line-comment" | "multi-line-comment" | "board-text" | "mark" | "unknown";
+/** Native RenLib content. The decoded text is for display; raw metadata is kept
+ * so a future exporter can round-trip extensions without guessing semantics. */
+export interface NativeAnnotation {
+  kind: NativeAnnotationKind;
+  text?: string;
+  rawBytes?: Uint8Array;
+  sourceOffset?: number;
+  encoding?: string;
+}
+export interface BoardMark extends Position { kind: BoardMarkKind; label?: string; style?: BoardMarkStyle; color?: string; nativeSymmetry?: boolean; renLibNativeLabel?: boolean }
 export interface BoardSetup { black: Position[]; white: Position[]; empty: Position[]; nextPlayer?: Player }
 export type NodeEvaluation = "good" | "bad" | "doubtful" | "interesting" | "forced" | "only" | "study";
 export type PartialRecordNode = Partial<Pick<RecordNode, "comment" | "marks" | "preferredChildId" | "boardText" | "evaluation" | "evaluationLevel" | "move" | "anchor" | "setup" | "passPlayer">>;
@@ -20,8 +30,15 @@ export interface RecordNode {
   /** RenLib can store a non-move node carrying a board-text/comment anchor. */
   anchor?: Position;
   comment: string; marks: BoardMark[]; preferredChildId?: string;
+  /** RenLib-native annotations are kept separately from the editable fields. */
+  renLibAnnotations?: NativeAnnotation[];
+  renLibFlags?: number;
+  renLibExtendedFlags?: number;
   /** Short text displayed with the position; exported as SGF N. */
   boardText?: string;
+  /** Raw label returned by the webpage RenLib core; never reinterpret as a user mark. */
+  renLibNativeLabel?: boolean;
+  renLibLabelColor?: string;
   /** Structured move/position judgement; standard values also map to SGF TE/BM/DO/IT. */
   evaluation?: NodeEvaluation;
   /** SGF emphasis level for TE/BM; mobile editing currently creates level 1. */
@@ -42,6 +59,7 @@ export interface CompactRenLibDraftNode {
   id: string; parent: number; firstChild: number; nextSibling: number; childCount: number;
   preferredChild: number; move: (Position & { player: Player }) | null; anchor?: Position;
   comment: string; boardText?: string; marks: BoardMark[]; evaluation?: NodeEvaluation;
+  renLibAnnotations?: NativeAnnotation[]; renLibFlags?: number; renLibExtendedFlags?: number;
   evaluationLevel?: 1 | 2; renLibMark?: boolean; startPosition?: boolean;
   setup?: BoardSetup; passPlayer?: Player;
 }
@@ -52,6 +70,8 @@ export interface CompactRenLibIndex {
   version: 2;
   nodeCount: number;
   rootId: string;
+  /** Generated RenLib IDs use this prefix; ids may then contain only rootId. */
+  idPrefix?: string;
   ids: string[];
   parent: Int32Array;
   firstChild: Int32Array;
@@ -67,6 +87,10 @@ export interface CompactRenLibIndex {
   evaluationLevel: Uint8Array;
   markRefs: Int32Array;
   marks: BoardMark[];
+  annotationRefs: Int32Array;
+  annotations: NativeAnnotation[];
+  renLibFlags: Uint8Array;
+  renLibExtendedFlags: Uint32Array;
   setupRefs?: Int32Array;
   setups?: BoardSetup[];
 }

@@ -19,6 +19,8 @@ export interface LargeDocumentSummary {
   nodeCount: number;
   fingerprint: string;
   storageMode?: "document" | "compact-index";
+  /** True only for the early usable prefix emitted while a large import continues. */
+  preview?: boolean;
   /** For derived versions: the base document ID this was derived from. */
   baseId?: string;
 }
@@ -88,7 +90,7 @@ export const assembleCompactIndex = (stored: any, chunks: Array<{ field: string;
   const objectFields = new Map<string, unknown[]>();
   for (const chunk of chunks) {
     if (chunk.field === "ids" || chunk.field === "texts") { const list = textFields.get(chunk.field) || []; const values = chunk.value as string[]; for (const value of values) list.push(value); textFields.set(chunk.field, list); }
-    else if (chunk.field === "marks" || chunk.field === "setups") { const list = objectFields.get(chunk.field) || []; list.push(...(chunk.value as unknown[])); objectFields.set(chunk.field, list); }
+    else if (chunk.field === "marks" || chunk.field === "setups" || chunk.field === "annotations") { const list = objectFields.get(chunk.field) || []; list.push(...(chunk.value as unknown[])); objectFields.set(chunk.field, list); }
     else { const list = typedFields.get(chunk.field) || []; list.push(chunk); typedFields.set(chunk.field, list); }
   }
   const nums = (field: string, Type: any) => {
@@ -96,7 +98,7 @@ export const assembleCompactIndex = (stored: any, chunks: Array<{ field: string;
     let offset = 0; for (const chunk of list.sort((a, b) => a.offset - b.offset)) { const part = new Type(chunk.value as ArrayBuffer); result.set(part, offset); offset += part.length; } return result;
   };
   if (!typedFields.has("parent")) return null;
-  return { version: 2, nodeCount: stored.nodeCount, rootId: stored.rootId, ids: textFields.get("ids") || [], parent: nums("parent", Int32Array), firstChild: nums("firstChild", Int32Array), nextSibling: nums("nextSibling", Int32Array), childCount: nums("childCount", Int32Array), preferredChild: nums("preferredChild", Int32Array), moveCode: nums("moveCode", Uint16Array), anchorCode: nums("anchorCode", Uint16Array), state: nums("state", Uint8Array), evaluation: nums("evaluation", Int8Array), evaluationLevel: nums("evaluationLevel", Uint8Array), markRefs: nums("markRefs", Int32Array), textRefs: nums("textRefs", Int32Array), setupRefs: nums("setupRefs", Int32Array), setups: (objectFields.get("setups") || []) as NonNullable<CompactRenLibIndex["setups"]>, marks: (objectFields.get("marks") || []) as BoardMark[], texts: textFields.get("texts") || [] };
+  return { version: 2, nodeCount: stored.nodeCount, rootId: stored.rootId, idPrefix: stored.idPrefix, ids: textFields.get("ids") || [], parent: nums("parent", Int32Array), firstChild: nums("firstChild", Int32Array), nextSibling: nums("nextSibling", Int32Array), childCount: nums("childCount", Int32Array), preferredChild: nums("preferredChild", Int32Array), moveCode: nums("moveCode", Uint16Array), anchorCode: nums("anchorCode", Uint16Array), state: nums("state", Uint8Array), evaluation: nums("evaluation", Int8Array), evaluationLevel: nums("evaluationLevel", Uint8Array), markRefs: nums("markRefs", Int32Array), textRefs: nums("textRefs", Int32Array), setupRefs: nums("setupRefs", Int32Array), setups: (objectFields.get("setups") || []) as NonNullable<CompactRenLibIndex["setups"]>, marks: (objectFields.get("marks") || []) as BoardMark[], texts: textFields.get("texts") || [], annotationRefs: nums("annotationRefs", Int32Array), annotations: (objectFields.get("annotations") || []) as NonNullable<CompactRenLibIndex["annotations"]>, renLibFlags: nums("renLibFlags", Uint8Array), renLibExtendedFlags: nums("renLibExtendedFlags", Uint32Array) };
 };
 
 const transactionDone = (transaction: IDBTransaction) => new Promise<void>((resolve, reject) => {
@@ -104,6 +106,30 @@ const transactionDone = (transaction: IDBTransaction) => new Promise<void>((reso
   transaction.onerror = () => reject(transaction.error || new Error("大型棋谱存储失败"));
   transaction.onabort = () => reject(transaction.error || new Error("大型棋谱存储已中止"));
 });
+
+const yieldToBrowser = () => new Promise<void>((resolve) => {
+  const taskScheduler = (globalThis as typeof globalThis & { scheduler?: { postTask?: (callback: () => void, options?: { priority?: string }) => Promise<void> } }).scheduler;
+  if (taskScheduler?.postTask) { void taskScheduler.postTask(resolve, { priority: "background" }); return; }
+  setTimeout(resolve, 0);
+});
+
+const deleteDocumentChunks = async (database: IDBDatabase, id: string) => {
+  const transaction = database.transaction(CHUNK_STORE, "readwrite");
+  const request = transaction.objectStore(CHUNK_STORE).openCursor(IDBKeyRange.bound(`${id}:`, `${id}:~`));
+  request.onsuccess = () => {
+    const cursor = request.result;
+    if (!cursor) return;
+    cursor.delete(); cursor.continue();
+  };
+  await transactionDone(transaction);
+};
+
+const writeChunk = async (database: IDBDatabase, value: unknown) => {
+  const transaction = database.transaction(CHUNK_STORE, "readwrite");
+  transaction.objectStore(CHUNK_STORE).put(value);
+  await transactionDone(transaction);
+  await yieldToBrowser();
+};
 
 export const loadLargeSummaries = async (): Promise<LargeDocumentSummary[]> => {
   const database = await openDatabase();
@@ -208,18 +234,27 @@ export async function saveCompactIndex(document: GameDocument, index: CompactRen
   const summary = { ...(prepared || summarizeLargeDocument(document)), id: document.id, metadata: document.metadata, updatedAt: document.updatedAt, nodeCount: index.nodeCount, storageMode: "compact-index" as const };
   const database = await openDatabase();
   try {
-    const transaction = database.transaction([DOCUMENT_STORE, SUMMARY_STORE, CHUNK_STORE], "readwrite");
     if (index.nodeCount > 1000000) {
-      const store = transaction.objectStore(CHUNK_STORE);
-      const fields: Record<string, any> = { parent: index.parent, firstChild: index.firstChild, nextSibling: index.nextSibling, childCount: index.childCount, preferredChild: index.preferredChild, moveCode: index.moveCode, anchorCode: index.anchorCode, state: index.state, evaluation: index.evaluation, evaluationLevel: index.evaluationLevel, markRefs: index.markRefs, textRefs: index.textRefs, setupRefs: index.setupRefs, ids: index.ids, texts: index.texts, marks: index.marks, setups: index.setups };
+      await deleteDocumentChunks(database, document.id);
+      const fields: Record<string, any> = { parent: index.parent, firstChild: index.firstChild, nextSibling: index.nextSibling, childCount: index.childCount, preferredChild: index.preferredChild, moveCode: index.moveCode, anchorCode: index.anchorCode, state: index.state, evaluation: index.evaluation, evaluationLevel: index.evaluationLevel, markRefs: index.markRefs, textRefs: index.textRefs, setupRefs: index.setupRefs, annotationRefs: index.annotationRefs, renLibFlags: index.renLibFlags, renLibExtendedFlags: index.renLibExtendedFlags, ids: index.ids, texts: index.texts, marks: index.marks, setups: index.setups, annotations: index.annotations };
       for (const [field, value] of Object.entries(fields)) {
         if (!value) continue;
-        for (let offset = 0; offset < value.length; offset += INDEX_CHUNK_SIZE) store.put({ key: `${document.id}:${field}:${offset}`, id: document.id, field, offset, value: Array.isArray(value) ? value.slice(offset, offset + INDEX_CHUNK_SIZE) : value.slice(offset, offset + INDEX_CHUNK_SIZE).buffer });
+        for (let offset = 0; offset < value.length; offset += INDEX_CHUNK_SIZE) {
+          const part = Array.isArray(value) ? value.slice(offset, offset + INDEX_CHUNK_SIZE) : value.slice(offset, offset + INDEX_CHUNK_SIZE).buffer;
+          await writeChunk(database, { key: `${document.id}:${field}:${offset}`, id: document.id, field, offset, value: part });
+        }
       }
-      transaction.objectStore(DOCUMENT_STORE).put({ id: document.id, version: document.version, rootId: document.rootId, metadata: document.metadata, createdAt: document.createdAt, updatedAt: document.updatedAt, chunkedIndex: true, nodeCount: index.nodeCount });
-    } else transaction.objectStore(DOCUMENT_STORE).put({ id: document.id, version: document.version, rootId: document.rootId, metadata: document.metadata, createdAt: document.createdAt, updatedAt: document.updatedAt, compactIndex: index });
-    transaction.objectStore(SUMMARY_STORE).put(summary);
-    await transactionDone(transaction); return summary;
+      const transaction = database.transaction([DOCUMENT_STORE, SUMMARY_STORE], "readwrite");
+      transaction.objectStore(DOCUMENT_STORE).put({ id: document.id, version: document.version, rootId: document.rootId, metadata: document.metadata, createdAt: document.createdAt, updatedAt: document.updatedAt, chunkedIndex: true, nodeCount: index.nodeCount, idPrefix: index.idPrefix });
+      transaction.objectStore(SUMMARY_STORE).put(summary);
+      await transactionDone(transaction);
+    } else {
+      const transaction = database.transaction([DOCUMENT_STORE, SUMMARY_STORE], "readwrite");
+      transaction.objectStore(DOCUMENT_STORE).put({ id: document.id, version: document.version, rootId: document.rootId, metadata: document.metadata, createdAt: document.createdAt, updatedAt: document.updatedAt, compactIndex: index });
+      transaction.objectStore(SUMMARY_STORE).put(summary);
+      await transactionDone(transaction);
+    }
+    return summary;
   } finally { database.close(); }
 }
 

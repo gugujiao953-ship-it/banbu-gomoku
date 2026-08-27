@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { addMove, addMoveAs, boardAt, createDocument, deleteVariation, depthOf, emptyBoard, insertMove, nextPlayerAt, parseCoordinate, preferredNext, replaceMove, setLabelMark } from "./game";
 import { analyzeCandidates } from "./analysis";
-import { exportSgf, importRecordFile } from "./formats";
+import { exportPos, exportSgf, importRecordFile, importRenLibLegacy } from "./formats";
+import { importLegacyDpDatabase } from "./legacy-dp";
 import { findPositionMatches, positionKey } from "./position-search";
 import { isWinningMove, searchVcf, verifyVcfProof } from "./vcf";
 import { createPuzzleDocument, importKaibaoPuzzleJson } from "./puzzles";
 import { assembleCompactIndex, documentFingerprint } from "./large-storage";
-import { buildCompactRenLibIndex, compactBranchCount, compactChildWindow, compactDiagnostics, compactFirstBranchNodeId, compactIndexBytes, compactIndexOf, compactNodeCount, compactSearch, createLazyDocument } from "./compact-index";
-import { renLibDisplayMark } from "./renlib-display";
+import { buildCompactRenLibIndex, compactBranchCount, compactChildWindow, compactDiagnostics, compactFirstBranchNodeId, compactIndexBytes, compactIndexOf, compactNodeCount, compactNodeIndex, compactSearch, createLazyDocument } from "./compact-index";
+import { formatRenLibWebLabel, renLibDisplayMark } from "./renlib-display";
 import { applyDraftToDocument, buildDraftOverlay, emptyDraft, hasDraft, overlayNode, overlayPreferredChild, projectedDocument, pushDraft, redoDraft, undoDraft } from "./draft-operations";
 import { documentSignature } from "./storage";
 
@@ -100,7 +101,7 @@ describe("record formats", () => {
   it("imports LZ4 DP/DB records as a merged variation tree", async () => {
     const payload = new TextEncoder().encode("@BTXT@header\n88天元\n89\n@BTXT@header\n88\n99分支\n@BTXT@header\nAA孤立\n");
     for (const [extension, compressed] of [["db", false], ["dp", true]] as const) {
-      const imported = await importRecordFile(dpFrame(payload, extension, compressed));
+      const imported = await importLegacyDpDatabase(dpFrame(payload, extension, compressed), `fixture.${extension}`);
       expect(imported.format).toBe("DP/DB LZ4 棋谱数据库");
       const root = imported.document.nodes[imported.document.rootId];
       expect(root.children).toHaveLength(1);
@@ -118,9 +119,9 @@ describe("record formats", () => {
   });
 
   it("rejects truncated or non-LZ4 DP databases", async () => {
-    await expect(importRecordFile(new File([new Uint8Array([1, 2, 3])], "broken.db"))).rejects.toThrow("不是受支持的 LZ4");
+    await expect(importRecordFile(new File([new Uint8Array([1, 2, 3])], "broken.db"))).rejects.toThrow("动态局面查询会话");
     const valid = new Uint8Array(await dpFrame(new TextEncoder().encode("@BTXT@header\n88\n99\n")).arrayBuffer());
-    await expect(importRecordFile(new File([valid.subarray(0, valid.length - 4)], "truncated.dp"))).rejects.toThrow("结束标记");
+    await expect(importLegacyDpDatabase(new File([valid.subarray(0, valid.length - 4)], "truncated.dp"), "truncated.dp")).rejects.toThrow("结束标记");
   });
 
   it("round-trips SGF moves, comments and branches", async () => {
@@ -140,6 +141,14 @@ describe("record formats", () => {
     expect(imported.document.nodes[imported.document.rootId].children).toHaveLength(1);
     const importedFirst = imported.document.nodes[imported.document.rootId].children[0];
     expect(imported.document.nodes[importedFirst].children).toHaveLength(2);
+  });
+
+  it("exports the preferred main line as explicitly lossy POS text", () => {
+    let document = createDocument("坐标测试");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 }); document = first.document;
+    const main = addMove(document, first.nodeId, { row: 7, col: 8 }); document = main.document;
+    document.nodes[first.nodeId].preferredChildId = main.nodeId;
+    expect(exportPos(document)).toBe("H8 I8\n");
   });
 
   it("imports compact POS notation", async () => {
@@ -346,7 +355,7 @@ describe("record formats", () => {
     ]);
     const bytes = new Uint8Array(header.length + body.length);
     bytes.set(header); bytes.set(body, header.length);
-    const imported = await importRecordFile(new File([bytes], "opening.lib"));
+    const imported = await importRenLibLegacy(new File([bytes], "opening.lib"), "opening.lib");
     const moves = Object.values(imported.document.nodes).filter((node) => node.move);
     expect(moves).toHaveLength(3);
     const rootChildren = imported.document.nodes[imported.document.rootId].children;
@@ -354,6 +363,12 @@ describe("record formats", () => {
     expect(imported.warnings.some((warning) => warning.includes("注释"))).toBe(true);
     const commented = Object.values(imported.document.nodes).find((node) => node.comment);
     expect(commented?.comment).toBe("AB");
+    expect(commented?.renLibAnnotations).toEqual([{ kind: "multi-line-comment", text: "AB", encoding: "GB18030" }]);
+  });
+
+  it("keeps production LIB files on the web-core session boundary", async () => {
+    const header = new Uint8Array([255, 82, 101, 110, 76, 105, 98, 255]);
+    await expect(importRecordFile(new File([header], "opening.lib"))).rejects.toThrow("网页 RenLib 动态查询会话");
   });
 
   it("keeps RenLib extension text and node flags instead of flattening them", async () => {
@@ -363,12 +378,22 @@ describe("record formats", () => {
       120, 0x15, 0x00, 0x01, // H8 + extension + mark + start + board-text
       84, 0, 0, 0, // board text "T"
     ]);
-    const imported = await importRecordFile(new File([bytes], "flags.lib"));
+    const imported = await importRenLibLegacy(new File([bytes], "flags.lib"), "flags.lib");
     const move = Object.values(imported.document.nodes).find((node) => node.move);
     expect(move?.move).toMatchObject({ row: 7, col: 7, player: "black" });
     expect(move?.boardText).toBe("T");
     expect(move?.renLibMark).toBe(true);
     expect(move?.startPosition).toBe(true);
+    expect(move?.renLibAnnotations?.map((item) => item.kind)).toEqual(["board-text", "mark"]);
+    expect(move?.renLibFlags).toBe(0x15);
+    expect(move?.renLibExtendedFlags).toBe(0x100);
+  });
+
+  it("only applies the webpage reader's W/L/v/m label formatting", () => {
+    expect(formatRenLibWebLabel("W12", 3)).toBe(" W9");
+    expect(formatRenLibWebLabel("v200", 1)).toBe("26%");
+    expect(formatRenLibWebLabel("斜", 4)).toBe("斜");
+    expect(formatRenLibWebLabel("中文长标签", 4)).toBe("中文长标签");
   });
 
   it("builds a compact parent/child/sibling index for large-library storage", () => {
@@ -394,6 +419,17 @@ describe("record formats", () => {
     expect(compactNodeCount({ ...lazy, metadata: { ...lazy.metadata, title: "renamed" } })).toBe(4);
     expect(compactIndexOf({ ...lazy, updatedAt: new Date().toISOString() })).toBe(index);
     expect(Object.keys(lazy.nodes)).toHaveLength(4);
+  });
+
+  it("resolves compact node IDs after lazy loading", () => {
+    let document = createDocument("compact lookup");
+    document = addMove(document, document.rootId, { row: 7, col: 7 }).document;
+    const index = buildCompactRenLibIndex(document);
+    const { nodes: _nodes, ...base } = document;
+    const lazy = createLazyDocument(base, index);
+    expect(compactNodeIndex(lazy, document.rootId)).toBe(0);
+    expect(compactNodeIndex(lazy, document.nodes[document.rootId].children[0])).toBe(1);
+    expect(compactNodeIndex(lazy, "missing-node")).toBeUndefined();
   });
 
   it("round-trips compact marks, anchors, and evaluations", () => {

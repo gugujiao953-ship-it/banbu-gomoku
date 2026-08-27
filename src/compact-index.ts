@@ -1,30 +1,82 @@
-import type { BoardMark, CompactRenLibDraft, CompactRenLibIndex, GameDocument, NodeEvaluation, Player, RecordNode } from "./types";
+import type { BoardMark, CompactRenLibDraft, CompactRenLibIndex, GameDocument, NativeAnnotation, NodeEvaluation, Player, RecordNode } from "./types";
 
-/** Parser-owned columnar storage. Appending grows plain arrays; no per-node objects,
- * children arrays, or node lookup Map are created. The text pool is intentionally
- * interned with a Map because comments are often repeated. */
+type NumericArray = Int8Array | Uint8Array | Uint16Array | Int32Array | Uint32Array;
+type NumericArrayConstructor<T extends NumericArray> = { new(length: number): T };
+const BUILDER_PAGE_SIZE = 65536;
+
+/** Fixed typed pages avoid the several-times-larger boxed-number arrays that
+ * otherwise dominate parser memory before the final compact index is built. */
+class PagedNumberColumn<T extends NumericArray> {
+  private pages: T[] = [];
+  length = 0;
+  constructor(private readonly Type: NumericArrayConstructor<T>) {}
+  private page(index: number) {
+    const pageIndex = Math.floor(index / BUILDER_PAGE_SIZE);
+    while (this.pages.length <= pageIndex) this.pages.push(new this.Type(BUILDER_PAGE_SIZE));
+    return this.pages[pageIndex];
+  }
+  get(index: number) { return index < 0 || index >= this.length ? 0 : this.pages[Math.floor(index / BUILDER_PAGE_SIZE)][index % BUILDER_PAGE_SIZE]; }
+  set(index: number, value: number) { this.page(index)[index % BUILDER_PAGE_SIZE] = value; if (index >= this.length) this.length = index + 1; }
+  push(...values: number[]) { const start = this.length; values.forEach((value) => this.set(this.length, value)); return start; }
+  add(index: number, value: number) { const next = this.get(index) + value; this.set(index, next); return next; }
+  drain() {
+    return this.toTyped(true);
+  }
+  snapshot() {
+    return this.toTyped(false);
+  }
+  private toTyped(clear: boolean) {
+    const result = new this.Type(this.length);
+    this.pages.forEach((page, pageIndex) => result.set(page.subarray(0, Math.min(BUILDER_PAGE_SIZE, this.length - pageIndex * BUILDER_PAGE_SIZE)), pageIndex * BUILDER_PAGE_SIZE));
+    if (clear) this.pages = [];
+    return result;
+  }
+}
+
+/** Parser-owned columnar storage. Nodes are appended to typed pages and text is
+ * interned; no per-node objects, child arrays, or all-node string IDs exist. */
 export class RenLibArrayBuilder {
-  readonly ids: number[] = [];
-  readonly parent: number[] = []; readonly firstChild: number[] = [];
-  readonly nextSibling: number[] = []; readonly lastChild: number[] = []; readonly childCount: number[] = [];
-  readonly preferredChild: number[] = []; readonly moveCode: number[] = [];
-  readonly anchorCode: number[] = []; readonly state: number[] = [];
-  readonly textRefs: number[] = []; readonly evaluation: number[] = [];
-  readonly evaluationLevel: number[] = []; readonly markRefs: number[] = [];
+  private readonly parent = new PagedNumberColumn(Int32Array); private readonly firstChild = new PagedNumberColumn(Int32Array);
+  private readonly nextSibling = new PagedNumberColumn(Int32Array); private readonly lastChild = new PagedNumberColumn(Int32Array);
+  private readonly childCount = new PagedNumberColumn(Int32Array); private readonly preferredChild = new PagedNumberColumn(Int32Array);
+  private readonly moveCode = new PagedNumberColumn(Uint16Array); private readonly anchorCode = new PagedNumberColumn(Uint16Array);
+  private readonly state = new PagedNumberColumn(Uint8Array); private readonly nextTurn = new PagedNumberColumn(Uint8Array);
+  private readonly depth = new PagedNumberColumn(Uint16Array); private readonly textRefs = new PagedNumberColumn(Int32Array);
+  private readonly evaluation = new PagedNumberColumn(Int8Array); private readonly evaluationLevel = new PagedNumberColumn(Uint8Array);
+  private readonly markRefs = new PagedNumberColumn(Int32Array); private readonly annotationRefs = new PagedNumberColumn(Int32Array);
+  private readonly renLibFlags = new PagedNumberColumn(Uint8Array); private readonly renLibExtendedFlags = new PagedNumberColumn(Uint32Array);
+  readonly annotations: NativeAnnotation[] = [];
   readonly texts: string[] = []; readonly marks: BoardMark[] = [];
   private readonly textIndex = new Map<string, number>();
   constructor(_rootId: string) { this.addNode(-1, 0, 0); }
+  get size() { return this.parent.length; }
   addNode(parent: number, move: number, state: number, anchor = 0) {
-    const i = this.ids.length; this.ids.push(i); this.parent.push(parent); this.firstChild.push(-1);
+    const i = this.size; this.parent.push(parent); this.firstChild.push(-1);
     this.nextSibling.push(-1); this.lastChild.push(-1); this.childCount.push(0); this.preferredChild.push(-1);
     this.moveCode.push(move); this.anchorCode.push(anchor); this.state.push(state);
-    this.textRefs.push(-1, -1); this.evaluation.push(0); this.evaluationLevel.push(0); this.markRefs.push(-1, 0); return i;
+    this.textRefs.push(-1, -1); this.evaluation.push(0); this.evaluationLevel.push(0); this.markRefs.push(-1, 0);
+    this.annotationRefs.push(-1, 0); this.renLibFlags.push(0); this.renLibExtendedFlags.push(0);
+    const parentTurn = parent >= 0 ? this.nextTurn.get(parent) : 0;
+    this.nextTurn.push(state & 1 ? (state & 2 ? 0 : 1) : parentTurn);
+    this.depth.push(parent >= 0 ? this.depth.get(parent) + 1 : 0);
+    return i;
   }
   intern(value?: string) { if (!value) return -1; const old = this.textIndex.get(value); if (old !== undefined) return old; const i = this.texts.length; this.texts.push(value); this.textIndex.set(value, i); return i; }
-  setText(i: number, comment?: string, boardText?: string) { this.textRefs[i * 2] = this.intern(comment); this.textRefs[i * 2 + 1] = this.intern(boardText); }
-  setMarks(i: number, marks: BoardMark[]) { if (marks.length) { this.markRefs[i * 2] = this.marks.length; this.markRefs[i * 2 + 1] = marks.length; this.marks.push(...marks); } }
-  toIndex(rootId: string, idPrefix = "node"): CompactRenLibIndex { const n = this.ids.length; return { version: 2, nodeCount: n, rootId, ids: this.ids.map((i) => i === 0 ? rootId : `${idPrefix}-${i.toString(36)}`), parent: Int32Array.from(this.parent), firstChild: Int32Array.from(this.firstChild), nextSibling: Int32Array.from(this.nextSibling), childCount: Int32Array.from(this.childCount), preferredChild: Int32Array.from(this.preferredChild), moveCode: Uint16Array.from(this.moveCode), anchorCode: Uint16Array.from(this.anchorCode), state: Uint8Array.from(this.state), evaluation: Int8Array.from(this.evaluation), evaluationLevel: Uint8Array.from(this.evaluationLevel), markRefs: Int32Array.from(this.markRefs), marks: this.marks, textRefs: Int32Array.from(this.textRefs), texts: this.texts }; }
+  appendChild(parent: number, child: number) { const previous = this.lastChild.get(parent); if (previous < 0) this.firstChild.set(parent, child); else this.nextSibling.set(previous, child); this.lastChild.set(parent, child); const count = this.childCount.add(parent, 1); if (this.preferredChild.get(parent) < 0) this.preferredChild.set(parent, child); return count; }
+  nextPlayer(index: number): Player { return this.nextTurn.get(index) ? "white" : "black"; }
+  depthAt(index: number) { return this.depth.get(index); }
+  parentAt(index: number) { return this.parent.get(index); }
+  setText(i: number, comment?: string, boardText?: string) { this.textRefs.set(i * 2, this.intern(comment)); this.textRefs.set(i * 2 + 1, this.intern(boardText)); }
+  setBoardText(i: number, boardText?: string) { this.textRefs.set(i * 2 + 1, this.intern(boardText)); }
+  addState(i: number, flags: number) { this.state.set(i, this.state.get(i) | flags); }
+  addAnnotation(i: number, annotation: NativeAnnotation) { if (this.annotationRefs.get(i * 2) < 0) this.annotationRefs.set(i * 2, this.annotations.length); this.annotations.push(annotation); this.annotationRefs.add(i * 2 + 1, 1); }
+  setRenLibFlags(i: number, flags: number, extendedFlags = 0) { this.renLibFlags.set(i, flags); this.renLibExtendedFlags.set(i, extendedFlags); }
+  setMarks(i: number, marks: BoardMark[]) { if (marks.length) { this.markRefs.set(i * 2, this.marks.length); this.markRefs.set(i * 2 + 1, marks.length); this.marks.push(...marks); } }
+  toIndex(rootId: string, idPrefix = "node", release = true): CompactRenLibIndex { const take = <T extends NumericArray>(column: PagedNumberColumn<T>) => release ? column.drain() : column.snapshot(); const n = this.size; return { version: 2, nodeCount: n, rootId, idPrefix, ids: [rootId], parent: take(this.parent), firstChild: take(this.firstChild), nextSibling: take(this.nextSibling), childCount: take(this.childCount), preferredChild: take(this.preferredChild), moveCode: take(this.moveCode), anchorCode: take(this.anchorCode), state: take(this.state), evaluation: take(this.evaluation), evaluationLevel: take(this.evaluationLevel), markRefs: take(this.markRefs), marks: this.marks, textRefs: take(this.textRefs), texts: this.texts, annotationRefs: take(this.annotationRefs), annotations: this.annotations, renLibFlags: take(this.renLibFlags), renLibExtendedFlags: take(this.renLibExtendedFlags) }; }
 }
+
+export const compactNodeId = (index: Pick<CompactRenLibIndex, "ids" | "idPrefix" | "rootId">, nodeIndex: number) =>
+  nodeIndex === 0 ? index.rootId : index.ids[nodeIndex] || (index.idPrefix ? `${index.idPrefix}-${nodeIndex.toString(36)}` : "");
 
 const moveCode = (node: RecordNode) => node.move ? (node.move.row * 16 + node.move.col + 1) : 0;
 const decodeMoveCode = (code: number) => code ? { row: Math.floor((code - 1) / 16), col: (code - 1) % 16 } : undefined;
@@ -40,11 +92,14 @@ export const buildCompactRenLibIndexFromDraft = (draft: CompactRenLibDraft): Com
   const moves = new Uint16Array(count), anchors = new Uint16Array(count), state = new Uint8Array(count);
   const evaluation = new Int8Array(count), evaluationLevel = new Uint8Array(count);
   const textRefs = new Int32Array(count * 2).fill(-1), markRefs = new Int32Array(count * 2).fill(-1);
+  const annotationRefs = new Int32Array(count * 2), renLibFlags = new Uint8Array(count), renLibExtendedFlags = new Uint32Array(count);
+  for (let i = 0; i < count; i += 1) annotationRefs[i * 2] = -1;
   const setupRefs = new Int32Array(count).fill(-1); const setups: NonNullable<CompactRenLibIndex["setups"]> = [];
   parent.fill(-1); firstChild.fill(-1); nextSibling.fill(-1); preferredChild.fill(-1);
   const texts = draft.texts ? [...draft.texts] : [], textIndex = new Map(texts.map((text, i) => [text, i]));
   const intern = (value?: string) => { if (!value) return -1; const found = textIndex.get(value); if (found !== undefined) return found; const i = texts.length; texts.push(value); textIndex.set(value, i); return i; };
   const marks: CompactRenLibIndex["marks"] = [];
+  const annotations: NativeAnnotation[] = [];
   draft.nodes.forEach((node, i) => {
     parent[i] = node.parent; firstChild[i] = node.firstChild; nextSibling[i] = node.nextSibling; childCount[i] = node.childCount; preferredChild[i] = node.preferredChild;
     if (node.move) { moves[i] = node.move.row * 16 + node.move.col + 1; state[i] = 1 | (node.move.player === "white" ? 2 : 0); }
@@ -52,13 +107,15 @@ export const buildCompactRenLibIndexFromDraft = (draft: CompactRenLibDraft): Com
     if (node.setup) { setupRefs[i] = setups.length; setups.push(node.setup); }
     if (node.anchor) anchors[i] = node.anchor.row * 16 + node.anchor.col + 1;
     if (node.renLibMark) state[i] |= 4; if (node.startPosition) state[i] |= 8;
+    renLibFlags[i] = (node.renLibFlags || 0) & 0xff; renLibExtendedFlags[i] = node.renLibExtendedFlags || 0;
     evaluation[i] = evaluationValues[node.evaluation || ""] || 0; evaluationLevel[i] = node.evaluationLevel || 0;
     textRefs[i * 2] = intern(node.comment); textRefs[i * 2 + 1] = intern(node.boardText);
+    if (node.renLibAnnotations?.length) { annotationRefs[i * 2] = annotations.length; annotationRefs[i * 2 + 1] = node.renLibAnnotations.length; annotations.push(...node.renLibAnnotations); }
     if (node.marks.length) { markRefs[i * 2] = marks.length; markRefs[i * 2 + 1] = node.marks.length; marks.push(...node.marks); }
   });
-  return { version: 2, nodeCount: count, rootId: draft.rootId, ids, parent, firstChild, nextSibling, childCount, preferredChild, moveCode: moves, anchorCode: anchors, state, evaluation, evaluationLevel, markRefs, marks, textRefs, texts, setupRefs, setups };
+  return { version: 2, nodeCount: count, rootId: draft.rootId, ids, parent, firstChild, nextSibling, childCount, preferredChild, moveCode: moves, anchorCode: anchors, state, evaluation, evaluationLevel, markRefs, marks, textRefs, texts, setupRefs, setups, annotationRefs, annotations, renLibFlags, renLibExtendedFlags };
 };
-interface LazyDocumentInfo { index: CompactRenLibIndex; branchCount: number }
+interface LazyDocumentInfo { index: CompactRenLibIndex; branchCount: number; indexOfId: (id: string) => number | undefined }
 const lazyDocumentInfo = new WeakMap<object, LazyDocumentInfo>();
 
 /** Convert the object tree once, then let the large-library store persist a
@@ -85,10 +142,15 @@ export const buildCompactRenLibIndex = (document: GameDocument): CompactRenLibIn
   const evaluationLevel = new Uint8Array(ids.length);
   const textRefs = new Int32Array(ids.length * 2).fill(-1);
   const markRefs = new Int32Array(ids.length * 2).fill(-1);
+  const annotationRefs = new Int32Array(ids.length * 2);
+  for (let i = 0; i < ids.length; i += 1) annotationRefs[i * 2] = -1;
+  const renLibFlags = new Uint8Array(ids.length);
+  const renLibExtendedFlags = new Uint32Array(ids.length);
   const setupRefs = new Int32Array(ids.length).fill(-1);
   const setups: NonNullable<CompactRenLibIndex["setups"]> = [];
   const texts: string[] = [];
   const marks: RecordNode["marks"] = [];
+  const annotations: NativeAnnotation[] = [];
   const textIndex = new Map<string, number>();
   const intern = (value: string | undefined) => {
     if (!value) return -1;
@@ -106,6 +168,8 @@ export const buildCompactRenLibIndex = (document: GameDocument): CompactRenLibIn
     if (node.setup) { setupRefs[nodeIndex] = setups.length; setups.push(structuredClone(node.setup)); }
     if (node.renLibMark) state[nodeIndex] |= 4;
     if (node.startPosition) state[nodeIndex] |= 8;
+    renLibFlags[nodeIndex] = (node.renLibFlags || 0) & 0xff;
+    renLibExtendedFlags[nodeIndex] = node.renLibExtendedFlags || 0;
     const evaluationValues: Record<string, number> = { good: 1, bad: 2, doubtful: 3, interesting: 4, forced: 5, only: 6, study: 7 };
     evaluation[nodeIndex] = evaluationValues[node.evaluation || ""] || 0;
     evaluationLevel[nodeIndex] = node.evaluationLevel || 0;
@@ -116,6 +180,7 @@ export const buildCompactRenLibIndex = (document: GameDocument): CompactRenLibIn
     }
     textRefs[nodeIndex * 2] = intern(node.comment);
     textRefs[nodeIndex * 2 + 1] = intern(node.boardText);
+    if (node.renLibAnnotations?.length) { annotationRefs[nodeIndex * 2] = annotations.length; annotationRefs[nodeIndex * 2 + 1] = node.renLibAnnotations.length; annotations.push(...node.renLibAnnotations); }
     const children = node.children.map((childId) => indexById.get(childId)).filter((value): value is number => value !== undefined);
     if (children.length) {
       childCount[nodeIndex] = children.length;
@@ -128,10 +193,10 @@ export const buildCompactRenLibIndex = (document: GameDocument): CompactRenLibIn
       });
     }
   });
-  return { version: 2, nodeCount: ids.length, rootId: document.rootId, ids, parent, firstChild, nextSibling, childCount, preferredChild, moveCode: moves, anchorCode, state, evaluation, evaluationLevel, markRefs, marks, textRefs, texts, setupRefs, setups };
+  return { version: 2, nodeCount: ids.length, rootId: document.rootId, ids, parent, firstChild, nextSibling, childCount, preferredChild, moveCode: moves, anchorCode, state, evaluation, evaluationLevel, markRefs, marks, textRefs, texts, setupRefs, setups, annotationRefs, annotations, renLibFlags, renLibExtendedFlags };
 };
 
-export const compactIndexBytes = (index: CompactRenLibIndex) => index.parent.byteLength + index.firstChild.byteLength + index.nextSibling.byteLength + (index.preferredChild?.byteLength || 0) + index.moveCode.byteLength + index.anchorCode.byteLength + index.state.byteLength + index.evaluation.byteLength + index.evaluationLevel.byteLength + index.markRefs.byteLength + index.textRefs.byteLength + (index.setupRefs?.byteLength || 0);
+export const compactIndexBytes = (index: CompactRenLibIndex) => index.parent.byteLength + index.firstChild.byteLength + index.nextSibling.byteLength + (index.preferredChild?.byteLength || 0) + index.moveCode.byteLength + index.anchorCode.byteLength + index.state.byteLength + index.evaluation.byteLength + index.evaluationLevel.byteLength + index.markRefs.byteLength + index.textRefs.byteLength + (index.setupRefs?.byteLength || 0) + (index.annotationRefs?.byteLength || 0) + (index.renLibFlags?.byteLength || 0) + (index.renLibExtendedFlags?.byteLength || 0);
 
 const textAt = (index: CompactRenLibIndex, nodeIndex: number, offset: 0 | 1) => {
   const textIndex = index.textRefs[nodeIndex * 2 + offset];
@@ -142,13 +207,16 @@ const textAt = (index: CompactRenLibIndex, nodeIndex: number, offset: 0 | 1) => 
  * still expose the complete tree for existing algorithms, but direct lookup
  * (the normal navigation path) does not allocate the whole library. */
 export const createLazyDocument = (base: Omit<GameDocument, "nodes">, index: CompactRenLibIndex): GameDocument => {
-  const numericPrefix = index.ids.length > 100000 ? (index.ids[1] || "").replace(/-[^-]+$/, "") : "";
+  const numericPrefix = index.idPrefix || (index.ids.length > 100000 ? (index.ids[1] || "").replace(/-[^-]+$/, "") : "");
+  const directIndex = new Map<string, number>();
+  index.ids.forEach((id, nodeIndex) => { if (id) directIndex.set(id, nodeIndex); });
   const indexOfId = (id: string) => {
+    if (id === index.rootId) return 0;
     if (numericPrefix && id.startsWith(`${numericPrefix}-`)) {
       const value = Number.parseInt(id.slice(numericPrefix.length + 1), 36);
       return Number.isInteger(value) && value >= 0 && value < index.nodeCount ? value : undefined;
     }
-    return index.ids.indexOf(id) >= 0 ? index.ids.indexOf(id) : undefined;
+    return directIndex.get(id);
   };
   const cache = new Map<string, RecordNode>();
   const childCountCache = new Map<number, number>();
@@ -157,7 +225,7 @@ export const createLazyDocument = (base: Omit<GameDocument, "nodes">, index: Com
     let current = 0;
     const seen = new Set<number>();
     while (childIndex >= 0 && childIndex < index.nodeCount && !seen.has(childIndex)) {
-      if (current === wanted) return index.ids[childIndex];
+      if (current === wanted) return compactNodeId(index, childIndex);
       seen.add(childIndex); current += 1;
       childIndex = index.nextSibling[childIndex] ?? -1;
     }
@@ -207,7 +275,7 @@ export const createLazyDocument = (base: Omit<GameDocument, "nodes">, index: Com
     }) as string[];
   };
   const materialize = (nodeIndex: number): RecordNode => {
-    const id = index.ids[nodeIndex];
+    const id = compactNodeId(index, nodeIndex);
     const existing = cache.get(id);
     if (existing) return existing;
     const code = index.moveCode[nodeIndex] || 0;
@@ -218,7 +286,7 @@ export const createLazyDocument = (base: Omit<GameDocument, "nodes">, index: Com
     const preferredIndex = index.preferredChild?.[nodeIndex] ?? index.firstChild[nodeIndex] ?? -1;
     const node: RecordNode = {
       id,
-      parentId: parentIndex >= 0 ? index.ids[parentIndex] : null,
+      parentId: parentIndex >= 0 ? compactNodeId(index, parentIndex) : null,
       children: childrenAt(nodeIndex),
       move: hasMove && point ? { ...point, player: state & 2 ? "white" : "black" } : null,
       passPlayer: state & 16 ? "black" : state & 32 ? "white" : undefined,
@@ -227,7 +295,10 @@ export const createLazyDocument = (base: Omit<GameDocument, "nodes">, index: Com
       comment: textAt(index, nodeIndex, 0),
       boardText: textAt(index, nodeIndex, 1) || undefined,
       marks: index.markRefs && index.marks ? index.marks.slice(index.markRefs[nodeIndex * 2] < 0 ? 0 : index.markRefs[nodeIndex * 2], (index.markRefs[nodeIndex * 2] < 0 ? 0 : index.markRefs[nodeIndex * 2]) + (index.markRefs[nodeIndex * 2 + 1] || 0)).map((mark) => ({ ...mark })) : [],
-      preferredChildId: preferredIndex >= 0 ? index.ids[preferredIndex] : undefined,
+      renLibAnnotations: index.annotationRefs && index.annotations && index.annotationRefs[nodeIndex * 2] >= 0 ? index.annotations.slice(index.annotationRefs[nodeIndex * 2], index.annotationRefs[nodeIndex * 2] + (index.annotationRefs[nodeIndex * 2 + 1] || 0)).map((annotation) => ({ ...annotation, rawBytes: annotation.rawBytes ? new Uint8Array(annotation.rawBytes) : undefined })) : undefined,
+      renLibFlags: index.renLibFlags?.[nodeIndex] || undefined,
+      renLibExtendedFlags: index.renLibExtendedFlags?.[nodeIndex] || undefined,
+      preferredChildId: preferredIndex >= 0 ? compactNodeId(index, preferredIndex) : undefined,
       evaluation: (["", "good", "bad", "doubtful", "interesting", "forced", "only", "study"] as const)[index.evaluation?.[nodeIndex] || 0] || undefined,
       evaluationLevel: index.evaluationLevel?.[nodeIndex] as 1 | 2 | undefined,
       renLibMark: Boolean(state & 4),
@@ -243,7 +314,7 @@ export const createLazyDocument = (base: Omit<GameDocument, "nodes">, index: Com
       return nodeIndex === undefined ? undefined : materialize(nodeIndex);
     },
     has: (_target, property: string | symbol) => typeof property === "string" && indexOfId(property) !== undefined,
-    ownKeys: () => index.nodeCount > 100000 ? [] : [...index.ids],
+    ownKeys: () => index.nodeCount > 100000 ? [] : Array.from({ length: index.nodeCount }, (_, nodeIndex) => compactNodeId(index, nodeIndex)),
     getOwnPropertyDescriptor: (_target, property: string | symbol): PropertyDescriptor | undefined => {
       if (typeof property !== "string") return undefined;
       const nodeIndex = indexOfId(property);
@@ -262,7 +333,7 @@ export const createLazyDocument = (base: Omit<GameDocument, "nodes">, index: Com
     if (childCount > 1) branchCount += 1;
   }
   const document = { ...base, nodes };
-  lazyDocumentInfo.set(nodes, { index, branchCount });
+  lazyDocumentInfo.set(nodes, { index, branchCount, indexOfId });
   return document;
 };
 
@@ -273,7 +344,7 @@ export const compactChildAt = (index: CompactRenLibIndex, nodeIndex: number, off
   let child = index.firstChild[nodeIndex] ?? -1;
   const seen = new Set<number>();
   for (let current = 0; child >= 0 && child < index.nodeCount && !seen.has(child); current += 1) {
-    if (current === offset) return index.ids[child];
+    if (current === offset) return compactNodeId(index, child);
     seen.add(child);
     child = index.nextSibling[child] ?? -1;
   }
@@ -283,8 +354,8 @@ export const compactIndexOf = (document: GameDocument) => lazyDocumentInfo.get(d
 export const compactNodeIndex = (document: GameDocument, id: string) => {
   const index = lazyDocumentInfo.get(document.nodes)?.index;
   if (!index) return undefined;
-  const nodeIndex = index.ids.indexOf(id);
-  return nodeIndex >= 0 ? nodeIndex : undefined;
+  const nodeIndex = lazyDocumentInfo.get(document.nodes)?.indexOfId(id);
+  return nodeIndex;
 };
 
 /** Register a fresh `nodes` proxy (e.g. a draft-overlay projection) with the
@@ -308,7 +379,7 @@ export const compactFirstBranchNodeId = (document: GameDocument) => {
       seen.add(child);
       child = index.nextSibling[child] ?? -1;
     }
-    if (count > 1) return index.ids[nodeIndex];
+    if (count > 1) return compactNodeId(index, nodeIndex);
   }
   return undefined;
 };
@@ -316,17 +387,17 @@ export const compactDiagnostics = (document: GameDocument) => {
   const info = lazyDocumentInfo.get(document.nodes);
   if (!info) return { hasCompact: false, nodeCount: null, branchCount: null, firstBranchId: null, firstBranchChildCount: null, rootFirstChild: null, rootChildCount: null };
   const { index, branchCount } = info;
-  const rootIndex = index.ids.indexOf(index.rootId);
+  const rootIndex = index.ids.length === index.nodeCount ? index.ids.indexOf(index.rootId) : 0;
   let rootFirstChild = rootIndex >= 0 ? index.firstChild[rootIndex] : -1;
   const rootChildIds: string[] = [];
   const seen = new Set<number>();
   while (rootFirstChild >= 0 && rootFirstChild < index.nodeCount && !seen.has(rootFirstChild) && rootChildIds.length < 2) {
-    rootChildIds.push(index.ids[rootFirstChild]);
+    rootChildIds.push(compactNodeId(index, rootFirstChild));
     seen.add(rootFirstChild);
     rootFirstChild = index.nextSibling[rootFirstChild] ?? -1;
   }
   const firstBranchId = compactFirstBranchNodeId(document) ?? null;
-  const firstBranchIndex = firstBranchId ? index.ids.indexOf(firstBranchId) : -1;
+  const firstBranchIndex = firstBranchId ? compactNodeIndex(document, firstBranchId) ?? -1 : -1;
   return { hasCompact: true, nodeCount: index.nodeCount, branchCount, firstBranchId, firstBranchChildCount: firstBranchIndex === undefined ? null : index.childCount?.[firstBranchIndex] ?? null, rootFirstChild: rootChildIds[0] || null, rootChildCount: index.childCount?.[rootIndex] ?? rootChildIds.length };
 };
 export const compactSearch = (document: GameDocument, query: string, limit = 20) => {
@@ -341,7 +412,7 @@ export const compactSearch = (document: GameDocument, query: string, limit = 20)
     const comment = index.textRefs[nodeIndex * 2] >= 0 ? index.texts[index.textRefs[nodeIndex * 2]] || "" : "";
     const boardText = index.textRefs[nodeIndex * 2 + 1] >= 0 ? index.texts[index.textRefs[nodeIndex * 2 + 1]] || "" : "";
     const evaluation = (["", "good", "bad", "doubtful", "interesting", "forced", "only", "study"] as const)[index.evaluation?.[nodeIndex] || 0] || "";
-    if ([coordinate, comment, boardText, evaluation, String(nodeIndex)].some((value) => value.toLowerCase().includes(needle))) results.push(index.ids[nodeIndex]);
+    if ([coordinate, comment, boardText, evaluation, String(nodeIndex)].some((value) => value.toLowerCase().includes(needle))) results.push(compactNodeId(index, nodeIndex));
   }
   return results;
 };
@@ -351,7 +422,7 @@ export const compactChildWindow = (index: CompactRenLibIndex, nodeIndex: number,
   let child = index.firstChild[nodeIndex] ?? -1;
   const seen = new Set<number>();
   for (let offset = 0; child >= 0 && child < index.nodeCount && !seen.has(child) && offset < end; offset += 1) {
-    if (offset >= start) result.push(index.ids[child]);
+    if (offset >= start) result.push(compactNodeId(index, child));
     seen.add(child);
     child = index.nextSibling[child] ?? -1;
   }

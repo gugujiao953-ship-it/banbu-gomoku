@@ -11,13 +11,15 @@ for (const file of files) {
   await page.addInitScript(() => {
     new PerformanceObserver((list) => list.getEntries().forEach((entry) => window.recordLongTask({ duration: entry.duration }))).observe({ type: "longtask", buffered: true });
   });
-  await page.goto(baseUrl);
+  await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
   const input = page.locator('input[type="file"]').first();
   const started = performance.now();
   await input.setInputFiles(file);
+  await page.waitForFunction(() => Boolean(window.__banbuImportDiagnostic) || Boolean(document.querySelector(".toast")), null, { timeout: 600000 });
   await page.waitForFunction(() => !document.querySelector(".import-progress"), null, { timeout: 600000 });
   const elapsed = performance.now() - started;
-  const metrics = await page.evaluate(() => ({ domNodes: document.querySelectorAll("*").length, title: document.querySelector(".workspace-current b")?.textContent || "" }));
+  const metrics = await page.evaluate(() => ({ domNodes: document.querySelectorAll("*").length, title: document.querySelector(".workspace-current b")?.textContent || "", diagnostic: window.__banbuImportDiagnostic || null, state: window.__banbuImportState || null, storage: window.__banbuStorageDiagnostic || null, toast: document.querySelector(".toast")?.textContent || "" }));
+  if (!metrics.diagnostic?.hasCompact && !metrics.storage?.ok) throw new Error(`文件未完成导入：${file}`);
   console.log(JSON.stringify({ file, importMs: +elapsed.toFixed(1), ...metrics, longTasks: longTasks.length, maxLongTaskMs: +Math.max(0, ...longTasks.map((item) => item.duration)).toFixed(1) }));
   await page.close();
 }
