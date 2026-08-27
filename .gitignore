@@ -19,6 +19,7 @@ android/local.properties
 android/.idea/
 *.jks
 *.keystore
+.gradle-user/
 
 # Local tooling
 .codex/
