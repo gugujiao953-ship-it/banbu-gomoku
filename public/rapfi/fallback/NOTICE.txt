@@ -1,0 +1,9 @@
+This directory contains the single-threaded fallback WebAssembly build of Rapfi,
+used by the local analysis worker. The sibling ../full directory contains the
+small engine loader for the optional full build; its NNUE data is fetched from
+Gomoku Calculator only when online and falls back here when offline.
+
+Upstream source: https://github.com/dhbloo/rapfi
+Browser integration reference: https://github.com/dhbloo/gomoku-calculator
+The upstream project is distributed under GPL-3.0. The corresponding source and
+license must remain available when this build is redistributed.

@@ -44,15 +44,42 @@ export const builtinPuzzleCollections: PuzzleCollection[] = [{
 
 const COLLECTIONS_KEY = "renju-note-puzzle-collections-v1";
 const PROGRESS_KEY = "renju-note-puzzle-progress-v1";
+const TITLE_OVERRIDES_KEY = "renju-note-puzzle-title-overrides-v1";
+interface PuzzleTitleOverrides { collections: Record<string, string>; puzzles: Record<string, string> }
 export type PuzzleProgress = Record<string, { solved: boolean; attempts: number; updatedAt: string }>;
 export const puzzleProgressKey = (collectionId: string, puzzleId: string) => `${collectionId}/${puzzleId}`;
+
+const loadTitleOverrides = (): PuzzleTitleOverrides => {
+  try {
+    const value = JSON.parse(localStorage.getItem(TITLE_OVERRIDES_KEY) || "null") as Partial<PuzzleTitleOverrides> | null;
+    return { collections: value?.collections || {}, puzzles: value?.puzzles || {} };
+  } catch { return { collections: {}, puzzles: {} }; }
+};
+
+const applyTitleOverrides = (collections: PuzzleCollection[]) => {
+  const overrides = loadTitleOverrides();
+  return collections.map((collection) => ({
+    ...collection,
+    title: overrides.collections[collection.id] || collection.title,
+    puzzles: collection.puzzles.map((puzzle) => ({ ...puzzle, title: overrides.puzzles[puzzleProgressKey(collection.id, puzzle.id)] || puzzle.title })),
+  }));
+};
+
+export function savePuzzleTitleOverride(collectionId: string, title: string, puzzleId?: string) {
+  const normalized = title.trim();
+  if (!normalized) throw new Error(puzzleId ? "题目名称不能为空" : "题集名称不能为空");
+  const overrides = loadTitleOverrides();
+  if (puzzleId) overrides.puzzles[puzzleProgressKey(collectionId, puzzleId)] = normalized;
+  else overrides.collections[collectionId] = normalized;
+  localStorage.setItem(TITLE_OVERRIDES_KEY, JSON.stringify(overrides));
+}
 
 export function loadPuzzleCollections(): PuzzleCollection[] {
   try {
     const raw = JSON.parse(localStorage.getItem(COLLECTIONS_KEY) || "[]") as unknown;
     const custom = Array.isArray(raw) ? raw.filter((item): item is PuzzleCollection => !!item && typeof item === "object" && Array.isArray((item as PuzzleCollection).puzzles)) : [];
-    return [...builtinPuzzleCollections, ...custom.filter((item) => !builtinPuzzleCollections.some((builtin) => builtin.id === item.id))];
-  } catch { return builtinPuzzleCollections; }
+    return applyTitleOverrides([...builtinPuzzleCollections, ...custom.filter((item) => !builtinPuzzleCollections.some((builtin) => builtin.id === item.id))]);
+  } catch { return applyTitleOverrides(builtinPuzzleCollections); }
 }
 
 export function savePuzzleCollections(collections: PuzzleCollection[]) {
@@ -126,7 +153,7 @@ export function importKaibaoPuzzleJson(text: string, title = "导入题集", met
 }
 
 export async function loadNativeKaibaoCollections(): Promise<PuzzleCollection[]> {
-  return Promise.all(NATIVE_KAIBAO_SETS.map(async (title, index) => {
+  const collections = await Promise.all(NATIVE_KAIBAO_SETS.map(async (title, index) => {
     const response = await fetch(`/puzzles/kaibao/${title}.json`);
     if (!response.ok) throw new Error(`题集加载失败：${title}`);
     return importKaibaoPuzzleJson(await response.text(), title, {
@@ -135,4 +162,5 @@ export async function loadNativeKaibaoCollections(): Promise<PuzzleCollection[]>
       license: "用户提供 APK · 本地使用",
     }).collection;
   }));
+  return applyTitleOverrides(collections);
 }

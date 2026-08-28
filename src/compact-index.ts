@@ -412,7 +412,16 @@ export const compactSearch = (document: GameDocument, query: string, limit = 20)
     const comment = index.textRefs[nodeIndex * 2] >= 0 ? index.texts[index.textRefs[nodeIndex * 2]] || "" : "";
     const boardText = index.textRefs[nodeIndex * 2 + 1] >= 0 ? index.texts[index.textRefs[nodeIndex * 2 + 1]] || "" : "";
     const evaluation = (["", "good", "bad", "doubtful", "interesting", "forced", "only", "study"] as const)[index.evaluation?.[nodeIndex] || 0] || "";
-    if ([coordinate, comment, boardText, evaluation, String(nodeIndex)].some((value) => value.toLowerCase().includes(needle))) results.push(compactNodeId(index, nodeIndex));
+    const markStart = index.markRefs?.[nodeIndex * 2] ?? -1;
+    const markCount = index.markRefs?.[nodeIndex * 2 + 1] ?? 0;
+    const marks = markStart >= 0 && markCount > 0 ? index.marks.slice(markStart, markStart + markCount) : [];
+    const boardSize = document.metadata.boardSize || 15;
+    const markText = marks.flatMap((mark) => [
+      `${String.fromCharCode(65 + mark.col)}${boardSize - mark.row}`,
+      mark.label || "",
+      mark.kind === "label" ? "文字标注" : mark.kind === "circle" ? "圆圈" : mark.kind === "triangle" ? "三角" : "叉号",
+    ]).join(" ");
+    if ([coordinate, comment, boardText, evaluation, markText, String(nodeIndex)].some((value) => value.toLowerCase().includes(needle))) results.push(compactNodeId(index, nodeIndex));
   }
   return results;
 };

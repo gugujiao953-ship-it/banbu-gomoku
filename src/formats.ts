@@ -903,10 +903,11 @@ export const exportPos = (document: GameDocument) => {
   }
   return result.length ? `${result.join(" ")}\n` : "";
 };
-export const downloadText = (content: string, filename: string, type: string) => {
+export const downloadFile = (content: BlobPart, filename: string, type: string) => {
   const url = URL.createObjectURL(new Blob([content], { type })); const anchor = window.document.createElement("a");
   anchor.href = url; anchor.download = filename; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
+export const downloadText = downloadFile;
 export const mainLineLength = (document: GameDocument) => {
   let count = 0, node = document.nodes[document.rootId];
   while (node?.children.length) { node = document.nodes[node.preferredChildId || node.children[0]]; if (node?.move || node?.passPlayer) count += 1; }

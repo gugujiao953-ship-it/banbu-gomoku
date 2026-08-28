@@ -51,7 +51,6 @@ export class DpViewSession {
   private projection(): { document: GameDocument; currentId: string } {
     if (!this.base) throw new Error("DP 数据库尚未打开");
     const depth = this.path.length;
-    const currentQuery = this.queries.get(depth) || { comment: "", marks: [], branches: [] };
     const nodes: Record<string, RecordNode> = {};
     for (let index = 0; index <= depth; index += 1) {
       const id = this.nodeId(index), query = this.queries.get(index);
@@ -65,13 +64,22 @@ export class DpViewSession {
         comment: query?.comment || "", marks: [], preferredChildId: nextId,
       };
     }
-    const currentId = this.nodeId(depth), current = nodes[currentId];
-    for (const [branchIndex, branch] of currentQuery.branches.entries()) {
-      const id = `${currentId}-branch-${branch.position.row.toString(16)}${branch.position.col.toString(16)}`;
-      nodes[id] = { id, parentId: currentId, children: [], move: { ...branch.position, player: depth % 2 ? "white" : "black" }, comment: "", marks: [], boardText: branch.label, renLibNativeLabel: true, renLibLabelColor: "#1d1c19" };
-      current.children.push(id);
-      if (branchIndex === 0) current.preferredChildId = id;
+    // Keep the cached alternatives at every loaded depth, not only at the
+    // current node. At a leaf the board intentionally shows its parent's
+    // siblings; pruning those nodes made the markers disappear immediately
+    // after selecting one and prevented direct sibling switching.
+    for (let index = 0; index <= depth; index += 1) {
+      const parentId = this.nodeId(index), parent = nodes[parentId];
+      const selected = index < depth ? this.path[index] : undefined;
+      for (const branch of this.queries.get(index)?.branches || []) {
+        if (selected && branch.position.row === selected.row && branch.position.col === selected.col) continue;
+        const id = `${parentId}-branch-${branch.position.row.toString(16)}${branch.position.col.toString(16)}`;
+        nodes[id] = { id, parentId, children: [], move: { ...branch.position, player: index % 2 ? "white" : "black" }, comment: "", marks: [], boardText: branch.label, renLibNativeLabel: true, renLibLabelColor: "#1d1c19" };
+        parent.children.push(id);
+        if (!parent.preferredChildId) parent.preferredChildId = id;
+      }
     }
+    const currentId = this.nodeId(depth);
     const document: DpDocument = { ...this.base, nodes, savedCurrentId: currentId };
     Object.defineProperty(document, DP_VIEW, { value: true });
     return { document, currentId };
@@ -79,6 +87,9 @@ export class DpViewSession {
 
   async open(file: File) {
     const base = createDocument(file.name.replace(/\.[^.]+$/, ""), 15);
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    base.metadata.sourceFormat = extension === "db" ? "db" : "dp";
+    base.metadata.sourceFileName = file.name;
     this.base = base; this.path = []; this.queries.clear();
     const reply = await this.send({ cmd: "open", file });
     this.queries.set(0, reply.query);
@@ -90,6 +101,11 @@ export class DpViewSession {
     const reply = await this.send({ cmd: "query", path: this.path });
     this.queries.set(this.path.length, reply.query);
     return this.projection();
+  }
+
+  async moveFromDepth(depth: number, position: Position) {
+    this.path = this.path.slice(0, Math.max(0, depth));
+    return this.move(position);
   }
 
   async back() {

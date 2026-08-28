@@ -46,25 +46,33 @@ export class RenLibWebViewSession {
       };
     }
 
+    // Preserve cached alternatives on every loaded position. This lets a
+    // user click a visible sibling directly after reaching a leaf instead of
+    // having to go back first, and keeps projection/navigation semantics in
+    // sync with ordinary SGF trees.
+    for (let index = 0; index <= depth; index += 1) {
+      const parentId = this.nodeId(index), parent = nodes[parentId];
+      const selected = index < depth ? this.path[index] : undefined;
+      for (const branch of this.queries.get(index)?.nodes || []) {
+        if (branch.idx === selected) continue;
+        const id = `${parentId}-branch-${branch.idx.toString(16)}`;
+        nodes[id] = {
+          id,
+          parentId,
+          children: [],
+          move: { ...idxToPosition(branch.idx), player: index % 2 ? "white" : "black" },
+          comment: "",
+          marks: [],
+          boardText: branch.txt || "",
+          renLibNativeLabel: true,
+          renLibLabelColor: branch.color,
+        };
+        parent.children.push(id);
+        if (!parent.preferredChildId) parent.preferredChildId = id;
+      }
+    }
+
     const currentId = this.nodeId(depth);
-    const current = nodes[currentId];
-    const branches = this.queries.get(depth)?.nodes || [];
-    branches.forEach((branch, branchIndex) => {
-      const id = `${currentId}-branch-${branch.idx.toString(16)}`;
-      nodes[id] = {
-        id,
-        parentId: currentId,
-        children: [],
-        move: { ...idxToPosition(branch.idx), player: depth % 2 ? "white" : "black" },
-        comment: "",
-        marks: [],
-        boardText: branch.txt || "",
-        renLibNativeLabel: true,
-        renLibLabelColor: branch.color,
-      };
-      current.children.push(id);
-      if (!current.preferredChildId && branchIndex === 0) current.preferredChildId = id;
-    });
 
     const projected: RenLibWebDocument = { ...this.base, nodes, savedCurrentId: currentId };
     Object.defineProperty(projected, RENLIB_WEB_VIEW, { value: true });
@@ -78,6 +86,8 @@ export class RenLibWebViewSession {
 
   async open(file: File) {
     this.base = createDocument(file.name.replace(/\.[^.]+$/, ""), 15);
+    this.base.metadata.sourceFormat = "lib";
+    this.base.metadata.sourceFileName = file.name;
     this.path = [];
     this.queries.clear();
     const opened = await this.core.open(file);
@@ -96,6 +106,11 @@ export class RenLibWebViewSession {
     this.path.push(idx);
     await this.query();
     return this.projection();
+  }
+
+  async moveFromDepth(depth: number, position: Position) {
+    this.path = this.path.slice(0, Math.max(0, depth));
+    return this.move(position);
   }
 
   async back() {

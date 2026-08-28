@@ -230,6 +230,41 @@ export const saveLargeDocument = async (document: GameDocument, prepared?: Large
   } finally { database.close(); }
 };
 
+/** Rename a large record without rewriting its potentially multi-million-node
+ * compact index or derived-operation payload. */
+export const renameLargeDocument = async (id: string, title: string): Promise<LargeDocumentSummary> => {
+  const normalized = title.trim();
+  if (!normalized) throw new Error("棋谱名称不能为空");
+  const database = await openDatabase();
+  const updatedAt = new Date().toISOString();
+  try {
+    const transaction = database.transaction([DOCUMENT_STORE, SUMMARY_STORE], "readwrite");
+    const documentStore = transaction.objectStore(DOCUMENT_STORE);
+    const summaryStore = transaction.objectStore(SUMMARY_STORE);
+    const documentRequest = documentStore.get(id);
+    const summaryRequest = summaryStore.get(id);
+    const renamed = await new Promise<LargeDocumentSummary>((resolve, reject) => {
+      let storedDocument: any, storedSummary: LargeDocumentSummary | undefined;
+      const apply = () => {
+        if (documentRequest.readyState !== "done" || summaryRequest.readyState !== "done") return;
+        storedDocument = documentRequest.result;
+        storedSummary = summaryRequest.result as LargeDocumentSummary | undefined;
+        if (!storedDocument || !storedSummary) { reject(new Error("大型棋谱不存在")); return; }
+        const metadata = { ...storedSummary.metadata, title: normalized };
+        const nextSummary = { ...storedSummary, metadata, updatedAt };
+        documentStore.put({ ...storedDocument, metadata: { ...storedDocument.metadata, title: normalized }, updatedAt });
+        summaryStore.put(nextSummary);
+        resolve(nextSummary);
+      };
+      documentRequest.onsuccess = apply; summaryRequest.onsuccess = apply;
+      documentRequest.onerror = () => reject(documentRequest.error || new Error("大型棋谱读取失败"));
+      summaryRequest.onerror = () => reject(summaryRequest.error || new Error("大型棋谱索引读取失败"));
+    });
+    await transactionDone(transaction);
+    return renamed;
+  } finally { database.close(); }
+};
+
 export async function saveCompactIndex(document: GameDocument, index: CompactRenLibIndex, prepared?: LargeDocumentSummary): Promise<LargeDocumentSummary> {
   const summary = { ...(prepared || summarizeLargeDocument(document)), id: document.id, metadata: document.metadata, updatedAt: document.updatedAt, nodeCount: index.nodeCount, storageMode: "compact-index" as const };
   const database = await openDatabase();

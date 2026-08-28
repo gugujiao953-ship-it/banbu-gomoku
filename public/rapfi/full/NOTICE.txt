@@ -1,0 +1,7 @@
+This directory contains the Rapfi engine loader and WebAssembly binary used by
+the optional full NNUE build.
+
+Upstream source: https://github.com/dhbloo/rapfi
+Browser integration reference: https://github.com/dhbloo/gomoku-calculator
+The upstream project is distributed under GPL-3.0. The corresponding source and
+license must remain available when this build is redistributed.

@@ -1,5 +1,7 @@
 export type Player = "black" | "white";
 export type RuleSet = "renju" | "standard" | "freestyle";
+export type OpeningRule = "free" | "five-two" | "five-n" | "taraguchi-10" | "tarannikov";
+export type RecordSourceFormat = "sgf" | "fgf" | "ren" | "renjs" | "wzq" | "json" | "renju" | "pos" | "txt" | "lib" | "dp" | "db";
 export interface Position { row: number; col: number }
 export type BoardMarkKind = "circle" | "triangle" | "cross" | "label";
 export type BoardMarkStyle = "text" | "circle" | "triangle" | "cross";
@@ -50,6 +52,12 @@ export interface RecordNode {
 export interface GameMetadata {
   title: string; black: string; white: string; event: string; date: string;
   result: string; rule: RuleSet; boardSize: number; tags: string[];
+  /** Optional because records created before opening-rule support must remain readable. */
+  openingRule?: OpeningRule;
+  openingN?: number;
+  /** Original record format, used only to choose an honest direct-export path. */
+  sourceFormat?: RecordSourceFormat;
+  sourceFileName?: string;
 }
 export interface GameDocument {
   id: string; version: 1; rootId: string; nodes: Record<string, RecordNode>;

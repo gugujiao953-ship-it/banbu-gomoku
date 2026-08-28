@@ -20,8 +20,35 @@ const renLibWebAssets = () => ({
   },
 });
 
+// A production preview may previously have registered a PWA service worker on
+// the same localhost port. During development that worker can keep serving an
+// old precache forever because Vite normally has no /sw.js update to replace
+// it. Publish a development-only replacement that unregisters itself without
+// clearing IndexedDB or localStorage, so local records remain intact.
+const devServiceWorkerReset = () => ({
+  name: "dev-service-worker-reset",
+  configureServer(server: { middlewares: { use: (path: string, handler: (_request: unknown, response: { setHeader: (name: string, value: string) => void; end: (body: string) => void }) => void) => void } }) {
+    server.middlewares.use("/sw.js", (_request, response) => {
+      response.setHeader("Content-Type", "application/javascript; charset=utf-8");
+      response.setHeader("Cache-Control", "no-store");
+      response.end(`
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => {
+  event.waitUntil((async () => {
+    await self.registration.unregister();
+    await self.clients.claim();
+    const clients = await self.clients.matchAll({ type: "window" });
+    for (const client of clients) await client.navigate(client.url);
+  })());
+});
+      `);
+    });
+  },
+});
+
 export default defineConfig({
   plugins: [
+    devServiceWorkerReset(),
     renLibWebAssets(),
     react(),
     VitePWA({

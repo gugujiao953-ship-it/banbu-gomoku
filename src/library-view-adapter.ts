@@ -143,6 +143,11 @@ export class LibraryViewSession {
     return task;
   }
 
+  setMetadata(metadata: GameDocument["metadata"], updatedAt = new Date().toISOString()) {
+    this.summary.metadata = metadata;
+    this.summary.updatedAt = updatedAt;
+  }
+
   indexForId(id: string) { return this.indicesById.get(id); }
 
   async parentIndex(id: string) {

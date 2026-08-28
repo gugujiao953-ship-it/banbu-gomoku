@@ -25,6 +25,24 @@ export const saveToLibrary = (document: GameDocument) => {
   const next = [document, ...loadLibrary().filter((item) => item.id !== document.id)].sort((a, b) => (Date.parse(b.updatedAt || "") || 0) - (Date.parse(a.updatedAt || "") || 0) || a.id.localeCompare(b.id));
   localStorage.setItem(LIBRARY_KEY, JSON.stringify(next)); localStorage.setItem(ACTIVE_KEY, JSON.stringify(document)); return next;
 };
+export const renameInLibrary = (id: string, title: string) => {
+  const normalized = title.trim();
+  if (!normalized) throw new Error("棋谱名称不能为空");
+  const now = new Date().toISOString();
+  let renamed: GameDocument | undefined;
+  const next = loadLibrary().map((document) => {
+    if (document.id !== id) return document;
+    renamed = { ...document, metadata: { ...document.metadata, title: normalized }, updatedAt: now };
+    return renamed;
+  });
+  if (!renamed) throw new Error("棋谱不存在");
+  localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
+  try {
+    const active = JSON.parse(localStorage.getItem(ACTIVE_KEY) || "null") as GameDocument | null;
+    if (active?.id === id) localStorage.setItem(ACTIVE_KEY, JSON.stringify({ ...active, metadata: { ...active.metadata, title: normalized }, updatedAt: now }));
+  } catch { /* malformed active snapshots are ignored */ }
+  return { library: next, document: renamed };
+};
 const canonicalNode = (document: GameDocument, nodeId: string, seen = new Set<string>()): unknown => {
   if (seen.has(nodeId)) return { cycle: true };
   seen.add(nodeId);

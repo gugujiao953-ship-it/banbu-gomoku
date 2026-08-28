@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { addMove, createDocument } from "./game";
 import { exportJson, exportSgf, importRecordFile } from "./formats";
 import { buildCompactRenLibIndex, createLazyDocument } from "./compact-index";
-import { commitDraftAsDerivedVersion, loadDraftForDocument, removeDraftForDocument, saveDraftForDocument, documentFingerprint, assembleCompactIndex, loadLargeDocument, loadLargeSummaries, removeLargeDocument, saveCompactIndex, saveLargeDocument } from "./large-storage";
+import { commitDraftAsDerivedVersion, loadDraftForDocument, removeDraftForDocument, saveDraftForDocument, documentFingerprint, assembleCompactIndex, loadLargeDocument, loadLargeSummaries, removeLargeDocument, renameLargeDocument, saveCompactIndex, saveLargeDocument } from "./large-storage";
 import type { DraftOperation } from "./draft-operations";
 
 describe("large-record storage", () => {
@@ -28,6 +28,19 @@ describe("large-record storage", () => {
     const loaded = await loadLargeDocument(document.id);
     expect(loaded).not.toBeNull();
     expect(loaded!.nodes[document.rootId]?.children.length).toBe(2);
+  });
+
+  it("renames a compact record without losing its stored tree", async () => {
+    let document = createDocument("compact old name");
+    document = addMove(document, document.rootId, { row: 7, col: 7 }).document;
+    await saveCompactIndex(document, buildCompactRenLibIndex(document));
+
+    const summary = await renameLargeDocument(document.id, "compact new name");
+    const loaded = await loadLargeDocument(document.id);
+
+    expect(summary.metadata.title).toBe("compact new name");
+    expect(loaded?.metadata.title).toBe("compact new name");
+    expect(loaded?.nodes[document.rootId]?.children).toHaveLength(1);
   });
 
   it("assembles chunks by numeric offsets rather than key order", () => {

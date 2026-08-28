@@ -1,4 +1,4 @@
-import type { BoardMark, Cell, GameDocument, Player, Position, RecordNode } from "./types";
+import type { BoardMark, Cell, GameDocument, Player, Position, RecordNode, RuleSet } from "./types";
 
 export const BOARD_SIZE = 15;
 export const MIN_BOARD_SIZE = 5;
@@ -15,7 +15,7 @@ export const createDocument = (title = "未命名棋谱", boardSize = BOARD_SIZE
   return {
     id: makeId("record"), version: 1, rootId,
     nodes: { [rootId]: { id: rootId, parentId: null, children: [], move: null, comment: "", marks: [] } },
-    metadata: { title, black: "黑方", white: "白方", event: "", date: now.slice(0, 10), result: "", rule: "renju", boardSize, tags: [] },
+    metadata: { title, black: "黑方", white: "白方", event: "", date: now.slice(0, 10), result: "", rule: "renju", openingRule: "free", boardSize, tags: [] },
     createdAt: now, updatedAt: now,
   };
 };
@@ -173,23 +173,141 @@ export const parseCoordinate = (text: string, size = BOARD_SIZE): Position | nul
   return col < size && row >= 0 ? { col, row } : null;
 };
 
-const lineThrough = (board: Cell[][], position: Position, dr: number, dc: number) => {
-  let text = "";
-  for (let offset = -5; offset <= 5; offset += 1) {
-    const row = position.row + dr * offset, col = position.col + dc * offset;
-    text += board[row]?.[col] === "black" ? "X" : board[row]?.[col] === "white" ? "O" : board[row]?.[col] === null ? "." : "#";
+const DIRECTIONS: ReadonlyArray<readonly [number, number]> = [[1, 0], [0, 1], [1, 1], [1, -1]];
+const pointKey = ({ row, col }: Position) => `${row},${col}`;
+const samePoint = (left: Position, right: Position) => left.row === right.row && left.col === right.col;
+const cloneBoard = (board: Cell[][]): Cell[][] => board.map((row) => [...row]);
+const insideBoard = (board: Cell[][], row: number, col: number) => row >= 0 && row < board.length && col >= 0 && col < (board[row]?.length || 0);
+
+const contiguousLine = (board: Cell[][], position: Position, player: Player, dr: number, dc: number): Position[] => {
+  if (board[position.row]?.[position.col] !== player) return [];
+  const before: Position[] = [];
+  for (let step = 1; board[position.row - dr * step]?.[position.col - dc * step] === player; step += 1) {
+    before.unshift({ row: position.row - dr * step, col: position.col - dc * step });
   }
-  return text;
+  const after: Position[] = [];
+  for (let step = 1; board[position.row + dr * step]?.[position.col + dc * step] === player; step += 1) {
+    after.push({ row: position.row + dr * step, col: position.col + dc * step });
+  }
+  return [...before, position, ...after];
 };
-export const forbiddenReason = (board: Cell[][], position: Position): string | null => {
-  if (board[position.row][position.col]) return null;
-  const next = board.map((row) => [...row]); next[position.row][position.col] = "black";
-  const lines = [[1, 0], [0, 1], [1, 1], [1, -1]].map(([dr, dc]) => lineThrough(next, position, dr, dc));
-  if (lines.some((line) => /XXXXXX/.test(line))) return "长连禁手";
-  const fours = lines.filter((line) => [/\.XXXX\./, /\.XXX\.X/, /X\.XXX\./, /\.XX\.XX\./].some((pattern) => pattern.test(line))).length;
-  if (fours >= 2) return "四四禁手";
-  const threes = lines.filter((line) => [/\.\.XXX\.\./, /\.XX\.X\./, /\.X\.XX\./].some((pattern) => pattern.test(line))).length;
-  return threes >= 2 ? "三三禁手" : null;
+
+const pointsOnAxis = (board: Cell[][], origin: Position, dr: number, dc: number, radius = board.length - 1): Position[] => {
+  const result: Position[] = [];
+  for (let offset = -radius; offset <= radius; offset += 1) {
+    const row = origin.row + dr * offset, col = origin.col + dc * offset;
+    if (insideBoard(board, row, col)) result.push({ row, col });
+  }
+  return result;
+};
+
+interface FourPattern { direction: number; stones: Position[]; winningPoints: Position[] }
+
+/** A four is keyed by its four existing stones. This keeps the two ends of one
+ * straight four together while still detecting two distinct fours on one axis. */
+const fourPatternsThrough = (board: Cell[][], origin: Position): FourPattern[] => {
+  const patterns = new Map<string, FourPattern>();
+  DIRECTIONS.forEach(([dr, dc], direction) => {
+    for (const winningPoint of pointsOnAxis(board, origin, dr, dc, 5)) {
+      if (board[winningPoint.row]?.[winningPoint.col] !== null) continue;
+      board[winningPoint.row][winningPoint.col] = "black";
+      const line = contiguousLine(board, winningPoint, "black", dr, dc);
+      board[winningPoint.row][winningPoint.col] = null;
+      if (line.length !== 5 || !line.some((point) => samePoint(point, origin))) continue;
+      const stones = line.filter((point) => !samePoint(point, winningPoint));
+      const key = `${direction}:${stones.map(pointKey).sort().join("|")}`;
+      const current = patterns.get(key);
+      if (current) {
+        if (!current.winningPoints.some((point) => samePoint(point, winningPoint))) current.winningPoints.push(winningPoint);
+      } else patterns.set(key, { direction, stones, winningPoints: [winningPoint] });
+    }
+  });
+  return [...patterns.values()];
+};
+
+const hasOverlineAt = (board: Cell[][], position: Position) => DIRECTIONS.some(([dr, dc]) => contiguousLine(board, position, "black", dr, dc).length > 5);
+const hasExactFiveAt = (board: Cell[][], position: Position) => DIRECTIONS.some(([dr, dc]) => contiguousLine(board, position, "black", dr, dc).length === 5);
+
+/** Find independent open-three shapes by checking whether a legal continuation
+ * creates a straight four with two winning points. */
+const openThreePatternsThrough = (board: Cell[][], origin: Position): string[] => {
+  const patterns = new Set<string>();
+  DIRECTIONS.forEach(([dr, dc], direction) => {
+    for (const extension of pointsOnAxis(board, origin, dr, dc, 4)) {
+      if (board[extension.row]?.[extension.col] !== null) continue;
+      board[extension.row][extension.col] = "black";
+      const extensionFours = fourPatternsThrough(board, extension);
+      const illegalExtension = hasOverlineAt(board, extension) || extensionFours.length >= 2;
+      board[extension.row][extension.col] = null;
+      if (illegalExtension) continue;
+      for (const four of extensionFours) {
+        if (four.direction !== direction || four.winningPoints.length < 2 || !four.stones.some((point) => samePoint(point, extension))) continue;
+        const three = four.stones.filter((point) => !samePoint(point, extension));
+        if (three.length === 3 && three.some((point) => samePoint(point, origin))) patterns.add(`${direction}:${three.map(pointKey).sort().join("|")}`);
+      }
+    }
+  });
+  return [...patterns];
+};
+
+export type ForbiddenKind = "overline" | "double-four" | "double-three";
+export interface RenjuMoveEvaluation {
+  legal: boolean;
+  forbidden: ForbiddenKind | null;
+  reason: string | null;
+  exactFive: boolean;
+  fourCount: number;
+  openThreeCount: number;
+}
+
+const renjuEvaluationCache = new WeakMap<Cell[][], Map<string, RenjuMoveEvaluation>>();
+export const evaluateRenjuMove = (board: Cell[][], position: Position): RenjuMoveEvaluation => {
+  // Some analysis callers reuse and mutate a scratch board. Include its content
+  // in the cache key so those evaluations cannot leak into the next position.
+  const boardKey = board.map((row) => row.map((cell) => cell === "black" ? "1" : cell === "white" ? "2" : "0").join("")).join("/");
+  const cacheKey = `${pointKey(position)}:${boardKey}`;
+  const cached = renjuEvaluationCache.get(board)?.get(cacheKey);
+  if (cached) return cached;
+  const remember = (evaluation: RenjuMoveEvaluation) => {
+    let cache = renjuEvaluationCache.get(board);
+    if (!cache) { cache = new Map(); renjuEvaluationCache.set(board, cache); }
+    cache.set(cacheKey, evaluation);
+    return evaluation;
+  };
+  if (board[position.row]?.[position.col] !== null) return remember({ legal: false, forbidden: null, reason: "该位置已有棋子", exactFive: false, fourCount: 0, openThreeCount: 0 });
+  const next = cloneBoard(board); next[position.row][position.col] = "black";
+  const overline = hasOverlineAt(next, position);
+  const exactFive = hasExactFiveAt(next, position);
+  if (overline) return remember({ legal: false, forbidden: "overline", reason: "长连禁手", exactFive, fourCount: 0, openThreeCount: 0 });
+  // Under the competition profile used by the existing VCF engine, an exact
+  // black five wins before double-three/double-four are considered.
+  if (exactFive) return remember({ legal: true, forbidden: null, reason: null, exactFive: true, fourCount: 0, openThreeCount: 0 });
+  const fours = fourPatternsThrough(next, position);
+  if (fours.length >= 2) return remember({ legal: false, forbidden: "double-four", reason: "四四禁手", exactFive: false, fourCount: fours.length, openThreeCount: 0 });
+  const threes = openThreePatternsThrough(next, position);
+  if (threes.length >= 2) return remember({ legal: false, forbidden: "double-three", reason: "三三禁手", exactFive: false, fourCount: fours.length, openThreeCount: threes.length });
+  return remember({ legal: true, forbidden: null, reason: null, exactFive: false, fourCount: fours.length, openThreeCount: threes.length });
+};
+
+export const forbiddenReason = (board: Cell[][], position: Position): string | null => evaluateRenjuMove(board, position).reason;
+
+export const forbiddenPoints = (board: Cell[][]): Array<Position & { reason: string }> => {
+  const result: Array<Position & { reason: string }> = [];
+  for (let row = 0; row < board.length; row += 1) for (let col = 0; col < (board[row]?.length || 0); col += 1) {
+    if (board[row][col] !== null) continue;
+    const reason = forbiddenReason(board, { row, col });
+    if (reason) result.push({ row, col, reason });
+  }
+  return result;
+};
+
+export const winningLinesAt = (board: Cell[][], position: Position, rule: RuleSet = "freestyle"): Position[][] => {
+  const player = board[position.row]?.[position.col];
+  if (!player) return [];
+  return DIRECTIONS.map(([dr, dc]) => contiguousLine(board, position, player, dr, dc)).filter((line) => {
+    if (rule === "renju" && player === "black") return line.length === 5;
+    return line.length >= 5;
+  });
 };
 
 export const toggleMark = (marks: BoardMark[], position: Position): BoardMark[] => {

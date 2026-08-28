@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDocument } from "./game";
-import { loadActive, loadDraftFromLocal, loadLibrary, removeFromLibrary, saveDraftToLocal, saveToLibrary } from "./storage";
+import { loadActive, loadDraftFromLocal, loadLibrary, removeFromLibrary, renameInLibrary, saveDraftToLocal, saveToLibrary } from "./storage";
+import { loadPuzzleCollections, savePuzzleTitleOverride } from "./puzzles";
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -37,5 +38,29 @@ describe("local record storage", () => {
 
     expect(loadActive()?.id).toBe(active.id);
     expect(loadLibrary().map((item) => item.id)).toEqual([active.id]);
+  });
+
+  it("renames a library record without switching the active record", () => {
+    const renamed = createDocument("旧名称");
+    const active = createDocument("当前棋谱");
+    saveToLibrary(renamed); saveToLibrary(active);
+
+    const result = renameInLibrary(renamed.id, "新名称");
+
+    expect(result.document.metadata.title).toBe("新名称");
+    expect(loadLibrary().find((item) => item.id === renamed.id)?.metadata.title).toBe("新名称");
+    expect(loadActive()?.id).toBe(active.id);
+  });
+
+  it("persists collection and individual puzzle title overrides", () => {
+    const collection = loadPuzzleCollections()[0];
+    const puzzle = collection.puzzles[0];
+
+    savePuzzleTitleOverride(collection.id, "新题集名");
+    savePuzzleTitleOverride(collection.id, "新题目名", puzzle.id);
+
+    const reloaded = loadPuzzleCollections()[0];
+    expect(reloaded.title).toBe("新题集名");
+    expect(reloaded.puzzles[0].title).toBe("新题目名");
   });
 });
