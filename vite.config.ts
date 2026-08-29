@@ -1,22 +1,51 @@
-import { defineConfig } from "vite";
+import { defineConfig, type ViteDevServer, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const renLibWebAssets = () => ({
+// Single manifest for both build-time emission and dev-time serving so the two
+// can never drift. /renlib/* only exists in build output otherwise, which makes
+// every LIB-related dev/debug round-trip require a full build first.
+const renLibFiles = () => {
+  const root = resolve(process.cwd(), "src/renlib-web");
+  const shared = resolve(process.cwd(), "src/renlib-reference");
+  return [
+    ["JFile.js", root], ["JPoint.js", root], ["LibraryFile.js", root], ["MoveList.js", root],
+    ["MoveNode.js", root], ["RenLibDoc.js", root], ["RenLibDoc_wasm.js", root], ["RenjuLib_worker.js", root],
+    ["Stack.js", root], ["IntervalPost.js", shared], ["TextCoder.js", shared], ["RenLib.wasm", root],
+  ].map(([name, directory]) => ({ name: name as string, path: resolve(directory, name as string) }));
+};
+
+const renLibContentType = (name: string) => (name.endsWith(".wasm") ? "application/wasm" : "application/javascript; charset=utf-8");
+
+const renLibWebAssets = (): Plugin => ({
   name: "renlib-web-assets",
+  enforce: "pre",
   generateBundle() {
-    const root = resolve(process.cwd(), "src/renlib-web");
-    const shared = resolve(process.cwd(), "src/renlib-reference");
-    const files = [
-      ["JFile.js", root], ["JPoint.js", root], ["LibraryFile.js", root], ["MoveList.js", root],
-      ["MoveNode.js", root], ["RenLibDoc.js", root], ["RenLibDoc_wasm.js", root], ["RenjuLib_worker.js", root],
-      ["Stack.js", root], ["IntervalPost.js", shared], ["TextCoder.js", shared], ["RenLib.wasm", root],
-    ];
-    for (const [name, directory] of files) {
-      this.emitFile({ type: "asset", fileName: `renlib/${name}`, source: readFileSync(resolve(directory, name)) });
+    for (const file of renLibFiles()) {
+      this.emitFile({ type: "asset", fileName: `renlib/${file.name}`, source: readFileSync(file.path) });
     }
+  },
+  configureServer(server: ViteDevServer) {
+    server.middlewares.use((req, res, next) => {
+      const url = (req.url || "").split("?")[0];
+      if (!url.startsWith("/renlib/")) {
+        next();
+        return;
+      }
+      const requested = url.slice("/renlib/".length);
+      const file = renLibFiles().find((item) => item.name === requested);
+      if (!file) {
+        res.statusCode = 404;
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.end("RenLib asset not found");
+        return;
+      }
+      res.setHeader("Content-Type", renLibContentType(file.name));
+      res.setHeader("Cache-Control", "no-store");
+      res.end(readFileSync(file.path));
+    });
   },
 });
 

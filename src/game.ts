@@ -230,18 +230,35 @@ const hasExactFiveAt = (board: Cell[][], position: Position) => DIRECTIONS.some(
 
 /** Find independent open-three shapes by checking whether a legal continuation
  * creates a straight four with two winning points. */
-const openThreePatternsThrough = (board: Cell[][], origin: Position): string[] => {
+const openThreePatternsThrough = (board: Cell[][], origin: Position, validateExtensionDoubleThree = true): string[] => {
   const patterns = new Set<string>();
   DIRECTIONS.forEach(([dr, dc], direction) => {
     for (const extension of pointsOnAxis(board, origin, dr, dc, 4)) {
       if (board[extension.row]?.[extension.col] !== null) continue;
       board[extension.row][extension.col] = "black";
       const extensionFours = fourPatternsThrough(board, extension);
-      const illegalExtension = hasOverlineAt(board, extension) || extensionFours.length >= 2;
+      const qualifyingFours = extensionFours.filter((four) => (
+        four.direction === direction
+        && four.winningPoints.length >= 2
+        && four.stones.some((point) => samePoint(point, extension))
+      ));
+      if (!qualifyingFours.length) {
+        board[extension.row][extension.col] = null;
+        continue;
+      }
+      const extensionWins = hasExactFiveAt(board, extension);
+      let illegalExtension = hasOverlineAt(board, extension) || (!extensionWins && extensionFours.length >= 2);
+      // A three is only live when it can become a straight four through a legal
+      // black move. Check double-three as well as overline/double-four. The
+      // nested pass deliberately stops after one extra legality layer: it
+      // resolves the extension point without recursively expanding an entire
+      // board-sized forbidden-move tree for every candidate scan.
+      if (!illegalExtension && !extensionWins && validateExtensionDoubleThree) {
+        illegalExtension = openThreePatternsThrough(board, extension, false).length >= 2;
+      }
       board[extension.row][extension.col] = null;
       if (illegalExtension) continue;
-      for (const four of extensionFours) {
-        if (four.direction !== direction || four.winningPoints.length < 2 || !four.stones.some((point) => samePoint(point, extension))) continue;
+      for (const four of qualifyingFours) {
         const three = four.stones.filter((point) => !samePoint(point, extension));
         if (three.length === 3 && three.some((point) => samePoint(point, origin))) patterns.add(`${direction}:${three.map(pointKey).sort().join("|")}`);
       }
