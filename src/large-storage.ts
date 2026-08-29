@@ -107,6 +107,64 @@ const transactionDone = (transaction: IDBTransaction) => new Promise<void>((reso
   transaction.onabort = () => reject(transaction.error || new Error("大型棋谱存储已中止"));
 });
 
+/** Raw, structured-clone-safe records used by the application backup layer.
+ * The backup module serializes ArrayBuffers/typed arrays before writing JSON;
+ * keeping this boundary here means it does not need to duplicate the schema of
+ * the large-library database or its chunk layout.
+ */
+export interface LargeStorageRecords {
+  documents: unknown[];
+  summaries: unknown[];
+  drafts: unknown[];
+  indexChunks: unknown[];
+}
+
+const requestResult = <T>(request: IDBRequest<T>) => new Promise<T>((resolve, reject) => {
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(request.error || new Error("读取大型棋谱备份数据失败"));
+});
+
+export const exportLargeStorageRecords = async (): Promise<LargeStorageRecords> => {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction([DOCUMENT_STORE, SUMMARY_STORE, DRAFT_STORE, CHUNK_STORE], "readonly");
+    const documentRequest = requestResult(transaction.objectStore(DOCUMENT_STORE).getAll());
+    const summaryRequest = requestResult(transaction.objectStore(SUMMARY_STORE).getAll());
+    const draftRequest = requestResult(transaction.objectStore(DRAFT_STORE).getAll());
+    const chunkRequest = requestResult(transaction.objectStore(CHUNK_STORE).getAll());
+    const [documents, summaries, drafts, indexChunks] = await Promise.all([documentRequest, summaryRequest, draftRequest, chunkRequest]);
+    await transactionDone(transaction);
+    return { documents, summaries, drafts, indexChunks };
+  } finally {
+    database.close();
+  }
+};
+
+/** Replace every large-library store in one IndexedDB transaction. If any put
+ * fails the browser aborts the transaction, leaving the previous database
+ * contents intact. Callers should validate records before reaching this API.
+ */
+export const replaceLargeStorageRecords = async (records: LargeStorageRecords): Promise<void> => {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction([DOCUMENT_STORE, SUMMARY_STORE, DRAFT_STORE, CHUNK_STORE], "readwrite");
+    const stores = {
+      documents: transaction.objectStore(DOCUMENT_STORE),
+      summaries: transaction.objectStore(SUMMARY_STORE),
+      drafts: transaction.objectStore(DRAFT_STORE),
+      indexChunks: transaction.objectStore(CHUNK_STORE),
+    };
+    for (const store of Object.values(stores)) store.clear();
+    for (const record of records.documents) stores.documents.put(record);
+    for (const record of records.summaries) stores.summaries.put(record);
+    for (const record of records.drafts) stores.drafts.put(record);
+    for (const record of records.indexChunks) stores.indexChunks.put(record);
+    await transactionDone(transaction);
+  } finally {
+    database.close();
+  }
+};
+
 const yieldToBrowser = () => new Promise<void>((resolve) => {
   const taskScheduler = (globalThis as typeof globalThis & { scheduler?: { postTask?: (callback: () => void, options?: { priority?: string }) => Promise<void> } }).scheduler;
   if (taskScheduler?.postTask) { void taskScheduler.postTask(resolve, { priority: "background" }); return; }
