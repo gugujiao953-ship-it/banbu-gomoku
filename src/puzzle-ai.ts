@@ -9,6 +9,13 @@ export function winnerAt(board: Cell[][], position: Position, rule: RuleSet = "f
 
 export interface AiSearchOptions { maxDepth?: number; timeBudgetMs?: number; width?: number; rule?: RuleSet }
 
+export interface AiAnalysisCandidate {
+  move: Position;
+  score?: number;
+  winRate?: number;
+  principalVariation?: Array<Position & { player: Player }>;
+}
+
 export interface AiMoveResult {
   move: Position | null;
   score: number;
@@ -19,6 +26,12 @@ export interface AiMoveResult {
   reason: string;
   source: "alpha-beta" | "verified-vcf" | "rapfi";
   principalVariation?: Array<Position & { player: Player }>;
+  /** Win rate is normalized to 0..1 and is only present when the engine emits it. */
+  winRate?: number;
+  /** True only when Rapfi emitted a score; zero is otherwise kept for legacy callers. */
+  scoreAvailable?: boolean;
+  /** Root alternatives returned by the engine; heuristic fallback deliberately leaves this absent. */
+  candidates?: AiAnalysisCandidate[];
 }
 
 /** Enhanced Renju search. The worker-facing API stays string-based; the engine

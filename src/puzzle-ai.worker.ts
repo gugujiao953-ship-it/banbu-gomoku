@@ -31,8 +31,9 @@ self.onmessage = (event: MessageEvent<AiWorkerMessage>) => {
         elapsedMs: performance.now() - started,
         illegalRejected: 0,
         reason: "verified-vcf",
-        source: "verified-vcf" as const,
-        principalVariation: tactical.principalVariation,
+      source: "verified-vcf" as const,
+      principalVariation: tactical.principalVariation,
+        candidates: first ? [{ move: { row: first.row, col: first.col }, score: 1_000_000, principalVariation: tactical.principalVariation }] : undefined,
       };
       const delay = Math.max(0, 220 - (performance.now() - started));
       setTimeout(() => self.postMessage(result), delay);
