@@ -20,7 +20,7 @@ try {
   });
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "棋谱库" }).click();
-  await page.locator(".record-list article", { hasText: "草稿删除门禁" }).getByRole("button", { name: "删除" }).click();
+  await page.locator(".record-list article", { hasText: "草稿删除门禁" }).getByRole("button", { name: "删除棋谱“草稿删除门禁”" }).click();
   assert(await page.getByRole("dialog", { name: "未保存草稿" }).count() === 1, "删除带草稿棋谱时没有弹出草稿门禁");
   assert(await page.locator(".record-list article", { hasText: "草稿删除门禁" }).count() === 1, "确认处理草稿前棋谱已被删除");
   await page.getByRole("button", { name: "放弃草稿并切换" }).click();
@@ -47,12 +47,12 @@ try {
     saveDraftToLocal(document.id, { operations: [{ type: "update-node", nodeId: document.rootId, patch: { comment: "未保存" } }], redo: [] });
   });
   await deferredPage.reload({ waitUntil: "domcontentloaded" });
-  await deferredPage.locator('input[type="file"][multiple]').setInputFiles({
+  await deferredPage.locator('input[type="file"]').first().setInputFiles({
     name: "deferred-large.sgf",
     mimeType: "application/x-go-sgf",
     buffer: Buffer.from(`(;GM[40]FF[4]SZ[15]GN[延后打开]C[${padding}];B[hh])`),
   });
-  await deferredPage.waitForFunction(() => !document.querySelector(".import-progress"), null, { timeout: 120_000 });
+  await deferredPage.getByRole("dialog", { name: "未保存草稿" }).waitFor({ state: "visible", timeout: 120_000 });
   assert(await deferredPage.getByRole("dialog", { name: "未保存草稿" }).count() === 1, "导入大型棋谱时没有等待处理当前草稿");
   assert(await deferredPage.locator(".workspace-current b").innerText() === "保留当前草稿", "确认切换前已经打开导入棋谱");
   assert(await deferredPage.evaluate(() => localStorage.getItem("banbu-active-large-record-v1")) === null, "确认切换前提前写入了大型棋谱活动 ID");
@@ -72,12 +72,12 @@ try {
     });
   });
   const initialTitle = await failurePage.locator(".workspace-current b").innerText();
-  await failurePage.locator('input[type="file"][multiple]').setInputFiles({
+  await failurePage.locator('input[type="file"]').first().setInputFiles({
     name: "ghost-large.sgf",
     mimeType: "application/x-go-sgf",
     buffer: Buffer.from(`(;GM[40]FF[4]SZ[15]GN[幽灵候选]C[${padding}];B[hh])`),
   });
-  await failurePage.waitForFunction(() => !document.querySelector(".import-progress"), null, { timeout: 120_000 });
+  await failurePage.waitForFunction(() => window.__banbuStorageDiagnostic?.ok === false, null, { timeout: 120_000 });
   await failurePage.waitForTimeout(300);
   const failureState = await failurePage.evaluate(() => ({
     title: document.querySelector(".workspace-current b")?.textContent || "",

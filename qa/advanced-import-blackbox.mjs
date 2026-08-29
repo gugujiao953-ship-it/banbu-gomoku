@@ -11,7 +11,8 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
 const library = () => page.evaluate(() => JSON.parse(localStorage.getItem("renju-note-library-v1") || "[]"));
 
 try {
-  await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  await page.goto(baseUrl, { waitUntil: "commit" });
+  await page.getByText("半步五子棋", { exact: true }).waitFor();
   await page.evaluate(async () => {
     localStorage.clear();
     if (indexedDB.databases) {
@@ -22,7 +23,8 @@ try {
       }) : Promise.resolve()));
     }
   });
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.reload({ waitUntil: "commit" });
+  await page.getByText("半步五子棋", { exact: true }).waitFor();
 
   const collection = "(;GM[4]FF[4]SZ[15]GN[高级语义一]AB[hh][ii]AW[jj]PL[W];W[]C[白过手];AE[ii]PL[B];B[kk])(;GM[4]FF[4]SZ[15]GN[高级语义二];B[gg])";
   const input = page.locator('input[type="file"]').first();
@@ -37,17 +39,16 @@ try {
   assert(await page.locator(".renju-board .stone").count() === 3, "打开首盘根节点时没有显示 AB/AW 设置局面");
 
   await page.getByRole("button", { name: "下一手" }).click();
-  assert((await page.locator(".workspace-status-copy small").innerText()).startsWith("1 / 2 手"), "过手没有计入手数");
+  assert((await page.locator(".workspace-current small").innerText()).includes("第 1 手"), "过手没有计入手数");
   assert(await page.locator(".renju-board .stone").count() === 3, "过手错误改变了棋盘");
   await page.getByRole("button", { name: "下一手" }).click();
-  assert((await page.locator(".workspace-status-copy small").innerText()).startsWith("1 / 2 手"), "设置局面节点错误增加手数");
+  assert((await page.locator(".workspace-current small").innerText()).includes("第 1 手"), "设置局面节点错误增加手数");
   assert(await page.locator(".renju-board .stone").count() === 2, "AE 没有清除指定棋子");
   await page.getByRole("button", { name: "下一手" }).click();
   assert(await page.locator(".renju-board .stone").count() === 3, "设置局面后的落子没有显示");
 
-  await page.getByRole("button", { name: "编辑" }).click();
-  await page.getByRole("button", { name: "导出" }).click();
-  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: /标准 SGF 棋谱/ }).click()]);
+  await page.getByRole("button", { name: "打开导出方式" }).click();
+  const [download] = await Promise.all([page.waitForEvent("download"), page.locator(".export-primary-card.direct").click()]);
   const path = await download.path();
   const exported = path ? await readFile(path, "utf8") : "";
   assert(exported.includes("AB[hh][ii]AW[jj]PL[W]"), "SGF 导出丢失设置局面");

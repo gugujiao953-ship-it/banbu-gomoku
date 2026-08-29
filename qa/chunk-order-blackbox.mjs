@@ -69,6 +69,7 @@ try {
     };
   });
   console.log(JSON.stringify(result, null, 2));
+  if (!result.loaded || !result.restored || !result.matches || result.restoredIdCount !== 1_000_001 || result.restoredNodeCount !== 1_000_001) process.exitCode = 1;
 } finally {
   await browser.close();
 }

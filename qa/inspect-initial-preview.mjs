@@ -10,7 +10,7 @@ try {
   });
   const page = await context.newPage();
   await page.goto(process.env.QA_BASE_URL || "http://127.0.0.1:5173/", { waitUntil: "domcontentloaded" });
-  await page.getByText("瑞星定式研究", { exact: true }).waitFor();
+  await page.getByText("新建棋谱", { exact: true }).waitFor();
   await page.screenshot({ path: "artifacts/initial-app-412x915.png", fullPage: false });
   console.log(JSON.stringify({
     url: page.url(),

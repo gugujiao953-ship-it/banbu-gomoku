@@ -175,7 +175,7 @@ for (const file of files) {
     for (let attempt = 0; attempt < 20; attempt += 1) {
       await page.waitForTimeout(1000);
       const title = await page.evaluate(() => document.querySelector(".workspace-current b")?.textContent || "");
-      if (title && title !== "瑞星定式研究") break;
+      if (title && title !== "新建棋谱") break;
     }
     // 诊断：直接从浏览器检查派生版本是否能被加载
     const loadDiag = await page.evaluate(async () => {

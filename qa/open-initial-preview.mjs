@@ -28,7 +28,7 @@ await page.evaluate(async () => {
   }
 });
 await page.reload({ waitUntil: "networkidle" });
-await page.getByText("瑞星定式研究", { exact: true }).waitFor();
+await page.getByText("新建棋谱", { exact: true }).waitFor();
 await page.bringToFront();
 console.log("Initial app preview is open with a clean local state.");
 await new Promise(() => {});

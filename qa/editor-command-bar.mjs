@@ -21,7 +21,9 @@ try {
   await page.waitForTimeout(500);
 
   assert(await page.getByRole("button", { name: "分析" }).count() === 0, "分析入口仍然存在");
-  assert(await page.getByRole("button", { name: "查找" }).count() === 1, "查找入口没有移到一级操作区");
+  assert(await page.getByRole("button", { name: "更多" }).count() === 1, "更多入口缺失");
+  await page.getByRole("button", { name: "更多" }).click();
+  assert(await page.getByRole("button", { name: "查找" }).count() === 1, "更多面板中缺少查找入口");
   assert(await page.locator(".command-save").count() === 1, "常驻保存按钮缺失");
   assert(await page.getByRole("button", { name: "删除当前一步及后续变化" }).count() === 1, "常驻删除按钮缺失");
 
@@ -68,23 +70,27 @@ try {
   await page.waitForTimeout(700);
   assert(await page.locator(".renju-board .stone").count() === 1, "删除保存后刷新，已删变化重新出现");
 
-  await page.getByRole("button", { name: "编辑" }).click();
-  await page.getByRole("button", { name: "导出" }).click();
+  await page.getByRole("button", { name: "打开导出方式" }).click();
+  await page.getByRole("button", { name: "选择格式导出" }).click();
   const exportStart = performance.now();
   const [sgfDownload] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: /标准 SGF 棋谱/ }).click(),
+    page.getByRole("button", { name: /SGF 标准棋谱/ }).click(),
   ]);
   const sgfMs = Math.round(performance.now() - exportStart);
   assert((await sgfDownload.suggestedFilename()).endsWith(".sgf"), "SGF 导出文件名错误");
 
-  const renjuStart = performance.now();
-  const [renjuDownload] = await Promise.all([
+  await page.getByRole("button", { name: "打开导出方式" }).click();
+  if (await page.getByRole("button", { name: /JSON（半步完整棋谱）/ }).count() === 0) {
+    await page.getByRole("button", { name: "选择格式导出" }).click();
+  }
+  const jsonStart = performance.now();
+  const [jsonDownload] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: /RENJU 跨端文件/ }).click(),
+    page.getByRole("button", { name: /JSON（半步完整棋谱）/ }).click(),
   ]);
-  const renjuMs = Math.round(performance.now() - renjuStart);
-  assert((await renjuDownload.suggestedFilename()).endsWith(".renju"), "RENJU 导出文件名错误");
+  const jsonMs = Math.round(performance.now() - jsonStart);
+  assert((await jsonDownload.suggestedFilename()).endsWith(".json"), "JSON 导出文件名错误");
 
   console.log(JSON.stringify({
     pass: true,
@@ -92,7 +98,7 @@ try {
     whitePlacement: true,
     saveReload: true,
     deleteSubtreeSaveReload: true,
-    exportMs: { sgf: sgfMs, renju: renjuMs },
+    exportMs: { sgf: sgfMs, json: jsonMs },
   }, null, 2));
 } finally {
   await context.close();
