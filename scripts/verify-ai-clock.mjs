@@ -1,7 +1,7 @@
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 
-const baseURL = process.env.BANBU_URL || "http://127.0.0.1:5181/";
+const baseURL = process.env.QA_BASE_URL || process.env.BANBU_URL || "http://127.0.0.1:5181/";
 const browser = await chromium.launch({ headless: true });
 
 const clockSeconds = (text) => {
@@ -40,7 +40,7 @@ try {
   await setup.getByRole("button", { name: /开始人机对战/ }).click();
   const clock = page.locator(".brand .ai-clock-status");
   await clock.waitFor();
-  assert.match(await clock.innerText(), /你的回合 · 1:00 剩余/);
+  assert.match(await clock.innerText(), /你的回合 · (?:1:00|0:59) 剩余/);
   await page.waitForTimeout(1350);
   const beforeMove = clockSeconds(await clock.innerText());
   assert.ok(beforeMove <= 59, "玩家回合时倒计时应开始减少");

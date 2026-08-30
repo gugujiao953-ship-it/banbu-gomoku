@@ -13,6 +13,7 @@
     "qa:visual": "node qa/visual-ui-regression.mjs",
     "qa:full": "node scripts/run-qa.mjs full",
     "android:sync": "npm run build && cap sync android",
+    "android:release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-android-release.ps1",
     "android:open": "cap open android"
   },
   "dependencies": {

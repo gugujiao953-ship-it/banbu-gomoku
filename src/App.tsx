@@ -3285,7 +3285,22 @@ function MetadataFields({ metadata, onChange }: { metadata: GameDocument["metada
 }
 
 function SettingsSection({ title, summary, open = false, children }: { title: string; summary: string; open?: boolean; children: React.ReactNode }) {
-  return <details className="settings-group settings-collapsible" open={open}><summary className="settings-section-toggle"><span className="settings-section-title"><b>{title}</b><small>{summary}</small></span><ChevronDown/></summary><div className="settings-section-content">{children}</div></details>;
+  const settingsOrder: Record<string, number> = {
+    "使用手册与反馈": 0,
+    "思考": 10,
+    "棋盘显示": 20,
+    "棋盘与棋子": 30,
+    "声音与反馈": 40,
+    "外观主题": 50,
+    "无障碍与字号": 60,
+    "文件与存储": 70,
+    "数据与兼容": 80,
+    "关于": 90,
+    "可选增强功能": 100,
+    "设备布局": 110,
+  };
+  const order = settingsOrder[title];
+  return <details className={`settings-group settings-collapsible${order === undefined ? "" : ` settings-order-${order}`}`} open={open}><summary className="settings-section-toggle"><span className="settings-section-title"><b>{title}</b><small>{summary}</small></span><ChevronDown/></summary><div className="settings-section-content">{children}</div></details>;
 }
 
 function StorageSettings({ defaultDirectory, directorySupported, onChoose, onClear }: { defaultDirectory: DirectoryHandleLike | null; directorySupported: boolean; onChoose: () => void; onClear: () => void }) {

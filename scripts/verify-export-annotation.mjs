@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 
-const baseURL = process.env.BANBU_URL || "http://127.0.0.1:5181/";
+const baseURL = process.env.QA_BASE_URL || process.env.BANBU_URL || "http://127.0.0.1:5181/";
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 430, height: 932 } });
 const page = await context.newPage();
@@ -16,6 +16,7 @@ try {
   await page.reload();
 
   await page.getByRole("button", { name: "设置" }).click();
+  await page.getByText("数据与兼容", { exact: true }).click();
   await page.getByRole("button", { name: /导出棋谱/ }).click();
   await page.getByText("没有原始文件格式").waitFor();
   const choose = page.getByRole("button", { name: /选择格式导出/ });
@@ -60,9 +61,10 @@ try {
   });
   await sourcePage.getByText(/已导入 SGF/).waitFor();
   await sourcePage.getByRole("button", { name: "设置" }).click();
+  await sourcePage.getByText("数据与兼容", { exact: true }).click();
   await sourcePage.getByRole("button", { name: /导出棋谱/ }).click();
   await sourcePage.getByText("识别为 SGF").waitFor();
-  assert.equal(await sourcePage.getByRole("button", { name: /选择格式导出/ }).isDisabled(), true, "已有原始格式时格式转换入口应变灰");
+  assert.equal(await sourcePage.getByRole("button", { name: /选择格式导出/ }).isEnabled(), true, "已有 SGF 时仍应允许选择 SGF/JSON 导出");
   assert.equal(await sourcePage.getByRole("button", { name: /^直接导出 / }).isEnabled(), true, "已有 SGF 时直接导出应可用");
   await sourcePage.close();
 
@@ -70,9 +72,10 @@ try {
   await copyPage.goto(baseURL);
   await copyPage.getByRole("button", { name: "棋谱库" }).click();
   await copyPage.getByRole("tab", { name: /题库/ }).click();
-  await copyPage.getByText("支持二维题目数组：坐标,颜色编号").waitFor();
+  await copyPage.getByText("支持 puzzles 题库对象和二维题目数组", { exact: true }).waitFor();
   assert.equal(await copyPage.getByText(/支持开宝题集数组格式/).count(), 0, "题库导入说明不应再只写某个软件名称");
   await copyPage.getByRole("button", { name: "设置" }).click();
+  await copyPage.getByText("关于", { exact: true }).click();
   await copyPage.getByRole("button", { name: /关于半步五子棋/ }).click();
   await copyPage.getByText("个人项目说明", { exact: true }).waitFor();
   await copyPage.getByText(/后续有时间会继续更新功能、改善使用体验并修复发现的 Bug/).waitFor();

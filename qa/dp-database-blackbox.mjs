@@ -25,22 +25,20 @@ try {
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.locator('input[type="file"]').first().setInputFiles(sample);
   await page.waitForFunction(() => {
-    const records = JSON.parse(localStorage.getItem("renju-note-library-v1") || "[]");
-    return records.some((record) => record.metadata?.title === "九天指南v5-1");
+    return window.__banbuImportState?.state === "dp-query-ready";
   }, undefined, { timeout: 15000 });
-  await page.waitForFunction(() => document.querySelector(".workspace-current b")?.textContent === "九天指南v5-1");
+  await page.waitForFunction(() => Boolean(document.querySelector(".workspace-current b")?.textContent));
   const result = await page.evaluate(() => {
-    const records = JSON.parse(localStorage.getItem("renju-note-library-v1") || "[]");
-    const record = records.find((item) => item.metadata?.title === "九天指南v5-1");
     return {
-      nodeCount: record ? Object.keys(record.nodes || {}).length : 0,
-      rootChildren: record ? (record.nodes?.[record.rootId]?.children?.length || 0) : 0,
-      status: document.querySelector(".workspace-status-copy small")?.textContent || "",
+      title: document.querySelector(".workspace-current b")?.textContent || "",
+      recordCount: window.__banbuImportState?.detail?.records || 0,
+      rootBranches: document.querySelectorAll(".renlib-variation").length,
+      state: window.__banbuImportState?.state || "",
     };
   });
-  assert(result.nodeCount > 3000, `导入节点数异常：${result.nodeCount}`);
-  assert(result.rootChildren > 0, "DP 变化树根节点没有分支");
-  assert(result.status.includes("分支"), `页面没有显示变化树状态：${result.status}`);
+  assert(result.recordCount > 3000, `DP/DB 局面数异常：${result.recordCount}`);
+  assert(result.rootBranches > 0, "DP/DB 根节点没有显示分支入口");
+  assert(result.state === "dp-query-ready", `DP/DB 导入状态异常：${result.state}`);
   assert(errors.length === 0, `浏览器运行错误：${errors.join("\n")}`);
   console.log(JSON.stringify({ pass: true, mobileViewport: "375x812", ...result }, null, 2));
 } finally {

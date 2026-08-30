@@ -34,7 +34,11 @@ for (const file of files) {
   const importedTitle = await page.locator(".workspace-current b").textContent().catch(() => "");
   const importToast = await page.locator(".toast").textContent().catch(() => "");
   const importDiagnostics = await page.evaluate(() => ({ importDiagnostic: window.__banbuImportDiagnostic || null, workerMessage: window.__banbuWorkerMessage || null, importState: window.__banbuImportState || null, storageDiagnostic: window.__banbuStorageDiagnostic || null }));
-  const importSucceeded = importDiagnostics.workerMessage?.ok === true && ["import-success", "compact-created"].includes(importDiagnostics.importState?.state) && importDiagnostics.importDiagnostic?.hasCompact === true;
+  const importSucceeded = (
+    importDiagnostics.workerMessage?.ok === true
+      && ["import-success", "compact-created"].includes(importDiagnostics.importState?.state)
+      && importDiagnostics.importDiagnostic?.hasCompact === true
+  ) || importDiagnostics.importState?.state === "renlib-web-query-ready";
   if (!importSucceeded) {
     report.push({ file, importMs: +importMs.toFixed(1), importedTitle, importToast, ...importDiagnostics, status: "import-failed", consoleErrors });
     await page.close();

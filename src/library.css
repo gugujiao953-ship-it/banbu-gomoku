@@ -836,3 +836,59 @@ html[data-theme] :is(.form-grid input,.form-grid select,.sheet-body textarea,.bo
 .settings-feedback-extension,
 .settings-enhancement-extension,
 .settings-layout-extension { padding-top:0; }
+
+/* Keep the settings page in one scan order across the main and follow-up
+ * sections. The groups retain native details semantics; order is only used
+ * by the settings page container so the version footer is truly last. */
+.app-main:has(.settings-page) { display:flex; flex-direction:column; }
+.app-main:has(.settings-page) > .settings-page { display:contents; }
+.app-main:has(.settings-page) > .settings-page > .page-title,
+.app-main:has(.settings-page) > .settings-page > .settings-group,
+.app-main:has(.settings-page) > .settings-page > .version-note {
+  width:calc(100% - 32px);
+  max-width:760px;
+  margin-inline:auto;
+}
+.app-main:has(.settings-page) > .settings-page > .page-title {
+  display:none;
+  order:-1;
+  margin-top:12px;
+}
+.app-main:has(.settings-page) > .settings-page > .settings-group { margin-top:22px; }
+.app-main:has(.settings-page) > .settings-page > .settings-order-0 { order:0; margin-top:10px; }
+.app-main:has(.settings-page) > .settings-page > .settings-order-10 { order:10; }
+.app-main:has(.settings-page) > .settings-page > .settings-order-20 { order:20; }
+.app-main:has(.settings-page) > .settings-page > .settings-order-30 { order:30; }
+.app-main:has(.settings-page) > .settings-page > .settings-order-40 { order:40; }
+.app-main:has(.settings-page) > .settings-page > .settings-order-50 { order:50; }
+.app-main:has(.settings-page) > .settings-page > .settings-order-60 { order:60; }
+.app-main:has(.settings-page) > .settings-page > .settings-order-70 { order:70; }
+.app-main:has(.settings-page) > .settings-page > .settings-order-80 { order:80; }
+.app-main:has(.settings-page) > .settings-page > .settings-order-90 { order:90; }
+.app-main:has(.settings-page) > .settings-enhancement-extension { order:100; }
+.app-main:has(.settings-page) > .settings-layout-extension { order:110; }
+.app-main:has(.settings-page) > .settings-page > .version-note {
+  order:120;
+  margin-top:0;
+  padding-bottom:calc(28px + env(safe-area-inset-bottom));
+}
+.app-main:has(.settings-page) > .settings-help-extension,
+.app-main:has(.settings-page) > .settings-enhancement-extension,
+.app-main:has(.settings-page) > .settings-layout-extension {
+  width:100%;
+}
+.app-main:has(.settings-page) > .settings-help-extension > .settings-group,
+.app-main:has(.settings-page) > .settings-enhancement-extension > .settings-group,
+.app-main:has(.settings-page) > .settings-layout-extension > .settings-group {
+  max-width:760px;
+  margin-inline:auto;
+}
+.app-main:has(.settings-page) > .settings-help-extension { padding-top:10px; }
+.app-main:has(.settings-page) > .settings-enhancement-extension,
+.app-main:has(.settings-page) > .settings-layout-extension { padding-top:0; }
+
+@media (max-width:520px) {
+  .app-main:has(.settings-page) > .settings-page > .page-title,
+  .app-main:has(.settings-page) > .settings-page > .settings-group,
+  .app-main:has(.settings-page) > .settings-page > .version-note { width:calc(100% - 32px); }
+}

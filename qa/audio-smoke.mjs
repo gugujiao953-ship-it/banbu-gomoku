@@ -24,6 +24,7 @@ try {
   await page.goto(baseUrl, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "设置" }).click();
   await page.getByText("声音与反馈", { exact: true }).click();
+  await page.getByText("启用音效", { exact: true }).click();
   await page.getByLabel("音效音量").fill("28");
   for (let index = 0; index < 12; index += 1) await page.getByRole("button", { name: index % 3 === 0 ? "试听警告" : "试听落子" }).click();
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("banbu-sound-settings-v1") || "null"));

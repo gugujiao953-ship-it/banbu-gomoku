@@ -2,6 +2,8 @@
 
 移动优先的五子棋 / 连珠打谱与做题工具。当前版本以 React + TypeScript 实现共享核心，通过 PWA 提供离线网页版，通过 Capacitor 提供 Android 应用；未来桌面端可继续复用相同的棋谱模型与格式层。
 
+当前发布版本：**v1.1.4**（2026-08-30）。
+
 > 这是一个 Vibecoding 的产物，也是一款永久免费、开放源代码的软件。希望它能让手机打谱和做题更方便；如有内容涉及侵权，请通过 GitHub Issue 联系，我会及时处理或删除。
 
 项目仓库：[github.com/gugujiao953-ship-it/banbu-gomoku](https://github.com/gugujiao953-ship-it/banbu-gomoku)
@@ -29,6 +31,9 @@
 - 本地人机对战：连珠 / 标准规则、禁手裁判、执黑执白与开局规则选择，全部本机运行
 - 开局规则：自由开局、五手两打、五手多打（3–10 打）、塔十（塔拉山口-10）与塔拉（五次交换）
 - 暗色 / 浅色主题：跟随系统或手动切换，夜间打谱友好
+- 多套外观主题、棋盘与棋子预设，支持雨幕、水墨、雪落、青花瓷、像素和赛博等风格
+- 程序化落子音效、音量/静音设置、落子与胜负动效，以及 `prefers-reduced-motion` 降级
+- 设置页按“使用手册与反馈、核心偏好、数据与兼容、可选增强、设备布局”折叠整理，版本信息固定在底部
 - 一键备份与恢复：棋谱库、题库、进度、草稿、设置与大型索引清单整包导出导入，恢复前完整校验
 - 分享图片：棋盘局面导出为图片，可选显示手数与坐标，便于发帖与群聊分享
 - 图片识谱：自动定位网格并识别棋子颜色与手数，截图带手数时可恢复落子顺序（识别后请人工校对）
@@ -101,7 +106,15 @@ cd android
 .\gradlew.bat assembleDebug
 ```
 
-需要 JDK 21、Android Studio / Android SDK，并正确设置 `JAVA_HOME`。APK 通常输出到 `android/app/build/outputs/apk/debug/app-debug.apk`。
+发布版 APK（自动构建 Web、同步 Capacitor、复用既有 release 签名并校验元数据）：
+
+```powershell
+npm run android:release
+```
+
+发布流程说明见 [docs/Android发布流程.md](./docs/Android发布流程.md)。当前 v1.1.4 Release APK 和 SHA-256 校验文件保存在本地 `artifacts/releases/1.1.4/`，GitHub Release 页面会提供下载。
+
+需要 JDK 21、Android Studio / Android SDK；发布脚本会优先使用项目内的工具链，避免依赖全局 `JAVA_HOME`。
 
 ## 视觉验收
 
