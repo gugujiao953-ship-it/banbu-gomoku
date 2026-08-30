@@ -46,8 +46,10 @@ try {
   if (savedSound?.profile !== "crystal") throw new Error(`sound profile was not persisted: ${JSON.stringify(savedSound)}`);
 
   await page.getByText("棋盘显示", { exact: true }).click();
+  if (!await page.getByLabel("界面动效").isChecked()) throw new Error("motion should default to enabled");
+  if (await page.evaluate(() => document.documentElement.dataset.motion) !== "on") throw new Error("data-motion should default to on");
   await page.getByLabel("界面动效").uncheck();
-  const motionStored = await page.evaluate(() => localStorage.getItem("banbu-motion-enabled-v1"));
+  const motionStored = await page.evaluate(() => localStorage.getItem("banbu-motion-enabled-v2"));
   if (motionStored !== "false") throw new Error(`motion setting was not persisted: ${motionStored}`);
   if (await page.evaluate(() => document.documentElement.dataset.motion) !== "off") throw new Error("data-motion was not set to off");
 
