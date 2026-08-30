@@ -1,7 +1,7 @@
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 
-const baseURL = process.env.BANBU_URL || "http://127.0.0.1:5181/";
+const baseURL = process.env.QA_BASE_URL || process.env.BANBU_URL || "http://127.0.0.1:5173/";
 const browser = await chromium.launch({ headless: true });
 
 async function freshPage() {
@@ -20,6 +20,10 @@ async function clickPoint(page, coordinate) {
 try {
   {
     const { context, page } = await freshPage();
+    await page.getByRole("button", { name: "设置" }).click();
+    await page.getByText("可选增强功能", { exact: true }).click();
+    await page.getByLabel("AI 棋盘提示点").check();
+    await page.getByRole("button", { name: "打谱" }).click();
     await page.getByRole("button", { name: "AI" }).click();
     await page.getByRole("button", { name: /五手两打/ }).click();
     await page.getByRole("button", { name: /开始人机对战/ }).click();
@@ -56,13 +60,19 @@ try {
     for (const coordinate of ["F8", "G8", "H8", "I8", "J8"]) await clickPoint(page, coordinate);
     assert.ok(await page.locator(".winning-line").count(), "连五后应显示红色胜利连线");
     assert.equal(await page.locator(".winning-stone-ring").count(), 5, "获胜五子应逐颗高亮");
-    assert.ok(await page.locator(".forbidden-point").count() >= 2, "黑方长连点应实时显示红色 X");
+    assert.equal(await page.locator(".forbidden-point").count(), 0, "对局结束后不应继续显示可落子禁手提示");
     await page.screenshot({ path: "C:/Users/ZhuanZ(无密码)/AppData/Local/Temp/banbu-winning-line.png", fullPage: true });
     await context.close();
   }
 
   {
     const { context, page } = await freshPage();
+    await page.getByRole("button", { name: "设置" }).click();
+    await page.getByText("可选增强功能", { exact: true }).click();
+    await page.getByLabel("AI 棋盘提示点").check();
+    await page.getByText("棋盘显示", { exact: true }).click();
+    await page.getByLabel("界面动效").check();
+    await page.getByRole("button", { name: "打谱" }).click();
     const thinkButton = page.getByRole("button", { name: "思考当前局面的下一步" });
     assert.equal(await thinkButton.count(), 1, "打谱工具栏缺少思考按钮");
     await thinkButton.click();
@@ -131,7 +141,7 @@ try {
     await draftDialog.waitFor();
     assert.equal(await page.locator(".import-options").count(), 0, "导入面板不应盖住未保存草稿确认层");
     assert.equal(await draftDialog.evaluate((element) => getComputedStyle(element.parentElement).zIndex), "100", "未保存草稿确认层应位于普通面板之上");
-    await draftDialog.getByLabel("取消").click();
+    await draftDialog.getByRole("button", { name: "取消" }).click();
     await page.getByRole("button", { name: "AI" }).click();
     await page.getByRole("dialog", { name: "未保存草稿" }).waitFor();
     assert.equal(await page.locator(".ai-game-setup").count(), 0, "AI 设置面板不应盖住未保存草稿确认层");

@@ -1,13 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#365e4b"/>
-  <rect x="80" y="80" width="352" height="352" rx="50" fill="#d8ad69"/>
-  <g stroke="#655138" stroke-width="8" opacity=".72">
-    <path d="M124 124v264M190 124v264M256 124v264M322 124v264M388 124v264"/>
-    <path d="M124 124h264M124 190h264M124 256h264M124 322h264M124 388h264"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">半步五子棋</title>
+  <rect width="512" height="512" rx="112" fill="#f7f3e8"/>
+  <defs>
+    <clipPath id="board-circle"><circle cx="256" cy="256" r="218"/></clipPath>
+  </defs>
+  <g clip-path="url(#board-circle)">
+    <rect x="38" y="38" width="436" height="436" fill="#d8ad69"/>
+    <path d="M76 38v436M136 38v436M196 38v436M256 38v436M316 38v436M376 38v436M436 38v436M38 76h436M38 136h436M38 196h436M38 256h436M38 316h436M38 376h436M38 436h436" stroke="#5b4934" stroke-width="6" opacity=".68"/>
   </g>
-  <circle cx="190" cy="190" r="29" fill="#1f211e"/>
-  <circle cx="256" cy="256" r="29" fill="#f5f1e8" stroke="#999083" stroke-width="3"/>
-  <circle cx="322" cy="322" r="29" fill="#1f211e"/>
-  <circle cx="388" cy="388" r="29" fill="#f5f1e8" stroke="#999083" stroke-width="3"/>
-  <circle cx="124" cy="124" r="29" fill="#1f211e"/>
+  <circle cx="201" cy="259" r="77" fill="#20221f"/>
+  <circle cx="316" cy="253" r="77" fill="#f7f3e8" stroke="#8e8578" stroke-width="6"/>
+  <text x="201" y="292" text-anchor="middle" font-size="104" font-family="serif" fill="#f7f3e8">半</text>
+  <text x="316" y="286" text-anchor="middle" font-size="104" font-family="serif" fill="#20221f">步</text>
 </svg>

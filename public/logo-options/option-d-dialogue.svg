@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title>方案 D：对话棋局</title>
+  <rect width="512" height="512" rx="116" fill="#d8ad69"/>
+  <path d="M92 126a46 46 0 0 1 46-46h236a46 46 0 0 1 46 46v188a46 46 0 0 1-46 46H238l-72 58v-58h-28a46 46 0 0 1-46-46z" fill="#365e4b"/>
+  <g fill="none" stroke="#f7f3e8" stroke-width="12" stroke-linecap="round">
+    <path d="M164 160v150M239 160v150M314 160v150M389 160v150M140 184h273M140 259h273" opacity=".56"/>
+  </g>
+  <circle cx="239" cy="184" r="30" fill="#20221f"/>
+  <circle cx="314" cy="259" r="30" fill="#f7f3e8" stroke="#20221f" stroke-width="4"/>
+  <circle cx="389" cy="184" r="30" fill="#b94b3f"/>
+</svg>

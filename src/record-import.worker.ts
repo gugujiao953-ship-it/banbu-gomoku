@@ -11,6 +11,7 @@ const baseResult = (result: Awaited<ReturnType<typeof importRecordFile>>) => ({ 
 
 self.onmessage = async (event: MessageEvent<File>) => {
   try {
+    self.postMessage({ progress: true, phase: "parsing", detail: "正在解析棋谱结构" });
     const started = performance.now();
     let previewSent = false;
     const result = await importRecordFile(event.data, { onPreview: async (preview) => {
@@ -20,6 +21,7 @@ self.onmessage = async (event: MessageEvent<File>) => {
       // Do not transfer preview buffers: parsing continues after this callback.
       // Transferring would detach the Worker's live typed arrays and can corrupt
       // or crash the remaining parse. The bounded preview is safely cloned.
+      self.postMessage({ progress: true, phase: "indexing", detail: "首批内容已可浏览，后台继续建立完整索引", background: true });
       self.postMessage({ ok: true, preview: true, result: baseResult({ ...preview, warnings: [], format: "RenLib LIB", stats: preview.stats }), summary, compactIndex: preview.compactIndex, compactDiagnostic: { hasCompact: true, nodeCount: preview.compactIndex.nodeCount, preview: true } });
     } });
     const parseMs = performance.now() - started;
@@ -35,6 +37,7 @@ self.onmessage = async (event: MessageEvent<File>) => {
       // The complete result stays in the worker and is committed directly to
       // the paged store. This avoids copying a multi-million-node index back
       // through postMessage after the UI has already become usable.
+      self.postMessage({ progress: true, phase: "saving", detail: "完整索引已建立，正在后台保存", background: true });
       const persistedSummary = await saveCompactIndex(result.document, compactIndex, summary);
       self.postMessage({ ok: true, finalOnly: true, summary: persistedSummary, compactDiagnostic: { hasCompact: true, nodeCount: compactIndex.nodeCount, parseMs } });
       return;

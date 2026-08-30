@@ -1,12 +1,13 @@
 import { boardAt, depthOf, pathToNode } from "./game";
 import type { BoardMark, GameDocument, Position, RecordNode } from "./types";
+import { transformBoardPosition, type BoardRotation } from "./board-transform";
 
 export interface BoardShareOptions {
   showMoveNumbers: boolean;
   showCoordinates: boolean;
   showAnnotations: boolean;
   showWatermark: boolean;
-  rotation: 0 | 90 | 180 | 270;
+  rotation: BoardRotation;
   mirrored: boolean;
 }
 
@@ -107,12 +108,8 @@ export const createBoardShareSvg = (document: GameDocument, currentId: string, o
   const start = boardX + margin;
   const end = boardX + boardPixels - margin;
   const gap = (end - start) / Math.max(1, size - 1);
-  const centerX = boardX + boardPixels / 2;
-  const centerY = boardY + boardPixels / 2;
-  const transform = options.rotation || options.mirrored
-    ? `transform="translate(${centerX} ${centerY}) rotate(${options.rotation}) scale(${options.mirrored ? -1 : 1} 1) translate(${-centerX} ${-centerY})"`
-    : "";
   const xy = (point: Position) => ({ x: start + point.col * gap, y: boardY + margin + point.row * gap });
+  const visualXy = (point: Position) => xy(transformBoardPosition(point, size, options.rotation, options.mirrored));
 
   const grid = Array.from({ length: size }, (_, index) => {
     const offset = start + index * gap;
@@ -132,7 +129,7 @@ export const createBoardShareSvg = (document: GameDocument, currentId: string, o
   }).join("") : "";
   const stones = board.flatMap((row, rowIndex) => row.map((player, colIndex) => {
     if (!player) return "";
-    const point = xy({ row: rowIndex, col: colIndex });
+     const point = visualXy({ row: rowIndex, col: colIndex });
     const number = numbers.get(`${rowIndex},${colIndex}`);
     const numberText = options.showMoveNumbers && number
       ? `<text data-export-role="move-number" x="${point.x}" y="${point.y + 8}" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="800" fill="${player === "black" ? "#f5efe1" : "#34312b"}">${number}</text>`
@@ -145,11 +142,11 @@ export const createBoardShareSvg = (document: GameDocument, currentId: string, o
 
   const annotations = options.showAnnotations && current ? [
     ...displayMarks(current.marks || [], board, size).map((mark) => {
-      const point = xy(mark);
+       const point = visualXy(mark);
       return `<g data-export-role="annotation">${annotationSvg(mark, point.x, point.y)}</g>`;
     }),
     ...(current.children || []).slice(0, 512).map((id) => document.nodes[id]).filter((node): node is RecordNode => Boolean(node?.move || node?.anchor)).map((node) => {
-      const point = xy(node.move || node.anchor!);
+       const point = visualXy(node.move || node.anchor!);
       return `<g data-export-role="native-annotation">${visibleVariationSvg(node, point.x, point.y)}</g>`;
     }),
   ].join("") : "";
@@ -172,7 +169,7 @@ export const createBoardShareSvg = (document: GameDocument, currentId: string, o
   <rect width="1200" height="1400" fill="#f8f6f1"/>
   <text x="70" y="78" font-family="serif, 'Noto Serif SC'" font-size="43" font-weight="800" fill="#292620">${title}</text>
   <text x="70" y="122" font-family="'Noto Sans SC', sans-serif" font-size="22" fill="#777168">${subtitle}</text>
-  <g ${transform}>
+   <g>
     <rect x="${boardX}" y="${boardY}" width="${boardPixels}" height="${boardPixels}" rx="34" fill="#d8ad69" stroke="#b38343" stroke-width="5" filter="url(#shareCardShadow)"/>
     <g stroke="#594a36" stroke-width="2.4" opacity=".9">${grid}</g>
     ${stars}${coordinates}${stones}${annotations}

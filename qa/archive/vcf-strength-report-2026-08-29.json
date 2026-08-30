@@ -1,0 +1,317 @@
+{
+  "collection": "三手胜4-高级题",
+  "total": 30,
+  "passed": 0,
+  "passRate": 0,
+  "maxSteps": 15,
+  "timeBudgetMs": 700,
+  "nodeBudget": 70000,
+  "environment": {
+    "node": "v24.15.0",
+    "platform": "win32",
+    "arch": "x64",
+    "cpuModel": "Intel64 Family 6 Model 141 Stepping 1, GenuineIntel"
+  },
+  "report": [
+    {
+      "puzzleId": "imported-1",
+      "title": "第 1 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 1259,
+      "elapsedMs": 700.2158999999999,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-2",
+      "title": "第 2 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2174,
+      "elapsedMs": 700.1381999999999,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-3",
+      "title": "第 3 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2415,
+      "elapsedMs": 700.6590999999999,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-4",
+      "title": "第 4 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2037,
+      "elapsedMs": 701.6448,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-5",
+      "title": "第 5 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2071,
+      "elapsedMs": 700.1567000000005,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-6",
+      "title": "第 6 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2383,
+      "elapsedMs": 700.5059999999994,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-7",
+      "title": "第 7 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2557,
+      "elapsedMs": 700.7067999999999,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-8",
+      "title": "第 8 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 1914,
+      "elapsedMs": 700.1589000000004,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-9",
+      "title": "第 9 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 1621,
+      "elapsedMs": 700.0514000000003,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-10",
+      "title": "第 10 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2615,
+      "elapsedMs": 700.0992999999999,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-11",
+      "title": "第 11 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2296,
+      "elapsedMs": 700.0834999999997,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-12",
+      "title": "第 12 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2587,
+      "elapsedMs": 700.0131000000001,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-13",
+      "title": "第 13 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2342,
+      "elapsedMs": 700.4904000000006,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-14",
+      "title": "第 14 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2658,
+      "elapsedMs": 700.1124,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-15",
+      "title": "第 15 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2196,
+      "elapsedMs": 700.1779999999999,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-16",
+      "title": "第 16 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2412,
+      "elapsedMs": 700.7052000000003,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-17",
+      "title": "第 17 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2954,
+      "elapsedMs": 700.5959000000003,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-18",
+      "title": "第 18 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 3080,
+      "elapsedMs": 700.0395000000008,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-19",
+      "title": "第 19 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2806,
+      "elapsedMs": 700.0669000000016,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-20",
+      "title": "第 20 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2097,
+      "elapsedMs": 700.7602999999999,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-21",
+      "title": "第 21 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 1978,
+      "elapsedMs": 700.2518,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-22",
+      "title": "第 22 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 1901,
+      "elapsedMs": 700.8040999999994,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-23",
+      "title": "第 23 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2390,
+      "elapsedMs": 700.7942000000021,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-24",
+      "title": "第 24 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 2668,
+      "elapsedMs": 700.2052000000003,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-25",
+      "title": "第 25 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 3092,
+      "elapsedMs": 700.1579999999994,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-26",
+      "title": "第 26 题",
+      "passed": false,
+      "status": "not-found",
+      "steps": 0,
+      "nodes": 5467,
+      "elapsedMs": 19.28060000000187,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-27",
+      "title": "第 27 题",
+      "passed": false,
+      "status": "budget",
+      "steps": 0,
+      "nodes": 70002,
+      "elapsedMs": 461.8738000000012,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-28",
+      "title": "第 28 题",
+      "passed": false,
+      "status": "not-found",
+      "steps": 0,
+      "nodes": 6023,
+      "elapsedMs": 14.296700000002602,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-29",
+      "title": "第 29 题",
+      "passed": false,
+      "status": "not-found",
+      "steps": 0,
+      "nodes": 26298,
+      "elapsedMs": 153.70390000000043,
+      "reason": "没有完成强制胜证明"
+    },
+    {
+      "puzzleId": "imported-30",
+      "title": "第 30 题",
+      "passed": false,
+      "status": "not-found",
+      "steps": 0,
+      "nodes": 18748,
+      "elapsedMs": 74.65209999999934,
+      "reason": "没有完成强制胜证明"
+    }
+  ]
+}

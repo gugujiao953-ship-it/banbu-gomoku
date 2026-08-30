@@ -1,16 +1,10 @@
 import { spawnSync } from "node:child_process";
+import { formalBrowserRegressions } from "../qa/regression-manifest.mjs";
 
 const profile = process.argv[2] || "smoke";
 const baseURL = process.env.QA_BASE_URL || "http://127.0.0.1:5173/";
 
-const browserScripts = [
-  "qa/advanced-import-blackbox.mjs",
-  "qa/chunk-order-blackbox.mjs",
-  "qa/draft-storage-guard.mjs",
-  "qa/editor-command-bar.mjs",
-  "qa/export-content-verify.mjs",
-  "qa/mobile-visual.mjs",
-];
+const browserScripts = formalBrowserRegressions.map(({ script }) => script);
 
 const run = (label, command, args, env = {}) => {
   console.log(`\n[qa] ${label}`);

@@ -9,7 +9,7 @@ import { createPuzzleDocument, importKaibaoPuzzleJson } from "./puzzles";
 import { assembleCompactIndex, documentFingerprint } from "./large-storage";
 import { buildCompactRenLibIndex, compactBranchCount, compactChildWindow, compactDiagnostics, compactFirstBranchNodeId, compactIndexBytes, compactIndexOf, compactNodeCount, compactNodeIndex, compactSearch, createLazyDocument } from "./compact-index";
 import { formatRenLibWebLabel, renLibDisplayMark } from "./renlib-display";
-import { applyDraftToDocument, buildDraftOverlay, emptyDraft, hasDraft, overlayNode, overlayPreferredChild, projectedDocument, pushDraft, redoDraft, undoDraft } from "./draft-operations";
+import { applyDraftToDocument, buildDraftOverlay, emptyDraft, hasDraft, isProjectedDocument, overlayNode, overlayPreferredChild, projectedDocument, pushDraft, redoDraft, undoDraft } from "./draft-operations";
 import { documentSignature } from "./storage";
 
 describe("game tree", () => {
@@ -545,6 +545,8 @@ describe("record formats", () => {
     expect(projected.nodes[draftId]).toBeDefined();
     expect(projected.nodes[draftId]?.move?.row).toBe(7);
     expect(projected.nodes[document.rootId]?.children).toContain(draftId);
+    expect(isProjectedDocument(projected)).toBe(true);
+    expect(isProjectedDocument(document)).toBe(false);
   });
 
   it("projectedDocument respects overlayPreferredChild", () => {

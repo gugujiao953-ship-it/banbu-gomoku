@@ -10,30 +10,31 @@
     "test": "vitest run",
     "qa:smoke": "node scripts/run-qa.mjs smoke",
     "qa:browser": "node scripts/run-qa.mjs browser",
+    "qa:visual": "node qa/visual-ui-regression.mjs",
     "qa:full": "node scripts/run-qa.mjs full",
     "android:sync": "npm run build && cap sync android",
     "android:open": "cap open android"
   },
   "dependencies": {
-    "@capacitor/android": "^8.5.0",
-    "@capacitor/core": "^8.5.0",
-    "@capacitor/filesystem": "^8.1.3",
-    "@capacitor/share": "^8.0.1",
-    "@vitejs/plugin-react": "latest",
-    "lucide-react": "^1.33.0",
-    "react": "latest",
-    "react-dom": "latest",
-    "typescript": "latest",
-    "vite": "latest"
+    "@capacitor/android": "8.5.0",
+    "@capacitor/core": "8.5.0",
+    "@capacitor/filesystem": "8.1.3",
+    "@capacitor/share": "8.0.1",
+    "@vitejs/plugin-react": "6.1.0",
+    "lucide-react": "1.33.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "typescript": "7.0.2",
+    "vite": "8.2.2"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.5.0",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "fake-indexeddb": "^6.2.5",
-    "jsdom": "latest",
-    "playwright": "^1.62.1",
-    "vite-plugin-pwa": "^1.3.0",
-    "vitest": "latest"
+    "@capacitor/cli": "8.5.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "fake-indexeddb": "6.2.5",
+    "jsdom": "30.0.1",
+    "playwright": "1.62.1",
+    "vite-plugin-pwa": "1.3.0",
+    "vitest": "4.1.11"
   }
 }

@@ -1,6 +1,6 @@
 import { createDocument } from "../game";
 import type { GameDocument, Position, RecordNode } from "../types";
-import { RenLibWebSession, type RenLibWebBranchResult } from "./renlib-web-session";
+import { RenLibWebSession, type RenLibWebBranch, type RenLibWebBranchResult } from "./renlib-web-session";
 
 const RENLIB_WEB_VIEW = Symbol("banbu-renlib-web-view");
 type RenLibWebDocument = GameDocument & { [RENLIB_WEB_VIEW]?: true };
@@ -20,6 +20,11 @@ export class RenLibWebViewSession {
   private readonly core = new RenLibWebSession();
   private path: number[] = [];
   private readonly queries = new Map<number, RenLibWebBranchResult>();
+  // The branch label belongs to the edge that was selected. Keep that small
+  // piece of metadata when the edge becomes part of the current stone path;
+  // otherwise the label is visible before the click and disappears exactly
+  // when the user reaches the marked point.
+  private readonly pathBranches = new Map<number, RenLibWebBranch>();
   private base?: GameDocument;
 
   private nodeId(depth: number) {
@@ -42,6 +47,9 @@ export class RenLibWebViewSession {
         move: index ? { ...idxToPosition(this.path[index - 1]), player: index % 2 ? "black" : "white" } : null,
         comment: commentText(query?.innerHTML),
         marks: [],
+        boardText: this.pathBranches.get(index)?.txt || undefined,
+        renLibNativeLabel: Boolean(this.pathBranches.get(index)?.txt),
+        renLibLabelColor: this.pathBranches.get(index)?.color,
         preferredChildId: nextId,
       };
     }
@@ -90,20 +98,30 @@ export class RenLibWebViewSession {
     this.base.metadata.sourceFileName = file.name;
     this.path = [];
     this.queries.clear();
+    this.pathBranches.clear();
     const opened = await this.core.open(file);
     const autoMove = Array.isArray(opened?.parameter?.autoMove)
       ? opened.parameter.autoMove
       : Array.isArray(opened?.result?.autoMove) ? opened.result.autoMove : [];
     this.path = autoMove.filter((idx: unknown): idx is number => Number.isInteger(idx) && Number(idx) >= 0 && Number(idx) < 225);
-    for (let depth = 0; depth <= this.path.length; depth += 1) await this.query(depth);
+    for (let depth = 0; depth <= this.path.length; depth += 1) {
+      await this.query(depth);
+      if (depth < this.path.length) {
+        const selected = this.queries.get(depth)?.nodes.find((branch) => branch.idx === this.path[depth]);
+        if (selected) this.pathBranches.set(depth + 1, selected);
+      }
+    }
     return this.projection();
   }
 
   async move(position: Position) {
     const idx = positionToIdx(position);
     const current = this.queries.get(this.path.length);
-    if (!current?.nodes.some((branch) => branch.idx === idx)) throw new Error("这个位置不在当前 RenLib 分支中");
+    const selected = current?.nodes.find((branch) => branch.idx === idx);
+    if (!selected) throw new Error("这个位置不在当前 RenLib 分支中");
     this.path.push(idx);
+    this.pathBranches.set(this.path.length, selected);
+    [...this.pathBranches.keys()].filter((depth) => depth > this.path.length).forEach((depth) => this.pathBranches.delete(depth));
     await this.query();
     return this.projection();
   }
@@ -115,20 +133,27 @@ export class RenLibWebViewSession {
 
   async back() {
     if (this.path.length) this.path.pop();
+    [...this.pathBranches.keys()].filter((depth) => depth > this.path.length).forEach((depth) => this.pathBranches.delete(depth));
     if (!this.queries.has(this.path.length)) await this.query();
     return this.projection();
   }
 
   async root() {
     this.path = [];
+    this.pathBranches.clear();
     if (!this.queries.has(0)) await this.query(0);
     return this.projection();
   }
 
   async toDepth(depth: number) {
     this.path = this.path.slice(0, Math.max(0, depth));
+    [...this.pathBranches.keys()].filter((pathDepth) => pathDepth > this.path.length).forEach((pathDepth) => this.pathBranches.delete(pathDepth));
     if (!this.queries.has(this.path.length)) await this.query();
     return this.projection();
+  }
+
+  async exportOriginalSgf() {
+    return this.core.convertToSgf();
   }
 
   close() { this.core.close(); }

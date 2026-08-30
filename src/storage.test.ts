@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDocument } from "./game";
 import { loadActive, loadDraftFromLocal, loadLibrary, removeFromLibrary, renameInLibrary, saveDraftToLocal, saveToLibrary } from "./storage";
-import { loadPuzzleCollections, savePuzzleTitleOverride } from "./puzzles";
+import { loadPuzzleCollections, savePuzzleCollections, savePuzzleTitleOverride } from "./puzzles";
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -53,8 +53,11 @@ describe("local record storage", () => {
   });
 
   it("persists collection and individual puzzle title overrides", () => {
-    const collection = loadPuzzleCollections()[0];
-    const puzzle = collection.puzzles[0];
+    const collection = { id: "test-collection", title: "测试题集", source: "测试", license: "测试", puzzles: [{ id: "test-puzzle", title: "测试题", prompt: "黑先", difficulty: 1 as const, player: "black" as const, stones: [] }] };
+    savePuzzleCollections([collection]);
+    const loaded = loadPuzzleCollections()[0];
+    expect(loaded?.id).toBe(collection.id);
+    const puzzle = loaded.puzzles[0];
 
     savePuzzleTitleOverride(collection.id, "新题集名");
     savePuzzleTitleOverride(collection.id, "新题目名", puzzle.id);
@@ -62,5 +65,11 @@ describe("local record storage", () => {
     const reloaded = loadPuzzleCollections()[0];
     expect(reloaded.title).toBe("新题集名");
     expect(reloaded.puzzles[0].title).toBe("新题目名");
+  });
+
+  it("does not restore the retired original puzzle collection from old local data", () => {
+    localStorage.setItem("renju-note-puzzle-collections-v1", JSON.stringify([{ id: "original-tactics", title: "原创攻防体验", source: "旧版本", license: "项目自有", puzzles: [] }]));
+
+    expect(loadPuzzleCollections()).toEqual([]);
   });
 });

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title>方案 B：半步路径</title>
+  <rect width="512" height="512" rx="116" fill="#20221f"/>
+  <path d="M112 400V112h288M112 334h178M178 400V222h222M244 334v-66h156" fill="none" stroke="#d8ad69" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="178" cy="334" r="48" fill="#365e4b" stroke="#f7f3e8" stroke-width="8"/>
+  <circle cx="310" cy="268" r="48" fill="#f7f3e8" stroke="#365e4b" stroke-width="8"/>
+  <path d="M222 334h44" stroke="#b94b3f" stroke-width="10" stroke-linecap="round"/>
+</svg>

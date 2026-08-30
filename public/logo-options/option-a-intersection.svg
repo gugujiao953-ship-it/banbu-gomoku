@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title>方案 A：交叉落子</title>
+  <rect width="512" height="512" rx="116" fill="#365e4b"/>
+  <rect x="68" y="68" width="376" height="376" rx="58" fill="#d8ad69"/>
+  <g stroke="#5b4934" stroke-width="10" stroke-linecap="round" opacity=".78">
+    <path d="M142 112v288M256 112v288M370 112v288M112 142h288M112 256h288M112 370h288"/>
+  </g>
+  <circle cx="256" cy="256" r="72" fill="#20221f"/>
+  <circle cx="256" cy="256" r="50" fill="#f7f3e8"/>
+  <path d="M256 206v100M206 256h100" stroke="#365e4b" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="142" cy="142" r="33" fill="#20221f"/>
+  <circle cx="370" cy="370" r="33" fill="#f7f3e8" stroke="#8f8577" stroke-width="4"/>
+</svg>

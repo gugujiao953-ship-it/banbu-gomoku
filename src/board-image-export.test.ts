@@ -46,7 +46,8 @@ describe("board share image", () => {
       mirrored: true,
     });
 
-    expect(svg).toContain("rotate(90) scale(-1 1)");
+    expect(svg).not.toContain('transform="translate(');
+    expect(svg).toContain('<rect x="70" y="190" width="1060" height="1060"');
     expect(svg).not.toContain('data-export-role="move-number"');
     expect(svg).not.toContain('data-export-role="coordinate"');
     expect(svg).not.toContain('data-export-role="annotation"');

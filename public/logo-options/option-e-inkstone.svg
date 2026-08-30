@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title>方案 E：墨玉</title>
+  <rect width="512" height="512" rx="116" fill="#244636"/>
+  <circle cx="256" cy="256" r="144" fill="#20221f" stroke="#d8ad69" stroke-width="14"/>
+  <path d="M164 256h184M256 164v184" stroke="#d8ad69" stroke-width="12" stroke-linecap="round" opacity=".9"/>
+  <circle cx="256" cy="256" r="56" fill="#f7f3e8"/>
+  <circle cx="256" cy="256" r="25" fill="#b94b3f"/>
+  <path d="M150 150l54 54M362 150l-54 54M150 362l54-54M362 362l-54-54" stroke="#f7f3e8" stroke-width="8" stroke-linecap="round" opacity=".9"/>
+</svg>

@@ -2,6 +2,8 @@
 
 `qa/` 只保留可重复执行的正式浏览器回归与专项工具。需要本机大文件、oracle 或参考站的用例放在 `qa/manual/`；只用于历史取证、截图和问题探索的脚本放在 `qa/archive/`。
 
+正式浏览器回归的机器可读清单见 [`regression-manifest.mjs`](./regression-manifest.mjs)，说明与目录治理规则见 [`REGRESSION.md`](./REGRESSION.md)。未登记的根目录脚本不会因为文件名存在就自动成为正式门禁。
+
 ## 正式回归集
 
 ### 快速单元回归
@@ -22,7 +24,7 @@ $env:QA_BASE_URL='http://127.0.0.1:5173/'
 npm run qa:browser
 ```
 
-正式浏览器集由 `scripts/run-qa.mjs` 固定列出，当前覆盖高级导入、百万节点分块顺序、草稿存储保护、编辑命令栏、导出内容和两个移动端视口。任一脚本失败都会返回非零退出码并立即停止。
+正式浏览器集由 `qa/regression-manifest.mjs` 登记并由 `scripts/run-qa.mjs` 执行，当前覆盖高级导入、百万节点分块顺序、草稿存储保护、最近导入一键重开、AI 规则与草稿层级、编辑命令栏、导出内容、视觉回归、ErrorBoundary 诊断导出和 RenLib dev 资产服务。任一脚本失败都会返回非零退出码并立即停止。
 
 ### 完整确定性回归
 

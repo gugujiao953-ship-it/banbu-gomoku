@@ -8,8 +8,12 @@ const DOCUMENT_STORE = "documents";
 const SUMMARY_STORE = "summaries";
 const CHUNK_STORE = "index-chunks";
 const DRAFT_STORE = "drafts";
-const DATABASE_VERSION = 7;
+const DATABASE_VERSION = 8;
 const INDEX_CHUNK_SIZE = 250000;
+const TRASH_DOCUMENT_STORE = "trash-documents";
+const TRASH_SUMMARY_STORE = "trash-summaries";
+const TRASH_CHUNK_STORE = "trash-index-chunks";
+const TRASH_DRAFT_STORE = "trash-drafts";
 
 export interface LargeDocumentSummary {
   id: string;
@@ -77,6 +81,10 @@ const openDatabase = () => new Promise<IDBDatabase>((resolve, reject) => {
     if (!database.objectStoreNames.contains(SUMMARY_STORE)) database.createObjectStore(SUMMARY_STORE, { keyPath: "id" });
     if (!database.objectStoreNames.contains(CHUNK_STORE)) database.createObjectStore(CHUNK_STORE, { keyPath: "key" });
     if (!database.objectStoreNames.contains(DRAFT_STORE)) database.createObjectStore(DRAFT_STORE, { keyPath: "documentId" });
+    if (!database.objectStoreNames.contains(TRASH_DOCUMENT_STORE)) database.createObjectStore(TRASH_DOCUMENT_STORE, { keyPath: "id" });
+    if (!database.objectStoreNames.contains(TRASH_SUMMARY_STORE)) database.createObjectStore(TRASH_SUMMARY_STORE, { keyPath: "id" });
+    if (!database.objectStoreNames.contains(TRASH_CHUNK_STORE)) database.createObjectStore(TRASH_CHUNK_STORE, { keyPath: "key" });
+    if (!database.objectStoreNames.contains(TRASH_DRAFT_STORE)) database.createObjectStore(TRASH_DRAFT_STORE, { keyPath: "documentId" });
   };
   request.onsuccess = () => resolve(request.result);
   request.onerror = () => reject(request.error || new Error("无法打开大型棋谱存储"));
@@ -117,6 +125,10 @@ export interface LargeStorageRecords {
   summaries: unknown[];
   drafts: unknown[];
   indexChunks: unknown[];
+  trashDocuments?: unknown[];
+  trashSummaries?: unknown[];
+  trashDrafts?: unknown[];
+  trashIndexChunks?: unknown[];
 }
 
 const requestResult = <T>(request: IDBRequest<T>) => new Promise<T>((resolve, reject) => {
@@ -127,14 +139,18 @@ const requestResult = <T>(request: IDBRequest<T>) => new Promise<T>((resolve, re
 export const exportLargeStorageRecords = async (): Promise<LargeStorageRecords> => {
   const database = await openDatabase();
   try {
-    const transaction = database.transaction([DOCUMENT_STORE, SUMMARY_STORE, DRAFT_STORE, CHUNK_STORE], "readonly");
+    const transaction = database.transaction([DOCUMENT_STORE, SUMMARY_STORE, DRAFT_STORE, CHUNK_STORE, TRASH_DOCUMENT_STORE, TRASH_SUMMARY_STORE, TRASH_DRAFT_STORE, TRASH_CHUNK_STORE], "readonly");
     const documentRequest = requestResult(transaction.objectStore(DOCUMENT_STORE).getAll());
     const summaryRequest = requestResult(transaction.objectStore(SUMMARY_STORE).getAll());
     const draftRequest = requestResult(transaction.objectStore(DRAFT_STORE).getAll());
     const chunkRequest = requestResult(transaction.objectStore(CHUNK_STORE).getAll());
-    const [documents, summaries, drafts, indexChunks] = await Promise.all([documentRequest, summaryRequest, draftRequest, chunkRequest]);
+    const trashDocumentRequest = requestResult(transaction.objectStore(TRASH_DOCUMENT_STORE).getAll());
+    const trashSummaryRequest = requestResult(transaction.objectStore(TRASH_SUMMARY_STORE).getAll());
+    const trashDraftRequest = requestResult(transaction.objectStore(TRASH_DRAFT_STORE).getAll());
+    const trashChunkRequest = requestResult(transaction.objectStore(TRASH_CHUNK_STORE).getAll());
+    const [documents, summaries, drafts, indexChunks, trashDocuments, trashSummaries, trashDrafts, trashIndexChunks] = await Promise.all([documentRequest, summaryRequest, draftRequest, chunkRequest, trashDocumentRequest, trashSummaryRequest, trashDraftRequest, trashChunkRequest]);
     await transactionDone(transaction);
-    return { documents, summaries, drafts, indexChunks };
+    return { documents, summaries, drafts, indexChunks, trashDocuments, trashSummaries, trashDrafts, trashIndexChunks };
   } finally {
     database.close();
   }
@@ -147,18 +163,26 @@ export const exportLargeStorageRecords = async (): Promise<LargeStorageRecords> 
 export const replaceLargeStorageRecords = async (records: LargeStorageRecords): Promise<void> => {
   const database = await openDatabase();
   try {
-    const transaction = database.transaction([DOCUMENT_STORE, SUMMARY_STORE, DRAFT_STORE, CHUNK_STORE], "readwrite");
+    const transaction = database.transaction([DOCUMENT_STORE, SUMMARY_STORE, DRAFT_STORE, CHUNK_STORE, TRASH_DOCUMENT_STORE, TRASH_SUMMARY_STORE, TRASH_DRAFT_STORE, TRASH_CHUNK_STORE], "readwrite");
     const stores = {
       documents: transaction.objectStore(DOCUMENT_STORE),
       summaries: transaction.objectStore(SUMMARY_STORE),
       drafts: transaction.objectStore(DRAFT_STORE),
       indexChunks: transaction.objectStore(CHUNK_STORE),
+      trashDocuments: transaction.objectStore(TRASH_DOCUMENT_STORE),
+      trashSummaries: transaction.objectStore(TRASH_SUMMARY_STORE),
+      trashDrafts: transaction.objectStore(TRASH_DRAFT_STORE),
+      trashIndexChunks: transaction.objectStore(TRASH_CHUNK_STORE),
     };
     for (const store of Object.values(stores)) store.clear();
     for (const record of records.documents) stores.documents.put(record);
     for (const record of records.summaries) stores.summaries.put(record);
     for (const record of records.drafts) stores.drafts.put(record);
     for (const record of records.indexChunks) stores.indexChunks.put(record);
+    for (const record of records.trashDocuments || []) stores.trashDocuments.put(record);
+    for (const record of records.trashSummaries || []) stores.trashSummaries.put(record);
+    for (const record of records.trashDrafts || []) stores.trashDrafts.put(record);
+    for (const record of records.trashIndexChunks || []) stores.trashIndexChunks.put(record);
     await transactionDone(transaction);
   } finally {
     database.close();
@@ -199,6 +223,20 @@ export const loadLargeSummaries = async (): Promise<LargeDocumentSummary[]> => {
       request.onerror = () => reject(request.error || new Error("读取大型棋谱索引失败"));
     });
     await transactionDone(transaction); return summaries;
+  } finally { database.close(); }
+};
+
+export const loadLargeTrashSummaries = async (): Promise<LargeDocumentSummary[]> => {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(TRASH_SUMMARY_STORE, "readonly");
+    const request = transaction.objectStore(TRASH_SUMMARY_STORE).getAll();
+    const summaries = await new Promise<LargeDocumentSummary[]>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result as LargeDocumentSummary[]);
+      request.onerror = () => reject(request.error || new Error("读取回收站棋谱索引失败"));
+    });
+    await transactionDone(transaction);
+    return summaries;
   } finally { database.close(); }
 };
 
@@ -361,6 +399,93 @@ export const removeLargeDocument = async (id: string): Promise<void> => {
     const chunkRequest = transaction.objectStore(CHUNK_STORE).openCursor();
     chunkRequest.onsuccess = () => {
       const cursor = chunkRequest.result;
+      if (cursor) { if (cursor.value.id === id) cursor.delete(); cursor.continue(); }
+    };
+    await transactionDone(transaction);
+  } finally { database.close(); }
+};
+
+const transferLargeRecord = async (id: string, restore: boolean): Promise<LargeDocumentSummary | null> => {
+  const database = await openDatabase();
+  const fromDocuments = restore ? TRASH_DOCUMENT_STORE : DOCUMENT_STORE;
+  const toDocuments = restore ? DOCUMENT_STORE : TRASH_DOCUMENT_STORE;
+  const fromSummaries = restore ? TRASH_SUMMARY_STORE : SUMMARY_STORE;
+  const toSummaries = restore ? SUMMARY_STORE : TRASH_SUMMARY_STORE;
+  const fromChunks = restore ? TRASH_CHUNK_STORE : CHUNK_STORE;
+  const toChunks = restore ? CHUNK_STORE : TRASH_CHUNK_STORE;
+  const fromDrafts = restore ? TRASH_DRAFT_STORE : DRAFT_STORE;
+  const toDrafts = restore ? DRAFT_STORE : TRASH_DRAFT_STORE;
+  try {
+    const transaction = database.transaction([fromDocuments, toDocuments, fromSummaries, toSummaries, fromChunks, toChunks, fromDrafts, toDrafts], "readwrite");
+    const documentStore = transaction.objectStore(fromDocuments);
+    const summaryStore = transaction.objectStore(fromSummaries);
+    const draftStore = transaction.objectStore(fromDrafts);
+    const storedDocumentRequest = documentStore.get(id);
+    const storedSummaryRequest = summaryStore.get(id);
+    const storedDraftRequest = draftStore.get(id);
+    const result = await new Promise<LargeDocumentSummary | null>((resolve, reject) => {
+      let storedDocument: any = null;
+      let storedSummary: LargeDocumentSummary | null = null;
+      let storedDraft: any = null;
+      let documentsReady = false;
+      let summaryReady = false;
+      let draftReady = false;
+      let chunksReady = false;
+      let settled = false;
+      const fail = (error: unknown) => { if (!settled) { settled = true; reject(error instanceof Error ? error : new Error("回收站棋谱操作失败")); } };
+      const commit = () => {
+        if (settled || !documentsReady || !summaryReady || !draftReady || !chunksReady) return;
+        settled = true;
+        if (!storedDocument || !storedSummary) { resolve(null); return; }
+        transaction.objectStore(toDocuments).put(storedDocument);
+        transaction.objectStore(toSummaries).put(storedSummary);
+        if (storedDraft) transaction.objectStore(toDrafts).put(storedDraft);
+        documentStore.delete(id);
+        summaryStore.delete(id);
+        draftStore.delete(id);
+        resolve(storedSummary);
+      };
+      storedDocumentRequest.onsuccess = () => { storedDocument = storedDocumentRequest.result || null; documentsReady = true; commit(); };
+      storedSummaryRequest.onsuccess = () => { storedSummary = (storedSummaryRequest.result as LargeDocumentSummary | undefined) || null; summaryReady = true; commit(); };
+      storedDraftRequest.onsuccess = () => { storedDraft = storedDraftRequest.result || null; draftReady = true; commit(); };
+      storedDocumentRequest.onerror = () => fail(storedDocumentRequest.error);
+      storedSummaryRequest.onerror = () => fail(storedSummaryRequest.error);
+      storedDraftRequest.onerror = () => fail(storedDraftRequest.error);
+      const cursorRequest = transaction.objectStore(fromChunks).openCursor();
+      cursorRequest.onsuccess = () => {
+        const cursor = cursorRequest.result;
+        if (!cursor) { chunksReady = true; commit(); return; }
+        if (cursor.value.id === id) {
+          transaction.objectStore(toChunks).put(cursor.value);
+          cursor.delete();
+        }
+        cursor.continue();
+      };
+      cursorRequest.onerror = () => fail(cursorRequest.error);
+      transaction.onerror = () => fail(transaction.error);
+      transaction.onabort = () => fail(transaction.error || new Error("回收站棋谱操作已中止"));
+    });
+    await transactionDone(transaction);
+    return result;
+  } finally { database.close(); }
+};
+
+/** Move a large record into IndexedDB's recycle-bin stores without materializing its tree. */
+export const moveLargeDocumentToTrash = (id: string) => transferLargeRecord(id, false);
+
+/** Restore a large record from IndexedDB's recycle-bin stores. */
+export const restoreLargeDocumentFromTrash = (id: string) => transferLargeRecord(id, true);
+
+export const removeLargeTrashDocument = async (id: string): Promise<void> => {
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction([TRASH_DOCUMENT_STORE, TRASH_SUMMARY_STORE, TRASH_CHUNK_STORE, TRASH_DRAFT_STORE], "readwrite");
+    transaction.objectStore(TRASH_DOCUMENT_STORE).delete(id);
+    transaction.objectStore(TRASH_SUMMARY_STORE).delete(id);
+    transaction.objectStore(TRASH_DRAFT_STORE).delete(id);
+    const cursorRequest = transaction.objectStore(TRASH_CHUNK_STORE).openCursor();
+    cursorRequest.onsuccess = () => {
+      const cursor = cursorRequest.result;
       if (cursor) { if (cursor.value.id === id) cursor.delete(); cursor.continue(); }
     };
     await transactionDone(transaction);

@@ -1,6 +1,15 @@
 import type { GameDocument, GameMetadata, PartialRecordNode, RecordNode } from "./types";
 import { compactRegisterAlias } from "./compact-index";
 
+const PROJECTED_NODES_MARKER = "__isProjected";
+
+/** The proxy returned by projectedDocument exposes a non-node marker so UI
+ * code can choose the overlay-aware child path without materializing a large
+ * compact tree. Keep the marker check here instead of leaking an `any` cast
+ * into React rendering code. */
+export const isProjectedDocument = (document: GameDocument) =>
+  (document.nodes as unknown as Record<string, unknown>)[PROJECTED_NODES_MARKER] === true;
+
 export type DraftOperation =
   | { type: "add-move"; parentId: string; node: RecordNode }
   | { type: "delete-subtree"; parentId: string; rootId: string }
@@ -84,12 +93,10 @@ export const overlayNode = (document: GameDocument, overlay: DraftOverlay, id: s
     .filter((child) => child.parentId === id && !overlay.deleted.has(child.id))
     .map((child) => child.id);
   const effectiveChildren = [...baseChildren, ...addedChildren];
-  const basePatch = patch ? { ...patch } : {};
-  // Remove children/marks from patch if present (we compute them from overlay)
-  delete (basePatch as any).children;
-  delete (basePatch as any).marks;
-  delete (basePatch as any).preferredChildId;
-  const result = { ...node, ...basePatch, children: effectiveChildren, marks: patch?.marks || node.marks };
+  // Children, marks and preferredChildId are computed from the overlay below;
+  // don't let a partial patch override those derived values.
+  const { marks: patchedMarks, preferredChildId: _patchedPreferredChildId, ...basePatch } = patch || {};
+  const result = { ...node, ...basePatch, children: effectiveChildren, marks: patchedMarks || node.marks };
   // Apply set-mainline override from overlay
   const preferredOverride = overlay.preferred.get(id);
   if (preferredOverride !== undefined && effectiveChildren.includes(preferredOverride)) {
@@ -134,7 +141,7 @@ export const projectedDocument = (document: GameDocument, overlay: DraftOverlay)
   const nodes: Record<string, RecordNode> = new Proxy({} as Record<string, RecordNode>, {
     get: (_target, property: string | symbol) => {
       if (typeof property !== "string") return undefined;
-      if (property === "__isProjected") return true;
+      if (property === PROJECTED_NODES_MARKER) return true;
       return overlayNode(document, overlay, property);
     },
     has: (_target, property: string | symbol) => {

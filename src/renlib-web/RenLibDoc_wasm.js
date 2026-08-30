@@ -171,9 +171,17 @@
 
     function _outputSGFCache(pBuffer, byteLen) {
         let uint8 = new Uint8Array(memory.buffer, pBuffer, byteLen);
-        for (let i = 0; i < byteLen; i++) {
-            sgfUint8[sgfUint8Len++] = uint8[i];
+        let required = sgfUint8Len + byteLen;
+        if (required > sgfUint8.length) {
+            // getSGFByteLength can underestimate encoded byte length when the
+            // record contains Chinese annotations. Grow only when necessary
+            // so ordinary exports keep the original memory footprint.
+            let next = new Uint8Array(Math.max(required, Math.ceil(sgfUint8.length * 1.5), 1024));
+            next.set(sgfUint8.subarray(0, sgfUint8Len));
+            sgfUint8 = next;
         }
+        sgfUint8.set(uint8, sgfUint8Len);
+        sgfUint8Len += byteLen;
     }
     
     // ---------------  change buffer  -------------------

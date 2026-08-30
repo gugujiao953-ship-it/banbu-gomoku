@@ -13,6 +13,10 @@ export class DpViewSession {
   private path: Position[] = [];
   private readonly queries = new Map<number, Query>();
   private base?: GameDocument;
+  // A board tap can produce several asynchronous worker requests in quick
+  // succession. Serialize state transitions so a late response cannot project
+  // a half-applied path over a newer branch selection.
+  private operationQueue: Promise<void> = Promise.resolve();
 
   constructor() {
     this.worker.onmessage = (event: MessageEvent<any>) => {
@@ -43,6 +47,12 @@ export class DpViewSession {
     });
   }
 
+  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const run = this.operationQueue.then(operation, operation);
+    this.operationQueue = run.then(() => undefined, () => undefined);
+    return run;
+  }
+
   private nodeId(depth: number) {
     if (!this.base || depth === 0) return this.base?.rootId || "dp-root";
     return `${this.base.id}-dp-${this.path.slice(0, depth).map((point) => `${point.row.toString(16)}${point.col.toString(16)}`).join("-")}`;
@@ -55,6 +65,12 @@ export class DpViewSession {
     for (let index = 0; index <= depth; index += 1) {
       const id = this.nodeId(index), query = this.queries.get(index);
       const nextId = index < depth ? this.nodeId(index + 1) : undefined;
+      const selectedBranch = index > 0
+        ? this.queries.get(index - 1)?.branches.find((branch) => {
+          const move = this.path[index - 1];
+          return move && branch.position.row === move.row && branch.position.col === move.col;
+        })
+        : undefined;
       nodes[id] = {
         id, parentId: index ? this.nodeId(index - 1) : null, children: nextId ? [nextId] : [],
         move: index ? { ...this.path[index - 1], player: index % 2 ? "black" : "white" } : null,
@@ -62,6 +78,14 @@ export class DpViewSession {
         // child records as their native labels below. Keeping query.marks here
         // would render every @BTXT@ label a second time at the same coordinate.
         comment: query?.comment || "", marks: [], preferredChildId: nextId,
+        // In DP/DB data the label belongs to the edge in the parent's query,
+        // not to the child position returned by the next query. Carry it onto
+        // the projected path node so createEditableViewCopy() preserves the
+        // original label when the user enters the editable study copy and
+        // navigates back over this move.
+        boardText: selectedBranch?.label || undefined,
+        renLibNativeLabel: Boolean(selectedBranch?.label),
+        renLibLabelColor: selectedBranch?.label ? "#1d1c19" : undefined,
       };
     }
     // Keep the cached alternatives at every loaded depth, not only at the
@@ -86,38 +110,49 @@ export class DpViewSession {
   }
 
   async open(file: File) {
-    const base = createDocument(file.name.replace(/\.[^.]+$/, ""), 15);
-    const extension = file.name.split(".").pop()?.toLowerCase();
-    base.metadata.sourceFormat = extension === "db" ? "db" : "dp";
-    base.metadata.sourceFileName = file.name;
-    this.base = base; this.path = []; this.queries.clear();
-    const reply = await this.send({ cmd: "open", file });
-    this.queries.set(0, reply.query);
-    return { ...this.projection(), recordCount: Number(reply.count || 0) };
+    return this.enqueue(async () => {
+      const base = createDocument(file.name.replace(/\.[^.]+$/, ""), 15);
+      const extension = file.name.split(".").pop()?.toLowerCase();
+      base.metadata.sourceFormat = extension === "db" ? "db" : "dp";
+      base.metadata.sourceFileName = file.name;
+      this.base = base; this.path = []; this.queries.clear();
+      const reply = await this.send({ cmd: "open", file });
+      this.queries.set(0, reply.query);
+      return { ...this.projection(), recordCount: Number(reply.count || 0) };
+    });
   }
 
   async move(position: Position) {
-    this.path.push({ ...position });
-    const reply = await this.send({ cmd: "query", path: this.path });
-    this.queries.set(this.path.length, reply.query);
-    return this.projection();
+    return this.enqueue(async () => {
+      this.path.push({ ...position });
+      const reply = await this.send({ cmd: "query", path: this.path });
+      this.queries.set(this.path.length, reply.query);
+      return this.projection();
+    });
   }
 
   async moveFromDepth(depth: number, position: Position) {
-    this.path = this.path.slice(0, Math.max(0, depth));
-    return this.move(position);
+    return this.enqueue(async () => {
+      this.path = this.path.slice(0, Math.max(0, depth));
+      this.path.push({ ...position });
+      const reply = await this.send({ cmd: "query", path: this.path });
+      this.queries.set(this.path.length, reply.query);
+      return this.projection();
+    });
   }
 
   async back() {
-    if (this.path.length) this.path.pop();
-    if (!this.queries.has(this.path.length)) {
-      const reply = await this.send({ cmd: "query", path: this.path }); this.queries.set(this.path.length, reply.query);
-    }
-    return this.projection();
+    return this.enqueue(async () => {
+      if (this.path.length) this.path.pop();
+      if (!this.queries.has(this.path.length)) {
+        const reply = await this.send({ cmd: "query", path: this.path }); this.queries.set(this.path.length, reply.query);
+      }
+      return this.projection();
+    });
   }
 
-  async root() { this.path = []; return this.projection(); }
-  async toDepth(depth: number) { this.path = this.path.slice(0, Math.max(0, depth)); return this.projection(); }
+  async root() { return this.enqueue(async () => { this.path = []; return this.projection(); }); }
+  async toDepth(depth: number) { return this.enqueue(async () => { this.path = this.path.slice(0, Math.max(0, depth)); return this.projection(); }); }
   close() { this.worker.terminate(); this.pending.forEach(({ reject }) => reject(new Error("DP 数据库已关闭"))); this.pending.clear(); }
 }
 

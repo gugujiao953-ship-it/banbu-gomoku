@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { addMove, createDocument } from "./game";
 import { exportJson, exportSgf, importRecordFile } from "./formats";
 import { buildCompactRenLibIndex, createLazyDocument } from "./compact-index";
-import { commitDraftAsDerivedVersion, loadDraftForDocument, removeDraftForDocument, saveDraftForDocument, documentFingerprint, assembleCompactIndex, loadLargeDocument, loadLargeSummaries, removeLargeDocument, renameLargeDocument, saveCompactIndex, saveLargeDocument } from "./large-storage";
+import { commitDraftAsDerivedVersion, loadDraftForDocument, removeDraftForDocument, saveDraftForDocument, documentFingerprint, assembleCompactIndex, loadLargeDocument, loadLargeSummaries, loadLargeTrashSummaries, moveLargeDocumentToTrash, removeLargeDocument, removeLargeTrashDocument, renameLargeDocument, restoreLargeDocumentFromTrash, saveCompactIndex, saveLargeDocument } from "./large-storage";
 import type { DraftOperation } from "./draft-operations";
 
 describe("large-record storage", () => {
@@ -78,6 +78,30 @@ describe("large-record storage", () => {
     expect(loaded).toBeNull();
     const summaries = await loadLargeSummaries();
     expect(summaries.some((item) => item.id === document.id)).toBe(false);
+  });
+
+  it("moves a compact document to trash and restores its tree", async () => {
+    let document = createDocument("trash roundtrip");
+    document = addMove(document, document.rootId, { row: 7, col: 7 }).document;
+    await saveCompactIndex(document, buildCompactRenLibIndex(document));
+
+    const moved = await moveLargeDocumentToTrash(document.id);
+    expect(moved?.metadata.title).toBe("trash roundtrip");
+    expect(await loadLargeDocument(document.id)).toBeNull();
+    expect((await loadLargeTrashSummaries()).some((item) => item.id === document.id)).toBe(true);
+
+    const restored = await restoreLargeDocumentFromTrash(document.id);
+    expect(restored?.id).toBe(document.id);
+    expect((await loadLargeDocument(document.id))?.nodes[document.rootId]?.children).toHaveLength(1);
+    expect((await loadLargeTrashSummaries()).some((item) => item.id === document.id)).toBe(false);
+  });
+
+  it("can permanently remove a trashed compact document", async () => {
+    const document = createDocument("trash permanent");
+    await saveCompactIndex(document, buildCompactRenLibIndex(document));
+    await moveLargeDocumentToTrash(document.id);
+    await removeLargeTrashDocument(document.id);
+    expect((await loadLargeTrashSummaries()).some((item) => item.id === document.id)).toBe(false);
   });
 });
 

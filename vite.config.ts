@@ -82,7 +82,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg"],
+      includeAssets: ["icon.svg", "icon-maskable.svg"],
       manifest: {
         name: "半步五子棋",
         short_name: "半步五子棋",
@@ -92,7 +92,10 @@ export default defineConfig({
         display: "standalone",
         orientation: "portrait-primary",
         start_url: ".",
-        icons: [{ src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" }],
+        icons: [
+          { src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
+          { src: "icon-maskable.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
+        ],
       },
       workbox: { globPatterns: ["**/*.{js,css,html,svg,json}"] },
     }),

@@ -13,11 +13,11 @@ const profiles = {
   "中级": { label: "中级", timeMs: 1200, maxDepth: 48 },
   "高级": { label: "高级", timeMs: 1800, maxDepth: 64 },
   "大师": { label: "大师", timeMs: 3000, maxDepth: 80 },
-  "不限": { label: "不限", timeMs: 30000, maxDepth: 128 },
+  "不限": { label: "不限", timeMs: 300000, maxDepth: 128 },
   quick: { label: "初级", timeMs: 600, maxDepth: 32 },
   standard: { label: "高级", timeMs: 1800, maxDepth: 64 },
   strong: { label: "大师", timeMs: 3000, maxDepth: 80 },
-  expert: { label: "不限", timeMs: 30000, maxDepth: 128 },
+  expert: { label: "不限", timeMs: 300000, maxDepth: 128 },
 };
 const selectedProfiles = requestedProfiles
   .map((profile) => profiles[profile])
@@ -179,7 +179,7 @@ const markdown = [
   "| 中级 | 1200ms | 48 | 平衡速度与深度 |",
   "| 高级 | 1800ms | 64 | 默认推荐，接近历史基准 |",
   "| 大师 | 3000ms | 80 | 更长思考，优先寻找强制手 |",
-  "| 不限 | 30000ms | 128 | 尽可能深搜，保留浏览器保护上限 |",
+  "| 不限 | 300000ms（5分钟） | 128 | 尽可能深搜，保留浏览器保护上限 |",
   "",
   "## 通过率",
   "",

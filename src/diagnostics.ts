@@ -27,32 +27,37 @@ export interface DiagnosticsReport {
   language: string;
   viewport: { width: number; height: number };
   url: string;
+  mode: "development" | "production" | "test";
   error?: { message: string; stack?: string };
+  componentStack?: string;
   recentActions: DiagnosticsEntry[];
 }
 
-export const buildDiagnosticsReport = (error?: unknown): DiagnosticsReport => ({
+export const buildDiagnosticsReport = (error?: unknown, componentStack?: string): DiagnosticsReport => ({
   app: "banbu-gomoku",
   version: APP_VERSION,
   time: new Date().toISOString(),
   userAgent: navigator.userAgent,
   language: navigator.language,
   viewport: { width: window.innerWidth, height: window.innerHeight },
-  url: location.href,
+  // Do not put query strings or hash fragments into a bug-report artifact.
+  url: `${location.origin}${location.pathname}`,
+  mode: import.meta.env.MODE === "development" ? "development" : import.meta.env.MODE === "test" ? "test" : "production",
   error: error instanceof Error
     ? { message: error.message, stack: error.stack }
     : error !== undefined
       ? { message: String(error) }
       : undefined,
+  componentStack: componentStack || undefined,
   recentActions: recentActions(),
 });
 
 export const diagnosticsFilename = (time = new Date()) => `半步五子棋诊断-${time.toISOString().replace(/[:.]/g, "-").replace("Z", "")}.json`;
 
-export const diagnosticsText = (error?: unknown) => JSON.stringify(buildDiagnosticsReport(error), null, 2);
+export const diagnosticsText = (error?: unknown, componentStack?: string) => JSON.stringify(buildDiagnosticsReport(error, componentStack), null, 2);
 
-export const downloadDiagnostics = (error?: unknown) => {
-  const blob = new Blob([diagnosticsText(error)], { type: "application/json;charset=utf-8" });
+export const downloadDiagnostics = (error?: unknown, componentStack?: string) => {
+  const blob = new Blob([diagnosticsText(error, componentStack)], { type: "application/json;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;

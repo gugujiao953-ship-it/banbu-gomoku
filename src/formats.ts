@@ -150,26 +150,48 @@ const dpInversePointTransform = (point: Position, trans: number, size = 15): Pos
   y = size - 1 - y;
   return { row: y, col: x };
 };
+// The reference reader compares stone pairs numerically as (x*32 + y) — see
+// Rapfi dbTypes.js compareStones. A lexicographic string compare ranks "10"
+// before "2", so past column K it silently selects a different canonical
+// transform and lookups miss records that exist in the database.
+const dpStonesCompare = (left: number[], right: number[]) => {
+  const pairs = Math.min(left.length, right.length);
+  for (let index = 0; index < pairs; index += 2) {
+    const lx = left[index] === 0xff ? -1 : left[index], ly = left[index + 1] === 0xff ? -1 : left[index + 1];
+    const rx = right[index] === 0xff ? -1 : right[index], ry = right[index + 1] === 0xff ? -1 : right[index + 1];
+    const diff = lx * 32 + ly - (rx * 32 + ry);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+};
 export const dpCanonicalKey = (position: Uint8Array, sideToMove: 0 | 1) => {
-  let best: number[] | undefined;
+  let best: number[] = [0xffff, 0xffff];
   let bestTrans = 0;
   for (let trans = 0; trans < 8; trans += 1) {
+    const transformed = dpTransformPosition(position, trans);
     const stones: number[] = [];
     // This order is part of the Rapfi database key format. The reference
     // reader scans x first, then y, and appends all black stones followed by
     // all white stones. Sorting by a different traversal order creates valid-
     // looking but unrelated parent keys after the opening moves.
-    const transformed = new Uint8Array(225);
+    let blackCount = 0, whiteCount = 0;
     for (let x = 0; x < 15; x += 1) for (let y = 0; y < 15; y += 1) {
-      const p = dpPointTransform({ row: y, col: x }, trans);
-      transformed[p.row * 15 + p.col] = position[y * 15 + x];
+      const cell = transformed[y * 15 + x];
+      if (cell === 1) { stones.push(x, y); blackCount += 1; }
+      else if (cell === 2) whiteCount += 1;
     }
-    for (const player of [1, 2]) for (let x = 0; x < 15; x += 1) for (let y = 0; y < 15; y += 1) {
-      if (transformed[y * 15 + x] === player) stones.push(x, y);
+    for (let x = 0; x < 15; x += 1) for (let y = 0; y < 15; y += 1) {
+      if (transformed[y * 15 + x] === 2) stones.push(x, y);
     }
-    if (!best || stones.join(",") < best.join(",")) { best = stones; bestTrans = trans; }
+    // Rapfi getStones pads the trailing side with pass markers (0xFF) when the
+    // stone counts do not match the side to move. Harmless for standard
+    // records, but part of the exact key the reference site looks up.
+    const balance = blackCount - whiteCount;
+    if (balance < sideToMove) for (let i = balance; i < sideToMove; i += 1) stones.push(0xff, 0xff);
+    else if (balance > sideToMove) for (let i = balance; i > sideToMove; i -= 1) stones.push(0xff, 0xff);
+    if (dpStonesCompare(stones, best) <= 0) { best = stones; bestTrans = trans; }
   }
-  const key = new Uint8Array([2, 15, 15, ...(best || [])]);
+  const key = new Uint8Array([2, 15, 15, ...(best.length === 2 && best[0] === 0xffff ? [] : best)]);
   return { key, trans: bestTrans };
 };
 const decodeDpLabel = (bytes: Uint8Array) => {
@@ -904,8 +926,15 @@ export const exportPos = (document: GameDocument) => {
   return result.length ? `${result.join(" ")}\n` : "";
 };
 export const downloadFile = (content: BlobPart, filename: string, type: string) => {
-  const url = URL.createObjectURL(new Blob([content], { type })); const anchor = window.document.createElement("a");
-  anchor.href = url; anchor.download = filename; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const anchor = window.document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = "none";
+  window.document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 export const downloadText = downloadFile;
 export const mainLineLength = (document: GameDocument) => {

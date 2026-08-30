@@ -26,9 +26,17 @@ describe("diagnostics ring buffer", () => {
     expect(report.app).toBe("banbu-gomoku");
     expect(report.version).toBeTruthy();
     expect(report.userAgent).toBeTruthy();
+    expect(report.mode).toBe("test");
+    expect(report.url).not.toContain("?");
     expect(report.error?.message).toBe("测试异常");
+    expect(report.componentStack).toBeUndefined();
     expect(report.recentActions[report.recentActions.length - 1]?.action).toBe("导出一键备份");
     expect(diagnosticsFilename()).toMatch(/^半步五子棋诊断-\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it("includes a component stack when one is supplied", () => {
+    const report = buildDiagnosticsReport(new Error("测试异常"), "\n    in Thrower");
+    expect(report.componentStack).toContain("Thrower");
   });
 });
 

@@ -1,6 +1,7 @@
 import { exportLargeStorageRecords, replaceLargeStorageRecords, type LargeStorageRecords } from "./large-storage";
 import type { GameDocument } from "./types";
 import { DEFAULT_SOUND_SETTINGS, normalizeSoundSettings, SOUND_SETTINGS_KEY, type SoundSettings } from "./audio-settings";
+import { MOTION_SETTINGS_KEY, normalizeMotionEnabled } from "./motion-settings";
 
 const SCHEMA = "banbu-gomoku-backup" as const;
 const VERSION = 1 as const;
@@ -15,9 +16,11 @@ const LOCAL_KEYS = {
   branchBookmarks: "renju-note-branch-bookmarks-v1",
   defaultDocument: "renju-note-default-v1",
   activeLargeRecord: "banbu-active-large-record-v1",
+  recycleBin: "banbu-recycle-bin-v1",
   themePreference: "banbu-theme-preference-v1",
   displaySettings: "renju-note-display-settings-v1",
   soundSettings: SOUND_SETTINGS_KEY,
+  motionEnabled: MOTION_SETTINGS_KEY,
 } as const;
 
 export interface BackupLocalStorage {
@@ -36,9 +39,11 @@ export interface BackupLocalStorage {
   branchBookmarks: Record<string, unknown>;
   defaultDocument: unknown | null;
   activeLargeRecord: string | null;
+  recycleBin: unknown[];
   themePreference: "system" | "light" | "dark";
   displaySettings: { showNumbers: boolean; showCoordinates: boolean; showForbidden: boolean };
   soundSettings?: SoundSettings;
+  motionEnabled?: boolean;
 }
 
 export interface BackupSnapshot {
@@ -54,7 +59,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(v
 const isStringRecord = (value: unknown): value is Record<string, string> => isRecord(value) && Object.values(value).every((item) => typeof item === "string");
 const isSoundSettings = (value: unknown): value is SoundSettings => isRecord(value)
   && typeof value.enabled === "boolean" && typeof value.moveEnabled === "boolean" && typeof value.feedbackEnabled === "boolean"
-  && typeof value.volume === "number" && Number.isFinite(value.volume) && value.volume >= 0 && value.volume <= 1;
+  && typeof value.volume === "number" && Number.isFinite(value.volume) && value.volume >= 0 && value.volume <= 1
+  && (value.profile === undefined || value.profile === "classic" || value.profile === "wood" || value.profile === "crystal");
 const hasValidPoint = (value: unknown) => {
   if (!isRecord(value)) return false;
   const row = value.row, col = value.col;
@@ -111,6 +117,7 @@ const captureLocalStorage = (): BackupLocalStorage => {
     branchBookmarks: isRecord(jsonValue(LOCAL_KEYS.branchBookmarks)) ? jsonValue(LOCAL_KEYS.branchBookmarks) as Record<string, unknown> : {},
     defaultDocument: jsonValue(LOCAL_KEYS.defaultDocument),
     activeLargeRecord: typeof localStorage.getItem(LOCAL_KEYS.activeLargeRecord) === "string" ? localStorage.getItem(LOCAL_KEYS.activeLargeRecord) : null,
+    recycleBin: Array.isArray(jsonValue(LOCAL_KEYS.recycleBin)) ? jsonValue(LOCAL_KEYS.recycleBin) as unknown[] : [],
     themePreference: theme === "light" || theme === "dark" ? theme : "system",
     displaySettings: isRecord(display) ? {
       showNumbers: display.showNumbers !== false,
@@ -118,6 +125,7 @@ const captureLocalStorage = (): BackupLocalStorage => {
       showForbidden: display.showForbidden !== false,
     } : { showNumbers: true, showCoordinates: true, showForbidden: true },
     soundSettings: normalizeSoundSettings(jsonValue(LOCAL_KEYS.soundSettings)),
+    motionEnabled: normalizeMotionEnabled(jsonValue(LOCAL_KEYS.motionEnabled)),
   };
 };
 
@@ -167,7 +175,7 @@ const decodeValue = (value: unknown): unknown => {
 };
 
 const validateLocalStorage = (value: unknown): value is BackupLocalStorage => {
-  if (!isRecord(value) || !Array.isArray(value.library) || !value.library.every(isGameDocument) || (value.active !== null && !isGameDocument(value.active)) || !isRecord(value.drafts) || !Object.values(value.drafts).every((draft) => isRecord(draft) && Array.isArray(draft.operations) && Array.isArray(draft.redo)) || !Array.isArray(value.puzzleCollections) || !value.puzzleCollections.every(isPuzzleCollection) || !isRecord(value.puzzleProgress) || !isRecord(value.puzzleTitleOverrides) || !isStringRecord(value.puzzleTitleOverrides.collections) || !isStringRecord(value.puzzleTitleOverrides.puzzles) || !isRecord(value.libraryFolders) || !Array.isArray(value.libraryFolders.recordFolders) || !Array.isArray(value.libraryFolders.puzzleFolders) || !isStringRecord(value.libraryFolders.recordAssignments) || !isStringRecord(value.libraryFolders.puzzleAssignments) || !isRecord(value.branchBookmarks) || (value.defaultDocument !== null && !isGameDocument(value.defaultDocument)) || (value.activeLargeRecord !== null && typeof value.activeLargeRecord !== "string") || !["system", "light", "dark"].includes(String(value.themePreference)) || !isRecord(value.displaySettings) || typeof value.displaySettings.showNumbers !== "boolean" || typeof value.displaySettings.showCoordinates !== "boolean" || typeof value.displaySettings.showForbidden !== "boolean" || (value.soundSettings !== undefined && !isSoundSettings(value.soundSettings))) return false;
+  if (!isRecord(value) || !Array.isArray(value.library) || !value.library.every(isGameDocument) || (value.active !== null && !isGameDocument(value.active)) || !isRecord(value.drafts) || !Object.values(value.drafts).every((draft) => isRecord(draft) && Array.isArray(draft.operations) && Array.isArray(draft.redo)) || !Array.isArray(value.puzzleCollections) || !value.puzzleCollections.every(isPuzzleCollection) || !isRecord(value.puzzleProgress) || !isRecord(value.puzzleTitleOverrides) || !isStringRecord(value.puzzleTitleOverrides.collections) || !isStringRecord(value.puzzleTitleOverrides.puzzles) || !isRecord(value.libraryFolders) || !Array.isArray(value.libraryFolders.recordFolders) || !Array.isArray(value.libraryFolders.puzzleFolders) || !isStringRecord(value.libraryFolders.recordAssignments) || !isStringRecord(value.libraryFolders.puzzleAssignments) || !isRecord(value.branchBookmarks) || (value.defaultDocument !== null && !isGameDocument(value.defaultDocument)) || (value.activeLargeRecord !== null && typeof value.activeLargeRecord !== "string") || !Array.isArray(value.recycleBin) || !["system", "light", "dark"].includes(String(value.themePreference)) || !isRecord(value.displaySettings) || typeof value.displaySettings.showNumbers !== "boolean" || typeof value.displaySettings.showCoordinates !== "boolean" || typeof value.displaySettings.showForbidden !== "boolean" || (value.soundSettings !== undefined && !isSoundSettings(value.soundSettings)) || (value.motionEnabled !== undefined && typeof value.motionEnabled !== "boolean")) return false;
   return value.libraryFolders.recordFolders.every((item) => typeof item === "string") && value.libraryFolders.puzzleFolders.every((item) => typeof item === "string");
 };
 
@@ -219,8 +227,9 @@ const writeLocalStorage = (value: BackupLocalStorage) => {
   const jsonEntries: Array<[string, unknown]> = [
     [LOCAL_KEYS.library, value.library], [LOCAL_KEYS.active, value.active], [LOCAL_KEYS.puzzleCollections, value.puzzleCollections],
     [LOCAL_KEYS.puzzleProgress, value.puzzleProgress], [LOCAL_KEYS.puzzleTitleOverrides, value.puzzleTitleOverrides], [LOCAL_KEYS.libraryFolders, value.libraryFolders],
-    [LOCAL_KEYS.branchBookmarks, value.branchBookmarks], [LOCAL_KEYS.defaultDocument, value.defaultDocument],
+    [LOCAL_KEYS.branchBookmarks, value.branchBookmarks], [LOCAL_KEYS.defaultDocument, value.defaultDocument], [LOCAL_KEYS.recycleBin, value.recycleBin],
     [LOCAL_KEYS.displaySettings, value.displaySettings], [LOCAL_KEYS.soundSettings, value.soundSettings || DEFAULT_SOUND_SETTINGS],
+    [LOCAL_KEYS.motionEnabled, value.motionEnabled ?? true],
   ];
   for (const [key, item] of jsonEntries) if (item !== null) localStorage.setItem(key, JSON.stringify(item));
   for (const [key, item] of Object.entries(value.drafts)) localStorage.setItem(key, JSON.stringify(item));

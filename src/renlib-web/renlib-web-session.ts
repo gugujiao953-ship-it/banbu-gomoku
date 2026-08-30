@@ -72,6 +72,18 @@ export class RenLibWebSession {
     return reply.parameter || reply.events?.autoMove || [];
   }
 
+  async convertToSgf(): Promise<ArrayBuffer> {
+    const reply = await this.send("lib2sgf");
+    const payload = reply.result || reply.parameter;
+    const buffer = payload?.buf;
+    const byteLen = Number(payload?.byteLen);
+    if (!(buffer instanceof ArrayBuffer)) throw new Error("RenLib 核心没有返回有效的 SGF 数据");
+    if (!Number.isInteger(byteLen) || byteLen <= 0 || byteLen > buffer.byteLength) {
+      throw new Error("RenLib 核心返回的 SGF 长度无效");
+    }
+    return byteLen === buffer.byteLength ? buffer : buffer.slice(0, byteLen);
+  }
+
   close() {
     for (const waiter of this.pending.values()) waiter.reject(new Error("RenLib 网页核心会话已关闭"));
     this.pending.clear();

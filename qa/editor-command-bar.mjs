@@ -23,7 +23,7 @@ try {
   assert(await page.getByRole("button", { name: "分析" }).count() === 0, "分析入口仍然存在");
   assert(await page.getByRole("button", { name: "更多" }).count() === 1, "更多入口缺失");
   await page.getByRole("button", { name: "更多" }).click();
-  assert(await page.getByRole("button", { name: "查找" }).count() === 1, "更多面板中缺少查找入口");
+  assert(await page.getByRole("button", { name: "查找", exact: true }).count() === 1, "更多面板中缺少查找入口");
   assert(await page.locator(".command-save").count() === 1, "常驻保存按钮缺失");
   assert(await page.getByRole("button", { name: "删除当前一步及后续变化" }).count() === 1, "常驻删除按钮缺失");
 

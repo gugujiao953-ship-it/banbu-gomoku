@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" fill="none">
+  <g stroke="#b3d4d0" stroke-linecap="round" opacity=".28"><path d="M120 0v800M250 0v800M410 0v800M690 0v800M860 0v800M1050 0v800" stroke-width="2"/></g>
+  <g stroke="#162f35" stroke-linecap="round" stroke-linejoin="round" opacity=".58"><path d="M0 510h1200M30 510l90-120 110 120 110-145 120 145M720 510l85-98 110 98 100-130 155 130" stroke-width="9"/><path d="M80 430h220l-25-50H105ZM850 428h230l-26-48H875Z" stroke-width="6"/></g>
+  <g fill="#e3b15e" opacity=".62"><circle cx="184" cy="458" r="16"/><circle cx="950" cy="454" r="15"/></g>
+</svg>

@@ -14,9 +14,40 @@ const ruleId = (rule) => rule === "renju" ? 2 : rule === "standard" ? 1 : 0;
 const protocolPoint = (point, size) => `${point.col},${size - 1 - point.row},${point.player === "black" ? 1 : 2}`;
 const otherPlayer = (player) => player === "black" ? "white" : "black";
 
+function clearRequestTimers(request) {
+  if (!request) return;
+  if (request.stopTimer) { clearTimeout(request.stopTimer); request.stopTimer = null; }
+  if (request.finishTimer) { clearTimeout(request.finishTimer); request.finishTimer = null; }
+}
+
+function scheduleStop(request) {
+  if (!request || active !== request || request.finished || request.stopTimer) return;
+  const delayMs = Math.max(0, request.deadline - performance.now());
+  request.stopTimer = setTimeout(() => {
+    if (!active || active !== request || request.finished || request.stopRequested) return;
+    request.stopRequested = true;
+    // Ask Rapfi to publish the best result accumulated within the requested
+    // budget. The engine may answer synchronously or on a later stdout turn.
+    send("YXSTOP");
+    if (!active || active !== request || request.finished) return;
+    request.finishTimer = setTimeout(() => {
+      if (!active || active !== request || request.finished) return;
+      finish(request, request.bestMove || request.stats.candidates[0]?.move, request.stats);
+    }, Math.max(250, Math.min(1200, Math.round(request.timeMs * 0.25))));
+  }, delayMs);
+}
+
 function finish(request, move, stats) {
   if (!active || active !== request) return;
-  if (request.finishTimer) { clearTimeout(request.finishTimer); request.finishTimer = null; }
+  if (request.finished) return;
+  request.finished = true;
+  clearRequestTimers(request);
+  if (!move) {
+    active = null;
+    post({ type: "error", message: "Rapfi 未返回合法落点" });
+    drain();
+    return;
+  }
   // The engine's final coordinate is authoritative. A search can finish
   // between a PV refresh and the bestmove line, so reconcile the PV0 entry
   // before exposing Top-N candidates.
@@ -104,6 +135,7 @@ function rememberCandidate(request, move) {
 
 function parseOutput(line) {
   if (!active || typeof line !== "string") return;
+  const request = active;
   const text = line.trim();
   if (!text) return;
   if (text.startsWith("INFO ")) {
@@ -135,20 +167,17 @@ function parseOutput(line) {
     if (pv && !/^INFO\s+PV\b/i.test(text)) active.stats.bestline = parseCoordinateList(pv[1], active.size, active.player);
     return;
   }
-  const coordinates = text.match(/^(?:BESTMOVE\s+|bestmove\s+)?(\d+),(\d+)(?:\s+(\d+),(\d+))?$/i);
+  const coordinates = text.match(/^(?:(BESTMOVE|bestmove)\s+)?(\d+),(\d+)(?:\s+(\d+),(\d+))?$/i);
   if (!coordinates) return;
-  const col = Number(coordinates[1]), y = Number(coordinates[2]);
-  if (!Number.isInteger(col) || !Number.isInteger(y) || col < 0 || y < 0 || col >= active.size || y >= active.size) return;
-  const move = { row: active.size - 1 - y, col };
-  rememberCandidate(active, move);
-  // YXNBEST can emit multiple root moves. A short grace period keeps older
-  // single-best builds compatible while collecting up to the requested top N.
-  if (active.stats.candidates.length >= active.nBest) finish(active, move, active.stats);
-  else {
-    active.finishTimer = setTimeout(() => {
-      if (active) finish(active, active.stats.candidates[0]?.move || move, active.stats);
-    }, 80);
-  }
+  const col = Number(coordinates[2]), y = Number(coordinates[3]);
+  if (!Number.isInteger(col) || !Number.isInteger(y) || col < 0 || y < 0 || col >= request.size || y >= request.size) return;
+  const move = { row: request.size - 1 - y, col };
+  request.bestMove = move;
+  rememberCandidate(request, move);
+  // A prefixed BESTMOVE is an explicit terminal response. Bare coordinate
+  // lines are often intermediate YXNBEST/PV output, so never finish merely
+  // because one candidate (or Top-N candidates) arrived.
+  if (coordinates[1] || request.stats.depth >= request.maxDepth || request.stopRequested) finish(request, move, request.stats);
 }
 
 function send(command) {
@@ -159,11 +188,18 @@ function run(request) {
   active = request;
   request.started = performance.now();
   request.nBest = Math.max(1, Math.min(3, request.topN || 3));
+  request.timeMs = Math.max(100, Math.min(300000, Math.round(Number(request.timeMs) || 4000)));
+  request.maxDepth = Math.max(1, Math.min(512, Math.round(Number(request.maxDepth) || 64)));
+  request.finished = false;
+  request.stopRequested = false;
+  request.bestMove = null;
+  request.deadline = request.started + request.timeMs;
   request.stats = { depth: 0, nodes: 0, totalNodes: 0, pvIndex: 0, bestline: [], primaryBestline: [], candidates: [] };
+  scheduleStop(request);
   send(`START ${request.size}`);
   send(`INFO RULE ${ruleId(request.rule)}`);
-  send(`INFO TIMEOUT_TURN ${Math.max(1000, request.timeMs || 4000)}`);
-  send(`INFO MAX_DEPTH ${Math.max(10, request.maxDepth || 64)}`);
+  send(`INFO TIMEOUT_TURN ${request.timeMs}`);
+  send(`INFO MAX_DEPTH ${request.maxDepth}`);
   send(`INFO SHOW_DETAIL 2`);
   const board = request.moves.map((point) => protocolPoint(point, request.size)).join(" ");
   send(`YXBOARD${board ? ` ${board}` : ""} DONE`);
@@ -239,7 +275,13 @@ self.onmessage = (event) => {
   const message = event.data || {};
   if (message.type === "stop") {
     if (engine) engine.sendCommand("YXSTOP");
-    if (active) { active = null; drain(); }
+    if (active) {
+      const request = active;
+      request.finished = true;
+      clearRequestTimers(request);
+      active = null;
+      drain();
+    }
     return;
   }
   if (message.type !== "analyze") return;
