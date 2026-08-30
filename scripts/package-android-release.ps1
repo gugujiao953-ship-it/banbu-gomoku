@@ -160,8 +160,8 @@ $Manifest = [ordered]@{
   apk = (Split-Path $ReleaseApk -Leaf)
   sha256 = $Sha256
   signingCertificate = $Fingerprint
-  jdk = $JdkHome
-  androidSdk = $SdkHome
+  jdk = "Temurin 21"
+  androidSdk = "Android SDK (local build environment)"
   buildCommand = "npm run android:release"
   builtAt = (Get-Date).ToUniversalTime().ToString("o")
 } | ConvertTo-Json
