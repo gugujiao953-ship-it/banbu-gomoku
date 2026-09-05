@@ -2,7 +2,7 @@
 // report builder for bug reports. Kept dependency-free so the ErrorBoundary can
 // rely on it even when the rest of the app failed to boot.
 
-export const APP_VERSION = "1.1.4";
+export const APP_VERSION = "1.1.6";
 
 interface DiagnosticsEntry {
   time: string;
@@ -52,7 +52,7 @@ export const buildDiagnosticsReport = (error?: unknown, componentStack?: string)
   recentActions: recentActions(),
 });
 
-export const diagnosticsFilename = (time = new Date()) => `半步五子棋诊断-${time.toISOString().replace(/[:.]/g, "-").replace("Z", "")}.json`;
+export const diagnosticsFilename = (time = new Date()) => `半步五子棋打谱诊断-${time.toISOString().replace(/[:.]/g, "-").replace("Z", "")}.json`;
 
 export const diagnosticsText = (error?: unknown, componentStack?: string) => JSON.stringify(buildDiagnosticsReport(error, componentStack), null, 2);
 

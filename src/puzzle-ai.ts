@@ -42,7 +42,7 @@ export function findBestMoveDetailed(board: Cell[][], player: Player, options: A
     maxDepth: options.maxDepth,
     timeBudgetMs: options.timeBudgetMs,
     candidateLimit: options.width,
-    renjuRules: options.rule ? options.rule === "renju" : true,
+    rule: options.rule || "renju",
   });
   return { ...result, source: "alpha-beta" };
 }

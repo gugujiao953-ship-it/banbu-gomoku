@@ -88,10 +88,9 @@ export class DpViewSession {
         renLibLabelColor: selectedBranch?.label ? "#1d1c19" : undefined,
       };
     }
-    // Keep the cached alternatives at every loaded depth, not only at the
-    // current node. At a leaf the board intentionally shows its parent's
-    // siblings; pruning those nodes made the markers disappear immediately
-    // after selecting one and prevented direct sibling switching.
+    // Keep cached alternatives in the bounded projection so the branch tree
+    // and back-navigation can still inspect loaded positions. The board itself
+    // renders only the current node's direct children.
     for (let index = 0; index <= depth; index += 1) {
       const parentId = this.nodeId(index), parent = nodes[parentId];
       const selected = index < depth ? this.path[index] : undefined;

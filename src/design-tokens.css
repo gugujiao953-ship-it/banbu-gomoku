@@ -1,0 +1,360 @@
+/* Shared visual contract. Existing component variables remain as compatibility aliases. */
+:root {
+  --font-sans: Inter, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-display: Georgia, "Songti SC", "STSong", serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-display: clamp(1.55rem, 6vw, 2rem);
+  --text-title: 1.25rem;
+  --text-body: 0.875rem;
+  --text-label: 0.75rem;
+  --text-caption: 0.6875rem;
+  --text-mono: 0.75rem;
+  --weight-regular: 400;
+  --weight-medium: 600;
+  --weight-bold: 700;
+  --leading-tight: 1.25;
+  --leading-body: 1.5;
+  --leading-relaxed: 1.65;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --radius-sm: 0.625rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.125rem;
+  --radius-xl: 1.5rem;
+  --touch-target: 2.75rem;
+  --icon-sm: 1rem;
+  --icon-md: 1.25rem;
+  --icon-lg: 1.5rem;
+
+  --color-bg: #e9e6df;
+  --color-surface: #f8f6f1;
+  --color-surface-raised: #ffffff;
+  --color-text: #292620;
+  --color-text-muted: #68635b;
+  --color-border: #dfdad0;
+  --color-accent: #365e4b;
+  --color-accent-strong: #22483a;
+  --color-success: #3f7f5d;
+  --color-warning: #a2762a;
+  --color-danger: #b94b3f;
+  --color-accent-soft: #e5eee8;
+  --shadow-sm: 0 4px 12px #675d4a12;
+  --shadow-md: 0 10px 28px #4e463814;
+  --shadow-lg: 0 18px 48px #0002;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+/* Keep legacy names stable while new components use semantic tokens. */
+:root {
+  --ink: var(--color-text);
+  --muted: var(--color-text-muted);
+  --paper: var(--color-surface);
+  --line: var(--color-border);
+  --green: var(--color-accent);
+  --green-2: var(--color-accent-strong);
+  --jade: var(--color-accent-soft);
+  --gold: var(--color-warning);
+  --red: var(--color-danger);
+}
+
+/* 青花瓷：瓷白是底、浅蓝是纹样、钴蓝是结构、藏青用于高对比交互。
+ * 这些语义 token 位于兼容别名之后，避免 styles.css 的旧主题变量被
+ * 后加载的共享 token 意外冲淡。 */
+:root[data-theme="porcelain"] {
+  color-scheme: light;
+  --porcelain-white: #f8f5ed;
+  --porcelain-glaze: #edf2f2;
+  --porcelain-pattern: #b8d1dd;
+  --porcelain-cobalt: #1d5688;
+  --porcelain-indigo: #123f73;
+  --porcelain-navy: #102b4a;
+  --color-bg: #e4ecef;
+  --color-surface: var(--porcelain-white);
+  --color-surface-raised: #fffdf8;
+  --color-text: var(--porcelain-navy);
+  --color-text-muted: #4f667a;
+  --color-border: #93afc1;
+  --color-accent: var(--porcelain-cobalt);
+  --color-accent-strong: var(--porcelain-indigo);
+  --color-accent-soft: #d8e7ee;
+  --color-success: #2b6b67;
+  --color-warning: #936e2f;
+  --color-danger: #a43e4b;
+  --shadow-sm: 0 4px 12px #123f7314;
+  --shadow-md: 0 10px 28px #102b4a1c;
+  --shadow-lg: 0 18px 48px #102b4a38;
+  --ink: var(--color-text);
+  --muted: var(--color-text-muted);
+  --paper: var(--color-surface);
+  --line: var(--color-border);
+  --green: var(--color-accent);
+  --green-2: var(--color-accent-strong);
+  --jade: var(--color-accent-soft);
+  --gold: var(--color-warning);
+  --red: var(--color-danger);
+  --surface: #fffdf8;
+  --surface-2: #f1f4f2;
+  --surface-3: #e1ebef;
+  --surface-border: #a8bfcc;
+  --surface-hover: #e4eef2;
+  --surface-shadow: #123f7318;
+}
+
+.app-shell {
+  font-family: var(--font-sans);
+  color: var(--color-text);
+}
+
+.app-shell :is(h1, h2, h3) {
+  overflow-wrap: anywhere;
+}
+
+.app-shell :is(.helper, small, .caption, [data-caption]) {
+  line-height: var(--leading-body);
+}
+
+/* Motion is enhancement only. The final state must never wait for an event. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-duration-fast: 0ms; --motion-duration-normal: 0ms; --motion-duration-slow: 0ms; }
+}
+
+:root[data-motion="off"] *,
+:root[data-motion="off"] *::before,
+:root[data-motion="off"] *::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:root[data-motion="off"] .import-progress__status-mark,
+:root[data-motion="off"] .vcf-running i,
+:root[data-motion="off"] .puzzle-status > i,
+:root[data-motion="off"] .workspace-status > i {
+  border-top-color: currentColor;
+  opacity: 0.78;
+}
+
+@media (max-width: 390px) {
+  .app-shell { --space-4: 0.875rem; --space-5: 1rem; }
+  .app-shell .sheet-head h2 { max-width: calc(100vw - 6rem); }
+  .app-shell :is(.transport, .dock-tabs, .dock-panel) { gap: 0.375rem; }
+  .app-shell :is(.record-summary, .workspace-bar, .sheet-head) { min-width: 0; }
+}
+
+@media (min-width: 700px), (orientation: landscape) and (min-width: 640px) {
+  .app-shell { --space-5: 1.5rem; --space-6: 2rem; }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .app-shell { --touch-target: 2.5rem; }
+}
+
+/* Button contrast contract -------------------------------------------------
+ *
+ * A few legacy controls used whole-element opacity for disabled/read-only
+ * states. That also faded their labels and icons, which was especially hard
+ * to read on the dark, pixel and cyber themes. Keep the state distinction in
+ * the surface/border while retaining a high-contrast foreground color.
+ */
+:root {
+  --button-text: var(--ink);
+  --button-muted-text: color-mix(in srgb, var(--ink) 82%, var(--surface, var(--paper)));
+  --button-disabled-text: color-mix(in srgb, var(--ink) 70%, var(--surface, var(--paper)));
+  --button-disabled-bg: color-mix(in srgb, var(--surface, var(--paper)) 88%, var(--line));
+  --button-disabled-border: color-mix(in srgb, var(--line) 78%, var(--ink));
+}
+
+/* Primary labels on neutral controls. Accent/selected/danger styles keep
+ * their own semantic colors below. */
+.app-shell .dock-tabs button:not(.active),
+.app-shell .dock-panel button:not(.accent):not(.selected),
+.app-shell .transport button:not(.primary-step),
+.app-shell .record-command-bar > button:not(.command-save.pending):not(.command-think.running):not(.command-delete):not(.command-comment.active):not(.command-comment.has-comment):not(.command-annotation.active),
+.app-shell .secondary-button,
+.app-shell .timeline-top > button,
+.app-shell .settings-link,
+.app-shell .library-actions button:not(:first-child),
+.app-shell .move-strip button:not(.active),
+.app-shell .quick-actions button,
+.app-shell .bottom-nav button:not(.active),
+.app-shell .theme-preference > button:not(.selected),
+.app-shell .visual-option-grid > button:not(.selected),
+.app-shell .feedback-kind button:not(.selected),
+.app-shell .record-filter-bar button:not(.active),
+.app-shell .export-scope-grid button:not(.selected),
+.app-shell .puzzle-rule-selector button:not(.selected),
+.app-shell .tree-node-action-grid button:not(.primary):not(.danger),
+.app-shell .tree-bookmark-actions button,
+.app-shell .tree-edit-actions button {
+  color: var(--button-text);
+}
+
+/* The old base rules hard-coded white backgrounds for a number of controls.
+ * Apply the semantic surface to the same neutral controls so dark/pixel/cyber
+ * themes never pair pale text with a white island (or dark text with a dark
+ * island). */
+.app-shell .dock-panel button:not(.accent):not(.selected),
+.app-shell .transport button:not(.primary-step),
+.app-shell .record-command-bar > button:not(.command-save.pending):not(.command-think.running):not(.command-delete):not(.command-comment.active):not(.command-comment.has-comment):not(.command-annotation.active),
+.app-shell .secondary-button,
+.app-shell .timeline-top > button,
+.app-shell .settings-link,
+.app-shell .library-actions button:not(:first-child),
+.app-shell .theme-preference > button:not(.selected),
+.app-shell .visual-option-grid > button:not(.selected),
+.app-shell .feedback-kind button:not(.selected),
+.app-shell .record-filter-bar button:not(.active),
+.app-shell .export-scope-grid button:not(.selected),
+.app-shell .puzzle-rule-selector button:not(.selected),
+.app-shell .tree-node-action-grid button:not(.primary):not(.danger),
+.app-shell .tree-bookmark-actions button,
+.app-shell .tree-edit-actions button {
+  background: var(--surface, var(--paper));
+  border-color: var(--surface-border, var(--line));
+}
+
+/* Puzzle rule and thinking-speed switches need two visible states even when
+ * the generic neutral-control contract is applied to every unselected button. */
+.app-shell .puzzle-rule-selector,
+.app-shell .puzzle-think-speed-selector {
+  background: var(--surface-3, #e1ebef);
+  border-color: var(--surface-border, var(--line));
+}
+.app-shell .puzzle-rule-selector button:not(.selected),
+.app-shell .puzzle-think-speed-selector button:not(.selected) {
+  background: var(--surface-2, #f1f4f2);
+  border: 1px solid var(--surface-border, var(--line));
+  color: var(--button-muted-text);
+}
+.app-shell .puzzle-rule-selector button.selected,
+.app-shell .puzzle-think-speed-selector button.selected {
+  background: var(--jade);
+  border: 1px solid var(--green);
+  color: var(--green-2, var(--green));
+  box-shadow: 0 2px 7px var(--surface-shadow, #0001), inset 0 1px 0 #fff6;
+}
+
+.app-shell .quick-actions button,
+.app-shell .bottom-nav button:not(.active) {
+  color: var(--button-muted-text);
+}
+
+.app-shell .dock-tabs button:not(.active) svg,
+.app-shell .dock-panel button:not(.accent):not(.selected) svg,
+.app-shell .record-command-bar > button:not(.command-delete) svg {
+  color: var(--green);
+}
+
+/* Comment affordance stays legible while it signals an open panel or a node
+ * that carries a comment; the neutral contract above intentionally excludes it. */
+.app-shell .record-command-bar > button.command-comment.active svg,
+.app-shell .record-command-bar > button.command-comment.has-comment svg {
+  color: #2872b8;
+}
+
+/* A pending save button uses the green accent surface. Override the generic
+ * command-icon token so the outlined Save glyph stays white and readable
+ * instead of blending into that same green background. */
+.app-shell .record-command-bar > button.command-save.pending svg {
+  color: #fff;
+  stroke: currentColor;
+}
+
+/* Supporting copy inside controls must remain readable without making the
+ * entire control translucent. */
+.app-shell .record-command-bar > button small,
+.app-shell .library-actions button small,
+.app-shell .theme-preference > button small,
+.app-shell .visual-option-grid > button small,
+.app-shell .feedback-kind button small,
+.app-shell .export-scope-grid button small,
+.app-shell .puzzle-rule-selector button small {
+  color: var(--button-muted-text);
+  opacity: 1;
+}
+
+/* Selected option labels: the base accent drops below AA on the soft accent
+ * surface in low-contrast themes (kawaii 4.3, baroque 3.6). The strong accent
+ * keeps every selected label >= 6:1 on --jade across all themes. */
+.app-shell .bottom-nav button.active {
+  color: var(--green-2, var(--green));
+}
+
+.app-shell .sound-profile button.selected small {
+  color: inherit;
+}
+
+.app-shell :is(.dock-panel button.selected, .annotation-style-grid button.selected, .ai-option-grid button.selected, .ai-choice-grid button.selected, .theme-preference > button.selected, .sound-profile button.selected, .font-scale-options button.selected, .visual-option-grid > button.selected, .export-scope-grid button.selected, .feedback-kind button.selected, .rule-pill, .branch-list em, .support-row) {
+  color: var(--green-2, var(--green));
+}
+
+/* Disabled controls: preserve a visible disabled surface instead of fading
+ * text to near-invisibility. */
+.app-shell button:disabled:not(.primary-button):not(.danger-button):not(.quick-think-action) {
+  opacity: 1;
+  color: var(--button-disabled-text) !important;
+  background: var(--button-disabled-bg);
+  border-color: var(--button-disabled-border);
+}
+.app-shell button:disabled:not(.primary-button):not(.danger-button):not(.quick-think-action) svg {
+  color: var(--button-disabled-text) !important;
+}
+.app-shell button.primary-button:disabled,
+.app-shell button.danger-button:disabled,
+.app-shell button.quick-think-action:disabled {
+  opacity: .86;
+}
+
+/* Read-only/read-speckled controls are still actionable for discovery; make
+ * their text clear while retaining the muted surface cue. */
+.app-shell .review-blocked {
+  opacity: 1 !important;
+  color: var(--button-disabled-text) !important;
+  background: var(--button-disabled-bg) !important;
+  border-color: var(--button-disabled-border) !important;
+}
+.app-shell .review-blocked svg {
+  color: var(--button-disabled-text) !important;
+}
+
+/* Non-button toggles that previously inherited low opacity from a disabled
+ * wrapper (quick settings and mode controls). */
+.app-shell .quick-drawer-toggle.disabled,
+.app-shell .setting-row.disabled,
+.app-shell .sound-volume.disabled,
+.app-shell .ai-free-controls label.disabled {
+  opacity: 1;
+}
+.app-shell .quick-drawer-toggle.disabled b,
+.app-shell .setting-row.disabled b,
+.app-shell .sound-volume.disabled b,
+.app-shell .ai-free-controls label.disabled b {
+  color: var(--button-disabled-text);
+}
+.app-shell .quick-drawer-toggle.disabled small,
+.app-shell .setting-row.disabled small,
+.app-shell .sound-volume.disabled small,
+.app-shell .ai-free-controls label.disabled small {
+  color: var(--button-muted-text);
+}

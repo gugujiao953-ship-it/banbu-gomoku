@@ -46,3 +46,9 @@ export const clearRecycleBin = () => {
   saveRecycleBin([]);
   return [] as RecycleBinEntry[];
 };
+
+export const recycleEntryTitle = (entry: RecycleBinEntry) => entry.kind === "puzzle-collection" ? entry.item.title : entry.item.metadata.title;
+
+export const permanentDeleteConfirmation = (entry: RecycleBinEntry) => `确定永久删除“${recycleEntryTitle(entry)}”吗？此操作无法撤销。`;
+
+export const emptyRecycleBinConfirmation = (count: number) => `确定清空回收站中的 ${count} 项内容吗？清空后无法恢复。`;

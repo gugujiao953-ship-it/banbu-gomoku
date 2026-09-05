@@ -3,7 +3,7 @@ import { findBestMoveDetailed } from "./puzzle-ai";
 import { searchVcf, verifyVcfProof } from "./vcf";
 import type { Cell, Player, RuleSet } from "./types";
 
-interface AiWorkerMessage { board: Cell[][]; player: Player; rule?: RuleSet; purpose?: "game" | "puzzle" | "think" }
+interface AiWorkerMessage { requestId?: string; generation?: number; board: Cell[][]; player: Player; rule?: RuleSet; purpose?: "game" | "puzzle" | "think"; timeMs?: number; maxDepth?: number; unlimited?: boolean }
 
 self.onmessage = (event: MessageEvent<AiWorkerMessage>) => {
   const started = performance.now();
@@ -36,16 +36,16 @@ self.onmessage = (event: MessageEvent<AiWorkerMessage>) => {
         candidates: first ? [{ move: { row: first.row, col: first.col }, score: 1_000_000, principalVariation: tactical.principalVariation }] : undefined,
       };
       const delay = Math.max(0, 220 - (performance.now() - started));
-      setTimeout(() => self.postMessage(result), delay);
+      setTimeout(() => self.postMessage({ ...result, requestId: event.data.requestId, generation: event.data.generation, result }), delay);
       return;
     }
   }
   const result = findBestMoveDetailed(board, event.data.player, {
-    maxDepth: purpose === "think" ? 5 : 4,
-    timeBudgetMs: purpose === "think" ? 1500 : 1000,
+    maxDepth: event.data.unlimited ? 512 : event.data.maxDepth ?? (purpose === "think" ? 5 : 4),
+    timeBudgetMs: event.data.unlimited ? 86_400_000 : event.data.timeMs ?? (purpose === "think" ? 1500 : 1000),
     width: purpose === "think" ? 12 : 8,
     rule,
   });
   const delay = Math.max(0, 220 - (performance.now() - started));
-  setTimeout(() => self.postMessage(result), delay);
+  setTimeout(() => self.postMessage({ ...result, requestId: event.data.requestId, generation: event.data.generation, result }), delay);
 };

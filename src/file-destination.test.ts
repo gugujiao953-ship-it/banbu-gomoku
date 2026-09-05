@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { pickDefaultDirectoryHandle, supportsDirectoryPicker, writeTextFileToDirectory, type DirectoryHandleLike } from "./file-destination";
+vi.mock("@capacitor/filesystem", () => ({
+  Directory: { Documents: "DOCUMENTS" },
+  Filesystem: { writeFile: vi.fn(), checkPermissions: vi.fn(), requestPermissions: vi.fn() },
+}));
+import { Directory, Filesystem } from "@capacitor/filesystem";
+import { nativeExportDirectoryHandle, pickDefaultDirectoryHandle, supportsDirectoryPicker, writeFileToDirectory, writeTextFileToDirectory, type DirectoryHandleLike } from "./file-destination";
 
 describe("file destination", () => {
   it("writes text into a selected directory handle", async () => {
@@ -45,6 +50,24 @@ describe("file destination", () => {
       expect(picker).toHaveBeenCalledWith({ mode: "readwrite" });
     } finally {
       vi.unstubAllGlobals();
+    }
+  });
+
+  it("writes native exports into the app's public Documents subfolder", async () => {
+    const writeFile = vi.mocked(Filesystem.writeFile);
+    writeFile.mockResolvedValue({ uri: "content://documents/banbu" });
+    try {
+      await writeFileToDirectory(nativeExportDirectoryHandle(), "局面.png", new Uint8Array([1, 2, 3]), "image/png");
+      expect(writeFile).toHaveBeenCalledWith(expect.objectContaining({
+        path: "半步五子棋打谱/导出/局面.png",
+        directory: Directory.Documents,
+        recursive: true,
+      }));
+      const call = writeFile.mock.calls[0]?.[0];
+      expect(typeof call?.data).toBe("string");
+      expect(call?.data).toBe("AQID");
+    } finally {
+      writeFile.mockRestore();
     }
   });
 });

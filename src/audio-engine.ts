@@ -1,4 +1,5 @@
 import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from "./audio-settings";
+import { STONE_TIMBRES, timbreDuration, type SynthStoneProfile, type StoneTimbre } from "./stone-sound-recipes";
 
 export type SoundCue = "move-black" | "move-white" | "navigate" | "success" | "warning" | "error";
 
@@ -13,15 +14,34 @@ export interface AudioDiagnostics {
 
 type ContextConstructor = new () => AudioContext;
 
-const categoryEnabled = (cue: SoundCue, settings: SoundSettings) => cue.startsWith("move-") || cue === "navigate"
-  ? settings.moveEnabled
-  : settings.feedbackEnabled;
+/** Bundled recordings for sample-backed profiles (mono 16-bit WAV, ~15KB
+ * each). One drop randomly picks a pool variant so rapid play does not sound
+ * machine-gunned; provenance and licensing live in public/sounds/CREDITS.md.
+ * Black and white share one pool: alternating color-specific recordings read
+ * as two different sounds to the user. Peaks were normalized to 0.45. */
+const REAL_SAMPLES = ["real-black-1", "real-black-2", "real-black-3", "real-white-1", "real-white-2"];
+const SAMPLE_PROFILES: Record<string, { black: string[]; white: string[]; gain: number }> = {
+  real: { black: REAL_SAMPLES, white: REAL_SAMPLES, gain: 0.5 },
+};
+
+/** The recipes intentionally keep their individual peaks below 0.5 to avoid
+ * harsh transients. Apply a modest output-stage boost so 100% on the in-app
+ * slider is audible on phones whose media volume is already capped, while
+ * retaining 0% as true silence. */
+export const AUDIO_OUTPUT_BOOST = 1.8;
+export const outputGainForVolume = (volume: number, enabled = true) => enabled ? Math.min(AUDIO_OUTPUT_BOOST, Math.max(0, volume) * AUDIO_OUTPUT_BOOST) : 0;
+
+const categoryEnabled = (cue: SoundCue, settings: SoundSettings) => cue === "navigate"
+  ? settings.navigateEnabled
+  : cue.startsWith("move-") ? true : settings.feedbackEnabled;
 
 export class BanbuAudioEngine {
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
   private settings: SoundSettings = { ...DEFAULT_SOUND_SETTINGS };
+  private sampleBuffers = new Map<string, AudioBuffer | null>();
+  private sampleLoads = new Map<string, Promise<AudioBuffer | null>>();
   private activeVoices = 0;
   private contextCount = 0;
   private played = 0;
@@ -30,7 +50,7 @@ export class BanbuAudioEngine {
 
   setSettings(settings: SoundSettings) {
     this.settings = { ...settings };
-    if (this.master && this.context) this.master.gain.setTargetAtTime(settings.enabled ? settings.volume : 0, this.context.currentTime, 0.01);
+    if (this.master && this.context) this.master.gain.setTargetAtTime(outputGainForVolume(settings.volume, settings.enabled), this.context.currentTime, 0.01);
   }
 
   async play(cue: SoundCue): Promise<boolean> {
@@ -43,8 +63,10 @@ export class BanbuAudioEngine {
     try {
       if (context.state === "suspended") await context.resume();
       if (context.state !== "running") { this.skipped += 1; return false; }
-      if (cue === "move-black" || cue === "move-white") this.playStone(context, cue === "move-black");
-      else this.playTone(context, cue);
+      if (cue === "move-black" || cue === "move-white") {
+        if (SAMPLE_PROFILES[this.settings.profile]) await this.playSample(context, cue === "move-black");
+        else this.playStone(context, cue === "move-black");
+      } else this.playTone(context, cue);
       this.played += 1;
       return true;
     } catch {
@@ -67,6 +89,7 @@ export class BanbuAudioEngine {
   async close() {
     const context = this.context;
     this.context = null; this.master = null; this.noiseBuffer = null; this.activeVoices = 0;
+    this.sampleBuffers.clear(); this.sampleLoads.clear();
     if (context && context.state !== "closed") await context.close().catch(() => undefined);
   }
 
@@ -82,13 +105,15 @@ export class BanbuAudioEngine {
     if (!Constructor) return null;
     const context = new Constructor();
     const master = context.createGain();
-    master.gain.value = this.settings.enabled ? this.settings.volume : 0;
+    master.gain.value = outputGainForVolume(this.settings.volume, this.settings.enabled);
     master.connect(context.destination);
     this.context = context; this.master = master; this.contextCount += 1;
     return context;
   }
 
-  private withVoice(endTime: number, nodes: AudioScheduledSourceNode[]) {
+  /** The first node must be the one that ends last: its "ended" event releases
+   * the voice and disconnects every node in the list. */
+  private withVoice(endTime: number, nodes: AudioNode[]) {
     this.activeVoices += 1;
     let ended = false;
     const finish = () => {
@@ -97,7 +122,7 @@ export class BanbuAudioEngine {
       this.activeVoices = Math.max(0, this.activeVoices - 1);
       for (const node of nodes) node.disconnect();
     };
-    nodes[0]!.addEventListener("ended", finish, { once: true });
+    (nodes[0] as AudioScheduledSourceNode).addEventListener("ended", finish, { once: true });
     window.setTimeout(finish, Math.max(80, (endTime - (this.context?.currentTime || 0)) * 1000 + 80));
   }
 
@@ -106,51 +131,89 @@ export class BanbuAudioEngine {
     const length = Math.max(1, Math.round(context.sampleRate * 0.035));
     const buffer = context.createBuffer(1, length, context.sampleRate);
     const data = buffer.getChannelData(0);
-    for (let index = 0; index < length; index += 1) data[index] = (Math.random() * 2 - 1) * (1 - index / length);
+    for (let index = 0; index < length; index += 1) data[index] = Math.random() * 2 - 1;
     this.noiseBuffer = buffer;
     return buffer;
   }
 
+  /** Schedules a synthesized drop from the recipe layers in
+   * stone-sound-recipes.ts. Slight pitch/gain jitter per play keeps repeated
+   * drops from sounding identical, like real stones. */
   private playStone(context: AudioContext, black: boolean) {
+    const timbre: StoneTimbre | undefined = STONE_TIMBRES[this.settings.profile as SynthStoneProfile]?.[black ? "black" : "white"];
+    if (!timbre || !this.master) return;
     const now = context.currentTime;
-    const recipes = {
-      classic: {
-        duration: 0.075, type: "sine", start: black ? 185 : 225, end: black ? 115 : 145,
-        bodyPeak: black ? 0.34 : 0.27, noisePeak: black ? 0.18 : 0.14,
-        filterType: "bandpass", filterFrequency: black ? 1050 : 1450, filterQ: 0.8, noiseDuration: 0.04,
-      },
-      wood: {
-        duration: 0.09, type: "triangle", start: black ? 145 : 172, end: black ? 78 : 96,
-        bodyPeak: black ? 0.38 : 0.31, noisePeak: black ? 0.24 : 0.19,
-        filterType: "lowpass", filterFrequency: black ? 820 : 980, filterQ: 0.55, noiseDuration: 0.045,
-      },
-      crystal: {
-        duration: 0.13, type: "sine", start: black ? 540 : 650, end: black ? 360 : 430,
-        bodyPeak: black ? 0.18 : 0.16, noisePeak: black ? 0.065 : 0.055,
-        filterType: "highpass", filterFrequency: black ? 1850 : 2200, filterQ: 1.15, noiseDuration: 0.032,
-      },
-    } as const;
-    const recipe = recipes[this.settings.profile];
-    const end = now + recipe.duration;
-    const body = context.createOscillator();
-    const bodyGain = context.createGain();
-    const noise = context.createBufferSource();
-    const noiseGain = context.createGain();
-    const filter = context.createBiquadFilter();
-    body.type = recipe.type;
-    body.frequency.setValueAtTime(recipe.start, now);
-    body.frequency.exponentialRampToValueAtTime(recipe.end, end);
-    bodyGain.gain.setValueAtTime(0.0001, now);
-    bodyGain.gain.exponentialRampToValueAtTime(recipe.bodyPeak, now + 0.004);
-    bodyGain.gain.exponentialRampToValueAtTime(0.0001, end);
-    noise.buffer = this.noise(context);
-    filter.type = recipe.filterType; filter.frequency.value = recipe.filterFrequency; filter.Q.value = recipe.filterQ;
-    noiseGain.gain.setValueAtTime(recipe.noisePeak, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + Math.min(0.035, recipe.noiseDuration));
-    body.connect(bodyGain).connect(this.master!);
-    noise.connect(filter).connect(noiseGain).connect(this.master!);
-    body.start(now); body.stop(end); noise.start(now); noise.stop(now + recipe.noiseDuration);
-    this.withVoice(end, [body, noise]);
+    const pitchJitter = 1 + (Math.random() - 0.5) * 0.05;
+    const gainJitter = (timbre.gain ?? 1) * (1 + (Math.random() - 0.5) * 0.16);
+    const scheduled: Array<{ node: AudioScheduledSourceNode; stop: number }> = [];
+    for (const partial of timbre.partials) {
+      const start = now + (partial.delay ?? 0);
+      const peakTime = start + partial.attack;
+      const stopTime = peakTime + partial.decay;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = partial.type;
+      oscillator.frequency.setValueAtTime(partial.from * pitchJitter, start);
+      if (partial.to) oscillator.frequency.exponentialRampToValueAtTime(partial.to * pitchJitter, stopTime);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(partial.peak * gainJitter, peakTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+      oscillator.connect(gain).connect(this.master);
+      oscillator.start(start); oscillator.stop(stopTime);
+      scheduled.push({ node: oscillator, stop: stopTime });
+    }
+    for (const hit of timbre.noises) {
+      const start = now + (hit.delay ?? 0);
+      const peakTime = start + hit.attack;
+      const stopTime = peakTime + hit.decay;
+      const source = context.createBufferSource();
+      const filter = context.createBiquadFilter();
+      const gain = context.createGain();
+      source.buffer = this.noise(context);
+      filter.type = hit.filterType; filter.frequency.value = hit.frequency; filter.Q.value = hit.q;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(hit.peak * gainJitter, peakTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+      source.connect(filter).connect(gain).connect(this.master);
+      source.start(start); source.stop(stopTime);
+      scheduled.push({ node: source, stop: stopTime });
+    }
+    scheduled.sort((a, b) => b.stop - a.stop);
+    this.withVoice(now + timbreDuration(timbre), scheduled.map(({ node }) => node));
+  }
+
+  private async playSample(context: AudioContext, black: boolean) {
+    const config = SAMPLE_PROFILES[this.settings.profile];
+    if (!config || !this.master) { this.playStone(context, black); return; }
+    const pool = black ? config.black : config.white;
+    const name = pool[Math.floor(Math.random() * pool.length)] || pool[0]!;
+    const buffer = await this.loadSample(context, name);
+    if (!buffer) { this.playStone(context, black); return; }
+    const playbackRate = 1 + (Math.random() - 0.5) * 0.04;
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.playbackRate.value = playbackRate;
+    const gain = context.createGain();
+    gain.gain.value = config.gain * (1 + (Math.random() - 0.5) * 0.12);
+    source.connect(gain).connect(this.master);
+    const now = context.currentTime;
+    source.start(now);
+    this.withVoice(now + buffer.duration / playbackRate, [source, gain]);
+  }
+
+  private loadSample(context: AudioContext, name: string): Promise<AudioBuffer | null> {
+    const cached = this.sampleBuffers.get(name);
+    if (cached !== undefined) return Promise.resolve(cached);
+    const pending = this.sampleLoads.get(name);
+    if (pending) return pending;
+    const base = import.meta.env.BASE_URL || "/";
+    const load = fetch(`${base}sounds/${name}.wav`)
+      .then((response) => response.ok ? response.arrayBuffer() : Promise.reject(new Error(String(response.status))))
+      .then((data) => context.decodeAudioData(data))
+      .then((buffer) => { this.sampleBuffers.set(name, buffer); this.sampleLoads.delete(name); return buffer; })
+      .catch(() => { this.sampleBuffers.set(name, null); this.sampleLoads.delete(name); return null; });
+    this.sampleLoads.set(name, load);
+    return load;
   }
 
   private playTone(context: AudioContext, cue: Exclude<SoundCue, "move-black" | "move-white">) {

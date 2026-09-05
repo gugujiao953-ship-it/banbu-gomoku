@@ -156,6 +156,26 @@ describe("record formats", () => {
     expect(Object.values(imported.document.nodes).filter((node) => node.move)).toHaveLength(3);
   });
 
+  it("imports Piskvork PSQ coordinates and explicit stone colors", async () => {
+    const source = "Piskvorky 15x15, 120:120, 0\r\n7,8,0\r\n7,7,1\r\n6,6,0\r\n6,8,1\r\n8,5,0\r\n";
+    const imported = await importRecordFile(new File([source], "第4局.psq"));
+    const moves = Object.values(imported.document.nodes).filter((node) => node.move).map((node) => node.move);
+    expect(imported.format).toBe("PSQ (Piskvorky)");
+    expect(imported.document.metadata.title).toBe("第4局");
+    expect(moves).toEqual([
+      { row: 7, col: 7, player: "black" },
+      { row: 8, col: 7, player: "white" },
+      { row: 9, col: 6, player: "black" },
+      { row: 7, col: 6, player: "white" },
+      { row: 10, col: 8, player: "black" },
+    ]);
+  });
+
+  it("rejects malformed or out-of-range PSQ moves", async () => {
+    await expect(importRecordFile(new File(["Piskvorky 15x15, 5:5, 0\n7,0,0\n"], "bad.psq"))).rejects.toThrow("坐标越界");
+    await expect(importRecordFile(new File(["not a piskvork file\n7,8,0\n"], "bad.psq"))).rejects.toThrow("文件头无效");
+  });
+
   it("rejects disguised libraries, arbitrary arrays, prose, and unknown binaries", async () => {
     await expect(importRecordFile(new File([new Uint8Array([0x21, 0x3c, 0x61, 0x72, 0x63, 0x68, 0x3e, 0x0a])], "jvm.lib"))).rejects.toThrow("ar 静态库");
     await expect(importRecordFile(new File([JSON.stringify([["H8"]])], "puzzles.json"))).rejects.toThrow("题库页面");
@@ -168,6 +188,17 @@ describe("record formats", () => {
     expect(Object.values(text.document.nodes).filter((node) => node.move)).toHaveLength(3);
     const legacy = await importRecordFile(new File(["(;5A[]PW[白];B[hh];W[ii])"], "legacy.SGF"));
     expect(Object.values(legacy.document.nodes).filter((node) => node.move)).toHaveLength(2);
+  });
+
+  it("repairs legacy SGF move streams that omit node semicolons", async () => {
+    const imported = await importRecordFile(new File(["(;GM[4]FF[4]SZ[15]RU[Soosyrv-8]PB[黑方]PW[白方]B[hh]W[ig]B[gj])"], "legacy-stream.sgf"));
+    const moves = Object.values(imported.document.nodes).filter((node) => node.move).map((node) => node.move);
+    expect(moves).toEqual([
+      { row: 7, col: 7, player: "black" },
+      { row: 6, col: 8, player: "white" },
+      { row: 9, col: 6, player: "black" },
+    ]);
+    expect(imported.warnings.join(" ")).toContain("缺少节点分号");
   });
 
   it("imports a move stored directly on the SGF root node", async () => {

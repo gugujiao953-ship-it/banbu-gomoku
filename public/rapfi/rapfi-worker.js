@@ -21,7 +21,7 @@ function clearRequestTimers(request) {
 }
 
 function scheduleStop(request) {
-  if (!request || active !== request || request.finished || request.stopTimer) return;
+  if (!request || request.unlimited || active !== request || request.finished || request.stopTimer) return;
   const delayMs = Math.max(0, request.deadline - performance.now());
   request.stopTimer = setTimeout(() => {
     if (!active || active !== request || request.finished || request.stopRequested) return;
@@ -44,7 +44,7 @@ function finish(request, move, stats) {
   clearRequestTimers(request);
   if (!move) {
     active = null;
-    post({ type: "error", message: "Rapfi 未返回合法落点" });
+    post({ type: "error", requestId: request.requestId, generation: request.generation, message: "Rapfi 未返回合法落点" });
     drain();
     return;
   }
@@ -71,6 +71,8 @@ function finish(request, move, stats) {
   const primary = candidates[0];
   post({
     type: "result",
+    requestId: request.requestId,
+    generation: request.generation,
     result: {
       move,
       // A missing score is materially different from a neutral score. Keep
@@ -188,17 +190,18 @@ function run(request) {
   active = request;
   request.started = performance.now();
   request.nBest = Math.max(1, Math.min(3, request.topN || 3));
-  request.timeMs = Math.max(100, Math.min(300000, Math.round(Number(request.timeMs) || 4000)));
-  request.maxDepth = Math.max(1, Math.min(512, Math.round(Number(request.maxDepth) || 64)));
+  request.unlimited = request.unlimited === true || Number(request.timeMs) === 0;
+  request.timeMs = request.unlimited ? 0 : Math.max(100, Math.min(300000, Math.round(Number(request.timeMs) || 4000)));
+  request.maxDepth = request.unlimited ? 512 : Math.max(1, Math.min(512, Math.round(Number(request.maxDepth) || 64)));
   request.finished = false;
   request.stopRequested = false;
   request.bestMove = null;
-  request.deadline = request.started + request.timeMs;
+  request.deadline = request.unlimited ? Number.POSITIVE_INFINITY : request.started + request.timeMs;
   request.stats = { depth: 0, nodes: 0, totalNodes: 0, pvIndex: 0, bestline: [], primaryBestline: [], candidates: [] };
   scheduleStop(request);
   send(`START ${request.size}`);
   send(`INFO RULE ${ruleId(request.rule)}`);
-  send(`INFO TIMEOUT_TURN ${request.timeMs}`);
+  send(`INFO TIMEOUT_TURN ${request.unlimited ? 0 : request.timeMs}`);
   send(`INFO MAX_DEPTH ${request.maxDepth}`);
   send(`INFO SHOW_DETAIL 2`);
   const board = request.moves.map((point) => protocolPoint(point, request.size)).join(" ");
@@ -274,12 +277,14 @@ function load() {
 self.onmessage = (event) => {
   const message = event.data || {};
   if (message.type === "stop") {
+    if (active && message.requestId && active.requestId && message.requestId !== active.requestId) return;
     if (engine) engine.sendCommand("YXSTOP");
     if (active) {
       const request = active;
       request.finished = true;
       clearRequestTimers(request);
       active = null;
+      post({ type: "stopped", requestId: request.requestId, generation: request.generation });
       drain();
     }
     return;

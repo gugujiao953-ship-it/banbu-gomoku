@@ -1,4 +1,4 @@
-import type { BoardMark, CompactRenLibDraft, CompactRenLibIndex, GameDocument, NativeAnnotation, NodeEvaluation, Player, RecordNode } from "./types";
+import type { BoardMark, BoardSetup, CompactRenLibDraft, CompactRenLibIndex, GameDocument, NativeAnnotation, NodeEvaluation, Player, RecordNode } from "./types";
 
 type NumericArray = Int8Array | Uint8Array | Uint16Array | Int32Array | Uint32Array;
 type NumericArrayConstructor<T extends NumericArray> = { new(length: number): T };
@@ -81,6 +81,12 @@ export const compactNodeId = (index: Pick<CompactRenLibIndex, "ids" | "idPrefix"
 const moveCode = (node: RecordNode) => node.move ? (node.move.row * 16 + node.move.col + 1) : 0;
 const decodeMoveCode = (code: number) => code ? { row: Math.floor((code - 1) / 16), col: (code - 1) % 16 } : undefined;
 const evaluationValues: Record<string, number> = { good: 1, bad: 2, doubtful: 3, interesting: 4, forced: 5, only: 6, study: 7 };
+const cloneBoardSetup = (setup: BoardSetup): BoardSetup => ({
+  black: setup.black.map((point) => ({ ...point })),
+  white: setup.white.map((point) => ({ ...point })),
+  empty: setup.empty.map((point) => ({ ...point })),
+  ...(setup.nextPlayer ? { nextPlayer: setup.nextPlayer } : {}),
+});
 
 /** Build the typed-array index from parser-owned compact records, without creating
  * RecordNode objects, children arrays, or a node Map. Draft links are numeric. */
@@ -165,7 +171,7 @@ export const buildCompactRenLibIndex = (document: GameDocument): CompactRenLibIn
     if (node.anchor) anchorCode[nodeIndex] = node.anchor.row * 16 + node.anchor.col + 1;
     if (node.move) state[nodeIndex] |= 1 | (node.move.player === "white" ? 2 : 0);
     if (node.passPlayer) state[nodeIndex] |= node.passPlayer === "black" ? 16 : 32;
-    if (node.setup) { setupRefs[nodeIndex] = setups.length; setups.push(structuredClone(node.setup)); }
+    if (node.setup) { setupRefs[nodeIndex] = setups.length; setups.push(cloneBoardSetup(node.setup)); }
     if (node.renLibMark) state[nodeIndex] |= 4;
     if (node.startPosition) state[nodeIndex] |= 8;
     renLibFlags[nodeIndex] = (node.renLibFlags || 0) & 0xff;
@@ -290,7 +296,7 @@ export const createLazyDocument = (base: Omit<GameDocument, "nodes">, index: Com
       children: childrenAt(nodeIndex),
       move: hasMove && point ? { ...point, player: state & 2 ? "white" : "black" } : null,
       passPlayer: state & 16 ? "black" : state & 32 ? "white" : undefined,
-      setup: index.setupRefs && index.setups && index.setupRefs[nodeIndex] >= 0 ? structuredClone(index.setups[index.setupRefs[nodeIndex]]) : undefined,
+      setup: index.setupRefs && index.setups && index.setupRefs[nodeIndex] >= 0 ? cloneBoardSetup(index.setups[index.setupRefs[nodeIndex]]) : undefined,
       anchor: index.anchorCode?.[nodeIndex] ? decodeMoveCode(index.anchorCode[nodeIndex]) : undefined,
       comment: textAt(index, nodeIndex, 0),
       boardText: textAt(index, nodeIndex, 1) || undefined,

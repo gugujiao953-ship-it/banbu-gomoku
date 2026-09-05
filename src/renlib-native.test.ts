@@ -48,6 +48,27 @@ describe("RenLib native annotations", () => {
     expect(restored.renLibExtendedFlags).toBe(0x100);
   });
 
+  it("keeps setup records usable when structuredClone is unavailable", () => {
+    let document = createDocument("setup without structuredClone");
+    document.nodes[document.rootId].setup = {
+      black: [{ row: 7, col: 7 }],
+      white: [{ row: 7, col: 8 }],
+      empty: [{ row: 6, col: 6 }],
+      nextPlayer: "black",
+    };
+    const originalClone = globalThis.structuredClone;
+    Object.defineProperty(globalThis, "structuredClone", { configurable: true, value: undefined });
+    try {
+      const index = buildCompactRenLibIndex(document);
+      const { nodes: _nodes, ...base } = document;
+      const restored = createLazyDocument(base, index).nodes[document.rootId];
+      expect(restored.setup).toEqual(document.nodes[document.rootId].setup);
+      expect(restored.setup).not.toBe(document.nodes[document.rootId].setup);
+    } finally {
+      Object.defineProperty(globalThis, "structuredClone", { configurable: true, value: originalClone });
+    }
+  });
+
   it("reads an inline compact library through the async handle API", async () => {
     let document = createDocument(`library handle ${Date.now()}`);
     const first = addMove(document, document.rootId, { row: 7, col: 7 });

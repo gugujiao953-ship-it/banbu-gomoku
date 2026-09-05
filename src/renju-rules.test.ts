@@ -179,13 +179,13 @@ const goldenCases: GoldenCase[] = [
     expected: { legal: true, exactFive: true, reason: null },
   },
   {
-    name: "同手既有恰五又有长连时仍按长连禁手",
+    name: "同手既有恰五又有长连时按正式规则恰五优先",
     black: [
       ...positions(7, [3, 4, 5, 6]),
       ...vertical(7, [2, 3, 4, 5, 6]),
     ],
     move: { row: 7, col: 7 },
-    expected: { legal: false, forbidden: "overline", exactFive: true, reason: "长连禁手" },
+    expected: { legal: true, forbidden: null, exactFive: true, reason: null },
   },
   {
     name: "已有棋子的位置不能再次落子",
@@ -296,6 +296,8 @@ describe("renju rule API stability", () => {
 
     const whiteBoard = makeBoard({ white: diagonal(4, 4, [0, 1, 2, 3, 4, 5]) });
     expect(winningLinesAt(whiteBoard, { row: 7, col: 7 }, "renju")[0]).toHaveLength(6);
+    expect(winningLinesAt(whiteBoard, { row: 7, col: 7 }, "standard")).toHaveLength(0);
+    expect(winningLinesAt(whiteBoard, { row: 7, col: 7 }, "freestyle")[0]).toHaveLength(6);
 
     const exactBlack = makeBoard({ black: vertical(9, [4, 5, 6, 7, 8]) });
     expect(winningLinesAt(exactBlack, { row: 7, col: 9 }, "renju")[0]).toEqual(vertical(9, [4, 5, 6, 7, 8]));

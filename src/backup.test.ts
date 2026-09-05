@@ -5,6 +5,7 @@ import { buildCompactRenLibIndex } from "./compact-index";
 import { loadLargeDocument, loadLargeSummaries, saveCompactIndex } from "./large-storage";
 import { loadDraftFromLocal, loadLibrary, saveDraftToLocal, saveToLibrary } from "./storage";
 import { createBackupSnapshot, parseBackup, restoreBackup, serializeBackup } from "./backup";
+import { createZip, readZip, textFromZipEntry } from "./zip";
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -34,6 +35,14 @@ describe("versioned application backup", () => {
     localStorage.setItem("renju-note-puzzle-collections-v1", JSON.stringify([{ id: "c1", title: "题库", source: "用户", license: "自有", puzzles: [{ id: "p1", title: "题目", prompt: "黑先", difficulty: 2, player: "black", stones: [{ row: 7, col: 7, player: "black" }] }] }]));
     localStorage.setItem("renju-note-puzzle-progress-v1", JSON.stringify({ "c1/p1": { solved: true, attempts: 2, updatedAt: new Date().toISOString() } }));
     localStorage.setItem("renju-note-library-folders-v1", JSON.stringify({ recordFolders: ["研究"], puzzleFolders: ["题库"], recordAssignments: { [document.id]: "研究" }, puzzleAssignments: {} }));
+    localStorage.setItem("banbu-stone-opacity-v1", "0.68");
+    localStorage.setItem("banbu-board-opacity-v1", "0.74");
+    localStorage.setItem("banbu-board-theme-v1", "aurora");
+    localStorage.setItem("banbu-stone-theme-v1", "diamond");
+    localStorage.setItem("banbu-default-board-size-v1", "19");
+    localStorage.setItem("banbu-font-scale-v1", "large");
+    localStorage.setItem("banbu-enhancement-settings-v1", JSON.stringify({ tabletSplit: true, gestureZoom: true }));
+    localStorage.setItem("banbu-annotation-highlight-v1", "gold");
     await saveCompactIndex(document, buildCompactRenLibIndex(document));
 
     const serialized = serializeBackup(await createBackupSnapshot("test"));
@@ -47,6 +56,14 @@ describe("versioned application backup", () => {
     expect(loadDraftFromLocal(document.id).operations).toHaveLength(1);
     expect(JSON.parse(localStorage.getItem("renju-note-puzzle-progress-v1") || "{}")["c1/p1"].solved).toBe(true);
     expect(JSON.parse(localStorage.getItem("renju-note-library-folders-v1") || "{}").recordFolders).toEqual(["研究"]);
+    expect(JSON.parse(localStorage.getItem("banbu-stone-opacity-v1") || "1")).toBe(0.68);
+    expect(JSON.parse(localStorage.getItem("banbu-board-opacity-v1") || "1")).toBe(0.74);
+    expect(localStorage.getItem("banbu-board-theme-v1")).toBe("aurora");
+    expect(localStorage.getItem("banbu-stone-theme-v1")).toBe("diamond");
+    expect(localStorage.getItem("banbu-default-board-size-v1")).toBe("19");
+    expect(localStorage.getItem("banbu-font-scale-v1")).toBe("large");
+    expect(JSON.parse(localStorage.getItem("banbu-enhancement-settings-v1") || "{}").tabletSplit).toBe(true);
+    expect(localStorage.getItem("banbu-annotation-highlight-v1")).toBe("gold");
     expect((await loadLargeDocument(document.id))?.nodes[document.rootId]).toBeDefined();
     expect((await loadLargeSummaries()).some((item) => item.id === document.id)).toBe(true);
   });
@@ -56,6 +73,17 @@ describe("versioned application backup", () => {
     saveToLibrary(document);
     await expect(Promise.resolve().then(() => parseBackup(JSON.stringify({ schema: "wrong", version: 99 })))).rejects.toThrow();
     expect(loadLibrary()[0]?.metadata.title).toBe("原有数据");
+  });
+
+  it("reads a native backup snapshot from the exported ZIP container", async () => {
+    const document = createDocument("ZIP 备份");
+    saveToLibrary(document);
+    const snapshot = await createBackupSnapshot("test");
+    const archive = await createZip([{ name: "banbu-backup.json", data: serializeBackup(snapshot) }, { name: "README.txt", data: "说明" }]);
+    const entries = await readZip(archive);
+    const backupEntry = entries.find((entry) => entry.name === "banbu-backup.json");
+    expect(backupEntry).toBeDefined();
+    expect((parseBackup(textFromZipEntry(backupEntry!)).localStorage.library as Array<{ id?: string }>).some((item) => item.id === document.id)).toBe(true);
   });
 
   it("uses replacement semantics on repeated restore", async () => {

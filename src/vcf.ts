@@ -1,4 +1,4 @@
-import { BOARD_SIZE, forbiddenReason, otherPlayer } from "./game";
+import { BOARD_SIZE, evaluateRenjuMove, otherPlayer } from "./game";
 import type { Cell, Player, Position, RuleSet } from "./types";
 
 const DIRECTIONS: Array<[number, number]> = [[1, 0], [0, 1], [1, 1], [1, -1]];
@@ -70,10 +70,10 @@ const lineLengthsAfter = (board: Cell[][], position: Position, player: Player) =
 export const isLegalMove = (board: Cell[][], position: Position, player: Player, rule: RuleSet) => {
   if (board[position.row]?.[position.col] !== null) return false;
   if (rule !== "renju" || player !== "black") return true;
-  const lengths = lineLengthsAfter(board, position, player);
-  if (lengths.some((length) => length > 5)) return false;
-  if (lengths.some((length) => length === 5)) return true;
-  return !forbiddenReason(board, position);
+  // Keep VCF move legality on the same canonical path as board play. In
+  // particular, RIF exact-five priority must also apply when another axis made
+  // by the same move is an overline.
+  return evaluateRenjuMove(board, position).legal;
 };
 
 export const isWinningMove = (board: Cell[][], position: Position, player: Player, rule: RuleSet) => {

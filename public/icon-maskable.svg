@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
-  <title id="title">半步五子棋自适应图标</title>
+  <title id="title">半步五子棋打谱自适应图标</title>
   <rect width="512" height="512" fill="#f7f3e8"/>
   <defs>
     <clipPath id="board-circle"><circle cx="256" cy="256" r="194"/></clipPath>

@@ -28,6 +28,17 @@ describe("local record storage", () => {
     expect(loadDraftFromLocal(document.id)).toEqual({ operations: [], redo: [] });
   });
 
+  it("removes a stale persisted draft when undo leaves no active operations", () => {
+    const document = createDocument("撤销清理");
+    const operation = { type: "update-node" as const, nodeId: document.rootId, patch: { comment: "旧草稿" } };
+    saveDraftToLocal(document.id, { operations: [operation], redo: [] });
+    expect(loadDraftFromLocal(document.id).operations).toHaveLength(1);
+
+    saveDraftToLocal(document.id, { operations: [], redo: [operation] });
+
+    expect(loadDraftFromLocal(document.id)).toEqual({ operations: [], redo: [] });
+  });
+
   it("keeps another record active when deleting a non-active record", () => {
     const deleted = createDocument("删除对象");
     const active = createDocument("当前棋谱");

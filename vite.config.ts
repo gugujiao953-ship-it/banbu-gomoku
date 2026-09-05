@@ -1,8 +1,20 @@
 import { defineConfig, type ViteDevServer, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import legacy from "@vitejs/plugin-legacy";
 import { VitePWA } from "vite-plugin-pwa";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { scaleUiFontDeclarations } from "./src/ui-font-css.ts";
+
+const scalableUiFonts = (): Plugin => ({
+  name: "scalable-ui-fonts",
+  enforce: "pre",
+  transform(code, id) {
+    const cleanId = id.split("?")[0].replaceAll("\\", "/");
+    if (!cleanId.endsWith("/src/styles.css") && !cleanId.endsWith("/src/library.css")) return null;
+    return { code: scaleUiFontDeclarations(code), map: null };
+  },
+});
 
 // Single manifest for both build-time emission and dev-time serving so the two
 // can never drift. /renlib/* only exists in build output otherwise, which makes
@@ -49,6 +61,27 @@ const renLibWebAssets = (): Plugin => ({
   },
 });
 
+// Emscripten's prebuilt Rapfi loaders contain logical-assignment syntax in a
+// few generated helpers. Rewrite only the emitted Rapfi assets so Chromium 83
+// can parse the fallback and full variants without changing the upstream
+// generated sources by hand.
+const legacyRapfiSyntax = (): Plugin => ({
+  name: "legacy-rapfi-syntax",
+  writeBundle(options) {
+    const outputDirectory = typeof options.dir === "string" ? options.dir : resolve(process.cwd(), "dist");
+    for (const variant of ["fallback", "full"]) {
+      const file = resolve(outputDirectory, "rapfi", variant, "rapfi-single.js");
+      if (!existsSync(file)) continue;
+      const source = readFileSync(file, "utf8");
+      const compatible = source
+        .replace(/([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?)&&=/g, "$1=$1&&")
+        .replace(/([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?)\|\|=/g, "$1=$1||")
+        .replace(/([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?)\?\?=/g, "$1=$1??");
+      if (compatible !== source) writeFileSync(file, compatible);
+    }
+  },
+});
+
 // A production preview may previously have registered a PWA service worker on
 // the same localhost port. During development that worker can keep serving an
 // old precache forever because Vite normally has no /sw.js update to replace
@@ -76,16 +109,33 @@ self.addEventListener("activate", (event) => {
 });
 
 export default defineConfig({
+  build: {
+    // Keep generated CSS parseable by the oldest supported Android WebView.
+    // Runtime fallbacks in legacy-webview.css cover features that cannot be
+    // losslessly lowered (notably :has() and variable-based color-mix()).
+    cssTarget: "chrome83",
+  },
   plugins: [
     devServiceWorkerReset(),
     renLibWebAssets(),
+    legacyRapfiSyntax(),
+    scalableUiFonts(),
     react(),
+    legacy({
+      // Redmi K20 ships with Chromium 83 in the current test environment.
+      // Keep a module build for modern WebViews and emit a nomodule fallback
+      // for older Android WebViews that cannot parse module scripts.
+      targets: ["Chrome >= 83", "Android >= 8"],
+      modernPolyfills: true,
+      renderLegacyChunks: true,
+    }),
     VitePWA({
+      injectRegister: false,
       registerType: "autoUpdate",
       includeAssets: ["icon.svg", "icon-maskable.svg"],
       manifest: {
-        name: "半步五子棋",
-        short_name: "半步五子棋",
+        name: "半步五子棋打谱",
+        short_name: "半步五子棋打谱",
         description: "移动优先的五子棋打谱与做题工具",
         theme_color: "#365e4b",
         background_color: "#f8f6f1",
@@ -97,7 +147,7 @@ export default defineConfig({
           { src: "icon-maskable.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
         ],
       },
-      workbox: { globPatterns: ["**/*.{js,css,html,svg,json}"] },
+      workbox: { globPatterns: ["**/*.{js,css,html,svg,json,wasm,data,sgf,db,wav}"] },
     }),
   ],
   base: "./",

@@ -7,6 +7,10 @@ export interface EnhancementSettings {
   recentImports: boolean;
   aiBoardHints: boolean;
   coachMarks: boolean;
+  // 走棋栏文字显示：默认开启（沿用带标签的现状）；关闭则纯图标、绝不换行。
+  movesTextDisplay: boolean;
+  // 走棋并入功能栏：把走棋导航从独立常驻行改回底部功能栏的一个标签页。默认关闭。
+  dockMergeMoves: boolean;
 }
 
 export const DEFAULT_ENHANCEMENT_SETTINGS: EnhancementSettings = {
@@ -16,6 +20,8 @@ export const DEFAULT_ENHANCEMENT_SETTINGS: EnhancementSettings = {
   recentImports: false,
   aiBoardHints: false,
   coachMarks: false,
+  movesTextDisplay: true,
+  dockMergeMoves: false,
 };
 
 export const normalizeEnhancementSettings = (value: unknown): EnhancementSettings => {
@@ -28,6 +34,9 @@ export const normalizeEnhancementSettings = (value: unknown): EnhancementSetting
     recentImports: partial.recentImports === true,
     aiBoardHints: partial.aiBoardHints === true,
     coachMarks: partial.coachMarks === true,
+    // 走棋文字默认开启，因此用 !== false 收窄（仅显式关闭才为 false），其余新功能用 === true。
+    movesTextDisplay: partial.movesTextDisplay !== false,
+    dockMergeMoves: partial.dockMergeMoves === true,
   };
 };
 

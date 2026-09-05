@@ -1,0 +1,241 @@
+.unified-status {
+  display: grid;
+  grid-template-areas: "title" "facts" "mode";
+  gap: 7px;
+  min-width: 0;
+  margin: 0 0 9px;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 17px;
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  box-shadow: 0 7px 18px #675d4a0d;
+}
+
+.unified-status .workspace-current.unified-status-title {
+  grid-area: title;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 2px;
+  border: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  overflow: hidden;
+}
+
+.unified-status-kind {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: var(--jade);
+  color: var(--green);
+  font: 700 14px serif;
+}
+
+.unified-status-title > .unified-status-kind { grid-column: 1; }
+.unified-status-title > .unified-status-copy {
+  grid-column: 2;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  overflow: hidden;
+  align-self: center;
+  display: block;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  position: relative;
+}
+.unified-status-name,
+.unified-status-subtitle { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.unified-status-copy > .unified-status-name { width: 100%; margin: 0; font-size: 13px; font-weight: 700; line-height: 1.25; }
+.unified-status-subtitle { width: 100%; margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.3; }
+.workspace-current-compat { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+.unified-status-title > svg { grid-column: 3; width: 17px; justify-self: end; color: var(--muted); transition: transform .18s; }
+.unified-status-title.open > svg { transform: rotate(180deg); }
+
+.unified-status-facts {
+  grid-area: facts;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  min-width: 0;
+}
+
+.unified-status-facts > span {
+  min-width: 0;
+  min-height: 34px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  display: grid;
+  grid-template-rows: 11px 15px;
+  align-content: center;
+  background: color-mix(in srgb, var(--jade) 62%, var(--paper));
+}
+
+.unified-status-facts small,
+.unified-status-facts b { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.unified-status-facts small { color: var(--muted); font-size: 11px; }
+.unified-status-facts b { font-size: 12px; }
+.unified-status-facts .status-state { position: relative; padding-left: 27px; }
+.unified-status-facts .status-state > svg { position: absolute; left: 8px; top: 10px; width: 14px; height: 14px; color: var(--green); }
+.unified-status-facts .status-state.analysis > svg,
+.unified-status-facts .status-state.playing > svg { color: #397db3; }
+.unified-status-facts .status-state.draft > svg { color: #9b6c2d; }
+
+.unified-status-mode { grid-area: mode; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.unified-status-mode .workspace-mode-toggle {
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: 48px;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  background: color-mix(in srgb, var(--line) 42%, var(--paper));
+}
+
+.unified-status-mode .workspace-mode-toggle button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight:700;
+}
+
+.unified-status-mode .workspace-mode-toggle button > svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.unified-status-mode .workspace-mode-toggle button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.unified-status-mode .workspace-mode-toggle button.selected {
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--green) 30%, transparent), inset 0 1px #ffffff38;
+}
+.unified-status-mode .exit-ai-game { min-height: 40px; }
+.unified-status-mode .stop-ai-thinking {
+  border-color: #b95b50;
+  background: #a94439;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-shadow: 0 3px 9px color-mix(in srgb, #a94439 24%, transparent);
+}
+.unified-status-mode .stop-ai-thinking > svg { width: 14px; height: 14px; }
+.unified-status.ai-thinking .unified-status-kind {
+  background: #e8f3ff;
+  color: #2872b8;
+}
+.unified-status.ai-thinking .unified-status-title > svg { color: #2872b8; }
+.record-page > .unified-status { grid-column: 1 / -1; }
+
+html[data-theme="dark"] .unified-status { background: #26312d; border-color: #3b4842; }
+html[data-theme="dark"] .unified-status-facts > span { background: #202925; }
+html[data-theme="dark"] .unified-status-mode .workspace-mode-toggle { background: #202925; border-color: #45524c; }
+html[data-theme="dark"] .unified-status.ai-thinking .unified-status-kind { background: #263d50; color: #8ec0ec; }
+
+@media (max-width: 412px) {
+  .unified-status { padding: 8px; gap: 6px; }
+  .unified-status .workspace-current.unified-status-title { grid-template-columns: 31px minmax(0, 1fr) 17px; gap: 6px; }
+  .unified-status-kind { width: 31px; height: 31px; }
+  .unified-status-facts > span { padding-inline: 6px; }
+  .unified-status-facts .status-state { padding-left: 24px; }
+  .unified-status-facts .status-state > svg { left: 6px; }
+}
+
+/* On phones the three primary work modes stay large, but the status card only
+ * occupies two compact rows. Detailed facts remain available to assistive
+ * technology and are repeated in the selector subtitle. */
+@media (max-width: 699px) {
+  .unified-status {
+    grid-template-areas: "mode" "title";
+    gap: 4px;
+    margin-bottom: 6px;
+    padding: 4px;
+    border-radius: 14px;
+  }
+  .unified-status-facts {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+  }
+  .unified-status .workspace-current.unified-status-title {
+    min-height: 44px;
+    padding: 0 5px;
+    grid-template-columns: 31px minmax(0, 1fr) 17px;
+    gap: 7px;
+  }
+  .unified-status-kind { width: 31px; height: 31px; border-radius: 9px; }
+  .unified-status-subtitle { margin-top: 2px; font-size: 11px; }
+  .unified-status-mode { flex-direction: row; gap: 4px; }
+  .unified-status-mode .workspace-mode-toggle {
+    min-height: 48px;
+    flex: 1 1 auto;
+    padding: 2px;
+    border-radius: 11px;
+    gap: 2px;
+  }
+  .unified-status-mode .workspace-mode-toggle button {
+    min-height: 44px;
+    padding-inline: 5px;
+    border-radius: 9px;
+    font-size: 12px;
+  }
+  .unified-status-mode .exit-ai-game {
+    width: 60px;
+    min-height: 48px;
+    flex: 0 0 60px;
+    margin: 0;
+  }
+}
+
+@media (max-width: 370px) {
+  .unified-status-copy > .unified-status-name { font-size: 12px; }
+  .unified-status-facts b { font-size: 11px; }
+  .unified-status-facts > span { padding-inline: 5px; }
+  .unified-status-mode .workspace-mode-toggle button { gap: 5px; padding-inline: 5px; font-size: 11px; }
+  .unified-status-mode .workspace-mode-toggle button > svg { width: 15px; height: 15px; }
+}
+
+@media (orientation: landscape) and (max-height: 480px) {
+  .unified-status { grid-template-columns: minmax(0, 1fr) minmax(245px, .9fr); grid-template-areas: "title mode" "facts mode"; align-items: center; }
+  .unified-status-mode .workspace-mode-toggle { min-height: 46px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unified-status-title > svg { transition: none; }
+  .unified-status-mode .workspace-mode-toggle button { transition: none; }
+}
+
+/* Mobile chrome stays compact while mode tabs remain comfortably tappable. */
+@media (max-width: 600px) {
+  .unified-status { gap: 2px; margin-bottom: 2px; padding: 2px; border-radius: 11px; box-shadow: 0 3px 10px #675d4a08; }
+  .unified-status .workspace-current.unified-status-title { min-height: 40px; }
+  .unified-status-mode .workspace-mode-toggle { min-height: 46px; padding: 1px; gap: 1px; border-radius: 10px; }
+  .unified-status-mode .workspace-mode-toggle button { min-height: 44px; padding-inline: 3px; border-radius: 8px; gap: 3px; }
+}
+
+@media (max-width: 370px) {
+  .unified-status .workspace-current.unified-status-title { min-height: 38px; }
+}

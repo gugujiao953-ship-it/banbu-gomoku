@@ -39,6 +39,35 @@ describe("puzzle JSON import", () => {
     expect(puzzle.prompt).toBe("黑先寻找胜着");
     expect(puzzle.difficulty).toBe(4);
     expect(createPuzzleDocument(puzzle).document.metadata.boardSize).toBe(15);
+    expect(createPuzzleDocument(puzzle).document.metadata.rule).toBe("freestyle");
+  });
+
+  it("imports explicit textual puzzle rules without guessing numeric third-party codes", () => {
+    const report = importKaibaoPuzzleJson(JSON.stringify({
+      rule: "renju",
+      puzzles: [
+        { title: "继承题集规则", side: "black", stones: "H8I8" },
+        { title: "题目覆盖", side: "black", rule: "无禁手", stones: "H8I8" },
+      ],
+    }), "规则题集");
+    expect(report.collection.rule).toBe("renju");
+    expect(report.collection.puzzles[0].rule).toBeUndefined();
+    expect(report.collection.puzzles[1].rule).toBe("freestyle");
+  });
+
+  it("preserves non-15 board sizes when a saved puzzle is reopened", () => {
+    const puzzle = {
+      id: "saved-19",
+      title: "19路题目",
+      prompt: "从这个局面开始练习",
+      difficulty: 3 as const,
+      player: "black" as const,
+      boardSize: 19,
+      stones: [{ row: 3, col: 16, player: "black" as const }],
+    };
+    const session = createPuzzleDocument(puzzle);
+    expect(session.document.metadata.boardSize).toBe(19);
+    expect(session.document.nodes[session.initialNodeId].move).toMatchObject({ row: 3, col: 16 });
   });
 
   it("imports split black and white coordinate strings without deriving the turn from parity", () => {

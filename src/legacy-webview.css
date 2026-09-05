@@ -1,0 +1,105 @@
+/* Chrome/WebView 83 fallback layer. Modern declarations remain the primary
+ * design; this class is added only when selector/color/viewport support is
+ * incomplete, so unsupported rules never make controls unreadable or tall. */
+.legacy-webview {
+  --button-muted-text: var(--ink);
+  --button-disabled-text: var(--muted);
+  --button-disabled-bg: var(--surface-3, #ece8df);
+  --button-disabled-border: var(--line);
+}
+.legacy-webview .app-shell { min-height:100vh; }
+.legacy-webview .app-main { min-height:calc(100vh - 146px); display:block; }
+.legacy-webview .sheet-backdrop,
+.legacy-webview .first-run-backdrop,
+.legacy-webview .quick-drawer-layer,
+.legacy-webview .quick-drawer-scrim,
+.legacy-webview .preview-page-glow,
+.legacy-webview .preview-board-lines {
+  top:0;
+  right:0;
+  bottom:0;
+  left:0;
+}
+.legacy-webview .preview-board-surface,
+.legacy-webview .board-opacity-preview .preview-board-lines { top:8px; right:8px; bottom:8px; left:8px; }
+.legacy-webview .material-preview-wallpaper { top:0; right:0; bottom:0; left:0; }
+.legacy-webview .material-live-preview .material-preview-board,
+.legacy-webview .material-preview-grid { top:8px; right:8px; bottom:8px; left:8px; }
+.legacy-webview .material-live-preview { border-color:var(--line); background:var(--paper); }
+.legacy-webview .annotation-highlight-setting { border-color:var(--line); background:var(--paper); color:var(--ink); }
+.legacy-webview .annotation-highlight-options { border-color:var(--line); background:var(--surface-2,#f5f3ee); }
+.legacy-webview .annotation-highlight-options button { color:var(--muted); }
+.legacy-webview .annotation-highlight-options button.selected { border-color:var(--green); background:var(--surface,var(--paper)); color:var(--ink); }
+.legacy-webview .record-command-bar .command-think.machine-thinking:before { top:-4px; right:-4px; bottom:-4px; left:-4px; }
+.legacy-webview .record-command-bar .command-think.machine-thinking:after { top:-1px; right:-1px; bottom:-1px; left:-1px; }
+.legacy-webview .machine-thinking-status:before { top:-3px; right:-3px; bottom:-3px; left:-3px; }
+.legacy-webview .batch-selection-checkbox input:checked + i:after { top:0; right:0; bottom:0; left:0; }
+.legacy-webview .bottom-sheet { max-height:min(82vh,720px); }
+.legacy-webview .record-selector-backdrop .bottom-sheet { height:min(86vh,720px); }
+.legacy-webview .puzzle-selector-backdrop .bottom-sheet { height:min(92vh,820px); max-height:min(92vh,820px); }
+.legacy-webview .tree-sheet-backdrop .bottom-sheet { max-height:min(92vh,860px); }
+.legacy-webview .tree-viewport { height:min(36vh,320px); }
+.legacy-webview .annotation-sheet-backdrop .bottom-sheet { max-height:min(100vh,720px); }
+.legacy-webview .manual-sheet-backdrop .bottom-sheet { max-height:min(94vh,900px); }
+.legacy-webview .context-dock .dock-tabs { border-bottom-color:#eeeae2; }
+.legacy-webview .record-command-bar .command-comment.has-comment { border-color:#8db1df; background:#eaf2fc; color:#2872b8; }
+.legacy-webview .record-command-bar .command-comment.active { border-color:#6f9fd8; background:#dcebfb; color:#1f5f9c; box-shadow:none; }
+.legacy-webview .mark-studio-grid { border-color:var(--line); background:var(--paper); }
+.legacy-webview .mark-studio-preview,
+.legacy-webview .mark-studio-box { background:var(--surface-3, #f0eee8); color:var(--ink); }
+.legacy-webview .batch-selectable.selected { outline-color:#9cbea9; background:#f5faf6; }
+.legacy-webview button:focus,
+.legacy-webview input:focus,
+.legacy-webview textarea:focus,
+.legacy-webview select:focus,
+.legacy-webview summary:focus { outline:3px solid #88a798; outline-offset:2px; }
+.legacy-webview .topbar,
+.legacy-webview .bottom-nav { background:var(--paper); border-color:var(--line); }
+.legacy-webview .context-dock,
+.legacy-webview .unified-status,
+.legacy-webview .puzzle-selector-current,
+.legacy-webview .record-selector-current,
+.legacy-webview .record-selector-folder-body > button.current,
+.legacy-webview .record-selector-count,
+.legacy-webview .quick-drawer-panel,
+.legacy-webview .quick-choice-row select { background:var(--surface, var(--paper)); border-color:var(--surface-border, var(--line)); color:var(--ink); }
+.legacy-webview .dock-panel button,
+.legacy-webview .settings-link,
+.legacy-webview .setting-row,
+.legacy-webview .theme-preference > button,
+.legacy-webview .visual-option-grid > button,
+.legacy-webview .library-folder-row,
+.legacy-webview .library-folder-head { color:var(--ink); }
+.legacy-webview .dock-panel button:disabled,
+.legacy-webview button:disabled { color:var(--button-disabled-text); }
+
+/* Chromium 83 drops modern color-composition declarations and grouped selectors.
+   Keep the important cards readable with concrete fallbacks;
+   the modern declarations remain available to newer browsers. */
+.legacy-webview {
+  --button-muted-text: var(--ink);
+  --button-disabled-text: #777168;
+  --button-disabled-bg: #f0eee8;
+  --button-disabled-border: #d8d1c6;
+}
+.legacy-webview .annotation-current { border-color: var(--line); }
+.legacy-webview .unified-status { border-color: var(--line); background: var(--paper); }
+.legacy-webview .unified-status-mode { background: var(--jade); }
+.legacy-webview .puzzle-selector-current,
+.legacy-webview .record-selector-current,
+.legacy-webview .record-selector-folder-body > button.current { border-color: var(--line); background: var(--jade); }
+.legacy-webview .record-selector-count { background: var(--jade); }
+.legacy-webview .record-selector-count.large { background: #f5ead5; }
+.legacy-webview .manual-entry-link { background: var(--jade); }
+.legacy-webview .puzzle-rule-selector,
+.legacy-webview .puzzle-think-speed-selector { background: var(--surface-3, #e1ebef); border-color: var(--surface-border, var(--line)); }
+.legacy-webview .puzzle-rule-selector button:not(.selected),
+.legacy-webview .puzzle-think-speed-selector button:not(.selected) { background: var(--surface-2, #f1f4f2); border: 1px solid var(--surface-border, var(--line)); color: var(--ink); }
+.legacy-webview .puzzle-rule-selector button.selected,
+.legacy-webview .puzzle-think-speed-selector button.selected { background: var(--jade); border: 1px solid var(--green); color: var(--green); box-shadow: 0 2px 7px var(--surface-shadow, #0001); }
+
+@media (orientation:landscape) and (max-height:600px) {
+  .legacy-webview .board-scroller { max-height:calc(100vh - 170px); }
+  .legacy-webview .renju-board { width:min(100%,calc(100vh - 170px)); }
+  .legacy-webview .tree-sheet-backdrop .bottom-sheet { max-height:96vh; }
+}

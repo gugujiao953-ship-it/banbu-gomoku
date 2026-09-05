@@ -60,4 +60,15 @@ describe("board share image", () => {
     document = move.document;
     expect(boardShareFilename(document, move.nodeId)).toBe("A-B-复盘--第1手.png");
   });
+
+  it("isolates stone opacity from move numbers and last-move markers", () => {
+    let document = createDocument("透明度");
+    const move = addMove(document, document.rootId, { row: 7, col: 7 });
+    document = move.document;
+    const svg = createBoardShareSvg(document, move.nodeId, { ...options, stoneOpacity: .4 });
+    expect(svg).toContain('data-export-role="stone-body"');
+    expect(svg).toContain('opacity="0.4"');
+    expect(svg).toContain('data-export-role="move-number"');
+    expect(svg).not.toMatch(/data-export-role="move-number"[^>]*opacity="0\.4"/);
+  });
 });

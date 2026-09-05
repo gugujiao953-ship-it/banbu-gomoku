@@ -295,10 +295,10 @@ export const evaluateRenjuMove = (board: Cell[][], position: Position): RenjuMov
   const next = cloneBoard(board); next[position.row][position.col] = "black";
   const overline = hasOverlineAt(next, position);
   const exactFive = hasExactFiveAt(next, position);
-  if (overline) return remember({ legal: false, forbidden: "overline", reason: "长连禁手", exactFive, fourCount: 0, openThreeCount: 0 });
-  // Under the competition profile used by the existing VCF engine, an exact
-  // black five wins before double-three/double-four are considered.
+  // RIF rule 9.1/9.2: attaining an exact five wins before the forbidden-move
+  // clauses are considered, including when another direction is an overline.
   if (exactFive) return remember({ legal: true, forbidden: null, reason: null, exactFive: true, fourCount: 0, openThreeCount: 0 });
+  if (overline) return remember({ legal: false, forbidden: "overline", reason: "长连禁手", exactFive: false, fourCount: 0, openThreeCount: 0 });
   const fours = fourPatternsThrough(next, position);
   if (fours.length >= 2) return remember({ legal: false, forbidden: "double-four", reason: "四四禁手", exactFive: false, fourCount: fours.length, openThreeCount: 0 });
   const threes = openThreePatternsThrough(next, position);
@@ -323,6 +323,7 @@ export const winningLinesAt = (board: Cell[][], position: Position, rule: RuleSe
   if (!player) return [];
   return DIRECTIONS.map(([dr, dc]) => contiguousLine(board, position, player, dr, dc)).filter((line) => {
     if (rule === "renju" && player === "black") return line.length === 5;
+    if (rule === "standard") return line.length === 5;
     return line.length >= 5;
   });
 };

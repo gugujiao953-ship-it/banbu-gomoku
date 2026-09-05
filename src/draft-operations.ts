@@ -1,5 +1,6 @@
 import type { GameDocument, GameMetadata, PartialRecordNode, RecordNode } from "./types";
 import { compactRegisterAlias } from "./compact-index";
+import type { RecordBookmark } from "./features/record-tree/bookmarks";
 
 const PROJECTED_NODES_MARKER = "__isProjected";
 
@@ -12,6 +13,7 @@ export const isProjectedDocument = (document: GameDocument) =>
 
 export type DraftOperation =
   | { type: "add-move"; parentId: string; node: RecordNode }
+  | { type: "add-subtree"; parentId: string; rootId: string; nodes: Record<string, RecordNode>; bookmarks?: RecordBookmark[] }
   | { type: "delete-subtree"; parentId: string; rootId: string }
   | { type: "update-node"; nodeId: string; patch: PartialRecordNode }
   | { type: "set-mainline"; parentId: string; childId: string };
@@ -62,6 +64,7 @@ export const buildDraftOverlay = (state: DraftState, document?: GameDocument): D
     // Without document context, just track root deletion IDs
     for (const operation of state.operations) {
       if (operation.type === "add-move") overlay.added.set(operation.node.id, operation.node);
+      else if (operation.type === "add-subtree") Object.values(operation.nodes).forEach((node) => overlay.added.set(node.id, node));
       else if (operation.type === "update-node") overlay.patches.set(operation.nodeId, { ...(overlay.patches.get(operation.nodeId) || {}), ...operation.patch });
       else if (operation.type === "delete-subtree") overlay.deleted.add(operation.rootId);
       else if (operation.type === "set-mainline") overlay.preferred.set(operation.parentId, operation.childId);
@@ -71,6 +74,7 @@ export const buildDraftOverlay = (state: DraftState, document?: GameDocument): D
   const deletedClosure = computeDeletedClosure(state, document);
   for (const operation of state.operations) {
     if (operation.type === "add-move") overlay.added.set(operation.node.id, operation.node);
+    else if (operation.type === "add-subtree") Object.values(operation.nodes).forEach((node) => overlay.added.set(node.id, node));
     else if (operation.type === "update-node") overlay.patches.set(operation.nodeId, { ...(overlay.patches.get(operation.nodeId) || {}), ...operation.patch });
     else if (operation.type === "delete-subtree") {
       for (const id of deletedClosure) overlay.deleted.add(id);
@@ -92,7 +96,7 @@ export const overlayNode = (document: GameDocument, overlay: DraftOverlay, id: s
   const addedChildren = [...overlay.added.values()]
     .filter((child) => child.parentId === id && !overlay.deleted.has(child.id))
     .map((child) => child.id);
-  const effectiveChildren = [...baseChildren, ...addedChildren];
+  const effectiveChildren = [...new Set([...baseChildren, ...addedChildren])];
   // Children, marks and preferredChildId are computed from the overlay below;
   // don't let a partial patch override those derived values.
   const { marks: patchedMarks, preferredChildId: _patchedPreferredChildId, ...basePatch } = patch || {};
@@ -182,9 +186,24 @@ export const applyDraftToDocument = (document: GameDocument, operations: DraftOp
           [operation.parentId]: {
             ...parent,
             children: [...parent.children, operation.node.id],
-            preferredChildId: operation.node.id,
           },
           [operation.node.id]: operation.node,
+        },
+      };
+    } else if (operation.type === "add-subtree") {
+      const parent = next.nodes[operation.parentId];
+      const root = operation.nodes[operation.rootId];
+      if (!parent || !root) continue;
+      next = {
+        ...next,
+        nodes: {
+          ...next.nodes,
+          ...operation.nodes,
+          [operation.parentId]: {
+            ...parent,
+            children: parent.children.includes(operation.rootId) ? parent.children : [...parent.children, operation.rootId],
+            preferredChildId: operation.rootId,
+          },
         },
       };
     } else if (operation.type === "update-node") {

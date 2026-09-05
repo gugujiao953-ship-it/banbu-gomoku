@@ -19,6 +19,10 @@ const iconFor = (kind: ToastKind) => {
 };
 
 export function AppToast({ message, onClose }: { message: string; onClose: () => void }) {
+  // Always mounted (App renders it unconditionally): aria-live regions should
+  // stay in the DOM, and mount/unmount right after a big list remount used to
+  // crash React DOM placement (insertBefore NotFoundError).
+  if (!message) return null;
   const kind = classifyToast(message);
   const liveMode = kind === "error" || kind === "warning" ? "assertive" : "polite";
   return <div className={`toast app-toast app-toast-${kind}`} role="status" aria-live={liveMode} aria-atomic="true">

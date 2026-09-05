@@ -54,10 +54,9 @@ export class RenLibWebViewSession {
       };
     }
 
-    // Preserve cached alternatives on every loaded position. This lets a
-    // user click a visible sibling directly after reaching a leaf instead of
-    // having to go back first, and keeps projection/navigation semantics in
-    // sync with ordinary SGF trees.
+    // Preserve cached alternatives on every loaded position for the branch
+    // tree and back-navigation. The board renders only the current node's
+    // direct children, matching the source tool's current-path query model.
     for (let index = 0; index <= depth; index += 1) {
       const parentId = this.nodeId(index), parent = nodes[parentId];
       const selected = index < depth ? this.path[index] : undefined;

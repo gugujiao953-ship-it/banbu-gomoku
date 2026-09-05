@@ -1,5 +1,6 @@
 import { createDocument, isSupportedBoardSize, parseCoordinate } from "./game";
-import type { GameDocument, Player, Position, RecordNode } from "./types";
+import { parsePuzzleRule } from "./features/puzzles/puzzle-rules";
+import type { GameDocument, Player, Position, RecordNode, RuleSet } from "./types";
 
 export interface PuzzleStone extends Position { player: Player }
 export interface Puzzle {
@@ -11,6 +12,8 @@ export interface Puzzle {
   player: Player;
   /** Native puzzle JSON may carry a board size; old compact sets default to 15. */
   boardSize?: number;
+  /** Explicit puzzle rules override the user's general doing-puzzle preference. */
+  rule?: RuleSet;
 }
 export interface PuzzleCollection {
   id: string;
@@ -18,11 +21,15 @@ export interface PuzzleCollection {
   source: string;
   license: string;
   puzzles: Puzzle[];
+  /** Optional collection-wide rule used only when an individual puzzle omits it. */
+  rule?: RuleSet;
 }
 
 const NATIVE_KAIBAO_SETS = [
   "三手胜1-入门题", "三手胜2-初级题", "三手胜3-中级题", "三手胜4-高级题",
   "坂田吾朗追诘胜-白先", "坂田吾朗追诘胜-黑先", "天狗道场2020-白先", "天狗道场2020-黑先",
+  "白先胜100题_puzzle", "白先VCF_puzzle", "棋谱控超级题", "棋谱控高级题", "日本段级位测试题",
+  "实战VCF_1052题", "五子棋发阳论残本1.4", "五子棋九段感觉-习题", "RenjuPortalVCF",
 ] as const;
 
 const COLLECTIONS_KEY = "renju-note-puzzle-collections-v1";
@@ -119,7 +126,7 @@ export function deriveWrongPuzzleEntries(collections: PuzzleCollection[], progre
 
 const makeNodeId = (puzzleId: string, index: number) => `puzzle-${puzzleId}-${index}`;
 
-export function createPuzzleDocument(puzzle: Puzzle): { document: GameDocument; initialNodeId: string; initialDepth: number } {
+export function createPuzzleDocument(puzzle: Puzzle, rule: RuleSet = puzzle.rule || "freestyle"): { document: GameDocument; initialNodeId: string; initialDepth: number } {
   const document = createDocument(puzzle.title, puzzle.boardSize || 15);
   const rootId = document.rootId;
   const nodes: Record<string, RecordNode> = { [rootId]: document.nodes[rootId] };
@@ -135,7 +142,7 @@ export function createPuzzleDocument(puzzle: Puzzle): { document: GameDocument; 
       ...document,
       id: `puzzle-session-${puzzle.id}`,
       nodes,
-      metadata: { ...document.metadata, title: puzzle.title, black: puzzle.player === "black" ? "你" : "陪练", white: puzzle.player === "white" ? "你" : "陪练", tags: ["做题"] },
+      metadata: { ...document.metadata, title: puzzle.title, black: puzzle.player === "black" ? "你" : "陪练", white: puzzle.player === "white" ? "你" : "陪练", rule, tags: ["做题"] },
     },
     initialNodeId: parentId,
     initialDepth: puzzle.stones.length,
@@ -261,7 +268,8 @@ const parseNativeObjectEntry = (entry: JsonObject, entryIndex: number, warnings:
   const comment = textValue(entry.comment) || textValue(entry.prompt);
   const stars = typeof entry.stars === "number" ? entry.stars : 0;
   const difficulty = nativeDifficulty(entry.level ?? entry.difficulty, Math.min(5, Math.max(1, stars || 2)));
-  return { stones, player, difficulty, size, comment };
+  const rule = parsePuzzleRule(entry.rule ?? entry.rules ?? entry.forbiddenEnabled ?? entry.forbidden);
+  return { stones, player, difficulty, size, comment, rule };
 };
 const importNativePuzzleObject = (raw: JsonObject, title: string, metadata?: Partial<Pick<PuzzleCollection, "id" | "source" | "license">>): PuzzleImportReport => {
   if (!Array.isArray(raw.puzzles)) {
@@ -286,10 +294,12 @@ const importNativePuzzleObject = (raw: JsonObject, title: string, metadata?: Par
     const parsed = parseNativeObjectEntry(entry, entryIndex, warnings);
     if (!parsed.stones.length) { skipped += 1; return; }
     const prompt = parsed.comment || ((parsed.player === "black" ? "黑" : "白") + "先，击败陪练");
-    puzzles.push({ id: "imported-" + (entryIndex + 1), title: textValue(entry.title) || ("第 " + (entryIndex + 1) + " 题"), prompt, difficulty: parsed.difficulty, stones: parsed.stones, player: parsed.player, boardSize: parsed.size });
+    puzzles.push({ id: "imported-" + (entryIndex + 1), title: textValue(entry.title) || ("第 " + (entryIndex + 1) + " 题"), prompt, difficulty: parsed.difficulty, stones: parsed.stones, player: parsed.player, boardSize: parsed.size, ...(parsed.rule ? { rule: parsed.rule } : {}) });
   });
   if (!puzzles.length) throw new Error("没有找到可用题目");
-  const settings = isJsonObject(raw.defaultSettings) ? textValue(raw.defaultSettings.title) : "";
+  const defaultSettings = isJsonObject(raw.defaultSettings) ? raw.defaultSettings : undefined;
+  const settings = defaultSettings ? textValue(defaultSettings.title) : "";
+  const collectionRule = parsePuzzleRule(raw.rule ?? raw.rules ?? raw.forbiddenEnabled ?? raw.forbidden ?? defaultSettings?.rule ?? defaultSettings?.forbiddenEnabled ?? defaultSettings?.forbidden);
   const collectionTitle = title === "导入题集" && settings ? settings : title;
   return {
     collection: {
@@ -298,6 +308,7 @@ const importNativePuzzleObject = (raw: JsonObject, title: string, metadata?: Par
       source: metadata?.source || textValue(raw.link) || "用户导入",
       license: metadata?.license || "由用户确认使用权",
       puzzles,
+      ...(collectionRule ? { rule: collectionRule } : {}),
     },
     skipped,
     warnings,

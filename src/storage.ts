@@ -4,6 +4,11 @@ const LIBRARY_KEY = "renju-note-library-v1";
 const ACTIVE_KEY = "renju-note-active-v1";
 const DRAFT_PREFIX = "renju-note-draft-v2:";
 export const saveDraftToLocal = (documentId: string, draft: DraftState) => {
+  const hasContent = draft.operations.length > 0 || Boolean(draft.metadata && Object.keys(draft.metadata).length);
+  if (!hasContent) {
+    localStorage.removeItem(`${DRAFT_PREFIX}${documentId}`);
+    return;
+  }
   localStorage.setItem(`${DRAFT_PREFIX}${documentId}`, JSON.stringify({ ...draft, updatedAt: new Date().toISOString() }));
 };
 export const loadDraftFromLocal = (documentId: string): DraftState => {

@@ -1,3 +1,6 @@
+import { Capacitor } from "@capacitor/core";
+import { Directory, Filesystem } from "@capacitor/filesystem";
+
 const DATABASE_NAME = "banbu-file-destination-v1";
 const STORE_NAME = "handles";
 const DEFAULT_HANDLE_KEY = "default-export-directory";
@@ -26,6 +29,15 @@ export interface DirectoryHandleLike {
   getFileHandle(name: string, options?: { create?: boolean }): Promise<FileHandleLike>;
 }
 
+export interface NativeDirectoryHandleLike {
+  readonly kind: "native";
+  readonly name: string;
+  readonly directory: Directory;
+  readonly path: string;
+}
+
+export type ExportDirectoryHandle = DirectoryHandleLike | NativeDirectoryHandleLike;
+
 interface DirectoryPickerWindow extends Window {
   showDirectoryPicker?: (options?: { mode?: "read" | "readwrite" }) => Promise<DirectoryHandleLike>;
 }
@@ -33,6 +45,15 @@ interface DirectoryPickerWindow extends Window {
 const browserWindow = () => (typeof window === "undefined" ? null : window as DirectoryPickerWindow);
 
 export const supportsDirectoryPicker = () => Boolean(browserWindow()?.showDirectoryPicker);
+export const supportsNativeExportDirectory = () => Capacitor.isNativePlatform();
+export const isNativeDirectoryHandle = (handle: ExportDirectoryHandle | null | undefined): handle is NativeDirectoryHandleLike => Boolean(handle && "kind" in handle && handle.kind === "native");
+
+export const nativeExportDirectoryHandle = (): NativeDirectoryHandleLike => ({
+  kind: "native",
+  name: "手机文档 / 半步五子棋打谱 / 导出",
+  directory: Directory.Documents,
+  path: "半步五子棋打谱/导出",
+});
 
 const openDatabase = (): Promise<IDBDatabase | null> => {
   if (typeof indexedDB === "undefined") return Promise.resolve(null);
@@ -50,13 +71,13 @@ const openDatabase = (): Promise<IDBDatabase | null> => {
   });
 };
 
-export const loadDefaultDirectoryHandle = async (): Promise<DirectoryHandleLike | null> => {
+export const loadDefaultDirectoryHandle = async (): Promise<ExportDirectoryHandle | null> => {
   const database = await openDatabase();
   if (!database) return null;
   return new Promise((resolve) => {
     try {
       const request = database.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).get(DEFAULT_HANDLE_KEY);
-      request.onsuccess = () => { database.close(); resolve((request.result as DirectoryHandleLike | undefined) || null); };
+      request.onsuccess = () => { database.close(); resolve((request.result as ExportDirectoryHandle | undefined) || null); };
       request.onerror = () => { database.close(); resolve(null); };
     } catch {
       database.close();
@@ -65,7 +86,7 @@ export const loadDefaultDirectoryHandle = async (): Promise<DirectoryHandleLike 
   });
 };
 
-const saveDefaultDirectoryHandle = async (handle: DirectoryHandleLike) => {
+const saveDefaultDirectoryHandle = async (handle: ExportDirectoryHandle) => {
   const database = await openDatabase();
   if (!database) return;
   await new Promise<void>((resolve) => {
@@ -99,7 +120,15 @@ export const clearDefaultDirectoryHandle = async () => {
   });
 };
 
-export const pickDefaultDirectoryHandle = async (): Promise<DirectoryHandleLike> => {
+export const pickDefaultDirectoryHandle = async (): Promise<ExportDirectoryHandle> => {
+  if (supportsNativeExportDirectory()) {
+    const permission = await Filesystem.checkPermissions();
+    const granted = permission.publicStorage === "granted" ? permission : await Filesystem.requestPermissions();
+    if (granted.publicStorage !== "granted") throw new Error("未获得手机文档目录权限，请允许后重试");
+    const handle = nativeExportDirectoryHandle();
+    await saveDefaultDirectoryHandle(handle);
+    return handle;
+  }
   const picker = browserWindow()?.showDirectoryPicker;
   if (!picker) throw new Error("当前浏览器不支持选择默认文件夹");
   const handle = await picker({ mode: "readwrite" });
@@ -114,7 +143,26 @@ const ensureWritePermission = async (handle: DirectoryHandleLike) => {
   if (permission !== "granted") throw new Error("默认文件夹权限已失效，请在设置中重新选择");
 };
 
-export const writeFileToDirectory = async (handle: DirectoryHandleLike, filename: string, content: BlobPart, type: string) => {
+const blobToBase64 = async (blob: Blob) => {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length)));
+  }
+  return btoa(binary);
+};
+
+export const writeFileToDirectory = async (handle: ExportDirectoryHandle, filename: string, content: BlobPart, type: string) => {
+  if (isNativeDirectoryHandle(handle)) {
+    await Filesystem.writeFile({
+      path: `${handle.path}/${filename}`,
+      data: await blobToBase64(new Blob([content], { type })),
+      directory: handle.directory,
+      recursive: true,
+    });
+    return;
+  }
   await ensureWritePermission(handle);
   const file = await handle.getFileHandle(filename, { create: true });
   const writable = await file.createWritable();

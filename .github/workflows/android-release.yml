@@ -1,4 +1,4 @@
-name: Android Release Validation
+name: Android Release
 
 on:
   push:
@@ -7,6 +7,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build-release:
@@ -33,14 +37,81 @@ jobs:
       - name: Verify web app
         run: npm test -- --run --pool=threads --maxWorkers=1
 
+      - name: Check web and Android version consistency
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          GRADLE_VERSION=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' android/app/build.gradle | head -1)
+          if [ -z "$GRADLE_VERSION" ]; then
+            echo "Could not read versionName from android/app/build.gradle"; exit 1
+          fi
+          if [ "$PKG_VERSION" != "$GRADLE_VERSION" ]; then
+            echo "Version mismatch: package.json=$PKG_VERSION, Android versionName=$GRADLE_VERSION"
+            exit 1
+          fi
+          echo "VERSION_NAME=$PKG_VERSION" >> "$GITHUB_ENV"
+
+      - name: Restore signing keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::Missing signing secrets. Set ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS in repository secrets (reuse banbu-release-v2.p12)."
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/banbu-release-v2.p12"
+          echo "BANBU_KEYSTORE_PATH=$RUNNER_TEMP/banbu-release-v2.p12" >> "$GITHUB_ENV"
+
       - name: Build web app
         run: npm run build
 
       - name: Sync Capacitor Android project
         run: npx cap sync android
 
-      - name: Build Android release variant
+      - name: Build signed Android release
         working-directory: android
+        env:
+          BANBU_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          BANBU_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          BANBU_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
+          if [ -z "$BANBU_KEY_ALIAS" ] || [ -z "$BANBU_STORE_PASSWORD" ]; then
+            echo "::error::Missing signing secrets. Set ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS in repository secrets."
+            exit 1
+          fi
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
+
+      - name: Verify APK signature, metadata and record SHA-256
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          if [ ! -f "$APK" ]; then
+            echo "::error::Release APK was not produced at $APK"; exit 1
+          fi
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME/build-tools/"* | sort -V | tail -1)
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK" || { echo "::error::APK signature verification failed"; exit 1; }
+          BADGING=$("$BUILD_TOOLS/aapt2" dump badging "$APK")
+          echo "$BADGING" | grep -q "package: name='cn.renjunote.mobile'" || { echo "::error::Unexpected package name"; echo "$BADGING" | head -1; exit 1; }
+          echo "$BADGING" | grep -q "versionName='$VERSION_NAME'" || { echo "::error::APK versionName does not match $VERSION_NAME"; echo "$BADGING" | head -1; exit 1; }
+          VERSION_CODE=$(sed -n 's/.*versionCode \([0-9]*\).*/\1/p' android/app/build.gradle | head -1)
+          echo "$BADGING" | grep -q "versionCode='$VERSION_CODE'" || { echo "::error::APK versionCode does not match $VERSION_CODE"; echo "$BADGING" | head -1; exit 1; }
+          mkdir -p release-output
+          RELEASE_APK="release-output/banbu-gomoku-$VERSION_NAME-android-release.apk"
+          cp "$APK" "$RELEASE_APK"
+          SHA256=$(sha256sum "$RELEASE_APK" | awk '{print toupper($1)}')
+          echo "$SHA256  $(basename "$RELEASE_APK")" > "$RELEASE_APK.sha256"
+          {
+            echo "APK_PATH=$RELEASE_APK"
+            echo "SHA256=$SHA256"
+          } >> "$GITHUB_ENV"
+          echo "Release APK: $RELEASE_APK"
+          echo "SHA-256: $SHA256"
+
+      - name: Upload signed release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: banbu-gomoku-${{ env.VERSION_NAME }}-android-release
+          path: |
+            release-output/*.apk
+            release-output/*.sha256
+          if-no-files-found: error
+          retention-days: 90

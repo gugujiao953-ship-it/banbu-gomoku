@@ -9,7 +9,7 @@ describe("enhancement settings", () => {
     expect(loadEnhancementSettings()).toEqual(DEFAULT_ENHANCEMENT_SETTINGS);
   });
 
-  it("only accepts explicit true values", () => {
+  it("only accepts explicit true values for opt-in features, but defaults moves labels on", () => {
     expect(normalizeEnhancementSettings({ tabletSplit: 1, gestureZoom: 1, gestureSwipe: "yes", recentImports: true, aiBoardHints: false, coachMarks: null })).toEqual({
       tabletSplit: false,
       gestureZoom: false,
@@ -17,7 +17,13 @@ describe("enhancement settings", () => {
       recentImports: true,
       aiBoardHints: false,
       coachMarks: false,
+      movesTextDisplay: true,
+      dockMergeMoves: false,
     });
+  });
+
+  it("honours explicit opt-out of moves labels and opt-in of dock-merged moves", () => {
+    expect(normalizeEnhancementSettings({ movesTextDisplay: false, dockMergeMoves: true })).toMatchObject({ movesTextDisplay: false, dockMergeMoves: true });
   });
 
   it("persists the user's choices", () => {

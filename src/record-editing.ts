@@ -1,19 +1,57 @@
 import type { GameDocument, Position, RecordNode } from "./types";
 
+const nodePoint = (node?: RecordNode) => node?.move || node?.anchor;
+const pointKey = (point: Position) => `${point.row},${point.col}`;
+
 export const visibleVariationPivot = (document: GameDocument, currentId: string) => {
   const current = document.nodes[currentId] || document.nodes[document.rootId];
   if (!current) return undefined;
   return current.children.length ? current : current.parentId ? document.nodes[current.parentId] || current : current;
 };
 
+export const visibleBoardVariationNodes = (document: GameDocument, currentId: string, limit = 512): RecordNode[] => {
+  const current = document.nodes[currentId] || document.nodes[document.rootId];
+  if (!current || limit <= 0) return [];
+
+  // A board variation is a legal next move from the current position. Sibling
+  // nodes belong to the previous position and must disappear as soon as the
+  // cursor advances. Keeping them visible makes a tap switch the current ply
+  // instead of creating/entering the next move. This mirrors RenjuTool's
+  // getBranchNodes(currentPath) behavior: query and draw only current children.
+  const candidates = current.children.slice(0, limit);
+  const byPoint = new Map<string, RecordNode>();
+  const boardSize = document.metadata.boardSize || 15;
+
+  for (const id of candidates) {
+    const node = document.nodes[id];
+    const point = nodePoint(node);
+    if (!node || !point || point.row < 0 || point.col < 0 || point.row >= boardSize || point.col >= boardSize) continue;
+    const key = pointKey(point);
+    // Never expose two visual labels or two click targets at one intersection.
+    if (!byPoint.has(key)) byPoint.set(key, node);
+  }
+
+  return [...byPoint.values()].slice(0, limit);
+};
+
+export const renderableBoardVariationNodes = (
+  document: GameDocument,
+  currentId: string,
+  occupiedPoints: ReadonlySet<string>,
+  limit = 512,
+): RecordNode[] => visibleBoardVariationNodes(document, currentId, limit).filter((node) => {
+  const point = nodePoint(node);
+  return Boolean(point && !occupiedPoints.has(pointKey(point)));
+});
+
 export const findVisibleVariationTarget = (document: GameDocument, currentId: string, position: Position) => {
-  const pivot = visibleVariationPivot(document, currentId);
-  if (!pivot) return undefined;
-  const target = pivot.children.map((id) => document.nodes[id]).find((node) => {
-    const point = node?.move || node?.anchor;
-    return node?.id !== currentId && point?.row === position.row && point.col === position.col;
+  const target = visibleBoardVariationNodes(document, currentId).find((node) => {
+    const point = nodePoint(node);
+    return point?.row === position.row && point.col === position.col;
   });
-  return target ? { pivot, target } : undefined;
+  if (!target) return undefined;
+  const pivot = target.parentId ? document.nodes[target.parentId] : visibleVariationPivot(document, currentId);
+  return pivot ? { pivot, target } : undefined;
 };
 
 const cloneNode = (node: RecordNode, available: Set<string>): RecordNode => {

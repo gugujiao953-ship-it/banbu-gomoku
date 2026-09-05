@@ -1,6 +1,8 @@
 import { boardAt, depthOf, pathToNode } from "./game";
 import type { BoardMark, GameDocument, Position, RecordNode } from "./types";
 import { transformBoardPosition, type BoardRotation } from "./board-transform";
+import { recordRuleDisplayName } from "./features/rules/rule-guide-data";
+import { MOON_MARK_PATH, STAR_MARK_PATH, SUN_MARK_CORE_RADIUS, SUN_MARK_RAYS } from "./annotation-presets";
 
 export interface BoardShareOptions {
   showMoveNumbers: boolean;
@@ -9,6 +11,7 @@ export interface BoardShareOptions {
   showWatermark: boolean;
   rotation: BoardRotation;
   mirrored: boolean;
+  stoneOpacity?: number;
 }
 
 export const BOARD_SHARE_WIDTH = 1200;
@@ -47,9 +50,7 @@ const displayMarks = (marks: BoardMark[], board: ReturnType<typeof boardAt>, siz
   return [...displayed.values()];
 };
 
-const ruleName = (document: GameDocument) => document.metadata.rule === "renju"
-  ? "连珠规则"
-  : document.metadata.rule === "standard" ? "标准五子棋" : "无禁手";
+const ruleName = (document: GameDocument) => recordRuleDisplayName(document.metadata);
 
 const starPoints = (size: number): number[][] => size === 15
   ? [[3, 3], [3, 11], [7, 7], [11, 3], [11, 11]]
@@ -67,6 +68,10 @@ const annotationSvg = (mark: BoardMark, x: number, y: number) => {
     ? `<circle cx="${x}" cy="${y}" r="34" fill="none" stroke="${color}" stroke-width="5"/>${text}`
     : `<circle cx="${x}" cy="${y}" r="11" fill="${color}" opacity=".88"/>`;
   if (style === "triangle") return `<path d="M ${x} ${y - 35} L ${x - 32} ${y + 25} L ${x + 32} ${y + 25} Z" fill="none" stroke="${color}" stroke-width="5" stroke-linejoin="round"/>${text}`;
+  // 星 / 日 / 月与棋盘渲染共用同一组原点居中的几何数据，按分享图比例放大。
+  if (style === "star") return `<g transform="translate(${x} ${y}) scale(1.75)"><path d="${STAR_MARK_PATH}" fill="none" stroke="${color}" stroke-width="2.9" stroke-linejoin="round"/></g>${text}`;
+  if (style === "sun") return `<g transform="translate(${x} ${y}) scale(1.75)"><circle r="${SUN_MARK_CORE_RADIUS + 1}" fill="none" stroke="${color}" stroke-width="2.9"/><g stroke="${color}" stroke-width="2.9" stroke-linecap="round">${SUN_MARK_RAYS.map(([x1, y1, x2, y2]) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`).join("")}</g></g>${text}`;
+  if (style === "moon") return `<g transform="translate(${x} ${y}) scale(1.75)"><path d="${MOON_MARK_PATH}" fill="none" stroke="${color}" stroke-width="2.9" stroke-linejoin="round"/></g>${text}`;
   return `<g stroke="${color}" stroke-width="5" stroke-linecap="round"><line x1="${x - 25}" y1="${y - 25}" x2="${x + 25}" y2="${y + 25}"/><line x1="${x + 25}" y1="${y - 25}" x2="${x - 25}" y2="${y + 25}"/></g>${text}`;
 };
 
@@ -137,7 +142,9 @@ export const createBoardShareSvg = (document: GameDocument, currentId: string, o
     const last = !options.showMoveNumbers && current?.move?.row === rowIndex && current.move.col === colIndex
       ? `<circle cx="${point.x}" cy="${point.y}" r="8" fill="#c94c40" stroke="#fff" stroke-width="2"/>`
       : "";
-    return `<g data-export-role="stone" filter="url(#shareStoneShadow)"><circle cx="${point.x}" cy="${point.y}" r="${Math.min(32, gap * .43)}" fill="url(#${player === "black" ? "shareBlackStone" : "shareWhiteStone"})" stroke="#0003" stroke-width="1.5"/>${numberText}${last}</g>`;
+    const opacity = Math.min(1, Math.max(.4, options.stoneOpacity ?? 1));
+    const outlineOpacity = Math.max(0, (1 - opacity) * .72);
+    return `<g data-export-role="stone" filter="url(#shareStoneShadow)"><circle data-export-role="stone-body" cx="${point.x}" cy="${point.y}" r="${Math.min(32, gap * .43)}" fill="url(#${player === "black" ? "shareBlackStone" : "shareWhiteStone"})" stroke="#0003" stroke-width="1.5" opacity="${opacity}"/>${outlineOpacity ? `<circle data-export-role="stone-outline" cx="${point.x}" cy="${point.y}" r="${Math.min(32, gap * .43)}" fill="none" stroke="${player === "black" ? "#111" : "#fff"}" stroke-width="2" opacity="${outlineOpacity}"/>` : ""}${numberText}${last}</g>`;
   })).join("");
 
   const annotations = options.showAnnotations && current ? [
@@ -156,7 +163,7 @@ export const createBoardShareSvg = (document: GameDocument, currentId: string, o
   const subtitle = escapeXml(`第 ${moveCount} 手 · ${ruleName(document)}${players ? ` · ${players}` : ""}`);
   const details = [document.metadata.event, document.metadata.date].filter(Boolean).join(" · ");
   const watermark = options.showWatermark
-    ? `<g data-export-role="watermark"><circle cx="102" cy="1324" r="25" fill="#365e4b"/><text x="102" y="1333" text-anchor="middle" font-size="24" font-family="serif" font-weight="800" fill="#fff">半</text><text x="142" y="1333" font-size="22" font-family="'Noto Sans SC', sans-serif" font-weight="700" fill="#365e4b">半步五子棋</text></g>`
+    ? `<g data-export-role="watermark"><circle cx="102" cy="1324" r="25" fill="#365e4b"/><text x="102" y="1333" text-anchor="middle" font-size="24" font-family="serif" font-weight="800" fill="#fff">半</text><text x="142" y="1333" font-size="22" font-family="'Noto Sans SC', sans-serif" font-weight="700" fill="#365e4b">半步五子棋打谱</text></g>`
     : "";
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${BOARD_SHARE_WIDTH}" height="${BOARD_SHARE_HEIGHT}" viewBox="0 0 ${BOARD_SHARE_WIDTH} ${BOARD_SHARE_HEIGHT}" role="img" aria-label="${title} 当前局面">

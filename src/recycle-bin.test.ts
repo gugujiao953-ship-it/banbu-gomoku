@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDocument } from "./game";
-import { addToRecycleBin, loadRecycleBin, removeFromRecycleBin } from "./recycle-bin";
+import { addToRecycleBin, emptyRecycleBinConfirmation, loadRecycleBin, permanentDeleteConfirmation, removeFromRecycleBin } from "./recycle-bin";
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -25,5 +25,14 @@ describe("recycle bin metadata", () => {
     expect(loadRecycleBin().map((item) => item.kind === "puzzle-collection" ? item.item.title : item.item.metadata.title)).toEqual(["新棋谱", "旧棋谱"]);
     removeFromRecycleBin("record", newer.id);
     expect(loadRecycleBin().map((item) => item.kind === "puzzle-collection" ? item.item.title : item.item.metadata.title)).toEqual(["旧棋谱"]);
+  });
+
+  it("uses explicit irreversible confirmation copy for permanent deletion", () => {
+    const document = createDocument("重要棋谱");
+    const entry = { id: document.id, kind: "record" as const, item: document, folder: "研究", deletedAt: "2026-09-01T00:00:00.000Z" };
+    expect(permanentDeleteConfirmation(entry)).toContain("重要棋谱");
+    expect(permanentDeleteConfirmation(entry)).toContain("无法撤销");
+    expect(emptyRecycleBinConfirmation(3)).toContain("3 项");
+    expect(emptyRecycleBinConfirmation(3)).toContain("无法恢复");
   });
 });

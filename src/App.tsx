@@ -1,10 +1,15 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
-  ArchiveRestore, BookOpen, Bot, Check, ChevronDown, ChevronFirst, ChevronLast, ChevronLeft,
-  ChevronRight, CircleHelp, Code2, Download, FilePlus2, FlipHorizontal, FolderOpen, FolderPlus, GitBranch,
-  Home, Info, Layers3, Library, Lock, ListTree, Mail, Menu, MessageSquareText, MoreHorizontal, RotateCw, Search, Tag,
-  PenLine, Redo2, Save, Settings, Trash2, Undo2, Upload, X,
+  ArchiveRestore, ArrowDownUp, BookOpen, Bot, Check, ChevronDown, ChevronFirst, ChevronLast, ChevronLeft,
+  ChevronRight, CircleHelp, Download, FilePlus2, FlipHorizontal, FolderOpen, FolderPlus, GitBranch,
+  GripVertical, Home, Info, Layers3, Library, Lock, ListTree, Mail, Maximize2, Menu, MessageSquareText, Minimize2, MoreHorizontal, RotateCw, Search, Tag,
+  PenLine, Redo2, Save, Settings, Sparkles, Trash2, Undo2, Upload, X,
 } from "lucide-react";
+import { solveVcf, vcfCoordName, type VcfRules } from "./features/vcf/vcf-generator";
+import { toKaibaoCollectionJson, VCF_TIER_LABEL, loadVcfMaterial, type VcfTier, type VcfGenMode, type GeneratedVcfPuzzle, type MaterialFile } from "./features/vcf/vcf-corpus";
+import { applyOrder, isLibraryOrderMaps, moveRelative, remapFolderOrder, removeFromOrder, sortIdsByTitles, type LibraryOrderKind, type LibraryOrderMaps } from "./library-order";
+import { attachLibraryTouchDrag } from "./library-touch-drag";
 import {
   addMove, addMoveAs, boardAt, coordinateName, createDocument, deleteVariation, depthOf, isSupportedBoardSize,
   forbiddenPoints, forbiddenReason, lastOnPreferredLine, nextPlayerAt, otherPlayer, pathToNode, preferredNext, setLabelMark, toggleMark, updateNode, winningLinesAt,
@@ -14,23 +19,24 @@ import { downloadFile, exportJson, exportPos, exportSgf, importRecordFile, mainL
 import { recognizeBoardImage, type ImageRecognitionResult } from "./image-recognition";
 import { findPositionMatches, positionKey } from "./position-search";
 import { loadActive, loadDraftFromLocal, loadLibrary, removeDraftFromLocal, removeFromLibrary, renameInLibrary, saveDraftToLocal, saveManyToLibrary, saveToLibrary } from "./storage";
-import { commitDraftAsDerivedVersion, documentFingerprint, loadDraftForDocument, loadLargeDocument, loadLargeSummaries, moveLargeDocumentToTrash, removeDraftForDocument, removeLargeDocument, removeLargeTrashDocument, renameLargeDocument, restoreLargeDocumentFromTrash, saveCompactIndex, saveDraftForDocument, saveLargeDocument } from "./large-storage";
+import { commitDraftAsDerivedVersion, documentFingerprint, documentHasDraft, loadDraftForDocument, loadLargeDocument, loadLargeSummaries, moveLargeDocumentToTrash, removeDraftForDocument, removeLargeDocument, removeLargeTrashDocument, renameLargeDocument, restoreLargeDocumentFromTrash, saveCompactIndex, saveDraftForDocument, saveLargeDocument } from "./large-storage";
 import { openLibraryHandle } from "./library-engine";
 import { isPagedLibraryView, LibraryViewSession } from "./library-view-adapter";
 import { DpViewSession, isDpDatabaseView } from "./dp-view-session";
 import { RenLibWebViewSession, isRenLibWebView } from "./renlib-web/renlib-web-view-session";
 import { compactBranchCount, compactChildCount, compactChildWindow, compactDiagnostics, compactFirstBranchNodeId, compactIndexOf, compactNodeCount, compactNodeIndex, compactSearch, createLazyDocument } from "./compact-index";
 import { formatRenLibWebLabel, renLibDisplayMark } from "./renlib-display";
-import { createEditableViewCopy, findVisibleVariationTarget, visibleVariationPivot } from "./record-editing";
-import { clearDefaultDirectoryHandle, loadDefaultDirectoryHandle, pickDefaultDirectoryHandle, supportsDirectoryPicker, writeFileToDirectory, type DirectoryHandleLike } from "./file-destination";
+import { createEditableViewCopy, findVisibleVariationTarget, renderableBoardVariationNodes, visibleVariationPivot } from "./record-editing";
+import { clearDefaultDirectoryHandle, loadDefaultDirectoryHandle, nativeExportDirectoryHandle, pickDefaultDirectoryHandle, supportsDirectoryPicker, supportsNativeExportDirectory, writeFileToDirectory, type ExportDirectoryHandle } from "./file-destination";
 import { boardShareFilename, renderBoardSharePng, type BoardShareOptions } from "./board-image-export";
 import { sharePngFile } from "./share-file";
 import { transformBoardPosition, type BoardRotation } from "./board-transform";
 import { recordAction } from "./diagnostics";
-import { applyDraftToDocument, buildDraftOverlay, emptyDraft, hasDraft, isProjectedDocument, overlayChildren, overlayNode, overlayPreferredChild, projectedDocument, pushDraft, undoDraft, type DraftState, type DraftOperation as DraftOp } from "./draft-operations";
-import type { CompactRenLibIndex } from "./types";
+import { applyDraftToDocument, buildDraftOverlay, emptyDraft, hasDraft, overlayChildren, overlayNode, overlayPreferredChild, projectedDocument, pushDraft, redoDraft, undoDraft, type DraftState, type DraftOperation as DraftOp } from "./draft-operations";
+import type { CompactRenLibIndex, RuleSet } from "./types";
 import type { LargeDocumentSummary } from "./large-storage";
 import VcfWorker from "./vcf.worker?worker";
+import VcfGenWorker from "./features/vcf/vcf-gen.worker?worker";
 import RecordImportWorker from "./record-import.worker?worker";
 import { verifyVcfProof } from "./vcf";
 import type { BoardMark, BoardMarkStyle, GameDocument, ImportResult, OpeningRule, Player, Position, RecordNode, RecordSourceFormat } from "./types";
@@ -40,8 +46,10 @@ import { winnerAt } from "./puzzle-ai";
 import type { AiMoveResult } from "./puzzle-ai";
 import { createPuzzleDocument, deriveWrongPuzzleEntries, importKaibaoPuzzleJson, isPuzzleJsonText, loadNativeKaibaoCollections, loadPuzzleCollections, loadPuzzleProgress, puzzleProgressKey, savePuzzleCollections, savePuzzleProgress, savePuzzleTitleOverride } from "./puzzles";
 import type { Puzzle, PuzzleCollection, PuzzleReviewEntry } from "./puzzles";
-import { addFifthCandidate, completeFifthChoice, completeOpeningPlacement, createOpeningSession, decideOpeningSwap, isDistinctFifthCandidate, openingInstruction, openingPositionAllowed, openingRuleName, suggestFifthCandidates, suggestOpeningPlacement, type OpeningSession, type OpeningStage } from "./opening-rules";
+import { addFifthCandidate, chooseFifthCount, completeFifthChoice, completeOpeningPlacement, createOpeningSession, decideOpeningSwap, isDistinctFifthCandidate, openingInstruction, openingPositionAllowed, openingRuleName, suggestFifthCandidates, suggestOpeningPlacement, type OpeningSession, type OpeningStage } from "./opening-rules";
+import { ANNOTATION_COLORS, ANNOTATION_STYLES, ANNOTATION_TYPES, MOON_MARK_PATH, STAR_MARK_PATH, SUN_MARK_CORE_RADIUS, SUN_MARK_RAYS, annotationTypePreset, type AnnotationMarkType } from "./annotation-presets";
 import { createBackupSnapshot, parseBackup, restoreBackup, serializeBackup } from "./backup";
+import { readZip, textFromZipEntry, createZip, type ZipEntry } from "./zip";
 import { banbuAudio, type SoundCue } from "./audio-engine";
 import { loadSoundSettings, saveSoundSettings, type SoundSettings } from "./audio-settings";
 import { loadMotionEnabled, saveMotionEnabled } from "./motion-settings";
@@ -55,15 +63,45 @@ import { AppToast } from "./ui/feedback/AppToast";
 import { StateIllustration } from "./ui/states/StateIllustration";
 import { CoachMark, type CoachMarkAction, type CoachMarkId } from "./ui/coach/CoachMark";
 import { loadRecentImports, openRecentImport, saveRecentImport, type RecentImportEntry, type RecentImportKind } from "./recent-imports";
-import { addToRecycleBin, loadRecycleBin, removeFromRecycleBin, type RecycleBinEntry } from "./recycle-bin";
+import { addToRecycleBin, emptyRecycleBinConfirmation, loadRecycleBin, permanentDeleteConfirmation, removeFromRecycleBin, type RecycleBinEntry } from "./recycle-bin";
+import { loadNativeDatabaseFile, loadNativeMatchRecords, NATIVE_DATABASE_TITLE, NATIVE_MATCH_FOLDER, NATIVE_RECORD_FOLDER } from "./native-records";
 import { FeedbackPanel } from "./FeedbackPanel";
+import { AboutPanel } from "./AboutPanel";
+import type { AppMode, BoardTheme, ResolvedTheme, Sheet, StoneTheme, Tab, ThemePreference } from "./app-shell-types";
+import { BottomSheet } from "./ui/overlays/BottomSheet";
+import { ROOT_BACK_MESSAGE, useRootBackExit } from "./ui/overlays/useRootBackExit";
+import { MetadataFields } from "./features/record/MetadataFields";
+import { SettingsPage } from "./features/settings/SettingsPage";
+import { UserManual } from "./features/manual/UserManual";
+import { PlaybackButton, playbackStatusText } from "./features/research/PlaybackControls";
+import { useRecordPlayback } from "./features/research/record-playback";
+import { documentForExportScope, exportScopeSuffix, type RecordExportScope } from "./features/research/record-export";
+import { RecordSearchPanel } from "./features/research/RecordSearchPanel";
+import { DataSafetyPanel } from "./features/library/DataSafetyPanel";
+import { ResearchLibraryOverview } from "./features/library/ResearchLibraryOverview";
+import { largeRecordMatchesFilter, recordMatchesFilter, type RecordLibraryFilter } from "./features/library/library-research";
+import { RecentPuzzleSection } from "./features/library/RecentPuzzleSection";
+import { recentPuzzleItems, type RecentPuzzleItem } from "./features/library/recent-puzzles";
+import { FirstRunWelcome } from "./features/onboarding/FirstRunWelcome";
+import { markFirstRunWelcomeRead, shouldShowFirstRunWelcome } from "./features/onboarding/onboarding";
+import { loadLastSession, loadRestoreLastPosition, saveLastSession, saveRestoreLastPosition, type LastSessionState } from "./features/session/session-restore";
+import { loadStoneOpacity, saveStoneOpacity } from "./stone-opacity";
+import { loadBoardOpacity, saveBoardOpacity } from "./board-opacity";
+import { annotationHighlightColor, loadAnnotationHighlight, saveAnnotationHighlight, type AnnotationHighlight } from "./annotation-highlight";
+import { TaskManager } from "./features/tasks/task-state";
+import { AiWorkerController, type AiCancelReason } from "./features/ai/ai-worker-controller";
+import { RuleGuide } from "./features/rules/RuleGuide";
+import { AI_RULE_PRESET_GUIDES } from "./features/rules/rule-guide-data";
+import { UnifiedStatusBar } from "./features/workspace/UnifiedStatusBar";
+import { RecordSelectorSheet } from "./features/workspace/RecordSelectorSheet";
+import { loadRecordBookmarks, mergeRecordBookmarks, removeRecordBookmarks, saveRecordBookmarks, toggleRecordBookmark, updateRecordBookmark, type RecordBookmark, type RecordBookmarks } from "./features/record-tree/bookmarks";
+import { copyRecordSubtree, pasteRecordSubtree, type SubtreeClipboard } from "./features/record-tree/subtree-clipboard";
+import { PuzzleRuleSelector } from "./features/puzzles/PuzzleRuleSelector";
+import { PuzzleSelectorSheet } from "./features/puzzles/PuzzleSelectorSheet";
+import { PuzzleThinkSpeedSelector, type PuzzleThinkSpeed } from "./features/puzzles/PuzzleThinkSpeedSelector";
+import { fallbackLegalPuzzleMove, loadPuzzleRulePreference, puzzleMoveLegality, resolvePuzzleRule, savePuzzleRulePreference, type PuzzleRuleMode } from "./features/puzzles/puzzle-rules";
+import { createPuzzleSetupSession, movePuzzleSetupCursor, placePuzzleSetupStone, puzzleSetupView, type PuzzleSetupSession } from "./features/puzzles/puzzle-setup-session";
 
-type Tab = "record" | "library" | "settings";
-type AppMode = "record" | "puzzle";
-type ThemePreference = "system" | "light" | "dark" | "eye" | "mono" | "rain" | "bamboo" | "snow" | "porcelain" | "plum" | "jiangnan" | "firefly" | "rice" | "pixel" | "cyber" | "custom";
-type ResolvedTheme = "light" | "dark" | "eye" | "mono" | "rain" | "bamboo" | "snow" | "porcelain" | "plum" | "jiangnan" | "firefly" | "rice" | "pixel" | "cyber" | "custom";
-type BoardTheme = "wood" | "jade" | "notebook" | "emerald" | "porcelain" | "whitejade" | "walnut" | "frosted" | "circuit" | "minimal";
-type StoneTheme = "classic" | "jade" | "yun" | "ink" | "mono" | "notebook" | "porcelain" | "snow" | "terminal" | "gold-diamond" | "gold" | "diamond";
 type BoardMotionKind = "place" | "navigate" | "branch" | null;
 type BoardFeedbackKind = "illegal" | "forbidden";
 type BoardResultKind = "won" | "lost" | "draw" | "complete";
@@ -71,8 +109,7 @@ type ThinkVisualState = "idle" | "thinking" | "complete" | "unavailable" | "erro
 interface BoardMotionState { kind: BoardMotionKind; version: number }
 interface BoardFeedbackState { position: Position; kind: BoardFeedbackKind; version: number }
 interface BoardResultState { kind: BoardResultKind; label: string }
-type Sheet = "comment" | "branches" | "tree" | "metadata" | "save" | "folder" | "rename" | "export" | "help" | "manual" | "about" | "feedback" | "find" | "analysis" | "positionSearch" | "marks" | "import" | "aiGame" | "think" | "wrongbook" | "trash" | "batchEdit" | null;
-type DockPanel = "moves" | "notes" | "view" | "play" | "puzzles" | null;
+type DockPanel = "moves" | "annotation" | "notes" | "view" | "play" | "setup" | "puzzles" | "vcf" | null;
 type LibrarySection = "puzzles" | "records";
 type AiStrength = "初级" | "中级" | "高级" | "大师" | "自由";
 type AiTimeControl = 0 | 60000 | 300000 | 1800000;
@@ -86,16 +123,26 @@ type LibraryRenameTarget =
 interface ParsedImport { result: ImportResult; summary?: LargeDocumentSummary; compactIndex?: CompactRenLibIndex }
 const isDynamicDatabaseView = (document: GameDocument) => isDpDatabaseView(document) || isRenLibWebView(document);
 
+type AiRuleMode = RuleSet;
+const AI_RULE_CHOICES = AI_RULE_PRESET_GUIDES;
+
 interface LibraryFolders {
   recordFolders: string[];
   puzzleFolders: string[];
   recordAssignments: Record<string, string>;
   puzzleAssignments: Record<string, string>;
+  order?: LibraryOrderMaps;
 }
-
-interface BranchBookmark { id: string; name: string; nodeId: string; createdAt: string }
-type BranchBookmarks = Record<string, BranchBookmark[]>;
-interface AiGameState { humanPlayer: Player; aiPlayer: Player; strength: AiStrength; forbiddenEnabled: boolean; timeLimitMs: number; outcome: "won" | "lost" | "draw" | null; opening: OpeningSession }
+const FOLDER_SEPARATOR = "/";
+const folderLabel = (folder: string) => folder.split(FOLDER_SEPARATOR).pop() || folder;
+const folderParent = (folder: string) => {
+  const index = folder.lastIndexOf(FOLDER_SEPARATOR);
+  return index < 0 ? "" : folder.slice(0, index);
+};
+const folderChildren = (folders: string[], parent: string) => folders.filter((folder) => folderParent(folder) === parent);
+const folderDisplayLabel = (folder: string) => folder.split(FOLDER_SEPARATOR).join(" / ");
+interface AiGameState { humanPlayer: Player; aiPlayer: Player; strength: AiStrength; forbiddenEnabled: boolean; timeLimitMs: number; thinkTimeMs: number; thinkDepth: number; unlimitedThinking: boolean; outcome: "won" | "lost" | "draw" | null; opening: OpeningSession }
+interface PuzzleSetupWorkspace { session: PuzzleSetupSession; sourceOutcome: "won" | "lost" | "stopped" | null }
 const AI_STRENGTH_OPTIONS: Array<{ value: AiStrength; title: string; text: string }> = [
   { value: "初级", title: "初级", text: "约 0.6 秒/步" },
   { value: "中级", title: "中级", text: "约 1.2 秒/步" },
@@ -109,6 +156,7 @@ const AI_STRENGTH_PROFILES: Record<Exclude<AiStrength, "自由">, { timeMs: numb
   高级: { timeMs: 1800, maxDepth: 64 },
   大师: { timeMs: 3000, maxDepth: 80 },
 };
+const PUZZLE_FAST_THINK_TIME_MS = 600;
 const AI_TIME_OPTIONS: Array<{ value: AiTimeControl; title: string; text: string }> = [
   { value: 0, title: "不限", text: "只显示你的累计用时" },
   { value: 60000, title: "1 分钟", text: "适合快速对局" },
@@ -123,7 +171,6 @@ const formatGameClock = (milliseconds: number) => {
   if (hours > 0) return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 };
-const BRANCH_BOOKMARKS_KEY = "renju-note-branch-bookmarks-v1";
 const THEME_PREFERENCE_KEY = "banbu-theme-preference-v1";
 const DISPLAY_SETTINGS_KEY = "renju-note-display-settings-v1";
 const CUSTOM_BACKGROUND_COLOR_KEY = "banbu-custom-background-color-v1";
@@ -133,6 +180,32 @@ const STONE_THEME_KEY = "banbu-stone-theme-v1";
 const THINK_SHEET_ON_START_KEY = "banbu-think-sheet-on-start-v1";
 const THINK_DIRECT_MOVE_KEY = "banbu-think-direct-move-v1";
 const COACH_MARKS_KEY = "banbu-coach-marks-v1";
+const REVIEW_MARKS_KEY = "banbu-review-marks-v1";
+type ReviewMarks = Record<string, BoardMark[]>;
+const loadReviewMarks = (): ReviewMarks => {
+  try {
+    const value = JSON.parse(localStorage.getItem(REVIEW_MARKS_KEY) || "null") as ReviewMarks | null;
+    if (!value || typeof value !== "object") return {};
+    return Object.fromEntries(Object.entries(value).filter(([, marks]) => Array.isArray(marks))) as ReviewMarks;
+  } catch { return {}; }
+};
+const saveReviewMarks = (value: ReviewMarks) => {
+  try { localStorage.setItem(REVIEW_MARKS_KEY, JSON.stringify(value)); } catch { /* optional local-only annotations */ }
+};
+const REVIEW_BRANCH_NAMES_KEY = "banbu-review-branch-names-v1";
+type ReviewBranchNames = Record<string, Record<string, string>>;
+const loadReviewBranchNames = (): ReviewBranchNames => {
+  try {
+    const value = JSON.parse(localStorage.getItem(REVIEW_BRANCH_NAMES_KEY) || "null") as ReviewBranchNames | null;
+    if (!value || typeof value !== "object") return {};
+    return Object.fromEntries(Object.entries(value)
+      .filter(([, names]) => names && typeof names === "object" && !Array.isArray(names))
+      .map(([docId, names]) => [docId, Object.fromEntries(Object.entries(names as Record<string, unknown>).filter(([, name]) => typeof name === "string" && (name as string).trim())) as Record<string, string>])) as ReviewBranchNames;
+  } catch { return {}; }
+};
+const saveReviewBranchNames = (value: ReviewBranchNames) => {
+  try { localStorage.setItem(REVIEW_BRANCH_NAMES_KEY, JSON.stringify(value)); } catch { /* optional local-only branch names */ }
+};
 type CoachMarkRecord = { dismissed: CoachMarkId[]; snoozedUntil: Partial<Record<CoachMarkId, number>> };
 const loadCoachMarkRecord = (): CoachMarkRecord => {
   try {
@@ -143,9 +216,9 @@ const loadCoachMarkRecord = (): CoachMarkRecord => {
 const saveCoachMarkRecord = (value: CoachMarkRecord) => {
   try { localStorage.setItem(COACH_MARKS_KEY, JSON.stringify(value)); } catch { /* optional convenience state */ }
 };
-const isThemePreference = (value: unknown): value is ThemePreference => value === "system" || value === "light" || value === "dark" || value === "eye" || value === "mono" || value === "rain" || value === "bamboo" || value === "snow" || value === "porcelain" || value === "plum" || value === "jiangnan" || value === "firefly" || value === "rice" || value === "pixel" || value === "cyber" || value === "custom";
-const isBoardTheme = (value: unknown): value is BoardTheme => value === "wood" || value === "jade" || value === "notebook" || value === "emerald" || value === "porcelain" || value === "whitejade" || value === "walnut" || value === "frosted" || value === "circuit" || value === "minimal";
-const isStoneTheme = (value: unknown): value is StoneTheme => value === "classic" || value === "jade" || value === "yun" || value === "ink" || value === "mono" || value === "notebook" || value === "porcelain" || value === "snow" || value === "terminal" || value === "gold-diamond" || value === "gold" || value === "diamond";
+const isThemePreference = (value: unknown): value is ThemePreference => value === "system" || value === "light" || value === "dark" || value === "eye" || value === "mono" || value === "rain" || value === "bamboo" || value === "snow" || value === "porcelain" || value === "plum" || value === "jiangnan" || value === "firefly" || value === "rice" || value === "pixel" || value === "cyber" || value === "blackgold" || value === "pale" || value === "kawaii" || value === "aurora" || value === "deepsea" || value === "baroque" || value === "custom";
+const isBoardTheme = (value: unknown): value is BoardTheme => value === "wood" || value === "jade" || value === "notebook" || value === "emerald" || value === "porcelain" || value === "whitejade" || value === "walnut" || value === "frosted" || value === "circuit" || value === "minimal" || value === "blackgold" || value === "pale" || value === "kawaii" || value === "aurora";
+const isStoneTheme = (value: unknown): value is StoneTheme => value === "classic" || value === "jade" || value === "yun" || value === "ink" || value === "mono" || value === "notebook" || value === "porcelain" || value === "snow" || value === "terminal" || value === "gold-diamond" || value === "gold" || value === "diamond" || value === "blackgold" || value === "pale" || value === "kawaii" || value === "aurora";
 const loadThemePreference = (): ThemePreference => {
   try {
     const value = localStorage.getItem(THEME_PREFERENCE_KEY);
@@ -183,11 +256,13 @@ const systemTheme = (): ResolvedTheme => {
   if (typeof window === "undefined" || !window.matchMedia) return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 };
-const loadBranchBookmarks = (): BranchBookmarks => {
-  try {
-    const value = JSON.parse(localStorage.getItem(BRANCH_BOOKMARKS_KEY) || "{}");
-    return value && typeof value === "object" ? value : {};
-  } catch { return {}; }
+const loadDefaultBoardSize = () => {
+  try { const value = Number(localStorage.getItem(DEFAULT_BOARD_SIZE_KEY) || 15); return Number.isInteger(value) && value >= 5 && value <= 21 ? value : 15; } catch { return 15; }
+};
+const createFreshStartupDocument = () => {
+  const created = createDocument("新建棋谱", loadDefaultBoardSize());
+  try { localStorage.setItem(DEFAULT_DOCUMENT_KEY, JSON.stringify(created)); } catch { /* storage is optional */ }
+  return created;
 };
 
 const symmetryPoint = (point: Position, transform: number, size: number): Position => {
@@ -216,6 +291,7 @@ const symmetricMarksForDisplay = (marks: BoardMark[], board: ReturnType<typeof b
 
 const LIBRARY_FOLDERS_KEY = "renju-note-library-folders-v1";
 const DEFAULT_DOCUMENT_KEY = "renju-note-default-v1";
+const DEFAULT_BOARD_SIZE_KEY = "banbu-default-board-size-v1";
 const ACTIVE_LARGE_RECORD_KEY = "banbu-active-large-record-v1";
 const MAX_OTHER_RECORD_BYTES = 64 * 1024 * 1024;
 const defaultLibraryFolders: LibraryFolders = {
@@ -223,22 +299,53 @@ const defaultLibraryFolders: LibraryFolders = {
   puzzleFolders: ["内置题库", "我的题库"],
   recordAssignments: {},
   puzzleAssignments: {},
+  order: {},
 };
 const loadLibraryFolders = (): LibraryFolders => {
   try {
     const value = JSON.parse(localStorage.getItem(LIBRARY_FOLDERS_KEY) || "null") as Partial<LibraryFolders> | null;
     if (!value) return defaultLibraryFolders;
+    const normalize = (input: unknown, fallback: string[]) => {
+      const source = Array.isArray(input) ? input : fallback;
+      const result = new Set<string>();
+      source.forEach((item) => {
+        if (typeof item !== "string") return;
+        const parts = item.split("\\").join(FOLDER_SEPARATOR).split(FOLDER_SEPARATOR).map((part: string) => part.trim()).filter(Boolean);
+        for (let index = 1; index <= parts.length; index += 1) result.add(parts.slice(0, index).join(FOLDER_SEPARATOR));
+      });
+      fallback.forEach((item) => result.add(item));
+      return [...result];
+    };
     return {
-      recordFolders: value.recordFolders?.length ? value.recordFolders : defaultLibraryFolders.recordFolders,
-      puzzleFolders: value.puzzleFolders?.length ? value.puzzleFolders : defaultLibraryFolders.puzzleFolders,
+      recordFolders: normalize(value.recordFolders, defaultLibraryFolders.recordFolders),
+      puzzleFolders: normalize(value.puzzleFolders, defaultLibraryFolders.puzzleFolders),
       recordAssignments: value.recordAssignments || {},
       puzzleAssignments: value.puzzleAssignments || {},
+      order: isLibraryOrderMaps(value.order) ? value.order : {},
     };
   } catch { return defaultLibraryFolders; }
 };
 
 const markKindLabel = (mark: BoardMark) => mark.kind === "label" ? (mark.label || "文字标注") : mark.kind === "circle" ? "圆圈" : mark.kind === "triangle" ? "三角" : "叉号";
 const nodeMarksText = (marks: BoardMark[]) => marks.flatMap((mark) => [coordinateName(mark), mark.label || "", markKindLabel(mark)]).join(" ");
+
+/** 标注样式的小尺寸示意渲染（面板按钮、样式选择器与预览共用）。 */
+function MarkGlyph({ style, color, value = "", size = 34 }: { style: BoardMarkStyle; color: string; value?: string; size?: number }) {
+  const label = Array.from(value).slice(0, 4).join("");
+  const stroke = { fill: "none", stroke: color } as const;
+  return <svg width={size} height={size} viewBox="-24 -24 48 48" aria-hidden="true">
+    {style === "text" && <text textAnchor="middle" y={7} fontSize="21" fontWeight="800" fill={color}>{label || "A"}</text>}
+    {style === "circle" && (label
+      ? <><circle r="17" {...stroke} strokeWidth="2.6"/><text textAnchor="middle" y={6} fontSize="17" fontWeight="800" fill={color}>{label}</text></>
+      : <circle r="6" fill={color}/>)}
+    {style === "triangle" && <><path d="M0 -17L-15 12L15 12Z" {...stroke} strokeWidth="2.6" strokeLinejoin="round"/>{label && <text textAnchor="middle" y={6} fontSize="14" fontWeight="800" fill={color}>{label}</text>}</>}
+    {style === "cross" && <><g {...stroke} strokeWidth="2.8" strokeLinecap="round"><line x1="-12" y1="-12" x2="12" y2="12"/><line x1="12" y1="-12" x2="-12" y2="12"/></g>{label && <text textAnchor="middle" y={6} fontSize="14" fontWeight="800" fill={color}>{label}</text>}</>}
+    {style === "star" && <><path d={STAR_MARK_PATH} {...stroke} strokeWidth="2.4" strokeLinejoin="round"/>{label && <text textAnchor="middle" y={5.5} fontSize="12" fontWeight="800" fill={color}>{label}</text>}</>}
+    {style === "sun" && <><circle r="8.5" {...stroke} strokeWidth="2.2"/><g {...stroke} strokeWidth="2.2" strokeLinecap="round">{SUN_MARK_RAYS.map(([x1, y1, x2, y2], index) => <line key={index} x1={x1} y1={y1} x2={x2} y2={y2}/>)}</g>{label && <text textAnchor="middle" y={3.6} fontSize="9" fontWeight="800" fill={color}>{label}</text>}</>}
+    {style === "moon" && <><path d={MOON_MARK_PATH} {...stroke} strokeWidth="2.4" strokeLinejoin="round"/>{label && <text textAnchor="middle" y={5.5} fontSize="12" fontWeight="800" fill={color}>{label}</text>}</>}
+  </svg>;
+}
+
 const nodeKindLabel = (node: RecordNode) => node.move
   ? coordinateName(node.move)
   : node.passPlayer ? `${node.passPlayer === "black" ? "黑" : "白"}方过手`
@@ -264,17 +371,10 @@ const branchCount = (document: GameDocument) => compactBranchCount(document) ?? 
 const safeName = (value: string) => value.replace(/[\\/:*?"<>|]/g, "-").trim() || "未命名棋谱";
 const sourceFormatOf = (filename: string): RecordSourceFormat | undefined => {
   const extension = filename.split(".").pop()?.toLowerCase();
-  return (["sgf", "fgf", "ren", "renjs", "wzq", "json", "renju", "pos", "txt", "lib", "dp", "db"] as const).find((format) => format === extension);
+  return (["sgf", "fgf", "ren", "renjs", "wzq", "json", "renju", "pos", "txt", "psq", "lib", "dp", "db"] as const).find((format) => format === extension);
 };
 const sgfSourceFormats = new Set<RecordSourceFormat>(["sgf", "fgf", "ren", "renjs", "wzq"]);
 const jsonSourceFormats = new Set<RecordSourceFormat>(["json", "renju"]);
-const OPENING_RULE_OPTIONS: Array<[OpeningRule, string, string]> = [
-  ["free", "自由开局", "从天元开始正常轮流落子"],
-  ["five-two", "五手两打", "黑方第 5 手提供两个候选，由白方选择"],
-  ["five-n", "五手多打", "黑方第 5 手提供 3–10 个不同棋形候选"],
-  ["taraguchi-10", "塔十（塔拉山口-10）", "第 4 手后可进入十打流程"],
-  ["tarannikov", "塔拉（五次交换）", "前五手提供交换选择，随后进入正常对局"],
-];
 const posSourceFormats = new Set<RecordSourceFormat>(["pos", "txt"]);
 const binarySourceFormats = new Set<RecordSourceFormat>(["lib", "dp", "db"]);
 const MAX_FULL_LIB_TO_SGF_SOURCE_BYTES = 64 * 1024 * 1024;
@@ -297,12 +397,12 @@ const variationPreview = (document: GameDocument, nodeId: string, limit = 5) => 
 const BRANCH_ROW_HEIGHT = 76;
 const BRANCH_OVERSCAN = 4;
 
-const Board = memo(function Board({ document, currentId, currentBookmarked = false, showNumbers, showCoordinates, largeBoard, rotation, mirrored, initialDepth = 0, disabled = false, forbiddenMarkers = [], winningLines = [], openingCandidates = [], openingStage, thinkingMove, thinking = false, motion, feedback, result, boardTheme = "wood", stoneTheme = "classic", gestureZoomEnabled = false, gestureSwipeEnabled = false, onPlay, onVariation, onMark, onGestureStep }: {
+const Board = memo(function Board({ document, currentId, currentBookmarked = false, showNumbers, showCoordinates, largeBoard, rotation, mirrored, initialDepth = 0, disabled = false, forbiddenMarkers = [], winningLines = [], openingCandidates = [], openingStage, thinkingMove, thinking = false, motion, feedback, result, boardTheme = "wood", stoneTheme = "classic", boardOpacity = 1, stoneOpacity = 1, annotationHighlight = "none", gestureZoomEnabled = false, gestureSwipeEnabled = false, onPlay, onVariation, onMark, onGestureStep }: {
   document: GameDocument; currentId: string; showNumbers: boolean; showCoordinates: boolean; largeBoard: boolean;
   currentBookmarked?: boolean;
   rotation: BoardRotation; mirrored: boolean;
   initialDepth?: number; disabled?: boolean;
-  boardTheme?: BoardTheme; stoneTheme?: StoneTheme;
+  boardTheme?: BoardTheme; stoneTheme?: StoneTheme; boardOpacity?: number; stoneOpacity?: number; annotationHighlight?: AnnotationHighlight;
   forbiddenMarkers?: Array<Position & { reason: string }>;
   winningLines?: Position[][];
   openingCandidates?: Position[];
@@ -335,6 +435,8 @@ const Board = memo(function Board({ document, currentId, currentBookmarked = fal
   const displayMarkKeys = useMemo(() => new Set(displayMarks.map((mark) => `${mark.row},${mark.col}`)), [displayMarks]);
   const nativeDisplayMarks = useMemo(() => displayMarks.filter((mark) => mark.renLibNativeLabel), [displayMarks]);
   const userDisplayMarks = useMemo(() => displayMarks.filter((mark) => !mark.renLibNativeLabel), [displayMarks]);
+  const markHighlightColor = annotationHighlightColor(annotationHighlight);
+  const markHighlightFilter = markHighlightColor ? "url(#annotationHighlightGlow)" : undefined;
   const currentHasVisualMark = Boolean(
     currentPoint && (
       displayMarks.some((mark) => `${mark.row},${mark.col}` === currentPointKey)
@@ -342,53 +444,28 @@ const Board = memo(function Board({ document, currentId, currentBookmarked = fal
       || current.renLibMark
     ),
   );
-  // RenLib/DP shows the children of the current position directly on the
-  // board as small variation points. Keep this separate from user marks: a
-  // branch point is a stored move, while a mark is an annotation. Do not fall
-  // back to the parent when the current node is a leaf. The parent's sibling
-  // points are alternatives to the move just played, not legal continuations
-  // of the current position; rendering them here made the remaining native
-  // "A" points jump back to the same move level.
-  const variationNodes = useMemo(() => {
-    const pivot = current;
-    const index = compactIndexOf(document);
-    const pivotIndex = index && pivot ? compactNodeIndex(document, pivot.id) : undefined;
-    // When the document is a projected document (viewDocument with overlay baked in),
-    // use the document's children directly instead of compactChildWindow, which
-    // doesn't see draft-added children.
-    const isProjected = isProjectedDocument(document);
-    const ids = isProjected
-      ? (pivot?.children || []).slice(0, 513)
-      : index && pivotIndex !== undefined
-        ? compactChildWindow(index, pivotIndex, 0, 513)
-        : (pivot?.children || []).slice(0, 513);
-    return ids.filter((id) => id !== current.id).slice(0, 512).map((id) => document.nodes[id])
-      .filter((node): node is NonNullable<typeof node> => Boolean(node?.move || node?.anchor));
-  }, [current, document]);
-  // The transparent interaction circles are rendered above the visual labels.
-  // Resolve their coordinates back to the exact projected node before handing
-  // the click to the generic move handler. This is important for DP/LIB views:
-  // several visible siblings can share the same board interaction surface,
-  // while only the node ID carries the branch the user actually selected.
+  const occupiedPointKeys = useMemo(() => {
+    const result = new Set<string>();
+    board.forEach((row, rowIndex) => row.forEach((player, colIndex) => {
+      if (player) result.add(`${rowIndex},${colIndex}`);
+    }));
+    return result;
+  }, [board]);
+  // Board variations are canonicalized before any visual or interaction layer
+  // consumes them: only next moves from the current position, one empty-board
+  // intersection per target. Previous-ply siblings belong behind the cursor.
+  const variationNodes = useMemo(
+    () => renderableBoardVariationNodes(document, safeCurrentId, occupiedPointKeys, 512),
+    [document, occupiedPointKeys, safeCurrentId],
+  );
   const variationNodeByPoint = useMemo(() => {
     const result = new Map<string, RecordNode>();
     variationNodes.forEach((node) => {
       const point = node.move || node.anchor;
-      if (point && !result.has(`${point.row},${point.col}`)) result.set(`${point.row},${point.col}`, node);
+      if (point) result.set(`${point.row},${point.col}`, node);
     });
     return result;
   }, [variationNodes]);
-  const boardTextNodes = useMemo(() => {
-    const seen = new Set<string>();
-    return variationNodes.filter((node) => {
-      const point = node.anchor;
-      if (node.move || !point || !node.boardText || board[point.row][point.col] || displayMarkKeys.has(`${point.row},${point.col}`)) return false;
-      const key = [point.row, point.col, node.boardText].join(",");
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-      }).slice(0, 128);
-  }, [board, displayMarkKeys, variationNodes]);
   const isNativeRenLib = isRenLibWebView(document);
   const longPressTimer = useRef<number | null>(null);
   const suppressedClickPoint = useRef<Position | null>(null);
@@ -397,9 +474,14 @@ const Board = memo(function Board({ document, currentId, currentBookmarked = fal
   const gestureStartCenter = useRef<{ x: number; y: number } | null>(null);
   const gestureStartScale = useRef(1);
   const gestureSwipeHandled = useRef(false);
+  const boardPanRef = useRef({ active: false, lastX: 0, lastY: 0, moved: false });
   const touchBlockUntil = useRef(0);
   const [boardScale, setBoardScale] = useState(1);
   const margin = 34, gap = 504 / Math.max(1, boardSize - 1), end = margin + gap * (boardSize - 1);
+  // Keep stones visually proportional to the grid: compact boards get a
+  // little more presence while dense 19–21 line boards stay readable.
+  const stoneRadius = Math.min(24, Math.max(10, gap * 0.43));
+  const stoneScale = stoneRadius / 15.6;
   const visualPoint = useCallback((point: Position) => transformBoardPosition(point, boardSize, rotation, mirrored), [boardSize, mirrored, rotation]);
   const visualXY = useCallback((point: Position) => {
     const displayed = visualPoint(point);
@@ -421,11 +503,24 @@ const Board = memo(function Board({ document, currentId, currentBookmarked = fal
     const point = { x: event.clientX, y: event.clientY };
     if (kind === "down") {
       touchPoints.current.set(event.pointerId, point);
+      if (boardScale > 1.01) {
+        boardPanRef.current = { active: true, lastX: point.x, lastY: point.y, moved: false };
+      }
     } else if (kind === "move") {
       if (!touchPoints.current.has(event.pointerId)) return;
+      if (boardScale > 1.01 && touchPoints.current.size === 1 && boardPanRef.current.active) {
+        const scroller = event.currentTarget.parentElement;
+        const dx = point.x - boardPanRef.current.lastX;
+        const dy = point.y - boardPanRef.current.lastY;
+        if (Math.abs(dx) + Math.abs(dy) > 2) boardPanRef.current.moved = true;
+        if (scroller) { scroller.scrollLeft -= dx; scroller.scrollTop -= dy; }
+        if (boardPanRef.current.moved) touchBlockUntil.current = Date.now() + 260;
+        boardPanRef.current.lastX = point.x; boardPanRef.current.lastY = point.y;
+      }
       touchPoints.current.set(event.pointerId, point);
     } else {
       touchPoints.current.delete(event.pointerId);
+      boardPanRef.current.active = false;
       if (touchPoints.current.size === 0) {
         gestureStartDistance.current = null;
         gestureStartCenter.current = null;
@@ -482,10 +577,22 @@ const Board = memo(function Board({ document, currentId, currentBookmarked = fal
           <radialGradient id="whiteStone-yun" cx="30%" cy="24%"><stop offset="0" stopColor="#fffdf2"/><stop offset=".55" stopColor="#eee5cf"/><stop offset="1" stopColor="#b5aa91"/></radialGradient>
           <radialGradient id="blackStone-ink" cx="30%" cy="24%"><stop offset="0" stopColor="#5c7590"/><stop offset=".45" stopColor="#1e3448"/><stop offset="1" stopColor="#0d1721"/></radialGradient>
           <radialGradient id="whiteStone-ink" cx="30%" cy="24%"><stop offset="0" stopColor="#fffdf5"/><stop offset=".58" stopColor="#e9edf0"/><stop offset="1" stopColor="#9ca9b1"/></radialGradient>
-          <radialGradient id="blackStone-porcelain" cx="28%" cy="22%"><stop offset="0" stopColor="#354e73"/><stop offset=".5" stopColor="#132b52"/><stop offset="1" stopColor="#07152e"/></radialGradient>
-          <radialGradient id="whiteStone-porcelain" cx="28%" cy="22%"><stop offset="0" stopColor="#fff"/><stop offset=".6" stopColor="#f0f5f7"/><stop offset="1" stopColor="#b4c9d6"/></radialGradient>
-          <radialGradient id="blackStone-snow" cx="28%" cy="22%"><stop offset="0" stopColor="#c4e7f4"/><stop offset=".45" stopColor="#477f9b"/><stop offset="1" stopColor="#183b55"/></radialGradient>
-          <radialGradient id="whiteStone-snow" cx="28%" cy="22%"><stop offset="0" stopColor="#fff"/><stop offset=".55" stopColor="#e4f6ff"/><stop offset="1" stopColor="#9ac4d8"/></radialGradient>
+          <radialGradient id="blackStone-porcelain" cx="28%" cy="22%"><stop offset="0" stopColor="#315f91"/><stop offset=".48" stopColor="#123f73"/><stop offset="1" stopColor="#071b36"/></radialGradient>
+          <radialGradient id="whiteStone-porcelain" cx="28%" cy="22%"><stop offset="0" stopColor="#fffdf8"/><stop offset=".58" stopColor="#f3f2ea"/><stop offset="1" stopColor="#9fbaca"/></radialGradient>
+          <radialGradient id="blackStone-snow" cx="25%" cy="18%"><stop offset="0" stopColor="#d9fbff"/><stop offset=".2" stopColor="#73d7ef"/><stop offset=".52" stopColor="#2479aa"/><stop offset=".8" stopColor="#0d416c"/><stop offset="1" stopColor="#051c38"/></radialGradient>
+          <radialGradient id="whiteStone-snow" cx="25%" cy="18%"><stop offset="0" stopColor="#fff"/><stop offset=".25" stopColor="#e9fbff"/><stop offset=".56" stopColor="#bfe7fa"/><stop offset=".82" stopColor="#83b7da"/><stop offset="1" stopColor="#537da8"/></radialGradient>
+          <radialGradient id="blackStone-blackgold" cx="27%" cy="20%"><stop offset="0" stopColor="#6f6a5d"/><stop offset=".25" stopColor="#25231f"/><stop offset=".67" stopColor="#090909"/><stop offset="1" stopColor="#010101"/></radialGradient>
+          <radialGradient id="whiteStone-blackgold" cx="30%" cy="24%"><stop offset="0" stopColor="#fff9d9"/><stop offset=".24" stopColor="#f4df9a"/><stop offset=".58" stopColor="#d8b45f"/><stop offset=".84" stopColor="#bd8e35"/><stop offset="1" stopColor="#96651d"/></radialGradient>
+          <radialGradient id="blackStone-pale" cx="27%" cy="20%"><stop offset="0" stopColor="#8b8d8f"/><stop offset=".38" stopColor="#3b3c3e"/><stop offset="1" stopColor="#111214"/></radialGradient>
+          <radialGradient id="whiteStone-pale" cx="27%" cy="20%"><stop offset="0" stopColor="#fff"/><stop offset=".48" stopColor="#ececed"/><stop offset=".78" stopColor="#c4c5c7"/><stop offset="1" stopColor="#85878a"/></radialGradient>
+          <radialGradient id="blackStone-kawaii" cx="27%" cy="20%"><stop offset="0" stopColor="#ffd9ea"/><stop offset=".24" stopColor="#ff9fc5"/><stop offset=".58" stopColor="#f06f9f"/><stop offset=".84" stopColor="#cf477d"/><stop offset="1" stopColor="#a82f64"/></radialGradient>
+          <radialGradient id="whiteStone-kawaii" cx="27%" cy="20%"><stop offset="0" stopColor="#eafffb"/><stop offset=".25" stopColor="#b8f3e8"/><stop offset=".58" stopColor="#7fdccc"/><stop offset=".84" stopColor="#4ab8ae"/><stop offset="1" stopColor="#278b8a"/></radialGradient>
+          <radialGradient id="blackStone-aurora" cx="27%" cy="20%"><stop offset="0" stopColor="#527d86"/><stop offset=".28" stopColor="#173f49"/><stop offset=".68" stopColor="#071e2b"/><stop offset="1" stopColor="#020914"/></radialGradient>
+          <radialGradient id="whiteStone-aurora" cx="27%" cy="20%"><stop className="aurora-stone-light" offset="0" stopColor="#f1ffff"/><stop className="aurora-stone-mid" offset=".44" stopColor="#75ead3"/><stop className="aurora-stone-edge" offset=".76" stopColor="#6987e8"/><stop offset="1" stopColor="#443d91"/></radialGradient>
+          <linearGradient id="blackGoldBoard" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#1d1a16"/><stop offset=".48" stopColor="#080807"/><stop offset="1" stopColor="#21190f"/></linearGradient>
+          <linearGradient id="paleBoard" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#fafafa"/><stop offset=".5" stopColor="#dedfe0"/><stop offset="1" stopColor="#bfc1c3"/></linearGradient>
+          <linearGradient id="kawaiiBoard" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#fff8f2"/><stop offset=".48" stopColor="#f7dbe9"/><stop offset="1" stopColor="#decdf0"/></linearGradient>
+          <linearGradient id="auroraBoard" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#061928"/><stop className="aurora-board-cyan" offset=".36" stopColor="#164e5b"/><stop className="aurora-board-green" offset=".64" stopColor="#236458"/><stop className="aurora-board-violet" offset="1" stopColor="#322b62"/></linearGradient>
            <radialGradient id="blackStone-gold" cx="28%" cy="22%"><stop offset="0" stopColor="#fff0a8"/><stop offset=".42" stopColor="#d59a22"/><stop offset="1" stopColor="#6c3d08"/></radialGradient>
            <radialGradient id="whiteStone-gold" cx="28%" cy="22%"><stop offset="0" stopColor="#fff9d7"/><stop offset=".5" stopColor="#f1c95d"/><stop offset="1" stopColor="#a96813"/></radialGradient>
            <radialGradient id="blackStone-diamond" cx="27%" cy="20%"><stop offset="0" stopColor="#dff8ff"/><stop offset=".18" stopColor="#7ec9e4"/><stop offset=".48" stopColor="#1d5978"/><stop offset=".76" stopColor="#0b243b"/><stop offset="1" stopColor="#020914"/></radialGradient>
@@ -498,8 +605,9 @@ const Board = memo(function Board({ document, currentId, currentBookmarked = fal
           <pattern id="notebookPaper" width="48" height="48" patternUnits="userSpaceOnUse"><rect width="48" height="48" fill="#faf5e7"/><path d="M0 47.5H48" stroke="#8eb3c9" strokeWidth=".8" opacity=".28"/></pattern>
           <filter id="notebookBrush" x="-25%" y="-25%" width="150%" height="150%"><feTurbulence type="fractalNoise" baseFrequency=".035 .12" numOctaves="2" seed="7" result="inkNoise"/><feDisplacementMap in="SourceGraphic" in2="inkNoise" scale="1.15" xChannelSelector="R" yChannelSelector="G"/></filter>
           <filter id="stoneShadow"><feDropShadow dx="0" dy="3" stdDeviation="2.5" floodOpacity=".38"/></filter>
+          {markHighlightColor && <filter id="annotationHighlightGlow" x="-90%" y="-90%" width="280%" height="280%"><feDropShadow dx="0" dy="0" stdDeviation="1.7" floodColor={markHighlightColor} floodOpacity="1"/><feDropShadow dx="0" dy="0" stdDeviation="4" floodColor={markHighlightColor} floodOpacity=".82"/></filter>}
         </defs>
-        <rect x="4" y="4" width="564" height="564" rx="18" className="board-bg" />
+        <rect x="4" y="4" width="564" height="564" rx="18" className="board-bg" style={{ opacity: boardOpacity }} />
         {openingStage?.kind === "place" && openingStage.radius !== null && (() => {
           const center = Math.floor(boardSize / 2), start = center - openingStage.radius, cells = openingStage.radius * 2;
           return <rect x={margin + start * gap - gap / 2} y={margin + start * gap - gap / 2} width={(cells + 1) * gap} height={(cells + 1) * gap} rx="10" className="opening-region" aria-label={`第${openingStage.moveNumber}手允许落子区域`}/>;
@@ -513,6 +621,28 @@ const Board = memo(function Board({ document, currentId, currentBookmarked = fal
            if (!start || !endPoint) return null;
            const startXY = visualXY(start), endXY = visualXY(endPoint);
            return <line key={`winning-line-${index}`} x1={startXY.x} y1={startXY.y} x2={endXY.x} y2={endXY.y} className="winning-line" aria-label="获胜五连"/>;
+         })}
+         {variationNodes.map((node) => {
+           const point = node.move || node.anchor;
+           if (!point) return null;
+           const { x, y } = visualXY(point);
+           const player = node.move?.player || "black";
+           const isNativeLabel = isNativeRenLib || Boolean(node.renLibNativeLabel);
+           const display = isNativeLabel ? null : renLibDisplayMark(node.boardText);
+           const pointKey = `${point.row},${point.col}`;
+           const hasDisplayMark = displayMarkKeys.has(pointKey);
+           const text = hasDisplayMark
+             ? ""
+             : isNativeLabel
+               ? (isNativeRenLib ? formatRenLibWebLabel(node.boardText, depthOf(document, node.id)) : node.boardText || "")
+               : display?.displayText || "";
+           const hasText = Boolean(text);
+           const hasUserMark = !isNativeLabel && userDisplayMarks.some((mark) => mark.row === point.row && mark.col === point.col);
+           return <g key={`variation-${node.id}`} className={`renlib-variation ${player} ${isNativeLabel ? "renlib-native-variation" : display?.displayKind || "neutral-dot"}`} data-node-id={node.id} aria-label={`变化点 ${coordinateName(point, boardSize)}`} filter={markHighlightFilter && (hasText || node.renLibMark) ? markHighlightFilter : undefined}>
+             {!hasText && !hasUserMark && !hasDisplayMark && <circle cx={x} cy={y} r="7" className="renlib-variation-dot"/>}
+             {node.renLibMark && !hasText && !hasUserMark && !hasDisplayMark && <circle cx={x} cy={y} r="11" className="renlib-explicit-mark"/>}
+             {hasText && <text x={x} y={y} className={`renlib-variation-label ${isNativeLabel ? "renlib-native-label" : ""} ${text.length <= 1 ? "renlib-text-single" : text.length === 2 ? "renlib-text-double" : "renlib-text-compact"}`} style={isNativeLabel ? { fill: "#1d1c19" } : undefined}>{text}</text>}
+           </g>;
          })}
          {board.flatMap((row, rowIndex) => row.map((player, colIndex) => {
            if (!player) return null;
@@ -530,6 +660,23 @@ const Board = memo(function Board({ document, currentId, currentBookmarked = fal
               </g>
              : stoneTheme === "terminal"
                ? <g className={`terminal-stone ${player}`}><circle cx={x} cy={y} r="15.6" className="terminal-stone-disc"/><text x={x} y={y + 4.8} className="terminal-stone-char">{player === "black" ? "X" : "O"}</text></g>
+               : stoneTheme === "kawaii"
+                 ? <g className={`kawaii-stone ${player}`}>
+                     <path d={`M ${x - 12.4} ${y - 8.2} L ${x - 10.2} ${y - 17} L ${x - 4.2} ${y - 12.6} Q ${x} ${y - 15.3} ${x + 4.2} ${y - 12.6} L ${x + 10.2} ${y - 17} L ${x + 12.4} ${y - 8.2} Z`} className="kawaii-stone-ears"/>
+                     <circle cx={x} cy={y} r="15.6" fill={`url(#${stoneGradient})`} className="stone kawaii-stone-disc"/>
+                     <ellipse cx={x - 5.2} cy={y - 1.1} rx="1.55" ry="2.15" className="kawaii-eye"/><ellipse cx={x + 5.2} cy={y - 1.1} rx="1.55" ry="2.15" className="kawaii-eye"/>
+                     <path d={`M ${x - 2.6} ${y + 4} Q ${x} ${y + 6.4} ${x + 2.6} ${y + 4} M ${x} ${y + 3.8} V ${y + 6.2}`} className="kawaii-mouth"/>
+                     <ellipse cx={x - 9} cy={y + 4} rx="2.6" ry="1.25" className="kawaii-blush"/><ellipse cx={x + 9} cy={y + 4} rx="2.6" ry="1.25" className="kawaii-blush"/>
+                     <path d={`M ${x - 8.5} ${y - 9.5} C ${x - 10.5} ${y - 12} ${x - 13.4} ${y - 9.4} ${x - 8.5} ${y - 6.4} C ${x - 3.6} ${y - 9.4} ${x - 6.5} ${y - 12} ${x - 8.5} ${y - 9.5} Z`} className="kawaii-heart"/>
+                   </g>
+               : stoneTheme === "snow"
+                 ? <g className={`snow-crystal-stone ${player}`}>
+                     <circle cx={x} cy={y} r="15.8" fill={`url(#${stoneGradient})`} className="stone snow-crystal-base"/>
+                     <path d={`M ${x} ${y - 15} L ${x + 10.8} ${y - 10.8} L ${x + 15} ${y} L ${x + 10.2} ${y + 11.2} L ${x} ${y + 15.4} L ${x - 10.8} ${y + 10.8} L ${x - 15.2} ${y} L ${x - 10.4} ${y - 11.1} Z`} className="snow-crystal-rim"/>
+                     <path d={`M ${x} ${y - 14} L ${x - 4.2} ${y - 2} L ${x - 13} ${y} L ${x - 3.5} ${y + 3.2} L ${x} ${y + 14} L ${x + 3.8} ${y + 3} L ${x + 13.4} ${y} L ${x + 3.6} ${y - 2.8} Z`} className="snow-crystal-facet"/>
+                     <path d={`M ${x} ${y - 10} V ${y + 10} M ${x - 8.7} ${y - 5} L ${x + 8.7} ${y + 5} M ${x + 8.7} ${y - 5} L ${x - 8.7} ${y + 5}`} className="snow-crystal-snowflake"/>
+                     <path d={`M ${x - 9} ${y - 10} L ${x - 4} ${y - 13.2} L ${x - 1} ${y - 9.5} L ${x - 5.5} ${y - 6.5} Z`} className="snow-crystal-glint"/>
+                   </g>
                : (stoneTheme === "gold-diamond" || stoneTheme === "gold" || stoneTheme === "diamond")
                  ? <g className={`jewel-stone ${player}`}>
                      <circle cx={x} cy={y} r="15.6" fill={`url(#${stoneGradient})`} className="stone"/>
@@ -538,49 +685,19 @@ const Board = memo(function Board({ document, currentId, currentBookmarked = fal
                      <path d={`M ${x - 8} ${y - 10} Q ${x - 3} ${y - 14} ${x + 2} ${y - 11} Q ${x - 2} ${y - 7} ${x - 7} ${y - 5} Z`} fill="url(#jewelGlint)"/>
                      <path d={`M ${x - 5} ${y + 12} L ${x + 4} ${y + 5} M ${x + 2} ${y - 1} L ${x - 2} ${y - 14} M ${x + 2} ${y - 1} L ${x + 12} ${y - 6}`} className="jewel-facet-line"/>
                    </g>
-               : <circle cx={x} cy={y} r="15.6" fill={`url(#${stoneGradient})`} className="stone"/>;
+               : <circle cx={x} cy={y} r="15.6" fill={`url(#${stoneGradient})`} className={`stone ${player}`}/>;
           const motionClass = isLast && motion?.kind === "place" ? "stone-enter" : "";
-          return <g key={`stone-${rowIndex}-${colIndex}${isLast && motion?.kind ? `-${motion.version}` : ""}`} filter="url(#stoneShadow)" className={`stone-piece ${isWinningStone ? "winning-stone" : ""} ${motionClass}`}>{stoneGraphic}{isWinningStone && <circle cx={x} cy={y} r="19" className="winning-stone-ring"/>}{showNumbers && <text x={x} y={y + 4.2} className={`move-number ${player}`}>{number}</text>}{isLast && !showNumbers && !currentHasVisualMark && (stoneTheme === "notebook" ? <path d={`M ${x - 7} ${y + 17} Q ${x} ${y + 20} ${x + 8} ${y + 16}`} className="notebook-last-mark"/> : <circle cx={x} cy={y} r="4" className="last-dot"/>)}{isLast && hasNativeAnnotation(current) && <g className="comment-indicator" aria-label="此步有注释"><circle cx={x + 11} cy={y + 11} r="6"/><circle cx={x + 8.5} cy={y + 11} r=".85"/><circle cx={x + 11} cy={y + 11} r=".85"/><circle cx={x + 13.5} cy={y + 11} r=".85"/></g>}{isLast && currentBookmarked && <g className="bookmark-indicator" aria-label="此局面已保存分支书签"><path d={`M ${x - 15} ${y - 15} h 10 v 12 l -5 -3 -5 3 z`}/></g>}</g>;
+           const outlineOpacity = stoneTheme === "notebook" ? 0 : Math.max(0, (1 - stoneOpacity) * .72);
+           return <g key={`stone-${rowIndex}-${colIndex}${isLast && motion?.kind ? `-${motion.version}` : ""}`} filter="url(#stoneShadow)" className={`stone-piece ${isWinningStone ? "winning-stone" : ""} ${motionClass}`}><g className="stone-body" transform={`translate(${x} ${y}) scale(${stoneScale}) translate(${-x} ${-y})`} style={{ opacity: stoneOpacity }}>{stoneGraphic}</g>{outlineOpacity > 0 && <circle cx={x} cy={y} r={stoneRadius + .1} className={`stone-visibility-outline ${player}`} style={{ opacity: outlineOpacity }}/>} {isWinningStone && <circle cx={x} cy={y} r={stoneRadius * 1.22} className="winning-stone-ring"/>}{showNumbers && <text x={x} y={y + stoneRadius * .28} className={`move-number ${player}`} style={{ fontSize: `${Math.max(8, stoneRadius * .64)}px` }}>{number}</text>}{isLast && !showNumbers && !currentHasVisualMark && (stoneTheme === "notebook" ? <path d={`M ${x - stoneRadius * .45} ${y + stoneRadius * 1.08} Q ${x} ${y + stoneRadius * 1.28} ${x + stoneRadius * .52} ${y + stoneRadius * 1.02}`} className="notebook-last-mark"/> : <circle cx={x} cy={y} r={Math.max(3, stoneRadius * .25)} className="last-dot"/>)}{isLast && hasNativeAnnotation(current) && <g className="comment-indicator" aria-label="此步有注释"><circle cx={x + stoneRadius * .7} cy={y + stoneRadius * .7} r={stoneRadius * .38}/><circle cx={x + stoneRadius * .53} cy={y + stoneRadius * .7} r=".85"/><circle cx={x + stoneRadius * .7} cy={y + stoneRadius * .7} r=".85"/><circle cx={x + stoneRadius * .87} cy={y + stoneRadius * .7} r=".85"/></g>}{isLast && currentBookmarked && <g className="bookmark-indicator" aria-label="此局面已保存分支书签"><path d={`M ${x - stoneRadius} ${y - stoneRadius} h ${stoneRadius * .67} v ${stoneRadius * .8} l -${stoneRadius * .33} -${stoneRadius * .2} -${stoneRadius * .33} ${stoneRadius * .2} z`}/></g>}</g>;
         }))}
-         {variationNodes.map((node, index) => {
-           const point = node.move || node.anchor;
-           if (!point) return null;
-           const { x, y } = visualXY(point);
-          const player = node.move?.player || "black";
-          const isNativeLabel = isNativeRenLib || Boolean(node.renLibNativeLabel);
-           const display = isNativeLabel ? null : renLibDisplayMark(node.boardText);
-           const pointKey = `${point.row},${point.col}`;
-           const hasDisplayMark = displayMarkKeys.has(pointKey);
-           // User annotations own the final visual layer. Do not leave a
-           // native branch label underneath them: the branch remains
-           // clickable through the transparent hit target below.
-           const text = hasDisplayMark
-             ? ""
-             : isNativeLabel
-               ? (isNativeRenLib ? formatRenLibWebLabel(node.boardText, depthOf(document, safeCurrentId) + 1) : node.boardText || "")
-               : display?.displayText || "";
-           const hasText = Boolean(text);
-           const hasUserMark = !isNativeLabel && userDisplayMarks.some((mark) => mark.row === point.row && mark.col === point.col);
-           return <g key={`variation-${node.id}`} className={`renlib-variation ${player} ${isNativeLabel ? "renlib-native-variation" : display?.displayKind || "neutral-dot"}`} data-node-id={node.id} aria-label={`变化点 ${coordinateName(point, boardSize)}`}>
-             {!hasText && !hasUserMark && !hasDisplayMark && <circle cx={x} cy={y} r="7" className="renlib-variation-dot"/>}
-             {node.renLibMark && !hasText && !hasUserMark && !hasDisplayMark && <circle cx={x} cy={y} r="11" className="renlib-explicit-mark"/>}
-            {hasText && <text x={x} y={y} className={`renlib-variation-label ${isNativeLabel ? "renlib-native-label" : ""} ${text.length <= 1 ? "renlib-text-single" : text.length === 2 ? "renlib-text-double" : "renlib-text-compact"}`} style={isNativeLabel ? { fill: "#1d1c19" } : undefined}>{text}</text>}
-          </g>;
-        })}
          {current.renLibMark && (current.move || current.anchor) && !displayMarkKeys.has(currentPointKey) && (() => {
            const point = current.move || current.anchor!;
            const { x, y } = visualXY(point);
-          return <circle cx={x} cy={y} r="11" className="renlib-explicit-mark"/>;
+          return <circle cx={x} cy={y} r="11" className="renlib-explicit-mark" filter={markHighlightFilter}/>;
         })()}
-         {boardTextNodes.map((node) => {
-           const point = node.move || node.anchor;
-           if (!point || !node.boardText) return null;
-           const { x, y } = visualXY(point);
-          return <text key={`board-text-${node.id}`} x={x} y={y + 4} className="renlib-board-text">{node.boardText}</text>;
-        })}
          {openingCandidates.map((point, index) => {
            const { x, y } = visualXY(point);
-          return <g key={`opening-candidate-${point.row}-${point.col}`} className="opening-candidate" aria-label={`第5手候选 ${index + 1}`}><circle cx={x} cy={y} r="12"/><text x={x} y={y + 4}>{index + 1}</text></g>;
+          return <g key={`opening-candidate-${point.row}-${point.col}`} className="opening-candidate" aria-label={`第5手打点 A${index + 1}`}><circle className="opening-candidate-glow" cx={x} cy={y} r={stoneRadius * 1.22}/><circle className="opening-candidate-stone" cx={x} cy={y} r={stoneRadius}/><text x={x} y={y + stoneRadius * .2}>A{index + 1}</text></g>;
         })}
          {thinkingMove && !board[thinkingMove.row]?.[thinkingMove.col] && (() => {
            const { x, y } = visualXY(thinkingMove);
@@ -591,9 +708,8 @@ const Board = memo(function Board({ document, currentId, currentBookmarked = fal
           return <g key={`board-feedback-${feedback.version}`} className={`board-feedback ${feedback.kind}`} aria-label={feedback.kind === "forbidden" ? "禁手位置反馈" : "非法落子反馈"}><circle cx={x} cy={y} r="20"/><line x1={x - 8} y1={y - 8} x2={x + 8} y2={y + 8}/><line x1={x + 8} y1={y - 8} x2={x - 8} y2={y + 8}/></g>;
          })()}
          {/* Annotation visuals are deliberately last. A mark may sit on an
-          * occupied point; it must remain visible above stones, native labels,
-          * candidate hints and temporary feedback. The hit circles below are
-          * interaction-only and do not change this visual priority. */}
+          * occupied point and must remain visible above stones and hints. */}
+         <g className={`board-annotation-layer highlight-${annotationHighlight}`} filter={markHighlightFilter}>
          {nativeDisplayMarks.map((mark, index) => {
            if (!mark.label) return null;
            const { x, y } = visualXY(mark);
@@ -606,17 +722,22 @@ const Board = memo(function Board({ document, currentId, currentBookmarked = fal
            const color = mark.color || "#1d1c19";
            const label = mark.label || "";
            const labelClass = `board-label-text ${Array.from(label).length > 2 ? "compact" : ""}`;
+           const markLabel = label ? <text x={x} y={y + 4} className={labelClass} fill={color} stroke="var(--paper, #f8f6f1)" strokeWidth="3.4" paintOrder="stroke">{label}</text> : null;
            if (style === "text") return <text key={index} x={x} y={y + 4} className={labelClass} fill={color}>{label || "?"}</text>;
-           if (style === "circle") return label ? <g key={index}><circle cx={x} cy={y} r="19" className="board-mark" stroke={color}/><text x={x} y={y + 4} className={labelClass} fill={color}>{label}</text></g> : <circle key={index} cx={x} cy={y} r="5.5" className="board-mark" fill={color} opacity=".82"/>;
-           if (style === "triangle") return <g key={index}><path d={`M ${x} ${y - 20} L ${x - 18} ${y + 14} L ${x + 18} ${y + 14} Z`} className="board-mark" stroke={color}/>{label && <text x={x} y={y + 4} className={labelClass} fill={color}>{label}</text>}</g>;
+           if (style === "circle") return label ? <g key={index}><circle cx={x} cy={y} r="19" className="board-mark" stroke={color}/>{markLabel}</g> : <circle key={index} cx={x} cy={y} r="5.5" className="board-mark" fill={color} opacity=".82"/>;
+           if (style === "triangle") return <g key={index}><path d={`M ${x} ${y - 20} L ${x - 18} ${y + 14} L ${x + 18} ${y + 14} Z`} className="board-mark" stroke={color}/>{markLabel}</g>;
+           if (style === "star") return <g key={index}><path d={STAR_MARK_PATH} transform={`translate(${x} ${y})`} className="board-mark" stroke={color} strokeLinejoin="round"/>{markLabel}</g>;
+           if (style === "sun") return <g key={index}><circle cx={x} cy={y} r={SUN_MARK_CORE_RADIUS + 1} className="board-mark" stroke={color}/><g className="board-mark" stroke={color}>{SUN_MARK_RAYS.map(([x1, y1, x2, y2], ray) => <line key={ray} x1={x + x1} y1={y + y1} x2={x + x2} y2={y + y2}/>)}</g>{markLabel}</g>;
+           if (style === "moon") return <g key={index}><path d={MOON_MARK_PATH} transform={`translate(${x} ${y})`} className="board-mark" stroke={color}/>{markLabel}</g>;
            return <g key={index} className="board-mark" stroke={color}><line x1={x - 14} y1={y - 14} x2={x + 14} y2={y + 14}/><line x1={x + 14} y1={y - 14} x2={x - 14} y2={y + 14}/>{label && <text x={x} y={y + 4} className={labelClass} fill={color} stroke="none">{label}</text>}</g>;
          })}
+         </g>
          {Array.from({ length: boardSize }, (_, row) => Array.from({ length: boardSize }, (_, col) => {
            const point = { row, col };
            const variation = variationNodeByPoint.get(`${row},${col}`);
             const { x, y } = visualXY(point);
-             return <circle key={`hit-${row}-${col}`} cx={x} cy={y} r="17" className="board-hit" role="gridcell" aria-disabled={disabled} aria-label={`${coordinateName(point, boardSize)}${board[row][col] ? "已有棋子" : forbiddenByPoint.get(`${row},${col}`) || "空位"}`} onPointerDown={(event) => { if (disabled || isTouchGestureBlocked()) return; longPressTimer.current = window.setTimeout(() => { if (isTouchGestureBlocked()) return; suppressedClickPoint.current = point; onMark(point); }, 520); }} onPointerUp={() => { if (longPressTimer.current !== null) { window.clearTimeout(longPressTimer.current); longPressTimer.current = null; } }} onPointerCancel={() => { if (longPressTimer.current !== null) { window.clearTimeout(longPressTimer.current); longPressTimer.current = null; } }} onClick={() => { if (disabled || isTouchGestureBlocked()) return; if (suppressedClickPoint.current?.row === row && suppressedClickPoint.current.col === col) { suppressedClickPoint.current = null; return; } suppressedClickPoint.current = null; if (variation && onVariation) onVariation(variation.id); else onPlay(point); }} onContextMenu={(event) => { event.preventDefault(); if (!disabled) onMark(point); }}/>
-         }))}
+             return <circle key={`hit-${row}-${col}`} cx={x} cy={y} r={Math.max(14, stoneRadius * 1.14)} className="board-hit" role="gridcell" aria-disabled={disabled} aria-label={variation ? `切换到变化 ${coordinateName(point, boardSize)}` : `${coordinateName(point, boardSize)}${board[row][col] ? "已有棋子" : forbiddenByPoint.get(`${row},${col}`) || "空位"}`} onPointerDown={(event) => { if (disabled || isTouchGestureBlocked()) return; longPressTimer.current = window.setTimeout(() => { if (isTouchGestureBlocked()) return; suppressedClickPoint.current = point; onMark(point); }, 520); }} onPointerUp={() => { if (longPressTimer.current !== null) { window.clearTimeout(longPressTimer.current); longPressTimer.current = null; } }} onPointerCancel={() => { if (longPressTimer.current !== null) { window.clearTimeout(longPressTimer.current); longPressTimer.current = null; } }} onClick={() => { if (disabled || isTouchGestureBlocked()) return; if (suppressedClickPoint.current?.row === row && suppressedClickPoint.current.col === col) { suppressedClickPoint.current = null; return; } suppressedClickPoint.current = null; if (variation && onVariation) onVariation(variation.id); else onPlay(point); }} onContextMenu={(event) => { event.preventDefault(); if (!disabled) onMark(point); }}/>
+          }))}
        </svg>
       {thinking && <div className="board-thinking-indicator" role="status" aria-live="polite"><i/><i/><i/><span>AI 思考中</span></div>}
       {result && <div className={`game-result-banner ${result.kind}`} role="status" aria-live="polite"><span>{result.kind === "draw" ? "和" : result.kind === "lost" ? "负" : "胜"}</span><b>{result.label}</b></div>}
@@ -624,44 +745,25 @@ const Board = memo(function Board({ document, currentId, currentBookmarked = fal
   );
 });
 
-function BottomSheet({ title, children, onClose, className = "" }: { title: string; children: React.ReactNode; onClose: () => void; className?: string }) {
-  const dialogRef = useRef<HTMLElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  useEffect(() => {
-    const previous = globalThis.document?.activeElement as HTMLElement | null;
-    const dialog = dialogRef.current;
-    const focusable = () => dialog ? Array.from(dialog.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])")) : [];
-    const focusFirst = () => (focusable()[0] || closeRef.current || dialog)?.focus();
-    const timer = window.setTimeout(focusFirst, 0);
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { event.preventDefault(); onCloseRef.current(); return; }
-      if (event.key !== "Tab") return;
-      const elements = focusable();
-      if (!elements.length) { event.preventDefault(); dialog?.focus(); return; }
-      const first = elements[0], last = elements[elements.length - 1];
-      if (event.shiftKey && globalThis.document.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && globalThis.document.activeElement === last) { event.preventDefault(); first.focus(); }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("keydown", handleKeyDown);
-      if (previous && previous.isConnected) previous.focus();
-    };
-  }, []);
-  return <div className={`sheet-backdrop ${className}`.trim()} onMouseDown={onCloseRef.current}><section ref={dialogRef} className="bottom-sheet" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}><div className="sheet-handle"/><div className="sheet-head"><h2>{title}</h2><button ref={closeRef} className="icon-button" onClick={onClose} aria-label="关闭"><X size={20}/></button></div>{children}</section></div>;
-}
-
 export default function App() {
   // Diagnostic switch for the top-level ErrorBoundary: set
   // globalThis.__banbuForceRenderError = true (e.g. via Playwright addInitScript)
   // to verify the crash card without shipping a debug UI.
   if (import.meta.env.DEV && (globalThis as { __banbuForceRenderError?: boolean }).__banbuForceRenderError) throw new Error("人为注入的渲染异常（ErrorBoundary 验收）");
+  const [initialSession] = useState<LastSessionState | null>(() => loadLastSession());
+  const [restoreLastPosition, setRestoreLastPosition] = useState(loadRestoreLastPosition);
+  const [welcomeOpen, setWelcomeOpen] = useState(shouldShowFirstRunWelcome);
+  const restorePendingRef = useRef<LastSessionState | null>(restoreLastPosition ? initialSession : null);
   const [document, setDocument] = useState<GameDocument>(() => {
-    const active = loadActive();
-    if (active) return active;
+    const shouldRestore = loadRestoreLastPosition();
+    if (!shouldRestore) return createFreshStartupDocument();
+    const active = shouldRestore ? loadActive() : null;
+    if (active && (!initialSession || initialSession.documentId === active.id || initialSession.mode === "puzzle")) return active;
+    if (shouldRestore && initialSession?.mode === "record") {
+      const libraryDocument = loadLibrary().find((item) => item.id === initialSession.documentId);
+      if (libraryDocument) return libraryDocument;
+    }
+    if (active && shouldRestore && !initialSession) return active;
     try {
       const stored = JSON.parse(localStorage.getItem(DEFAULT_DOCUMENT_KEY) || "null");
       if (stored?.id && stored?.rootId && stored?.nodes?.[stored.rootId]) {
@@ -674,46 +776,58 @@ export default function App() {
         return restored;
       }
     } catch { /* ignore malformed default baseline and recreate it */ }
-    const created = createDocument("新建棋谱");
-    localStorage.setItem(DEFAULT_DOCUMENT_KEY, JSON.stringify(created));
-    return created;
+    return createFreshStartupDocument();
   });
   const [currentId, setCurrentId] = useState(() => {
     const storedDraft = loadDraftFromLocal(document.id);
-    const latestAdded = [...storedDraft.operations].reverse().find((operation) => operation.type === "add-move");
-    return document.savedCurrentId || (latestAdded?.type === "add-move" ? latestAdded.node.id : document.rootId);
+    if (restoreLastPosition && initialSession?.mode === "record" && initialSession.documentId === document.id) {
+      if (document.nodes[initialSession.nodeId]) return initialSession.nodeId;
+      return document.rootId;
+    }
+    const latestAdded = [...storedDraft.operations].reverse().find((operation) => operation.type === "add-move" || operation.type === "add-subtree");
+    const latestAddedId = latestAdded?.type === "add-move" ? latestAdded.node.id : latestAdded?.type === "add-subtree" ? latestAdded.rootId : undefined;
+    return document.savedCurrentId || latestAddedId || document.rootId;
   });
   const [mode, setMode] = useState<AppMode>("record");
   const [puzzleCollections, setPuzzleCollections] = useState<PuzzleCollection[]>(loadPuzzleCollections);
+  const [vcfOptions, setVcfOptions] = useState<{ tier: VcfTier; count: number; mode: VcfGenMode }>({ tier: "short", count: 5, mode: "transform" });
+  const [vcfGenRunning, setVcfGenRunning] = useState(false);
+  const [vcfProgress, setVcfProgress] = useState({ done: 0, attempts: 0 });
+  const [vcfBatch, setVcfBatch] = useState<Array<{ depth: number; solutionText: string; collectionIndex: number; puzzleIndex: number }>>([]);
+  const [vcfBatchIndex, setVcfBatchIndex] = useState(0);
+  const [vcfSolveNote, setVcfSolveNote] = useState("");
+  const vcfExportJsonRef = useRef("");
   const [puzzleProgress, setPuzzleProgress] = useState(loadPuzzleProgress);
   const [puzzleCollectionIndex, setPuzzleCollectionIndex] = useState(0);
   const [puzzleIndex, setPuzzleIndex] = useState(0);
   const [puzzleInitialId, setPuzzleInitialId] = useState("");
   const [puzzleInitialDepth, setPuzzleInitialDepth] = useState(0);
+  const [puzzleRulePreference, setPuzzleRulePreference] = useState<PuzzleRuleMode>(loadPuzzleRulePreference);
+  const [puzzleThinkSpeed, setPuzzleThinkSpeed] = useState<PuzzleThinkSpeed>("slow");
   const [aiThinking, setAiThinking] = useState(false);
   const [puzzleOutcome, setPuzzleOutcome] = useState<"won" | "lost" | "stopped" | null>(null);
+  const [puzzleSetup, setPuzzleSetup] = useState<PuzzleSetupWorkspace | null>(null);
   const [aiGame, setAiGame] = useState<AiGameState | null>(null);
-  const [aiRuleFamily, setAiRuleFamily] = useState<"renju" | "standard">("renju");
-  const [aiForbiddenEnabled, setAiForbiddenEnabled] = useState(true);
+  const [aiRuleFamily, setAiRuleFamily] = useState<AiRuleMode>("freestyle");
   const [aiHumanPlayer, setAiHumanPlayer] = useState<Player>("black");
   const [aiStrength, setAiStrength] = useState<AiStrength>("高级");
   const [aiTimeLimitMs, setAiTimeLimitMs] = useState<AiTimeControl>(0);
   const [aiHumanElapsedMs, setAiHumanElapsedMs] = useState(0);
   const [aiFreeTimeMs, setAiFreeTimeMs] = useState(2500);
   const [aiFreeDepth, setAiFreeDepth] = useState(64);
+  const [aiFreeUnlimited, setAiFreeUnlimited] = useState(false);
   const [aiOpeningRule, setAiOpeningRule] = useState<OpeningRule>("free");
-  const [aiOpeningN, setAiOpeningN] = useState(3);
-  const [dockPanel, setDockPanel] = useState<DockPanel>("moves");
-  const [puzzleQuery, setPuzzleQuery] = useState("");
+  const [aiRuleDetail, setAiRuleDetail] = useState<string | null>(null);
+  const [aiOpeningN] = useState(3);
+  const [dockPanel, setDockPanel] = useState<DockPanel>(null);
   const [workspaceSelectorOpen, setWorkspaceSelectorOpen] = useState(false);
-  const [workspaceListExpanded, setWorkspaceListExpanded] = useState(false);
-  const [expandedCollectionId, setExpandedCollectionId] = useState<string | null>(null);
   const [library, setLibrary] = useState(loadLibrary);
   const [libraryQuery, setLibraryQuery] = useState("");
   const [librarySection, setLibrarySection] = useState<LibrarySection>("records");
+  const [recordFilter, setRecordFilter] = useState<RecordLibraryFilter>("all");
   const [libraryFolders, setLibraryFolders] = useState<LibraryFolders>(loadLibraryFolders);
-  const [branchBookmarks, setBranchBookmarks] = useState<BranchBookmarks>(loadBranchBookmarks);
-  const [expandedLibraryFolder, setExpandedLibraryFolder] = useState<string | null>(() => libraryFolders.recordFolders[0] || null);
+  const [branchBookmarks, setBranchBookmarks] = useState<RecordBookmarks>(loadRecordBookmarks);
+  const [expandedLibraryFolders, setExpandedLibraryFolders] = useState<Set<string>>(() => new Set([libraryFolders.recordFolders[0] || ""]));
   const [managedPuzzleCollectionId, setManagedPuzzleCollectionId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("record");
   const [fontScale, setFontScale] = useState<FontScale>(loadFontScale);
@@ -731,14 +845,16 @@ export default function App() {
   const [enhancementSettings, setEnhancementSettings] = useState<EnhancementSettings>(loadEnhancementSettings);
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => themePreference === "system" ? systemTheme() : themePreference);
   const [boardTheme, setBoardTheme] = useState<BoardTheme>(loadBoardTheme);
+  const [defaultBoardSize, setDefaultBoardSize] = useState(loadDefaultBoardSize);
   const [stoneTheme, setStoneTheme] = useState<StoneTheme>(loadStoneTheme);
+  const [boardOpacity, setBoardOpacity] = useState(loadBoardOpacity);
+  const [stoneOpacity, setStoneOpacity] = useState(loadStoneOpacity);
+  const [annotationHighlight, setAnnotationHighlight] = useState<AnnotationHighlight>(loadAnnotationHighlight);
   const [customBackgroundColor, setCustomBackgroundColor] = useState(loadCustomBackgroundColor);
   const [customBackgroundImage, setCustomBackgroundImage] = useState(loadCustomBackgroundImage);
   const [branchPage, setBranchPage] = useState(1);
   const [branchScrollTop, setBranchScrollTop] = useState(0);
-  const [bookmarksExpanded, setBookmarksExpanded] = useState(true);
-  const [editingBookmarkId, setEditingBookmarkId] = useState<string | null>(null);
-  const [editingBookmarkName, setEditingBookmarkName] = useState("");
+  const [treeClipboard, setTreeClipboard] = useState<SubtreeClipboard | null>(null);
   const branchListRef = useRef<HTMLDivElement>(null);
   const [showNumbers, setShowNumbers] = useState(() => loadDisplaySettings().showNumbers);
   const [showCoordinates, setShowCoordinates] = useState(() => loadDisplaySettings().showCoordinates);
@@ -746,13 +862,18 @@ export default function App() {
   const [largeBoard, setLargeBoard] = useState(false);
   const [rotation, setRotation] = useState<0 | 90 | 180 | 270>(0);
   const [mirrored, setMirrored] = useState(false);
-  const [candidateLabel, setCandidateLabel] = useState<string | null>(null);
+  const [annotationType, setAnnotationType] = useState<AnnotationMarkType>("number");
+  const [annotationValue, setAnnotationValue] = useState("1");
+  const [annotationPopover, setAnnotationPopover] = useState<"style" | "color" | "type" | "value" | null>(null);
   const [annotationStyle, setAnnotationStyle] = useState<BoardMarkStyle>("text");
   const [annotationColor, setAnnotationColor] = useState("#1d1c19");
+  const [reviewMarks, setReviewMarks] = useState<ReviewMarks>(loadReviewMarks);
+  const [reviewBranchNames, setReviewBranchNames] = useState<ReviewBranchNames>(loadReviewBranchNames);
+  const reviewDrafts = useRef(new Map<string, DraftState>());
   const [draft, setDraft] = useState<DraftState>(() => loadDraftFromLocal(document.id));
   const [pendingSwitch, setPendingSwitch] = useState<(() => void) | null>(null);
-  const [customMarkLabel, setCustomMarkLabel] = useState("");
   const [largeSummaries, setLargeSummaries] = useState<LargeDocumentSummary[]>([]);
+  const [largeDraftIds, setLargeDraftIds] = useState<string[]>([]);
   const [recycleBin, setRecycleBin] = useState<RecycleBinEntry[]>(loadRecycleBin);
   const [importProgress, setImportProgress] = useState<ImportProgressState | null>(null);
   const [imageRecognizing, setImageRecognizing] = useState(false);
@@ -761,9 +882,10 @@ export default function App() {
   const [findQuery, setFindQuery] = useState("");
   const [saveDestination, setSaveDestination] = useState<"records" | "puzzles">("records");
   const [saveFolder, setSaveFolder] = useState("未分类");
-  const [defaultDirectory, setDefaultDirectory] = useState<DirectoryHandleLike | null>(null);
+  const [defaultDirectory, setDefaultDirectory] = useState<ExportDirectoryHandle | null>(null);
   const [backupBusy, setBackupBusy] = useState(false);
   const [exportFormatMenuOpen, setExportFormatMenuOpen] = useState(false);
+  const [exportScope, setExportScope] = useState<RecordExportScope>("whole");
   const [libSgfExporting, setLibSgfExporting] = useState(false);
   const [boardShareOptions, setBoardShareOptions] = useState<Pick<BoardShareOptions, "showMoveNumbers" | "showCoordinates" | "showAnnotations" | "showWatermark">>({
     showMoveNumbers: showNumbers,
@@ -775,10 +897,13 @@ export default function App() {
   const [dynamicNavigationBusy, setDynamicNavigationBusy] = useState(false);
   const [continuationEditMode, setContinuationEditMode] = useState(false);
   const [folderCreationSection, setFolderCreationSection] = useState<LibrarySection>("records");
+  const [folderCreationParent, setFolderCreationParent] = useState("");
+  const [folderSheetMode, setFolderSheetMode] = useState<"create" | "batch-move">("create");
   const [newFolderName, setNewFolderName] = useState("");
   const [renameTarget, setRenameTarget] = useState<LibraryRenameTarget | null>(null);
   const [renameName, setRenameName] = useState("");
-  const [commentExpanded, setCommentExpanded] = useState(false);
+  const [commentExpanded, setCommentExpanded] = useState(true);
+  const [commentPreviewExpanded, setCommentPreviewExpanded] = useState(false);
   const [toast, setToast] = useState("");
   const [recentImports, setRecentImports] = useState<RecentImportEntry[]>([]);
   const [coachMark, setCoachMark] = useState<CoachMarkId | null>(null);
@@ -800,8 +925,11 @@ export default function App() {
   const backgroundFileInput = useRef<HTMLInputElement>(null);
   const importProgressId = useRef(0);
   const importProgressTimer = useRef<number | null>(null);
+  const taskManager = useRef(new TaskManager());
+  const aiWorkerController = useRef(new AiWorkerController());
   const nativeSourceFile = useRef<File | null>(null);
   const vcfWorker = useRef<Worker | null>(null);
+  const vcfGenWorker = useRef<Worker | null>(null);
   const puzzleAiWorker = useRef<Worker | null>(null);
   const thinkWorker = useRef<Worker | null>(null);
   const rapfiThinkWorker = useRef<Worker | null>(null);
@@ -815,6 +943,11 @@ export default function App() {
   const largeSaveVersions = useRef(new Map<string, number>());
   const pagedSession = useRef<LibraryViewSession | null>(null);
   const dynamicViewSession = useRef<DpViewSession | RenLibWebViewSession | null>(null);
+  // When editing starts from a dynamic DP/LIB projection, keep the read-only
+  // query session alive. The projection only contains the currently loaded
+  // path; without this handle, returning to an unloaded original branch would
+  // turn its next move into a brand-new local move.
+  const detachedDynamicSource = useRef<DpViewSession | RenLibWebViewSession | null>(null);
   const pagedNavigationVersion = useRef(0);
   const dynamicNavigationVersion = useRef(0);
   const dynamicNavigationPending = useRef(false);
@@ -825,6 +958,24 @@ export default function App() {
   const recordSession = useRef<{ document: GameDocument; currentId: string }>({ document, currentId });
   const draftHasMetadataRestoredRef = useRef(false);
   const lastPersistedMetaRef = useRef("");
+  function cancelActiveAiComputation(reason: AiCancelReason, announce = false) {
+    const activeKind = aiWorkerController.current.current?.kind;
+    const controlledWorker = aiWorkerController.current.current?.worker;
+    aiWorkerController.current.cancel(reason);
+    aiOpeningGeneration.current += 1;
+    if (aiOpeningTimer.current !== null) { window.clearTimeout(aiOpeningTimer.current); aiOpeningTimer.current = null; }
+    for (const ref of [puzzleAiWorker, rapfiGameWorker, thinkWorker, rapfiThinkWorker]) {
+      if (ref.current && ref.current !== controlledWorker) ref.current.terminate();
+      ref.current = null;
+    }
+    if (activeKind === "analysis") {
+      thinkGeneration.current += 1;
+      setThinkRunning(false); setThinkResult(null); setThinkContextKey(""); setThinkVisualState("cancelled");
+    }
+    if (activeKind === "game" || activeKind === "puzzle" || aiThinking) setAiThinking(false);
+    if (taskManager.current.state?.kind === "ai") taskManager.current.cancel(reason === "user" ? "用户已停止" : "局面或页面已变化，任务已取消");
+    if (announce) setToast(reason === "user" ? "已停止 AI 思考，后台计算线程已终止" : "已取消旧局面的 AI 思考");
+  }
   const requestPagedIndex = (resolveIndex: (session: LibraryViewSession) => Promise<number | null>) => {
     const session = pagedSession.current;
     if (!session) return;
@@ -837,6 +988,8 @@ export default function App() {
     });
   };
   const currentPuzzle = puzzleCollections[puzzleCollectionIndex]?.puzzles[puzzleIndex];
+  const currentPuzzleCollection = puzzleCollections[puzzleCollectionIndex];
+  const currentPuzzleRule = resolvePuzzleRule(currentPuzzle, currentPuzzleCollection, puzzleRulePreference);
   const t = (key: string, params?: { count?: number }) => key === "batchEdit" ? "批量编辑" : key === "batchExit" ? "退出批量编辑" : key === "batchSelected" ? "已选择 " + (params?.count || 0) + " 项" : key === "batchSelectAll" ? "全选当前结果" : key === "batchClear" ? "清空选择" : key === "batchNoSelection" ? "请先选择至少一份普通棋谱" : key === "batchExport" ? "批量导出" : key === "batchReplace" ? "批量替换注释" : key === "batchReplaceConfirm" ? "执行替换" : key;
   useEffect(() => () => {
     if (importProgressTimer.current !== null) window.clearTimeout(importProgressTimer.current);
@@ -853,7 +1006,7 @@ export default function App() {
       const nextTheme: ResolvedTheme = themePreference === "system" ? (media?.matches ? "dark" : "light") : themePreference;
       setResolvedTheme(nextTheme);
       globalThis.document?.documentElement.setAttribute("data-theme", nextTheme);
-      if (globalThis.document) globalThis.document.documentElement.style.colorScheme = nextTheme;
+      if (globalThis.document) globalThis.document.documentElement.style.colorScheme = ["dark", "rain", "jiangnan", "firefly", "pixel", "cyber"].includes(nextTheme) ? "dark" : "light";
     };
     applyTheme();
     try { localStorage.setItem(THEME_PREFERENCE_KEY, themePreference); } catch { /* ignore unavailable storage */ }
@@ -875,7 +1028,10 @@ export default function App() {
     saveMotionEnabled(motionEnabled);
   }, [motionEnabled]);
   useEffect(() => { saveEnhancementSettings(enhancementSettings); }, [enhancementSettings]);
+  useEffect(() => { saveReviewMarks(reviewMarks); }, [reviewMarks]);
+  useEffect(() => { saveReviewBranchNames(reviewBranchNames); }, [reviewBranchNames]);
   useEffect(() => { saveFontScale(fontScale); }, [fontScale]);
+  useEffect(() => { try { localStorage.setItem(DEFAULT_BOARD_SIZE_KEY, String(defaultBoardSize)); } catch { /* optional storage */ } }, [defaultBoardSize]);
   useEffect(() => {
     try {
       localStorage.setItem(BOARD_THEME_KEY, boardTheme);
@@ -887,12 +1043,57 @@ export default function App() {
   }, [boardTheme, stoneTheme, customBackgroundColor, customBackgroundImage]);
   const draftOverlay = useMemo(() => buildDraftOverlay(draft, document), [draft, document]);
   const viewDocument = useMemo(() => {
-    if (!hasDraft(draft)) return document;
+    // Review mode always renders the persisted source document. A pending
+    // record draft may remain in memory so returning to edit mode does not
+    // discard it, but it must never leak into read-only browsing.
+    if (mode === "review" || !hasDraft(draft)) return document;
     const projected = projectedDocument(document, draftOverlay);
     if (draft.metadata) projected.metadata = { ...document.metadata, ...draft.metadata };
     return projected;
-  }, [document, draft, draftOverlay]);
+  }, [document, draft, draftOverlay, mode]);
+  const reviewMarkKey = `${document.id}:${currentId}`;
+  const reviewDocument = useMemo(() => {
+    if (mode !== "review") return viewDocument;
+    const marks = reviewMarks[reviewMarkKey];
+    const node = viewDocument.nodes[currentId];
+    if (!marks?.length || !node) return viewDocument;
+    return { ...viewDocument, nodes: { ...viewDocument.nodes, [currentId]: { ...node, marks: [...node.marks, ...marks] } } };
+  }, [currentId, mode, reviewMarkKey, reviewMarks, viewDocument]);
   const current = viewDocument.nodes[currentId] || viewDocument.nodes[viewDocument.rootId] || { id: viewDocument.rootId, parentId: null, children: [], move: null, comment: "", marks: [] };
+  useEffect(() => {
+    const pending = restorePendingRef.current;
+    if (!restoreLastPosition || !pending || pending.mode !== "record" || pending.documentId !== document.id) return;
+    const restoredId = viewDocument.nodes[pending.nodeId] ? pending.nodeId : document.rootId;
+    restorePendingRef.current = null;
+    setCurrentId(restoredId);
+    recordSession.current = { document, currentId: restoredId };
+  }, [document, restoreLastPosition, viewDocument]);
+  useEffect(() => {
+    saveRestoreLastPosition(restoreLastPosition);
+  }, [restoreLastPosition]);
+  useEffect(() => {
+    const pending = restorePendingRef.current;
+    if (!restoreLastPosition || (pending && pending.mode === "record")) return;
+    if (mode === "record" && !compactIndexOf(document) && hasDraft(draft)) {
+      try { saveDraftToLocal(document.id, draft); } catch { /* normal autosave will retry */ }
+    }
+    const state: Omit<LastSessionState, "updatedAt"> = {
+      documentId: document.id,
+      nodeId: currentId,
+      mode,
+      ...(mode === "record" ? (() => {
+        try {
+          const largeId = localStorage.getItem(ACTIVE_LARGE_RECORD_KEY);
+          return largeId ? { largeId } : {};
+        } catch { return {}; }
+      })() : {}),
+      ...(mode === "puzzle" && puzzleCollections[puzzleCollectionIndex]?.id && currentPuzzle ? {
+        puzzleCollectionId: puzzleCollections[puzzleCollectionIndex].id,
+        puzzleId: currentPuzzle.id,
+      } : {}),
+    };
+    saveLastSession(state);
+  }, [currentId, currentPuzzle, document, draft, mode, puzzleCollectionIndex, puzzleCollections, restoreLastPosition]);
   const commentPreviewClass = hasNativeAnnotation(current) ? "comment-preview" : "comment-preview empty";
   const activeBookmarks = branchBookmarks[document.id] || [];
   const path = useMemo(() => pathToNode(viewDocument, currentId), [viewDocument, currentId]);
@@ -901,7 +1102,9 @@ export default function App() {
   // board, but must not make unrelated searches re-run just because document is also in scope.
   const nextPlayer = nextPlayerAt(viewDocument, currentId);
   const activePlacementPlayer = placementLocked ? placementPlayer : nextPlayer;
-  const canRenderForbiddenAssistance = mode === "record" && viewDocument.metadata.rule === "renju" && !aiThinking && !aiGame?.outcome && (aiGame ? aiGame.forbiddenEnabled && nextPlayer === "black" : activePlacementPlayer === "black" && !compactIndexOf(document) && !isDynamicDatabaseView(document) && !isPagedLibraryView(document));
+  const canRenderForbiddenAssistance = mode === "puzzle"
+    ? !puzzleSetup && currentPuzzleRule.mode === "forbidden" && currentPuzzle?.player === "black" && !aiThinking && !puzzleOutcome
+    : viewDocument.metadata.rule === "renju" && !aiThinking && !aiGame?.outcome && (aiGame ? aiGame.forbiddenEnabled && nextPlayer === "black" : activePlacementPlayer === "black" && !compactIndexOf(document) && !isDynamicDatabaseView(document) && !isPagedLibraryView(document));
   const boardForbiddenMarkers = useMemo(() => showForbidden && canRenderForbiddenAssistance ? forbiddenPoints(board) : [], [showForbidden, canRenderForbiddenAssistance, board]);
   const boardWinningLines = useMemo(() => current.move ? winningLinesAt(board, current.move, viewDocument.metadata.rule) : [], [board, current.move, viewDocument.metadata.rule]);
   const aiOpeningStage = aiGame?.opening.stage;
@@ -914,7 +1117,7 @@ export default function App() {
     ? aiLivePosition && nextPlayer === aiGame.humanPlayer
     : aiLivePosition && humanCanUseOpeningBoard;
   const aiClockActive = Boolean(aiGame && !aiGame.outcome && !aiThinking && aiHumanTurn && !aiClockExpired.current);
-  const currentPositionKey = useMemo(() => positionKey(board, nextPlayer, false), [board, nextPlayer]);
+  const currentPositionKey = useMemo(() => `${document.id}/${currentId}/${positionKey(board, nextPlayer, false)}`, [document.id, currentId, board, nextPlayer]);
   const triggerBoardMotion = (kind: Exclude<BoardMotionKind, null>) => {
     if (!motionEnabled) return;
     setBoardMotion((state) => ({ kind, version: state.version + 1 }));
@@ -964,6 +1167,7 @@ export default function App() {
     setToast("你的对局时长已用尽，本局结束");
   }, [aiGame, aiHumanElapsedMs]);
   const boardResult = useMemo<BoardResultState | null>(() => {
+    if (puzzleSetup) return null;
     if (aiGame?.outcome === "won") return { kind: "won", label: "你已获胜" };
     if (aiGame?.outcome === "lost") return { kind: "lost", label: "本局结束" };
     if (aiGame?.outcome === "draw") return { kind: "draw", label: "本局和棋" };
@@ -971,24 +1175,38 @@ export default function App() {
     if (puzzleOutcome === "lost") return { kind: "lost", label: "本题结束" };
     if (boardWinningLines.length) return { kind: "complete", label: "五连完成" };
     return null;
-  }, [aiGame?.outcome, puzzleOutcome, boardWinningLines.length]);
+  }, [aiGame?.outcome, puzzleOutcome, boardWinningLines.length, puzzleSetup]);
   // Candidate analysis is an explicit study action, not a navigation primitive.
   // Do not evaluate all 225 empty points while stepping through a large tree.
   const candidates = useMemo(() => sheet === "analysis" && (viewDocument.metadata.boardSize || 15) === 15 ? analyzeCandidates(board, nextPlayer, 8) : [], [sheet, board, nextPlayer, viewDocument.metadata.boardSize]);
   const searchableDocuments = useMemo(() => [document, ...library.filter((item) => item.id !== document.id)], [document, library]);
+  // A loaded large document is represented by its summary in the selector.
+  // Remove the partial in-memory copy from the regular list so the current
+  // item is shown once with its database metadata and accurate count.
+  const selectorRecords = useMemo(() => {
+    const largeIds = new Set(largeSummaries.map((item) => item.id));
+    return searchableDocuments.filter((item) => !largeIds.has(item.id));
+  }, [largeSummaries, searchableDocuments]);
   const positionMatches = useMemo(() => sheet === "positionSearch" ? findPositionMatches(searchableDocuments, board, nextPlayer, matchSymmetry) : [], [sheet, searchableDocuments, board, nextPlayer, matchSymmetry]);
+  const draftPresent = hasDraft(draft);
+  const regularDraftIds = useMemo(() => {
+    const ids = new Set(library.filter((item) => hasDraft(loadDraftFromLocal(item.id))).map((item) => item.id));
+    if (draftPresent && library.some((item) => item.id === document.id)) ids.add(document.id);
+    return ids;
+  }, [document.id, draftPresent, library]);
+  const largeDraftIdSet = useMemo(() => new Set(largeDraftIds), [largeDraftIds]);
   const filteredLibrary = useMemo(() => {
     const query = libraryQuery.trim().toLowerCase();
-    if (!query) return library;
-    return library.filter((item) => [item.metadata.title, item.metadata.black, item.metadata.white, item.metadata.event]
-      .some((value) => value.toLowerCase().includes(query)));
-  }, [library, libraryQuery]);
+    return library.filter((item) => recordMatchesFilter(item, recordFilter, regularDraftIds)
+      && (!query || [item.metadata.title, item.metadata.black, item.metadata.white, item.metadata.event]
+        .some((value) => value.toLowerCase().includes(query))));
+  }, [library, libraryQuery, recordFilter, regularDraftIds]);
   const filteredLargeSummaries = useMemo(() => {
     const query = libraryQuery.trim().toLowerCase();
-    if (!query) return largeSummaries;
-    return largeSummaries.filter((item) => [item.metadata.title, item.metadata.black, item.metadata.white, item.metadata.event]
-      .some((value) => value.toLowerCase().includes(query)));
-  }, [largeSummaries, libraryQuery]);
+    return largeSummaries.filter((item) => largeRecordMatchesFilter(item, recordFilter, largeDraftIdSet)
+      && (!query || [item.metadata.title, item.metadata.black, item.metadata.white, item.metadata.event]
+        .some((value) => value.toLowerCase().includes(query))));
+  }, [largeDraftIdSet, largeSummaries, libraryQuery, recordFilter]);
   const filteredPuzzleCollections = useMemo(() => {
     const query = libraryQuery.trim().toLowerCase();
     return puzzleCollections.flatMap((collection, collectionIndex) => {
@@ -1034,6 +1252,7 @@ export default function App() {
     if (batchSelectedDocuments.length > items.length) setToast(`已导出前 ${items.length} 份，避免一次性占用过多内存`);
   };
   const wrongPuzzleEntries = useMemo<PuzzleReviewEntry[]>(() => deriveWrongPuzzleEntries(puzzleCollections, puzzleProgress), [puzzleCollections, puzzleProgress]);
+  const recentPuzzles = useMemo(() => recentPuzzleItems(puzzleCollections, puzzleProgress), [puzzleCollections, puzzleProgress]);
   const findResults = useMemo(() => {
     const query = findQuery.trim().toLowerCase();
     if (!query) return [];
@@ -1053,9 +1272,6 @@ export default function App() {
   }, [document, findQuery]);
 
   useEffect(() => {
-    setCandidateLabel(null);
-  }, [document.id, currentId]);
-  useEffect(() => {
     (window as Window & { __banbuFindBranch?: () => { id?: string; hasCompact: boolean; branchCount: number | null; nodeCount: number | null; firstBranchId: string | null; firstBranchChildCount: number | null; rootFirstChild: string | null; rootChildCount: number | null } }).__banbuFindBranch = () => {
       const id = compactFirstBranchNodeId(document);
       if (id) setCurrentId(id);
@@ -1065,6 +1281,9 @@ export default function App() {
   }, [document]);
   useEffect(() => {
     if (mode === "puzzle") return;
+    // Review is a read-only projection. Do not rewrite the library or active
+    // snapshot merely because the cursor moved through an existing record.
+    if (mode === "review") { setSaved(true); return; }
     // The paged document is only the UI window around the cursor. Its full
     // immutable baseline already lives in IndexedDB, so this partial view must
     // never overwrite the stored tree.
@@ -1119,7 +1338,7 @@ export default function App() {
     void loadLargeSummaries().then(async (summaries) => {
       if (!active) return;
       setLargeSummaries(summaries.sort((a, b) => (Date.parse(b.updatedAt || "") || 0) - (Date.parse(a.updatedAt || "") || 0)));
-      const activeLargeId = localStorage.getItem(ACTIVE_LARGE_RECORD_KEY);
+      const activeLargeId = restoreLastPosition ? (initialSession?.largeId || localStorage.getItem(ACTIVE_LARGE_RECORD_KEY)) : null;
       if (activeLargeId && summaries.some((item) => item.id === activeLargeId)) {
         const activeSummary = summaries.find((item) => item.id === activeLargeId)!;
         if (activeSummary.storageMode === "compact-index" && activeSummary.nodeCount > 1_000_000) {
@@ -1170,9 +1389,20 @@ export default function App() {
     return () => { active = false; };
   }, []);
   useEffect(() => {
+    let active = true;
+    void Promise.all(largeSummaries.map(async (item) => ({ id: item.id, hasDraft: await documentHasDraft(item.id) })))
+      .then((items) => {
+        if (!active) return;
+        const ids = items.filter((item) => item.hasDraft).map((item) => item.id);
+        if (draftPresent && largeSummaries.some((item) => item.id === document.id) && !ids.includes(document.id)) ids.push(document.id);
+        setLargeDraftIds(ids);
+      })
+      .catch(() => { if (active) setLargeDraftIds(draftPresent && largeSummaries.some((item) => item.id === document.id) ? [document.id] : []); });
+    return () => { active = false; };
+  }, [document.id, draftPresent, largeSummaries]);
+  useEffect(() => {
     if (!toast) return;
-    const persistent = /失败|错误|异常|无法|不能|不足|拒绝|警告|注意|禁手|非法/.test(toast);
-    const timer = window.setTimeout(() => setToast(""), persistent ? 5200 : 2600);
+    const timer = window.setTimeout(() => setToast(""), 3200);
     return () => window.clearTimeout(timer);
   }, [toast]);
   useEffect(() => {
@@ -1194,9 +1424,23 @@ export default function App() {
     setCoachMark(null);
   };
   useEffect(() => { savePuzzleProgress(puzzleProgress); }, [puzzleProgress]);
+  useEffect(() => { savePuzzleRulePreference(puzzleRulePreference); }, [puzzleRulePreference]);
+  useEffect(() => {
+    if (!sheet) return;
+    setWorkspaceSelectorOpen(false);
+  }, [sheet]);
+  useEffect(() => {
+    const stage = aiGame?.opening.stage;
+    if (mode === "record" && stage?.kind === "choose-fifth-count" && stage.actor === "human" && sheet === null) {
+      setSheet("fifthCount");
+    }
+  }, [aiGame?.opening.stage, mode, sheet]);
   useEffect(() => { localStorage.setItem(LIBRARY_FOLDERS_KEY, JSON.stringify(libraryFolders)); }, [libraryFolders]);
-  useEffect(() => { localStorage.setItem(BRANCH_BOOKMARKS_KEY, JSON.stringify(branchBookmarks)); }, [branchBookmarks]);
+  useEffect(() => { saveRecordBookmarks(branchBookmarks); }, [branchBookmarks]);
   useEffect(() => { localStorage.setItem(DISPLAY_SETTINGS_KEY, JSON.stringify({ showNumbers, showCoordinates, showForbidden })); }, [showNumbers, showCoordinates, showForbidden]);
+  useEffect(() => { saveStoneOpacity(stoneOpacity); }, [stoneOpacity]);
+  useEffect(() => { saveBoardOpacity(boardOpacity); }, [boardOpacity]);
+  useEffect(() => { saveAnnotationHighlight(annotationHighlight); }, [annotationHighlight]);
   useEffect(() => {
     try { localStorage.setItem(THINK_SHEET_ON_START_KEY, String(thinkSheetOnStart)); } catch { /* ignore unavailable storage */ }
   }, [thinkSheetOnStart]);
@@ -1223,32 +1467,74 @@ export default function App() {
     return () => { active = false; };
   }, []);
   useEffect(() => {
+    let active = true;
+    void loadNativeMatchRecords().then((nativeRecords) => {
+      if (!active) return;
+      const existing = loadLibrary();
+      const existingIds = new Set(existing.map((item) => item.id));
+      const missing = nativeRecords.filter((item) => !existingIds.has(item.id));
+      const saved = missing.length ? saveManyToLibrary(missing) : { library: existing };
+      if (!active) return;
+      setLibrary(saved.library);
+      setLibraryFolders((folders) => {
+        const recordFolders = [...new Set([...folders.recordFolders, NATIVE_RECORD_FOLDER, NATIVE_MATCH_FOLDER])];
+        const recordAssignments = { ...folders.recordAssignments };
+        nativeRecords.forEach((item) => {
+          if (!recordAssignments[item.id]) recordAssignments[item.id] = NATIVE_MATCH_FOLDER;
+        });
+        return { ...folders, recordFolders, recordAssignments };
+      });
+      setExpandedLibraryFolders((folders) => new Set([...folders, NATIVE_RECORD_FOLDER, NATIVE_MATCH_FOLDER]));
+    }).catch(() => {
+      if (active) setToast("内置人机大战棋谱加载失败，可稍后重新打开应用");
+    });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
     vcfWorker.current?.terminate(); vcfWorker.current = null; setVcfRunning(false); setVcfResult(null);
   }, [currentPositionKey]);
   useEffect(() => {
-    thinkWorker.current?.terminate(); thinkWorker.current = null; thinkGeneration.current += 1;
-    rapfiThinkWorker.current?.terminate(); rapfiThinkWorker.current = null;
-    setThinkRunning(false); setThinkResult(null);
-    setThinkContextKey("");
-    setThinkVisualState((state) => state === "thinking" || state === "complete" || state === "unavailable" ? "cancelled" : state);
+    const active = aiWorkerController.current.current;
+    if (active && active.contextKey !== currentPositionKey) cancelActiveAiComputation("position-change");
+    else if (!active) {
+      thinkWorker.current?.terminate(); thinkWorker.current = null; thinkGeneration.current += 1;
+      rapfiThinkWorker.current?.terminate(); rapfiThinkWorker.current = null;
+      setThinkRunning(false); setThinkResult(null); setThinkContextKey("");
+      setThinkVisualState((state) => state === "thinking" || state === "complete" || state === "unavailable" ? "cancelled" : state);
+    }
   }, [currentPositionKey]);
-  useEffect(() => () => { vcfWorker.current?.terminate(); puzzleAiWorker.current?.terminate(); thinkWorker.current?.terminate(); rapfiThinkWorker.current?.terminate(); rapfiGameWorker.current?.terminate(); pagedSession.current?.close(); dynamicViewSession.current?.close(); void banbuAudio.close(); }, []);
+  useEffect(() => {
+    const suspend = () => { if (globalThis.document?.visibilityState === "hidden") cancelActiveAiComputation("background"); };
+    const pageHide = () => cancelActiveAiComputation("background");
+    globalThis.document?.addEventListener("visibilitychange", suspend);
+    window.addEventListener("pagehide", pageHide);
+    return () => {
+      globalThis.document?.removeEventListener("visibilitychange", suspend);
+      window.removeEventListener("pagehide", pageHide);
+      cancelActiveAiComputation("unmount");
+      vcfWorker.current?.terminate(); vcfGenWorker.current?.terminate(); vcfGenWorker.current = null; pagedSession.current?.close(); dynamicViewSession.current?.close(); void banbuAudio.close();
+    };
+  }, []);
+  useEffect(() => { if (tab !== "record") cancelActiveAiComputation("mode-switch"); }, [tab]);
   const playSound = (cue: SoundCue) => { void banbuAudio.play(cue); };
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if (event.key === "ArrowLeft" && current.parentId) {
         clearBoardMotion();
         const dynamicSession = dynamicViewSession.current;
-        if (dynamicSession && isDynamicDatabaseView(document)) { navigateDynamic(dynamicSession, () => dynamicSession.back()); return; }
+        if (dynamicSession && isDynamicDatabaseView(document) && !draftOverlay.added.has(currentId)) { navigateDynamic(dynamicSession, () => dynamicSession.back()); return; }
         if (pagedSession.current) requestPagedIndex((session) => session.parentIndex(currentId));
         else setCurrentId(current.parentId);
       }
       if (event.key === "ArrowRight") {
         clearBoardMotion();
         const dynamicSession = dynamicViewSession.current;
-        if (dynamicSession && isDynamicDatabaseView(document)) {
+        if (dynamicSession && isDynamicDatabaseView(document) && !draftOverlay.added.has(currentId)) {
           const next = current.preferredChildId ? viewDocument.nodes[current.preferredChildId] : current.children.length ? viewDocument.nodes[current.children[0]] : undefined;
-          if (next?.move) { const move = next.move; navigateDynamic(dynamicSession, () => dynamicSession.move(move)); }
+          if (next?.move) {
+            if (draftOverlay.added.has(next.id)) setCurrentId(next.id);
+            else { const move = next.move; navigateDynamic(dynamicSession, () => dynamicSession.move(move)); }
+          }
           return;
         }
         if (pagedSession.current) { requestPagedIndex((session) => session.preferredIndex(currentId)); }
@@ -1256,56 +1542,81 @@ export default function App() {
       }
     };
     window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key);
-  }, [document, currentId, current.parentId, viewDocument]);
+  }, [document, currentId, current.parentId, draftOverlay, viewDocument]);
 
-  const requestStrongAiMove = (afterDocument: GameDocument, afterId: string, aiPlayer: Player, onMove: (move: Position) => void, onNoMove: () => void, strength: AiStrength = aiStrength) => {
+  const requestStrongAiMove = (afterDocument: GameDocument, afterId: string, aiPlayer: Player, onMove: (move: Position) => void, onNoMove: () => void, options: { strength?: AiStrength; timeMs?: number; maxDepth?: number; unlimited?: boolean; kind?: "game" | "puzzle" } = {}) => {
+    cancelActiveAiComputation("superseded");
+    vcfWorker.current?.terminate(); vcfWorker.current = null; setVcfRunning(false); setVcfResult(null);
+    setAiThinking(true);
     const board = boardAt(afterDocument, afterId);
     const moves = pathToNode(afterDocument, afterId).flatMap((node) => node.move ? [{ row: node.move.row, col: node.move.col, player: node.move.player }] : []);
-    const searchConfig = strength === "自由" ? { timeMs: aiFreeTimeMs, maxDepth: aiFreeDepth } : AI_STRENGTH_PROFILES[strength];
+    const strength = options.strength || aiStrength;
+    const profile = strength === "自由" ? { timeMs: aiFreeTimeMs, maxDepth: aiFreeDepth } : AI_STRENGTH_PROFILES[strength];
+    const searchConfig = { timeMs: options.timeMs ?? profile.timeMs, maxDepth: options.maxDepth ?? profile.maxDepth, unlimited: options.unlimited === true };
+    const kind = options.kind || "game";
+    const worker = new Worker(String(import.meta.env.BASE_URL) + "rapfi/rapfi-worker.js");
+    rapfiGameWorker.current = worker;
+    const handle = aiWorkerController.current.start(worker, kind, `${afterDocument.id}/${afterId}/${positionKey(board, aiPlayer, false)}`);
+    taskManager.current.start({ kind: "ai", title: kind === "puzzle" ? "陪练思考" : "人机思考", taskId: handle.requestId, cancellable: true, retryable: true });
+    taskManager.current.update({ stage: searchConfig.unlimited ? "searching-unlimited" : "searching", message: searchConfig.unlimited ? "不限时思考中，可随时停止" : "正在寻找下一步" });
+    const complete = (result: AiMoveResult) => {
+      if (!aiWorkerController.current.isCurrent(handle)) return;
+      aiWorkerController.current.finish(handle);
+      rapfiGameWorker.current = null; puzzleAiWorker.current = null;
+      if (taskManager.current.state?.taskId === handle.requestId) taskManager.current.success(result);
+      if (result.move) onMove(result.move); else onNoMove();
+    };
     const useLocalFallback = () => {
+      if (!aiWorkerController.current.isCurrent(handle)) return;
       const fallback = new PuzzleAiWorker();
+      if (!aiWorkerController.current.replaceWorker(handle, fallback)) return;
+      rapfiGameWorker.current = null;
       puzzleAiWorker.current = fallback;
-      fallback.onmessage = (event: MessageEvent<AiMoveResult>) => {
-        if (puzzleAiWorker.current !== fallback) return;
-        puzzleAiWorker.current = null; fallback.terminate();
-        if (event.data.move) onMove(event.data.move); else onNoMove();
+      fallback.onmessage = (event: MessageEvent<AiMoveResult & { requestId?: string; generation?: number; result?: AiMoveResult }>) => {
+        const requestId = event.data.requestId || handle.requestId;
+        const result = event.data.result || event.data;
+        if (puzzleAiWorker.current !== fallback || !aiWorkerController.current.isCurrent(handle, requestId, event.data.generation ?? handle.generation)) return;
+        complete(result);
       };
       fallback.onerror = () => {
-        if (puzzleAiWorker.current !== fallback) return;
-        puzzleAiWorker.current = null; fallback.terminate(); onNoMove();
+        if (puzzleAiWorker.current !== fallback || !aiWorkerController.current.isCurrent(handle)) return;
+        aiWorkerController.current.finish(handle); puzzleAiWorker.current = null;
+        if (taskManager.current.state?.taskId === handle.requestId) taskManager.current.fail(new Error("本地 AI 线程异常"));
+        onNoMove();
       };
-      fallback.postMessage({ board, player: aiPlayer, rule: afterDocument.metadata.rule, purpose: "game" });
+      fallback.postMessage({ requestId: handle.requestId, generation: handle.generation, board, player: aiPlayer, rule: afterDocument.metadata.rule, purpose: kind === "puzzle" ? "puzzle" : "game", timeMs: searchConfig.timeMs, maxDepth: searchConfig.maxDepth, unlimited: searchConfig.unlimited });
     };
-    puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null;
-    const existing = rapfiGameWorker.current;
-    const worker = existing || new Worker(String(import.meta.env.BASE_URL) + "rapfi/rapfi-worker.js");
-    rapfiGameWorker.current = worker;
     const useFallbackAfterRapfiError = () => {
-      if (rapfiGameWorker.current !== worker) return;
-      worker.terminate(); rapfiGameWorker.current = null; useLocalFallback();
+      if (rapfiGameWorker.current !== worker || !aiWorkerController.current.isCurrent(handle)) return;
+      useLocalFallback();
     };
-    worker.onmessage = (event: MessageEvent<{ type: string; result?: AiMoveResult }>) => {
-      if (rapfiGameWorker.current !== worker) return;
+    worker.onmessage = (event: MessageEvent<{ type: string; requestId?: string; generation?: number; result?: AiMoveResult }>) => {
+      if (rapfiGameWorker.current !== worker || !aiWorkerController.current.isCurrent(handle, event.data.requestId || handle.requestId, event.data.generation ?? handle.generation)) return;
       if (event.data.type === "result" && event.data.result) {
-        if (event.data.result.move) onMove(event.data.result.move); else onNoMove();
+        complete(event.data.result);
       } else if (event.data.type === "error") useFallbackAfterRapfiError();
     };
     worker.onerror = useFallbackAfterRapfiError;
-    worker.postMessage({ type: "analyze", engine: "fallback", size: afterDocument.metadata.boardSize || 15, moves, player: aiPlayer, rule: afterDocument.metadata.rule, timeMs: searchConfig.timeMs, maxDepth: searchConfig.maxDepth });
+    worker.postMessage({ type: "analyze", requestId: handle.requestId, generation: handle.generation, engine: "fallback", size: afterDocument.metadata.boardSize || 15, moves, player: aiPlayer, rule: afterDocument.metadata.rule, timeMs: searchConfig.unlimited ? 0 : searchConfig.timeMs, maxDepth: searchConfig.unlimited ? 512 : searchConfig.maxDepth, unlimited: searchConfig.unlimited });
   };
 
   const startAiReply = (afterDocument: GameDocument, afterId: string, puzzle: Puzzle) => {
     setAiThinking(true);
     requestStrongAiMove(afterDocument, afterId, otherPlayer(puzzle.player), (move) => {
       setAiThinking(false);
-      const reply = addMoveAs(afterDocument, afterId, move, otherPlayer(puzzle.player));
-      setDocument(reply.document); setCurrentId(reply.nodeId); triggerBoardMotion("place"); playSound(otherPlayer(puzzle.player) === "black" ? "move-black" : "move-white");
+      const replyPlayer = otherPlayer(puzzle.player);
+      const beforeBoard = boardAt(afterDocument, afterId);
+      const ruleMode: PuzzleRuleMode = afterDocument.metadata.rule === "renju" ? "forbidden" : "unrestricted";
+      const actualMove = puzzleMoveLegality(beforeBoard, move, replyPlayer, ruleMode).legal ? move : fallbackLegalPuzzleMove(beforeBoard, replyPlayer, ruleMode);
+      if (!actualMove) { setPuzzleOutcome("won"); recordPuzzleAttempt(true); setToast("陪练在当前规则下没有合法落子，本题完成"); return; }
+      const reply = addMoveAs(afterDocument, afterId, actualMove, replyPlayer);
+      setDocument(reply.document); setCurrentId(reply.nodeId); triggerBoardMotion("place"); playSound(replyPlayer === "black" ? "move-black" : "move-white");
       const replyBoard = boardAt(reply.document, reply.nodeId);
-      if (winnerAt(replyBoard, move, reply.document.metadata.rule)) { setPuzzleOutcome("lost"); recordPuzzleAttempt(false); }
-    }, () => { setAiThinking(false); setToast("陪练没有找到可落子点"); });
+      if (winnerAt(replyBoard, actualMove, reply.document.metadata.rule)) { setPuzzleOutcome("lost"); recordPuzzleAttempt(false); }
+    }, () => { setAiThinking(false); setToast("陪练没有找到可落子点"); }, { kind: "puzzle", timeMs: puzzleThinkSpeed === "fast" ? PUZZLE_FAST_THINK_TIME_MS : undefined });
   };
 
-  const startAiGameReply = (afterDocument: GameDocument, afterId: string, aiPlayer: Player) => {
+  const startAiGameReply = (afterDocument: GameDocument, afterId: string, aiPlayer: Player, game: AiGameState | null = aiGame) => {
     setAiThinking(true);
     requestStrongAiMove(afterDocument, afterId, aiPlayer, (move) => {
       setAiThinking(false);
@@ -1325,7 +1636,7 @@ export default function App() {
         setAiGame((game) => game ? { ...game, outcome: "draw" } : game);
         setToast("棋盘已满，本局和棋");
       }
-    }, () => { setAiThinking(false); setAiGame((game) => game ? { ...game, outcome: "draw" } : game); setToast("AI 没有找到合法落子，本局和棋"); }, aiGame?.strength || aiStrength);
+    }, () => { setAiThinking(false); setAiGame((currentGame) => currentGame ? { ...currentGame, outcome: "draw" } : currentGame); setToast("AI 没有找到合法落子，本局和棋"); }, { strength: game?.strength || aiStrength, timeMs: game?.thinkTimeMs, maxDepth: game?.thinkDepth, unlimited: game?.unlimitedThinking, kind: "game" });
   };
 
   const gameWithOpening = (game: AiGameState, opening: OpeningSession): AiGameState => ({ ...game, opening, humanPlayer: opening.humanPlayer, aiPlayer: otherPlayer(opening.humanPlayer) });
@@ -1338,10 +1649,10 @@ export default function App() {
     if (game.outcome) return;
     const stage = game.opening.stage;
     if (stage.kind === "normal") {
-      if (nextPlayerAt(afterDocument, afterId) === game.aiPlayer) startAiGameReply(afterDocument, afterId, game.aiPlayer);
+      if (nextPlayerAt(afterDocument, afterId) === game.aiPlayer) startAiGameReply(afterDocument, afterId, game.aiPlayer, game);
       return;
     }
-    const actor = stage.kind === "place" || stage.kind === "offer-fifths" ? stage.actor : stage.kind === "swap" ? stage.chooser : stage.chooser;
+    const actor = stage.kind === "place" || stage.kind === "offer-fifths" || stage.kind === "choose-fifth-count" ? stage.actor : stage.kind === "swap" ? stage.chooser : stage.chooser;
     if (actor !== "ai") return;
     const generation = aiOpeningGeneration.current;
     if (aiOpeningTimer.current !== null) window.clearTimeout(aiOpeningTimer.current);
@@ -1357,6 +1668,16 @@ export default function App() {
         setDocument(namedDocument); setAiGame(nextGame); setPlacementPlayer(nextGame.humanPlayer); recordSession.current = { document: namedDocument, currentId: afterId };
         setToast(stage.taraguchiChoice ? "AI 选择不交换，进入塔十候选阶段" : "AI 选择保持当前执子方");
         scheduleAiOpening(nextGame, namedDocument, afterId);
+        return;
+      }
+      if (stage.kind === "choose-fifth-count") {
+        const opening = chooseFifthCount(game.opening, 3);
+        const nextGame = gameWithOpening(game, opening);
+        setAiGame(nextGame);
+        setToast(opening.stage.kind === "swap"
+          ? `AI 已宣布 ${opening.n} 个第5手打点，请决定是否交换`
+          : `AI 已选择 ${opening.n} 个第5手打点，请选择一个`);
+        scheduleAiOpening(nextGame, afterDocument, afterId);
         return;
       }
       if (stage.kind === "offer-fifths") {
@@ -1400,20 +1721,51 @@ export default function App() {
     scheduleAiOpening(nextGame, namedDocument, currentId);
   };
 
-  const openPuzzle = (collectionIndex: number, nextPuzzleIndex: number, collections = puzzleCollections) => {
+  const chooseOpeningFifthCount = (count: number) => {
+    if (!aiGame || aiGame.opening.stage.kind !== "choose-fifth-count" || aiGame.opening.stage.actor !== "human" || aiThinking) return;
+    const opening = chooseFifthCount(aiGame.opening, count);
+    const nextGame = gameWithOpening(aiGame, opening);
+    setAiGame(nextGame);
+    setSheet(null);
+    setToast(`已选择 ${opening.n} 个第5手打点，请依次点击棋盘空位`);
+    scheduleAiOpening(nextGame, document, currentId);
+  };
+
+  const openPuzzle = (collectionIndex: number, nextPuzzleIndex: number, collections = puzzleCollections, restoreNodeId?: string, rulePreference = puzzleRulePreference) => {
     const collection = collections[collectionIndex];
     const puzzle = collection?.puzzles[nextPuzzleIndex];
     if (!puzzle) return;
-    puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null;
-    rapfiGameWorker.current?.terminate(); rapfiGameWorker.current = null;
-    const session = createPuzzleDocument(puzzle);
+    cancelActiveAiComputation("record-switch");
+    const ruleResolution = resolvePuzzleRule(puzzle, collection, rulePreference);
+    const session = createPuzzleDocument(puzzle, ruleResolution.rule);
     setDraft(emptyDraft());
     setPuzzleCollectionIndex(collectionIndex); setPuzzleIndex(nextPuzzleIndex);
-    setDocument(session.document); setCurrentId(session.initialNodeId);
+    const nodeId = restoreNodeId && session.document.nodes[restoreNodeId] ? restoreNodeId : session.initialNodeId;
+    setDocument(session.document); setCurrentId(nodeId);
     setPuzzleInitialId(session.initialNodeId); setPuzzleInitialDepth(session.initialDepth);
-    setAiThinking(false); setPuzzleOutcome(null); setAiGame(null); setMode("puzzle"); setDockPanel("play"); setTab("record");
+    setPuzzleSetup(null);
+    setAiThinking(false); setPuzzleOutcome(null); setAiGame(null); setMode("puzzle"); exitAnnotationMode(); setDockPanel("play"); setTab("record");
     setContinuationEditMode(false);
-    setWorkspaceSelectorOpen(false); setWorkspaceListExpanded(false); setExpandedCollectionId(null); setPuzzleQuery("");
+    setWorkspaceSelectorOpen(false);
+  };
+  const changePuzzleRule = (nextRule: PuzzleRuleMode) => {
+    if (currentPuzzleRule.locked) {
+      setToast(currentPuzzleRule.source === "puzzle" ? "本题已指定规则，不能用做题偏好覆盖" : "本题集已指定规则，不能用做题偏好覆盖");
+      return;
+    }
+    if (nextRule === puzzleRulePreference) return;
+    const challengeDocument = puzzleSetup?.session.sourceDocument || document;
+    const challengeCurrentId = puzzleSetup?.session.sourceCurrentId || currentId;
+    const hadAnswer = aiThinking || Boolean(puzzleSetup?.sourceOutcome || puzzleOutcome) || depthOf(challengeDocument, challengeCurrentId) > puzzleInitialDepth;
+    setPuzzleRulePreference(nextRule);
+    openPuzzle(puzzleCollectionIndex, puzzleIndex, puzzleCollections, undefined, nextRule);
+    setToast(`${hadAnswer ? "规则已切换，当前作答已安全重置；" : "规则已切换；"}现在按${nextRule === "forbidden" ? "禁手" : "无禁手"}做题`);
+  };
+  const changePuzzleThinkSpeed = (nextSpeed: PuzzleThinkSpeed) => {
+    if (nextSpeed === puzzleThinkSpeed) return;
+    cancelActiveAiComputation("settings-change");
+    setPuzzleThinkSpeed(nextSpeed);
+    setToast(nextSpeed === "fast" ? "陪练速度已切换为快，保证在 1 秒内落子" : "陪练速度已切换为慢，沿用当前思考时间");
   };
   const recordPuzzleAttempt = (solved: boolean) => {
     if (!currentPuzzle) return;
@@ -1422,22 +1774,40 @@ export default function App() {
   };
   const switchMode = (nextMode: AppMode) => {
     if (nextMode === mode) return;
-    setWorkspaceSelectorOpen(false); setWorkspaceListExpanded(false); setExpandedCollectionId(null); setPuzzleQuery("");
+    cancelActiveAiComputation("mode-switch");
+    setPuzzleSetup(null);
+    setWorkspaceSelectorOpen(false);
     if (nextMode === "puzzle") {
       guardedOpenPuzzle(puzzleCollectionIndex, puzzleIndex);
-    } else {
+    } else if (nextMode === "review") {
       puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null;
-      rapfiGameWorker.current?.terminate(); rapfiGameWorker.current = null; setAiThinking(false);
-      setDocument(recordSession.current.document); setCurrentId(recordSession.current.currentId); setMode("record"); setDockPanel("moves"); setPuzzleOutcome(null); setAiGame(null); setContinuationEditMode(false);
+      rapfiGameWorker.current?.terminate(); rapfiGameWorker.current = null;
+      thinkWorker.current?.terminate(); thinkWorker.current = null; rapfiThinkWorker.current?.terminate(); rapfiThinkWorker.current = null;
+      setAiThinking(false); setAiGame(null); setContinuationEditMode(false); exitAnnotationMode(); setSheet(null);
+      if (mode === "record" && hasDraft(draft)) reviewDrafts.current.set(document.id, draft);
+      setDocument(recordSession.current.document); setCurrentId(recordSession.current.currentId); setMode("review"); setDockPanel(null); setTab("record");
+    } else {
+      setAiThinking(false); exitAnnotationMode(); setSheet(null);
+      const restoredDraft = reviewDrafts.current.get(recordSession.current.document.id);
+      reviewDrafts.current.delete(recordSession.current.document.id);
+      setDocument(recordSession.current.document); setCurrentId(recordSession.current.currentId); setDraft(restoredDraft || (compactIndexOf(recordSession.current.document) ? emptyDraft() : loadDraftFromLocal(recordSession.current.document.id))); setMode("record"); setDockPanel(null); setPuzzleOutcome(null); setAiGame(null); setContinuationEditMode(false);
     }
   };
   const stopPuzzleAi = () => {
     if (!puzzleAiWorker.current && !rapfiGameWorker.current) return;
-    puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null;
-    rapfiGameWorker.current?.terminate(); rapfiGameWorker.current = null; setAiThinking(false); setPuzzleOutcome("stopped"); setToast("已强制停止陪练，可悔棋或重启本题");
+    cancelActiveAiComputation("user"); setPuzzleOutcome("stopped"); setToast("已强制停止陪练，后台线程已终止；可悔棋或重启本题");
+  };
+  const stopAiGameThinking = () => {
+    if (!aiGame || !aiThinking) return;
+    cancelActiveAiComputation("user", true);
+  };
+  const resumeAiGameThinking = () => {
+    if (!aiGame || aiThinking || aiGame.outcome) return;
+    scheduleAiOpening(aiGame, document, currentId);
   };
   const exitAiGame = () => {
     if (!aiGame) return;
+    cancelActiveAiComputation("mode-switch");
     aiOpeningGeneration.current += 1;
     if (aiOpeningTimer.current !== null) { window.clearTimeout(aiOpeningTimer.current); aiOpeningTimer.current = null; }
     puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null;
@@ -1447,17 +1817,41 @@ export default function App() {
     thinkGeneration.current += 1;
     setAiThinking(false); setThinkRunning(false); setThinkResult(null);
     aiClockLastAt.current = null; aiClockExpired.current = false; setAiHumanElapsedMs(0);
-    setAiGame(null); setPlacementLocked(false); setDockPanel("moves"); setSheet(null);
+    setAiGame(null); setPlacementLocked(false); exitAnnotationMode(); setDockPanel(null); setSheet(null);
     setToast("已退出对弈，当前棋局可继续打谱");
   };
+  const applyPuzzleSetupSession = (session: PuzzleSetupSession) => {
+    const view = puzzleSetupView(session);
+    setPuzzleSetup((workspace) => workspace ? { ...workspace, session } : workspace);
+    setDocument(view.document); setCurrentId(view.currentId);
+  };
+  const enterPuzzleSetup = () => {
+    if (puzzleSetup) { setDockPanel("setup"); return; }
+    cancelActiveAiComputation("mode-switch");
+    const session = createPuzzleSetupSession(document, currentId);
+    const view = puzzleSetupView(session);
+    setPuzzleSetup({ session, sourceOutcome: puzzleOutcome });
+    setDocument(view.document); setCurrentId(view.currentId); setPuzzleOutcome(null); setAiThinking(false);
+    setPlacementPlayer(nextPlayerAt(view.document, view.currentId)); setPlacementLocked(false); setDockPanel("setup");
+    setToast("已进入摆棋：自由落子，不会触发陪练或记录题目进度");
+  };
+  const exitPuzzleSetup = () => {
+    if (!puzzleSetup) { setDockPanel("play"); return; }
+    setDocument(puzzleSetup.session.sourceDocument); setCurrentId(puzzleSetup.session.sourceCurrentId);
+    setPuzzleOutcome(puzzleSetup.sourceOutcome); setPuzzleSetup(null); setPlacementLocked(false); setDockPanel("play");
+    setToast("已返回应战，题目局面保持不变");
+  };
+  const navigatePuzzleSetup = (cursor: number) => {
+    if (!puzzleSetup) return;
+    const session = movePuzzleSetupCursor(puzzleSetup.session, cursor);
+    applyPuzzleSetupSession(session); triggerBoardMotion("navigate");
+  };
   const restartPuzzle = () => {
-    puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null;
-    rapfiGameWorker.current?.terminate(); rapfiGameWorker.current = null; setAiThinking(false); setPuzzleOutcome(null);
+    cancelActiveAiComputation("position-change"); setAiThinking(false); setPuzzleOutcome(null);
     setCurrentId(puzzleInitialId); setToast("已恢复到本题初始局面");
   };
   const undoPuzzleTurn = () => {
-    puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null;
-    rapfiGameWorker.current?.terminate(); rapfiGameWorker.current = null; setAiThinking(false); setPuzzleOutcome(null);
+    cancelActiveAiComputation("position-change"); setAiThinking(false); setPuzzleOutcome(null);
     let cursor = currentId;
     const first = document.nodes[cursor];
     let steps = first?.move?.player === currentPuzzle?.player ? 1 : 2;
@@ -1470,15 +1864,33 @@ export default function App() {
     const next = (puzzleIndex + delta + collection.puzzles.length) % collection.puzzles.length;
     openPuzzle(puzzleCollectionIndex, next);
   };
+  useEffect(() => {
+    const pending = restorePendingRef.current;
+    if (!restoreLastPosition || !pending || pending.mode !== "puzzle" || !pending.puzzleCollectionId || !pending.puzzleId) return;
+    const collectionIndex = puzzleCollections.findIndex((collection) => collection.id === pending.puzzleCollectionId);
+    const puzzleIndex = collectionIndex < 0 ? -1 : puzzleCollections[collectionIndex].puzzles.findIndex((puzzle) => puzzle.id === pending.puzzleId);
+    if (collectionIndex < 0 || puzzleIndex < 0) {
+      restorePendingRef.current = null;
+      return;
+    }
+    restorePendingRef.current = null;
+    openPuzzle(collectionIndex, puzzleIndex, puzzleCollections, pending.nodeId);
+  }, [puzzleCollections, restoreLastPosition]);
 
   const detachViewForEditing = (nextDraft: DraftState) => {
+    const dynamicSource = isDynamicDatabaseView(document) ? dynamicViewSession.current : null;
     const copy = createEditableViewCopy(viewDocument, currentId);
     pagedNavigationVersion.current += 1;
     dynamicNavigationVersion.current += 1;
     dynamicNavigationPending.current = false;
     setDynamicNavigationBusy(false);
     pagedSession.current?.close(); pagedSession.current = null;
-    dynamicViewSession.current?.close(); dynamicViewSession.current = null;
+    if (dynamicSource) {
+      detachedDynamicSource.current = dynamicSource;
+    } else {
+      dynamicViewSession.current?.close(); dynamicViewSession.current = null;
+      detachedDynamicSource.current = null;
+    }
     localStorage.removeItem(ACTIVE_LARGE_RECORD_KEY);
     setDocument(copy); setDraft(nextDraft); setSaved(false);
     recordSession.current = { document: copy, currentId };
@@ -1486,7 +1898,12 @@ export default function App() {
     return copy;
   };
   const recordDraft = (operation: Parameters<typeof pushDraft>[1]) => {
+    if (mode === "review") { setToast("读谱模式为只读，不能修改棋谱"); return; }
     if (isPagedLibraryView(document) || isDynamicDatabaseView(document)) {
+      // Once a dynamic source has been detached, keep subsequent edits in the
+      // same local draft instead of rebuilding a second copy and discarding the
+      // live query session that can load original branch continuations.
+      if (hasDraft(draft)) { setDraft((state) => pushDraft(state, operation)); return; }
       detachViewForEditing(pushDraft(emptyDraft(), operation));
       return;
     }
@@ -1495,21 +1912,51 @@ export default function App() {
   const undoDraftChange = () => {
     const operation = draft.operations[draft.operations.length - 1];
     if (!operation) return;
-    setDraft((state) => undoDraft(state));
+    const nextDraft = undoDraft(draft);
+    setDraft(nextDraft);
+    if (compactIndexOf(document)) {
+      if (!hasDraft(nextDraft)) void removeDraftForDocument(document.id);
+    } else saveDraftToLocal(document.id, nextDraft);
+    if (operation.type === "add-subtree" && operation.bookmarks?.length) {
+      const bookmarkIds = operation.bookmarks.map((bookmark) => bookmark.id);
+      setBranchBookmarks((all) => ({ ...all, [document.id]: removeRecordBookmarks(all[document.id] || [], bookmarkIds) }));
+    }
     // A draft-created node disappears from the projected document when its
     // add operation is undone. Keep the cursor on the parent so the next tap
     // on the board creates a new move instead of targeting a stale ID.
     if (operation.type === "add-move") {
       setCurrentId((id) => id === operation.node.id ? operation.parentId : id);
+    } else if (operation.type === "add-subtree") {
+      const addedIds = new Set(Object.keys(operation.nodes));
+      setCurrentId((id) => addedIds.has(id) ? operation.parentId : id);
     } else if (operation.type === "delete-subtree") {
       setCurrentId((id) => viewDocument.nodes[id] ? id : operation.parentId);
     }
     setToast("已撤销一步");
   };
+  const redoDraftChange = () => {
+    const operation = draft.redo[draft.redo.length - 1];
+    if (!operation) return;
+    const nextDraft = redoDraft(draft);
+    setDraft(nextDraft);
+    if (!compactIndexOf(document)) saveDraftToLocal(document.id, nextDraft);
+    if (operation.type === "add-subtree" && operation.bookmarks?.length) {
+      setBranchBookmarks((all) => ({ ...all, [document.id]: mergeRecordBookmarks(all[document.id] || [], operation.bookmarks || []) }));
+    }
+    if (operation.type === "add-move") setCurrentId(operation.node.id);
+    else if (operation.type === "add-subtree") setCurrentId(operation.rootId);
+    else if (operation.type === "delete-subtree") setCurrentId(operation.parentId);
+    setToast("已重做一步");
+  };
+  const removePastedDraftBookmarks = (state: DraftState) => {
+    const ids = state.operations.flatMap((operation) => operation.type === "add-subtree" ? (operation.bookmarks || []).map((bookmark) => bookmark.id) : []);
+    if (ids.length) setBranchBookmarks((all) => ({ ...all, [document.id]: removeRecordBookmarks(all[document.id] || [], ids) }));
+  };
   const discardDraft = () => {
     let restoreId = currentId;
     while (!document.nodes[restoreId] && viewDocument.nodes[restoreId]?.parentId) restoreId = viewDocument.nodes[restoreId].parentId!;
     if (!document.nodes[restoreId]) restoreId = document.rootId;
+    removePastedDraftBookmarks(draft);
     if (compactIndexOf(document)) void removeDraftForDocument(document.id);
     else removeDraftFromLocal(document.id);
     setCurrentId(restoreId); setDraft(emptyDraft()); setToast("已放弃未保存草稿");
@@ -1563,10 +2010,11 @@ export default function App() {
   };
   const exportRecordFile = async (content: BlobPart, filename: string, type: string, successMessage: string) => {
     setSheet(null);
-    if (defaultDirectory) {
+    const destination = defaultDirectory || (supportsNativeExportDirectory() ? nativeExportDirectoryHandle() : null);
+    if (destination) {
       try {
-        await writeFileToDirectory(defaultDirectory, filename, content, type);
-        setToast(`${successMessage}，已写入“${defaultDirectory.name}”`);
+        await writeFileToDirectory(destination, filename, content, type);
+        setToast(`${successMessage}，已写入“${destination.name}”`);
         return;
       } catch {
         downloadFile(content, filename, type);
@@ -1575,7 +2023,7 @@ export default function App() {
       }
     }
     downloadFile(content, filename, type);
-    setToast(`${successMessage}，已下载到浏览器默认下载目录（可在设置中选择文件夹）`);
+    setToast(`${successMessage}，已保存到浏览器默认“下载”位置：${filename}`);
   };
   const exportTextFile = exportRecordFile;
   const exportBackup = async () => {
@@ -1583,9 +2031,13 @@ export default function App() {
     setBackupBusy(true);
     recordAction("导出一键备份");
     try {
-      const snapshot = await createBackupSnapshot("1.1.4");
+      const snapshot = await createBackupSnapshot("1.1.6");
       const stamp = snapshot.exportedAt.replace(/[:.]/g, "-").replace("Z", "");
-      await exportTextFile(serializeBackup(snapshot), `半步五子棋备份-${stamp}.json`, "application/json;charset=utf-8", "应用备份已导出");
+      const zip = await createZip([
+        { name: "banbu-backup.json", data: serializeBackup(snapshot) },
+        { name: "README.txt", data: "半步五子棋打谱完整备份包\n\n此 ZIP 包含棋谱库、题库、草稿、书签、设置及大型棋谱索引。请在半步五子棋打谱的‘资料安全 → 恢复完整备份’中选择此文件。\n" },
+      ]);
+      await exportTextFile(new Blob([zip.buffer]), `半步五子棋打谱备份-${stamp}.zip`, "application/zip", "应用备份包已导出");
     } catch (error) {
       setToast(error instanceof Error ? error.message : "备份导出失败，请重试");
     } finally {
@@ -1597,6 +2049,20 @@ export default function App() {
     setBackupBusy(true);
     recordAction(`恢复备份：${file.name}`);
     try {
+      if (/\.zip$/i.test(file.name) || file.type === "application/zip") {
+        const entries = await readZip(file);
+        const candidates = entries.filter((entry) => /\.json$/i.test(entry.name));
+        let parsed: ReturnType<typeof parseBackup> | null = null;
+        let lastError: unknown = null;
+        for (const entry of candidates.sort((a, b) => Number(/backup|备份/i.test(b.name)) - Number(/backup|备份/i.test(a.name)))) {
+          try { parsed = parseBackup(textFromZipEntry(entry)); break; } catch (error) { lastError = error; }
+        }
+        if (!parsed) throw (lastError instanceof Error ? lastError : new Error("ZIP 中没有找到有效的半步五子棋打谱备份 JSON"));
+        await restoreBackup(parsed);
+        setSheet(null); setToast("备份 ZIP 已恢复，页面即将重新加载");
+        window.setTimeout(() => window.location.reload(), 350);
+        return;
+      }
       const parsed = parseBackup(await file.text());
       await restoreBackup(parsed);
       setSheet(null);
@@ -1635,13 +2101,14 @@ export default function App() {
       const puzzleId = `saved-${document.id}-${Date.now().toString(36)}`;
       const puzzle: Puzzle = {
         id: puzzleId, title: viewDocument.metadata.title || "未命名题目", prompt: "从这个局面开始练习", difficulty: 3,
-        player: activePlacementPlayer, stones: board.flatMap((row, rowIndex) => row.flatMap((player, colIndex) => player ? [{ row: rowIndex, col: colIndex, player }] : [])),
+        player: activePlacementPlayer, rule: viewDocument.metadata.rule, boardSize: viewDocument.metadata.boardSize || 15,
+        stones: board.flatMap((row, rowIndex) => row.flatMap((player, colIndex) => player ? [{ row: rowIndex, col: colIndex, player }] : [])),
       };
       const collectionId = `saved-collection-${document.id}`;
       const existing = puzzleCollections.find((collection) => collection.id === collectionId);
       const nextCollections = existing
         ? puzzleCollections.map((collection) => collection.id === collectionId ? { ...collection, title: saveFolder, puzzles: [...collection.puzzles, puzzle] } : collection)
-        : [...puzzleCollections, { id: collectionId, title: saveFolder, source: "半步五子棋本地保存", license: "用户本地", puzzles: [puzzle] }];
+        : [...puzzleCollections, { id: collectionId, title: saveFolder, source: "半步五子棋打谱本地保存", license: "用户本地", puzzles: [puzzle] }];
       savePuzzleCollections(nextCollections); setPuzzleCollections(nextCollections);
       setLibraryFolders((folders) => ({ ...folders, puzzleAssignments: { ...folders.puzzleAssignments, [collectionId]: saveFolder } }));
       // Saving a position as a puzzle is an independent copy operation. The
@@ -1667,27 +2134,90 @@ export default function App() {
     recordDraft({ type: "update-node", nodeId: currentId, patch });
   };
   /** Safe node update for both compact and regular documents. */
+  const reviewBlocked = () => setToast("读谱模式无法进行该操作");
   const safeUpdateNode = (patch: Partial<RecordNode>) => {
+    if (mode === "review") { setToast("读谱模式无法进行该操作"); return; }
     recordDraft({ type: "update-node", nodeId: currentId, patch });
   };
-  const safeClearMarks = () => {
-    recordDraft({ type: "update-node", nodeId: currentId, patch: { marks: [] } });
+  // 标注作为底部 dock 的一个标签页：激活态由 dockPanel === "annotation" 驱动（与走棋旧的展开/收纳一致）。
+  const annotationOpen = dockPanel === "annotation";
+  // 面板打开时优先拦截棋盘点击（进入标注态，落子被禁用、点空位改放标注）。
+  const annotationActive = annotationOpen && !aiGame && mode !== "puzzle";
+  // 注释 / 标注 / 走棋工具坞彼此独立共存。棋盘尺寸优先：只有当“注释框展开”同时叠加标注或走棋、
+  // 且落在极窄/矮屏时才允许收窄棋盘（CSS 侧再按视口收窄）；单独开标注或走棋绝不缩棋盘——注释框可关，
+  // 关掉即可回到一屏。record-tools-stacked 仅负责非尺寸的行距压缩。
+  const recordToolsCount = (mode !== "puzzle" && commentExpanded ? 1 : 0) + (annotationActive ? 1 : 0) + (dockPanel ? 1 : 0);
+  const commentExpandedWithTools = mode !== "puzzle" && commentExpanded && (annotationActive || Boolean(dockPanel));
+  const currentAnnotationLabel = annotationType === "custom" ? Array.from(annotationValue.trim()).slice(0, 4).join("") : annotationValue;
+  const exitAnnotationMode = () => { setDockPanel((panel) => panel === "annotation" ? null : panel); setAnnotationPopover(null); };
+  const annotationContextRef = useRef(`${document.id}:${currentId}`);
+  useEffect(() => {
+    const nextContext = `${document.id}:${currentId}`;
+    if (annotationContextRef.current === nextContext) return;
+    annotationContextRef.current = nextContext;
+    // 标注只编辑当前局面；切换工具面板不会退出，真正导航到其他
+    // 棋谱节点时才安全结束，避免把下一次棋盘点击误标到新局面。
+    setDockPanel((panel) => panel === "annotation" ? null : panel);
+    setAnnotationPopover(null);
+  }, [document.id, currentId]);
+  const markStudioRef = useRef<HTMLDivElement | null>(null);
+  const [annotationPopoverBottom, setAnnotationPopoverBottom] = useState(240);
+  // 弹出选择器渲染到 body 并按面板上沿固定定位：dock 面板有 overflow:hidden，直接绝对定位会被裁剪。
+  const openAnnotationPopover = (kind: "style" | "color" | "type" | "value") => {
+    const rect = markStudioRef.current?.getBoundingClientRect();
+    setAnnotationPopoverBottom(rect ? Math.max(120, Math.round(window.innerHeight - rect.top + 8)) : 240);
+    setAnnotationPopover((current) => current === kind ? null : kind);
   };
-  // Navigate an already-rendered variation by its node ID. A DP/LIB view is
-  // only a projection, so deriving the pivot again from a board coordinate can
-  // select the wrong sibling after landing on a leaf (the native "A" labels
-  // exposed this most reliably). The rendered node's parent is authoritative.
-  const navigateVariation = (targetId: string) => {
+  const switchAnnotationType = (type: AnnotationMarkType) => {
+    setAnnotationType(type);
+    setAnnotationValue(annotationTypePreset(type).fallback);
+  };
+  const editAnnotationAt = (position: Position) => {
+    if (!currentAnnotationLabel) { setToast("请先在标注面板输入自定义文字"); return; }
+    const boardSize = viewDocument.metadata.boardSize || 15;
+    if (mode === "review") {
+      const previous = reviewMarks[reviewMarkKey] || [];
+      const nextMarks = setLabelMark(previous, position, currentAnnotationLabel, annotationStyle, annotationColor);
+      const next = { ...reviewMarks };
+      if (nextMarks.length) next[reviewMarkKey] = nextMarks;
+      else delete next[reviewMarkKey];
+      setReviewMarks(next);
+      const removed = nextMarks.length < previous.length;
+      setToast(removed
+        ? `已移除本机标注 ${currentAnnotationLabel} · ${coordinateName(position, boardSize)}`
+        : `已放置本机标注 ${currentAnnotationLabel} · ${coordinateName(position, boardSize)}，再次点击可移除`);
+      return;
+    }
     if (mode !== "record") return;
+    const editingDatabaseView = isPagedLibraryView(document) || isDynamicDatabaseView(document);
+    const nextMarks = setLabelMark(current.marks, position, currentAnnotationLabel, annotationStyle, annotationColor);
+    applyCompactUpdate({ marks: nextMarks });
+    const removed = nextMarks.length < current.marks.length;
+    const action = removed ? "已移除标注" : "已放置标注";
+    if (editingDatabaseView) setToast(`已创建编辑副本并${removed ? "移除" : "放置"}标注 ${currentAnnotationLabel} · ${coordinateName(position, boardSize)}`);
+    else if (!isCompact()) setToast(`${action} ${currentAnnotationLabel} · ${coordinateName(position, boardSize)}${removed ? "" : "，再次点击可移除"}`);
+    else setToast(`标注 ${currentAnnotationLabel} ${removed ? "已从草稿移除" : "已加入草稿"}`);
+  };
+  // Navigate an already-rendered next move by its node ID. A DP/LIB view is
+  // only a projection, so the rendered node's parent remains authoritative.
+  const navigateVariation = (targetId: string) => {
+    if (mode === "puzzle") return;
     const target = viewDocument.nodes[targetId];
     if (!target || target.id === currentId) return;
     const pivot = target.parentId ? viewDocument.nodes[target.parentId] : visibleVariationPivot(viewDocument, currentId);
     if (!pivot) return;
     clearBoardMotion();
-    if (dynamicViewSession.current && isDynamicDatabaseView(document) && target.move) {
-      const session = dynamicViewSession.current;
+    const dynamicSession = dynamicViewSession.current;
+    const detachedSource = detachedDynamicSource.current;
+    // Draft-created nodes only exist in the local editing overlay. They must
+    // never be sent to the database query session as if they were source
+    // branches; doing so loses the local branch and makes later taps appear
+    // stuck at the same ply.
+    const isLocalDraftTarget = draftOverlay.added.has(target.id);
+    if (dynamicSession && target.move && !isLocalDraftTarget && (isDynamicDatabaseView(document) || detachedSource === dynamicSession)) {
+      const session = dynamicSession;
       const pivotDepth = depthOf(viewDocument, pivot.id);
-      navigateDynamic(session, () => session.moveFromDepth(pivotDepth, target.move!), () => { setCandidateLabel(null); setSheet(null); });
+      navigateDynamic(session, () => session.moveFromDepth(pivotDepth, target.move!), () => { exitAnnotationMode(); setSheet(null); }, hasDraft(draft) ? draft : undefined);
       return;
     }
     const session = pagedSession.current;
@@ -1695,18 +2225,32 @@ export default function App() {
       const index = session.indexForId(target.id);
       if (index !== undefined) pagedNavigate.current(index);
       else setToast("这个分支尚未载入，请重新打开分支面板");
-      setCandidateLabel(null); setSheet(null);
+      exitAnnotationMode(); setSheet(null);
       return;
     }
-    setCurrentId(target.id); setCandidateLabel(null); setSheet(null);
+    setCurrentId(target.id); exitAnnotationMode(); setSheet(null);
   };
   const play = (position: Position, options: { ignoreAnnotation?: boolean } = {}) => {
-    // Occupied points are static board content. Navigation is explicit through
-    // the transport controls and variation panel, so an accidental tap on a
-    // stone cannot move the cursor to an older position.
-    if (board[position.row][position.col]) {
+    // The open annotation panel is an independent, node-local editing mode.
+    // Intercept every board tap before occupied-point rejection and variation
+    // navigation so a branch dot or stone can be labelled without entering it.
+    if (annotationActive && !options.ignoreAnnotation && (mode === "record" || mode === "review")) {
+      editAnnotationAt(position);
+      return;
+    }
+    const occupiedPoint = Boolean(board[position.row]?.[position.col]);
+    // A variation affordance is only valid on an empty intersection. Reject an
+    // occupied click before any fallback coordinate lookup can navigate to a
+    // stale or malformed branch target. Annotation editing has already returned.
+    if (occupiedPoint) {
       playSound("warning");
       showBoardFeedback(position, "illegal");
+      return;
+    }
+    if (mode === "review") {
+      const existing = findVisibleVariationTarget(viewDocument, currentId, position);
+      if (existing) { navigateVariation(existing.target.id); return; }
+      setToast(current.children.length ? "读谱模式只能点击已有变化" : "当前已到棋谱末尾");
       return;
     }
     if (dynamicNavigationPending.current && dynamicViewSession.current && isDynamicDatabaseView(document)) {
@@ -1733,7 +2277,7 @@ export default function App() {
           scheduleAiOpening(nextGame, result.document, result.nodeId);
           return;
         }
-        if (openingStage.kind === "offer-fifths") {
+      if (openingStage.kind === "offer-fifths") {
           if (openingStage.actor !== "human") { setToast("AI 正在准备第5手候选"); return; }
           const reason = aiGame.forbiddenEnabled ? forbiddenReason(board, position) : null;
           if (reason) { playSound("warning"); showBoardFeedback(position, "forbidden"); setToast(`候选点 ${coordinateName(position)} 为${reason}`); return; }
@@ -1742,6 +2286,10 @@ export default function App() {
           const nextGame = gameWithOpening(aiGame, opening);
           setAiGame(nextGame); setToast(opening.stage.kind === "choose-fifth" ? "候选已齐，等待白方选择第5手" : `已加入候选 ${opening.candidates.length}/${openingStage.count}`);
           scheduleAiOpening(nextGame, document, currentId);
+          return;
+        }
+        if (openingStage.kind === "choose-fifth-count") {
+          if (openingStage.actor !== "human") { setToast("AI 正在选择第5手打点数量"); return; }
           return;
         }
         if (openingStage.chooser !== "human") { setToast("AI 正在选择第5手候选"); return; }
@@ -1760,7 +2308,7 @@ export default function App() {
       if (historicalAiPosition) {
         const existingVariation = findVisibleVariationTarget(document, currentId, position);
         if (existingVariation) {
-          setCurrentId(existingVariation.target.id); triggerBoardMotion("branch"); setCandidateLabel(null); setSheet(null);
+          setCurrentId(existingVariation.target.id); triggerBoardMotion("branch"); setSheet(null);
           setToast("已切换到已有变化");
           return;
         }
@@ -1783,7 +2331,7 @@ export default function App() {
           setToast("棋盘已满，本局和棋");
           return;
         }
-        if (turn === aiGame.humanPlayer) startAiGameReply(branch.document, branch.nodeId, aiGame.aiPlayer);
+        if (turn === aiGame.humanPlayer) startAiGameReply(branch.document, branch.nodeId, aiGame.aiPlayer, aiGame);
         else setToast("已创建 AI 方的替代分支，现在轮到你");
         return;
       }
@@ -1798,38 +2346,32 @@ export default function App() {
       const nextBoard = boardAt(result.document, result.nodeId);
       if (winnerAt(nextBoard, position, result.document.metadata.rule)) { playSound("success"); setAiGame({ ...aiGame, outcome: "won" }); setToast("你已连成五子，本局获胜"); return; }
       if (nextBoard.every((row) => row.every(Boolean))) { setAiGame({ ...aiGame, outcome: "draw" }); setToast("棋盘已满，本局和棋"); return; }
-      startAiGameReply(result.document, result.nodeId, aiGame.aiPlayer);
+      startAiGameReply(result.document, result.nodeId, aiGame.aiPlayer, aiGame);
       return;
     }
     if (mode === "record" && !continuationEditMode) {
-      // Dynamic database leaves intentionally do not expose their parent's
-      // sibling branches as board targets. Those points are alternatives to
-      // the previous move; a tap at the current leaf should be a new local
-      // continuation instead. Branch browsing remains available in the
-      // branch panel.
-      const variation = isDynamicDatabaseView(document) && !current.children.length
-        ? undefined
-       : findVisibleVariationTarget(viewDocument, currentId, position);
+      const variation = findVisibleVariationTarget(viewDocument, currentId, position);
       if (variation) { navigateVariation(variation.target.id); return; }
     }
-    // Annotation mode only applies to an ordinary empty point. Existing
-    // variation nodes always keep node-first navigation semantics, and an
-    // occupied stone must never receive a new label as a side effect.
-    if (mode === "record" && candidateLabel && !options.ignoreAnnotation) {
-      const editingDatabaseView = isPagedLibraryView(document) || isDynamicDatabaseView(document);
-      applyCompactUpdate({ marks: setLabelMark(current.marks, position, candidateLabel, annotationStyle, annotationColor) });
-      if (editingDatabaseView) setToast(`已创建编辑副本并放置标注 ${candidateLabel} · ${coordinateName(position)}`);
-      else if (!isCompact()) setToast(`已放置标注 ${candidateLabel} · ${coordinateName(position)}`);
-      else setToast(`标注 ${candidateLabel} 已加入草稿`);
-      setCandidateLabel(null);
-      return;
-    }
     if (mode === "puzzle") {
+      if (puzzleSetup) {
+        const result = placePuzzleSetupStone(puzzleSetup.session, position, activePlacementPlayer);
+        if (!result.placed) { showBoardFeedback(position, "illegal"); playSound("error"); return; }
+        applyPuzzleSetupSession(result.session); triggerBoardMotion("place");
+        playSound(activePlacementPlayer === "black" ? "move-black" : "move-white");
+        return;
+      }
       if (!currentPuzzle || aiThinking || puzzleOutcome) return;
-      if (board[position.row][position.col]) return;
+      const legality = puzzleMoveLegality(board, position, currentPuzzle.player, currentPuzzleRule.mode);
+      if (!legality.legal) {
+        playSound(legality.reason === "该位置已有棋子" ? "error" : "warning");
+        showBoardFeedback(position, legality.reason === "该位置已有棋子" ? "illegal" : "forbidden");
+        setToast(legality.reason === "该位置已有棋子" ? legality.reason : `此处为黑方${legality.reason}，本题按禁手规则不可落子`);
+        return;
+      }
       const result = addMoveAs(document, currentId, position, currentPuzzle.player);
       setDocument(result.document); setCurrentId(result.nodeId); triggerBoardMotion("place"); playSound(currentPuzzle.player === "black" ? "move-black" : "move-white");
-      if (winnerAt(boardAt(result.document, result.nodeId), position)) { playSound("success"); setPuzzleOutcome("won"); recordPuzzleAttempt(true); return; }
+      if (winnerAt(boardAt(result.document, result.nodeId), position, result.document.metadata.rule)) { playSound("success"); setPuzzleOutcome("won"); recordPuzzleAttempt(true); return; }
       startAiReply(result.document, result.nodeId, currentPuzzle);
       return;
     }
@@ -1844,40 +2386,76 @@ export default function App() {
     const result = placementLocked
       ? addMoveAs(viewDocument, currentId, position, activePlacementPlayer)
       : addMove(viewDocument, currentId, position);
-    setCurrentId(result.nodeId);
     if (!result.created) { showBoardFeedback(position, "illegal"); return; }
+    setCurrentId(result.nodeId);
     triggerBoardMotion("place");
     playSound((result.document.nodes[result.nodeId]?.move?.player || activePlacementPlayer) === "black" ? "move-black" : "move-white");
     setContinuationEditMode(false);
     const node = result.document.nodes[result.nodeId];
     if (node) recordDraft({ type: "add-move", parentId: currentId, node: { ...node, children: [...node.children], marks: [...node.marks] } });
   };
-  const mark = (position: Position) => { if (mode !== "record") return; const editingDatabaseView = isPagedLibraryView(document) || isDynamicDatabaseView(document); recordDraft({ type: "update-node", nodeId: currentId, patch: { marks: toggleMark(current.marks, position) } }); setToast(editingDatabaseView ? "已创建编辑副本并加入标注，原数据库不变" : "标注已加入草稿"); };
+  const mark = (position: Position) => {
+    if (mode === "review") {
+      setReviewMarks((allMarks) => {
+        const nextMarks = toggleMark(allMarks[reviewMarkKey] || [], position);
+        const next = { ...allMarks };
+        if (nextMarks.length) next[reviewMarkKey] = nextMarks;
+        else delete next[reviewMarkKey];
+        return next;
+      });
+      setToast("已更新本机标注，原棋谱不变");
+      return;
+    }
+    if (mode !== "record") return;
+    const editingDatabaseView = isPagedLibraryView(document) || isDynamicDatabaseView(document);
+    recordDraft({ type: "update-node", nodeId: currentId, patch: { marks: toggleMark(current.marks, position) } });
+    setToast(editingDatabaseView ? "已创建编辑副本并加入标注，原数据库不变" : "标注已加入草稿");
+  };
   const updateMetadata = (patch: Partial<GameDocument["metadata"]>) => {
+    if (mode === "review") { setToast("读谱模式为只读，不能编辑棋谱信息"); return; }
     if (isPagedLibraryView(document) || isDynamicDatabaseView(document)) {
       detachViewForEditing({ ...emptyDraft(), metadata: patch });
       return;
     }
     setDraft((state) => ({ ...state, metadata: { ...state.metadata, ...patch }, redo: [] }));
   };
+  const addReviewLabel = (position: Position, label: string) => {
+    setReviewMarks((allMarks) => {
+      const nextMarks = setLabelMark(allMarks[reviewMarkKey] || [], position, label, annotationStyle, annotationColor);
+      const next = { ...allMarks };
+      if (nextMarks.length) next[reviewMarkKey] = nextMarks;
+      else delete next[reviewMarkKey];
+      return next;
+    });
+  };
   const markCandidate = (index: number) => {
     const candidate = candidates[index];
     if (!candidate) return;
     const label = String.fromCharCode(65 + index);
+    if (mode === "review") {
+      addReviewLabel(candidate.position, label);
+      setToast(`已标记候选 ${label} · ${coordinateName(candidate.position)}，原棋谱不变`);
+      return;
+    }
     const editingDatabaseView = isPagedLibraryView(document) || isDynamicDatabaseView(document);
     applyCompactUpdate({ marks: setLabelMark(current.marks, candidate.position, label, annotationStyle, annotationColor) });
     if (editingDatabaseView) setToast(`已创建编辑副本并标记候选 ${label} · ${coordinateName(candidate.position)}`);
     else if (!isCompact()) setToast(`已标记候选 ${label} · ${coordinateName(candidate.position)}`);
   };
   const markTopCandidates = () => {
+    if (mode === "review") {
+      candidates.slice(0, 5).forEach((candidate, index) => addReviewLabel(candidate.position, String.fromCharCode(65 + index)));
+      setToast(`已标记前 ${Math.min(5, candidates.length)} 个候选点，原棋谱不变`);
+      return;
+    }
     const marks = candidates.slice(0, 5).reduce((result, candidate, index) => setLabelMark(result, candidate.position, String.fromCharCode(65 + index), annotationStyle, annotationColor), current.marks);
     const editingDatabaseView = isPagedLibraryView(document) || isDynamicDatabaseView(document);
     applyCompactUpdate({ marks });
     if (editingDatabaseView) setToast(`已创建编辑副本并标记前 ${Math.min(5, candidates.length)} 个候选点`);
     else if (!isCompact()) setToast(`已标记前 ${Math.min(5, candidates.length)} 个候选点`);
-  };
-  const runVcf = () => {
+  };  const runVcf = () => {
     if ((viewDocument.metadata.boardSize || 15) !== 15) { setToast("VCF 当前仅支持十五路棋盘，非十五路请使用手动打谱"); return; }
+    cancelActiveAiComputation("superseded");
     vcfWorker.current?.terminate();
     setVcfRunning(true); setVcfResult(null);
     const worker = new VcfWorker(); vcfWorker.current = worker;
@@ -1895,30 +2473,33 @@ export default function App() {
   };
   const stopThink = () => {
     if (!thinkRunning) return;
-    thinkGeneration.current += 1;
-    thinkWorker.current?.terminate(); thinkWorker.current = null;
-    rapfiThinkWorker.current?.terminate(); rapfiThinkWorker.current = null;
-    setThinkRunning(false); setThinkResult(null); setThinkContextKey(""); setThinkVisualState("cancelled");
-    setToast("已中断 AI 思考，本次不会自动落子");
+    cancelActiveAiComputation("user", true);
   };
   const startThink = () => {
     if (thinkRunning) { stopThink(); return; }
     if (mode !== "record") { setToast("“思考”只用于打谱界面的当前局面分析"); return; }
     if (aiGame) { setToast("人机对局会自动思考，请在普通打谱局面使用此按钮"); return; }
     if ((viewDocument.metadata.boardSize || 15) !== 15) { setToast("AI 思考当前仅支持十五路棋盘"); return; }
+    cancelActiveAiComputation("superseded");
+    vcfWorker.current?.terminate(); vcfWorker.current = null; setVcfRunning(false); setVcfResult(null);
     const generation = ++thinkGeneration.current;
-    thinkWorker.current?.terminate(); thinkWorker.current = null;
-    rapfiThinkWorker.current?.terminate();
     if (sheet === "think") setSheet(null);
     if (thinkDirectMove) setToast("AI 已在后台思考，完成后会直接落子");
     else if (thinkSheetOnStart) setToast("AI 正在思考，完成后会弹出推荐面板");
     else setToast("AI 已在后台思考，完成后会在棋盘标出推荐点");
     setThinkRunning(true); setThinkResult(null); setThinkContextKey(currentPositionKey); setThinkVisualState("thinking");
+    const worker = new Worker(`${import.meta.env.BASE_URL}rapfi/rapfi-worker.js`);
+    rapfiThinkWorker.current = worker;
+    const handle = aiWorkerController.current.start(worker, "analysis", currentPositionKey);
+    taskManager.current.start({ kind: "ai", title: "AI 思考", taskId: handle.requestId, cancellable: true, retryable: true });
+    taskManager.current.update({ stage: "searching", message: "正在寻找下一步" });
     const accept = (result: AiMoveResult) => {
-      if (generation !== thinkGeneration.current) return;
+      if (generation !== thinkGeneration.current || !aiWorkerController.current.isCurrent(handle)) return;
+      aiWorkerController.current.finish(handle);
       thinkWorker.current = null; rapfiThinkWorker.current = null; setThinkRunning(false);
+      if (taskManager.current.state?.taskId === handle.requestId) taskManager.current.success(result);
       if (result.move && thinkDirectMove) {
-        setThinkResult(null); setThinkVisualState("idle"); setThinkContextKey(""); setCandidateLabel(null); setSheet(null);
+        setThinkResult(null); setThinkVisualState("idle"); setThinkContextKey(""); setSheet(null);
         play(result.move, { ignoreAnnotation: true });
         setToast(`AI 已直接落子 ${coordinateName(result.move)}，记得保存修改`);
         return;
@@ -1929,29 +2510,31 @@ export default function App() {
       else setToast("AI 没有找到合法落子点");
     };
     const useFallback = () => {
-      if (generation !== thinkGeneration.current) return;
+      if (generation !== thinkGeneration.current || !aiWorkerController.current.isCurrent(handle)) return;
       const fallback = new PuzzleAiWorker();
+      if (!aiWorkerController.current.replaceWorker(handle, fallback)) return;
+      rapfiThinkWorker.current = null;
       thinkWorker.current = fallback;
-      fallback.onmessage = (event: MessageEvent<AiMoveResult>) => {
-        if (thinkWorker.current !== fallback || generation !== thinkGeneration.current) return;
-        fallback.terminate(); accept(event.data);
+      fallback.onmessage = (event: MessageEvent<AiMoveResult & { requestId?: string; generation?: number; result?: AiMoveResult }>) => {
+        const requestId = event.data.requestId || handle.requestId;
+        if (thinkWorker.current !== fallback || generation !== thinkGeneration.current || !aiWorkerController.current.isCurrent(handle, requestId, event.data.generation ?? handle.generation)) return;
+        accept(event.data.result || event.data);
       };
       fallback.onerror = () => {
-        if (thinkWorker.current !== fallback || generation !== thinkGeneration.current) return;
-        thinkWorker.current = null; fallback.terminate(); setThinkRunning(false); setThinkVisualState("error"); setToast("AI 思考线程异常，请重试");
+        if (thinkWorker.current !== fallback || generation !== thinkGeneration.current || !aiWorkerController.current.isCurrent(handle)) return;
+        aiWorkerController.current.finish(handle); thinkWorker.current = null; setThinkRunning(false); setThinkVisualState("error"); setToast("AI 思考线程异常，请重试");
+        if (taskManager.current.state?.taskId === handle.requestId) taskManager.current.fail(new Error("AI 思考线程异常"));
       };
-      fallback.postMessage({ board, player: nextPlayer, rule: viewDocument.metadata.rule, purpose: "think" });
+      fallback.postMessage({ requestId: handle.requestId, generation: handle.generation, board, player: nextPlayer, rule: viewDocument.metadata.rule, purpose: "think" });
     };
-    const worker = new Worker(`${import.meta.env.BASE_URL}rapfi/rapfi-worker.js`);
-    rapfiThinkWorker.current = worker;
-    worker.onmessage = (event: MessageEvent<{ type: string; result?: AiMoveResult; message?: string }>) => {
-      if (rapfiThinkWorker.current !== worker || generation !== thinkGeneration.current) return;
-      if (event.data.type === "result" && event.data.result) { worker.terminate(); accept(event.data.result); }
-      else if (event.data.type === "error") { worker.terminate(); rapfiThinkWorker.current = null; useFallback(); }
+    worker.onmessage = (event: MessageEvent<{ type: string; requestId?: string; generation?: number; result?: AiMoveResult; message?: string }>) => {
+      if (rapfiThinkWorker.current !== worker || generation !== thinkGeneration.current || !aiWorkerController.current.isCurrent(handle, event.data.requestId || handle.requestId, event.data.generation ?? handle.generation)) return;
+      if (event.data.type === "result" && event.data.result) accept(event.data.result);
+      else if (event.data.type === "error") useFallback();
     };
-    worker.onerror = () => { if (rapfiThinkWorker.current !== worker || generation !== thinkGeneration.current) return; worker.terminate(); rapfiThinkWorker.current = null; useFallback(); };
+    worker.onerror = () => { if (rapfiThinkWorker.current !== worker || generation !== thinkGeneration.current || !aiWorkerController.current.isCurrent(handle)) return; useFallback(); };
     const moves = pathToNode(viewDocument, currentId).flatMap((node) => node.move ? [{ row: node.move.row, col: node.move.col, player: node.move.player }] : []);
-    worker.postMessage({ type: "analyze", engine: "fallback", size: viewDocument.metadata.boardSize || 15, moves, player: nextPlayer, rule: viewDocument.metadata.rule, timeMs: 5000, maxDepth: 64 });
+    worker.postMessage({ type: "analyze", requestId: handle.requestId, generation: handle.generation, engine: "fallback", size: viewDocument.metadata.boardSize || 15, moves, player: nextPlayer, rule: viewDocument.metadata.rule, timeMs: 5000, maxDepth: 64 });
   };
   const navigatePagedWindow = async (index: number) => {
     const session = pagedSession.current;
@@ -1964,7 +2547,7 @@ export default function App() {
       recordSession.current = { document: opened.document, currentId: opened.currentId };
     } catch { setToast("大型棋谱页读取失败，请重试"); }
   };
-  const navigateDynamic = (session: DpViewSession | RenLibWebViewSession, operation: () => Promise<{ document: GameDocument; currentId: string }>, onOpened?: () => void) => {
+  const navigateDynamic = (session: DpViewSession | RenLibWebViewSession, operation: () => Promise<{ document: GameDocument; currentId: string }>, onOpened?: () => void, preserveDraft?: DraftState) => {
     if (dynamicNavigationPending.current) return;
     const version = ++dynamicNavigationVersion.current;
     dynamicNavigationPending.current = true;
@@ -1972,6 +2555,7 @@ export default function App() {
     void operation().then((opened) => {
       if (version !== dynamicNavigationVersion.current || dynamicViewSession.current !== session) return;
       setDocument(opened.document); setCurrentId(opened.currentId);
+      if (preserveDraft && hasDraft(preserveDraft)) setDraft(preserveDraft);
       recordSession.current = { document: opened.document, currentId: opened.currentId };
       onOpened?.();
     }).catch(() => {
@@ -1988,7 +2572,7 @@ export default function App() {
     clearBoardMotion();
     playSound("navigate");
     const dynamicSession = dynamicViewSession.current;
-    if (dynamicSession && isDynamicDatabaseView(document)) { navigateDynamic(dynamicSession, () => dynamicSession.back()); return; }
+    if (dynamicSession && isDynamicDatabaseView(document) && !draftOverlay.added.has(currentId)) { navigateDynamic(dynamicSession, () => dynamicSession.back()); return; }
     const session = pagedSession.current;
     if (session) { requestPagedIndex((activeSession) => activeSession.parentIndex(currentId)); return; }
     if (current.parentId) setCurrentId(current.parentId);
@@ -1997,9 +2581,12 @@ export default function App() {
     clearBoardMotion();
     playSound("navigate");
     const dynamicSession = dynamicViewSession.current;
-    if (dynamicSession && isDynamicDatabaseView(document)) {
+    if (dynamicSession && isDynamicDatabaseView(document) && !draftOverlay.added.has(currentId)) {
       const next = current.preferredChildId ? viewDocument.nodes[current.preferredChildId] : current.children.length ? viewDocument.nodes[current.children[0]] : undefined;
-      if (next?.move) { const move = next.move; navigateDynamic(dynamicSession, () => dynamicSession.move(move)); }
+      if (next?.move) {
+        if (draftOverlay.added.has(next.id)) setCurrentId(next.id);
+        else { const move = next.move; navigateDynamic(dynamicSession, () => dynamicSession.move(move)); }
+      }
       return;
     }
     const session = pagedSession.current;
@@ -2031,7 +2618,7 @@ export default function App() {
   const chooseChild = (id: string, pivotId = currentId) => {
     clearBoardMotion();
     const dynamicSession = dynamicViewSession.current;
-    if (dynamicSession && isDynamicDatabaseView(document)) {
+    if (dynamicSession && isDynamicDatabaseView(document) && !draftOverlay.added.has(id)) {
       const node = viewDocument.nodes[id];
       if (node?.move) navigateDynamic(dynamicSession, () => dynamicSession.moveFromDepth(depthOf(viewDocument, pivotId), node.move!), () => setSheet(null));
       return;
@@ -2049,7 +2636,7 @@ export default function App() {
     if (id === currentId) { setSheet(null); return; }
     clearBoardMotion();
     const dynamicSession = dynamicViewSession.current;
-    if (dynamicSession && isDynamicDatabaseView(document)) {
+    if (dynamicSession && isDynamicDatabaseView(document) && !draftOverlay.added.has(id)) {
       if (id === document.rootId) {
         navigateDynamic(dynamicSession, () => dynamicSession.root(), () => setSheet(null));
         return;
@@ -2072,42 +2659,90 @@ export default function App() {
       return;
     }
     const isPathNode = path.some((entry) => entry.id === id);
-    if (!isPathNode && pivotId) { chooseChild(id, pivotId); return; }
+    if (!isPathNode && pivotId && mode !== "review") { chooseChild(id, pivotId); return; }
     playSound("navigate");
     setCurrentId(id); setSheet(null);
   };
-  const saveBranchBookmark = () => {
-    const existing = activeBookmarks.find((bookmark) => bookmark.nodeId === currentId);
-    if (existing) { setToast("这个局面已经保存过书签，可用右侧按钮重命名"); return; }
-    const bookmark: BranchBookmark = {
-      id: `bookmark-${Date.now().toString(36)}`,
-      name: `${nodeKindLabel(current)} · 第 ${depthOf(viewDocument, currentId)} 手`,
-      nodeId: currentId,
-      createdAt: new Date().toISOString(),
-    };
-    setBranchBookmarks((all) => ({ ...all, [document.id]: [...(all[document.id] || []), bookmark] }));
-    setBookmarksExpanded(true);
-    setToast("已保存当前局面的分支书签，可继续重命名");
+  const toggleTreeBookmark = (nodeId: string) => {
+    if (mode === "review") { setToast("读谱模式无法进行该操作"); return; }
+    const node = viewDocument.nodes[nodeId];
+    if (!node) { setToast("节点不存在，无法添加书签"); return; }
+    const existed = activeBookmarks.some((bookmark) => bookmark.nodeId === nodeId);
+    const title = `${nodeKindLabel(node)} · 第 ${depthOf(viewDocument, nodeId)} 手`;
+    setBranchBookmarks((all) => ({ ...all, [document.id]: toggleRecordBookmark(all[document.id] || [], nodeId, title) }));
+    setToast(existed ? "已取消书签" : "已添加书签，可在棋谱树中编辑标题和备注");
   };
-  const deleteBranchBookmark = (id: string) => setBranchBookmarks((all) => ({ ...all, [document.id]: (all[document.id] || []).filter((bookmark) => bookmark.id !== id) }));
-  const jumpToBranchBookmark = (bookmark: BranchBookmark) => {
-    if (!viewDocument.nodes[bookmark.nodeId]) { setToast("这个分支书签对应的节点已不存在"); return; }
-    clearBoardMotion();
-    setCurrentId(bookmark.nodeId); setSheet(null);
+  const editTreeBookmark = (bookmark: RecordBookmark, patch: Partial<Pick<RecordBookmark, "title" | "note" | "accent">>) => {
+    if (mode === "review") { setToast("读谱模式无法进行该操作"); return; }
+    setBranchBookmarks((all) => ({ ...all, [document.id]: updateRecordBookmark(all[document.id] || [], bookmark.id, patch) }));
+    setToast("书签已更新");
   };
-  const beginRenameBranchBookmark = (bookmark: BranchBookmark) => {
-    setEditingBookmarkId(bookmark.id);
-    setEditingBookmarkName(bookmark.name);
+  const deleteTreeBookmark = (bookmark: RecordBookmark) => {
+    if (mode === "review") { setToast("读谱模式无法进行该操作"); return; }
+    setBranchBookmarks((all) => ({ ...all, [document.id]: (all[document.id] || []).filter((item) => item.id !== bookmark.id) }));
+    setToast("书签已删除");
   };
-  const commitRenameBranchBookmark = () => {
-    const name = editingBookmarkName.trim();
-    if (!editingBookmarkId || !name) { setToast("书签名称不能为空"); return; }
-    setBranchBookmarks((all) => ({ ...all, [document.id]: (all[document.id] || []).map((item) => item.id === editingBookmarkId ? { ...item, name } : item) }));
-    setEditingBookmarkId(null);
-    setEditingBookmarkName("");
-    setToast("分支书签已重命名");
+  const copyTreeBranch = (nodeId: string) => {
+    if (mode === "review") { setToast("读谱模式无法进行该操作"); return; }
+    if (compactIndexOf(document)) { setToast("大型棋谱当前只加载可视窗口，请先创建编辑副本再复制完整分支"); return; }
+    const clipboard = copyRecordSubtree(viewDocument, nodeId, activeBookmarks);
+    if (!clipboard) { setToast("这个分支不完整，暂时无法复制"); return; }
+    setTreeClipboard(clipboard);
+    setToast(`已复制 ${Object.keys(clipboard.nodes).length} 个节点，请在树中选择粘贴目标`);
+  };
+  const cutTreeBranch = (nodeId: string) => {
+    if (mode === "review") { setToast("读谱模式无法进行该操作"); return; }
+    copyTreeBranch(nodeId);
+    deleteTreeBranch(nodeId);
+    setToast("已剪切分支，可选择目标节点后粘贴");
+  };
+  const pasteTreeBranch = (targetId: string) => {
+    if (mode === "review") { setToast("读谱模式无法进行该操作"); return; }
+    if (!treeClipboard) { setToast("请先复制一个分支"); return; }
+    if (compactIndexOf(document)) { setToast("大型棋谱需先创建编辑副本再粘贴完整分支"); return; }
+    const result = pasteRecordSubtree(viewDocument, targetId, treeClipboard);
+    if (!result.ok) { setToast(result.reason); return; }
+    recordDraft({ type: "add-subtree", parentId: targetId, rootId: result.rootId, nodes: result.nodes, bookmarks: result.bookmarks });
+    if (result.bookmarks.length) setBranchBookmarks((all) => ({ ...all, [document.id]: mergeRecordBookmarks(all[document.id] || [], result.bookmarks) }));
+    setCurrentId(result.rootId);
+    setToast(`已粘贴 ${Object.keys(result.nodes).length} 个节点，可用“撤销”整体回退`);
+  };
+  const renameTreeBranch = (nodeId: string, title: string) => {
+    const normalized = title.trim();
+    if (!normalized) { setToast("分支名称不能为空"); return; }
+    const docId = viewDocument.id;
+    if (mode === "review") {
+      setReviewBranchNames((current) => ({ ...current, [docId]: { ...(current[docId] || {}), [nodeId]: normalized } }));
+      setToast("已保存为本机分支名称，读谱模式不修改原谱");
+      return;
+    }
+    recordDraft({ type: "update-node", nodeId, patch: { boardText: normalized } });
+    if (reviewBranchNames[docId]?.[nodeId]) {
+      const rest = { ...reviewBranchNames[docId] };
+      delete rest[nodeId];
+      const next = { ...reviewBranchNames };
+      if (Object.keys(rest).length) next[docId] = rest; else delete next[docId];
+      setReviewBranchNames(next);
+    }
+    setToast("分支名称已更新");
+  };
+  const createBranchFromTree = (nodeId: string) => {
+    if (mode === "review") { setToast("读谱模式无法进行该操作"); return; }
+    if (!viewDocument.nodes[nodeId]) return;
+    clearBoardMotion(); setCurrentId(nodeId); setSheet(null);
+    setToast("已定位到分支起点，请在棋盘空位落子创建新分支");
+  };
+  const deleteTreeBranch = (nodeId: string) => {
+    if (mode === "review") { setToast("读谱模式无法进行该操作"); return; }
+    const node = viewDocument.nodes[nodeId];
+    if (!node?.parentId) { setToast("起始局面不能删除"); return; }
+    if (!window.confirm(`确定删除“${nodeKindLabel(node)}”及其全部后续吗？保存前可用撤销恢复。`)) return;
+    recordDraft({ type: "delete-subtree", parentId: node.parentId, rootId: nodeId });
+    if (path.some((entry) => entry.id === nodeId) || currentId === nodeId) setCurrentId(node.parentId);
+    setToast("已加入删除草稿，保存前可撤销");
   };
   const deleteCurrentVariation = () => {
+    if (mode === "review") { setToast("读谱模式无法进行该操作"); return; }
     if (!current.parentId) { setToast("起始局面不能删除"); return; }
     const editingDatabaseView = isPagedLibraryView(document) || isDynamicDatabaseView(document);
     const parentId = current.parentId;
@@ -2115,26 +2750,30 @@ export default function App() {
     setCurrentId(parentId); setSheet(null);
     setToast(editingDatabaseView ? "已创建编辑副本并删除当前变化，原数据库不变" : "已删除当前这一步及全部后续变化，保存后生效");
   };
-  const closeWorkspaceSelector = () => { setWorkspaceSelectorOpen(false); setWorkspaceListExpanded(false); setExpandedCollectionId(null); setPuzzleQuery(""); };
+  const closeWorkspaceSelector = () => setWorkspaceSelectorOpen(false);
   /** Perform a record switch without checking the draft. This is only called
    * after the single outer draft guard has completed. */
-  const performOpenRecord = (next: GameDocument, nodeId = next.rootId, largeId?: string, sourceFile?: File) => {
+  const performOpenRecord = (next: GameDocument, nodeId = next.rootId, largeId?: string, sourceFile?: File, openMode: AppMode = "record") => {
+    cancelActiveAiComputation("record-switch");
     dynamicNavigationVersion.current += 1;
     dynamicNavigationPending.current = false;
     setDynamicNavigationBusy(false);
     setContinuationEditMode(false);
+    // A record switch invalidates any source session retained by a detached
+    // editing copy. Keep the newly opened dynamic session (it is installed by
+    // the importer before this function runs), but never let an old source
+    // identity leak into the next record.
+    detachedDynamicSource.current = null;
     if (!isDynamicDatabaseView(next)) { dynamicViewSession.current?.close(); dynamicViewSession.current = null; }
     pagedNavigationVersion.current += 1;
     pagedSession.current?.close(); pagedSession.current = null;
     persistedDocuments.current.add(next);
-    puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null;
-    rapfiGameWorker.current?.terminate(); rapfiGameWorker.current = null;
     aiOpeningGeneration.current += 1;
     if (aiOpeningTimer.current !== null) { window.clearTimeout(aiOpeningTimer.current); aiOpeningTimer.current = null; }
     recordSession.current = { document: next, currentId: nodeId };
     nativeSourceFile.current = sourceFile || null;
-    setDocument(next); setCurrentId(nodeId); setDraft(compactIndexOf(next) ? emptyDraft() : loadDraftFromLocal(next.id));
-    setMode("record"); setAiGame(null); setDockPanel("moves"); setTab("record"); closeWorkspaceSelector();
+    setDocument(next); setCurrentId(nodeId); setDraft(compactIndexOf(next) || openMode === "review" ? emptyDraft() : loadDraftFromLocal(next.id));
+    setMode(openMode); setAiGame(null); exitAnnotationMode(); setDockPanel(null); setTab("record"); setSheet(null); closeWorkspaceSelector();
     if (largeId) localStorage.setItem(ACTIVE_LARGE_RECORD_KEY, largeId);
     else localStorage.removeItem(ACTIVE_LARGE_RECORD_KEY);
     setToast("棋谱已打开");
@@ -2221,38 +2860,72 @@ export default function App() {
   };
   const discardPendingSwitch = () => {
     const action = pendingSwitch;
+    removePastedDraftBookmarks(draft);
     if (compactIndexOf(document)) void removeDraftForDocument(document.id); else removeDraftFromLocal(document.id);
     setDraft(emptyDraft()); setPendingSwitch(null); action?.();
   };
+  const applyAiRuleChoice = (choice: typeof AI_RULE_CHOICES[number]) => {
+    cancelActiveAiComputation("settings-change");
+    setAiRuleFamily(choice.rule);
+    setAiOpeningRule(choice.openingRule);
+    setAiRuleDetail(null);
+  };
+  const selectedAiRule = AI_RULE_CHOICES.find((choice) => choice.rule === aiRuleFamily && choice.openingRule === aiOpeningRule) || AI_RULE_CHOICES[0];
   const startNewAiGame = () => withDraftGuard(() => {
-    puzzleAiWorker.current?.terminate(); puzzleAiWorker.current = null;
-    rapfiGameWorker.current?.terminate(); rapfiGameWorker.current = null; setAiThinking(false);
+    cancelActiveAiComputation("settings-change"); setAiThinking(false);
     const next = createDocument("人机对战");
-    next.metadata.rule = aiForbiddenEnabled ? "renju" : aiRuleFamily === "standard" ? "standard" : "freestyle";
+    next.metadata.rule = aiRuleFamily;
     next.metadata.openingRule = aiOpeningRule;
-    next.metadata.openingN = aiOpeningRule === "five-two" ? 2 : aiOpeningRule === "taraguchi-10" ? 10 : aiOpeningRule === "five-n" ? aiOpeningN : undefined;
+    // 五手多打的数量在第4手后由对局中的小弹窗决定，不在开局前写死。
+    next.metadata.openingN = undefined;
     next.metadata.black = aiHumanPlayer === "black" ? "我" : "半步 AI";
     next.metadata.white = aiHumanPlayer === "white" ? "我" : "半步 AI";
     const timeControlName = AI_TIME_OPTIONS.find((option) => option.value === aiTimeLimitMs)?.title || "不限";
-    next.metadata.event = (aiRuleFamily === "renju" ? "连珠" : "标准五子棋") + " · " + openingRuleName(aiOpeningRule, aiOpeningN) + " · " + (aiForbiddenEnabled ? "有禁手" : "无禁手") + " · AI " + aiStrength + " · " + timeControlName + " · 人机对战";
+    next.metadata.event = `${selectedAiRule.name} · ${selectedAiRule.badge} · AI ${aiStrength} · ${timeControlName} · 人机对战`;
     const opening = createOpeningSession(aiOpeningRule, aiOpeningN, aiHumanPlayer);
-    const game: AiGameState = { humanPlayer: aiHumanPlayer, aiPlayer: otherPlayer(aiHumanPlayer), strength: aiStrength, forbiddenEnabled: aiForbiddenEnabled, timeLimitMs: aiTimeLimitMs, outcome: null, opening };
+    const thinkProfile = aiStrength === "自由" ? { timeMs: aiFreeTimeMs, maxDepth: aiFreeDepth } : AI_STRENGTH_PROFILES[aiStrength];
+    const game: AiGameState = { humanPlayer: aiHumanPlayer, aiPlayer: otherPlayer(aiHumanPlayer), strength: aiStrength, forbiddenEnabled: aiRuleFamily === "renju", timeLimitMs: aiTimeLimitMs, thinkTimeMs: thinkProfile.timeMs, thinkDepth: thinkProfile.maxDepth, unlimitedThinking: aiStrength === "自由" && aiFreeUnlimited, outcome: null, opening };
     aiClockLastAt.current = null; aiClockExpired.current = false; setAiHumanElapsedMs(0);
     performOpenRecord(next);
-    setAiGame(game); setPlacementPlayer(aiHumanPlayer); setPlacementLocked(true); setShowForbidden(aiForbiddenEnabled); setSheet(null); setDockPanel("moves");
-    setToast(aiOpeningRule === "free" ? (aiHumanPlayer === "black" ? "人机新局已开始，你执黑先行" : "人机新局已开始，AI 执黑先行") : `${openingRuleName(aiOpeningRule, aiOpeningN)}开局已开始`);
+    setAiGame(game); setPlacementPlayer(aiHumanPlayer); setPlacementLocked(true); setSheet(null); setDockPanel(null);
+    setToast(`${selectedAiRule.name}开局已开始`);
     scheduleAiOpening(game, next, next.rootId);
   });
-  const newRecord = () => withDraftGuard(() => { const next = createDocument(); performOpenRecord(next); setToast("已新建空白棋谱"); });
+  const newRecord = () => withDraftGuard(() => { const next = createDocument("新建棋谱", defaultBoardSize); performOpenRecord(next); setToast("已新建空白棋谱"); });
+  const createBoardWithSize = (size: number) => withDraftGuard(() => {
+    const next = createDocument(`新建${size}路棋谱`, size);
+    performOpenRecord(next);
+    setToast(`已新建 ${size} 路空白棋谱`);
+  });
   const openRecord = (
     next: GameDocument,
     nodeId = next.rootId,
-    options?: { largeId?: string; sourceFile?: File; onOpened?: () => void },
+    options?: { largeId?: string; sourceFile?: File; mode?: Extract<AppMode, "record" | "review">; onOpened?: () => void },
   ) => withDraftGuard(() => {
-    performOpenRecord(next, nodeId, options?.largeId, options?.sourceFile);
+    performOpenRecord(next, nodeId, options?.largeId, options?.sourceFile, options?.mode || "record");
     options?.onOpened?.();
   });
-  const performOpenLargeRecord = async (summary: LargeDocumentSummary) => {
+  const openNativeDatabase = () => withDraftGuard(() => {
+    cancelActiveAiComputation("record-switch");
+    const progressId = beginImportProgress(NATIVE_DATABASE_TITLE, "正在读取内置局面数据库");
+    const session = new DpViewSession();
+    void loadNativeDatabaseFile().then(async (file) => {
+      updateImportProgress(progressId, { phase: "indexing", detail: "正在建立局面查询索引；数据库内容按需读取" });
+      const opened = await session.open(file);
+      dynamicViewSession.current?.close();
+      dynamicViewSession.current = session;
+      openRecord(opened.document, opened.currentId, { sourceFile: file, onOpened: () => setImportState("dp-query-ready", { records: opened.recordCount, native: true }) });
+      setToast(`已打开内置数据库，共 ${opened.recordCount} 条局面记录，分支按局面实时读取`);
+      finishImportProgress(progressId, `内置数据库查询已就绪，共 ${opened.recordCount} 条记录`);
+    }).catch((error) => {
+      session.close();
+      const message = error instanceof Error ? error.message : "内置局面数据库打开失败";
+      setToast(`无法打开 ${NATIVE_DATABASE_TITLE}：${message}`);
+      failImportProgress(progressId, message);
+    });
+  });
+  const performOpenLargeRecord = async (summary: LargeDocumentSummary, openMode: Extract<AppMode, "record" | "review"> = "record") => {
+    cancelActiveAiComputation("record-switch");
     const progressId = beginImportProgress(summary.metadata.title, "正在读取本机保存的棋谱索引");
     try {
       if (summary.storageMode === "compact-index") {
@@ -2268,7 +2941,7 @@ export default function App() {
         recordSession.current = { document: opened.document, currentId: opened.currentId };
         nativeSourceFile.current = null;
         setDocument(opened.document); setCurrentId(opened.currentId); setDraft(emptyDraft());
-        setMode("record"); setAiGame(null); setDockPanel("moves"); setTab("record"); closeWorkspaceSelector();
+        setMode(openMode); setAiGame(null); exitAnnotationMode(); setDockPanel(null); setTab("record"); closeWorkspaceSelector();
         localStorage.setItem(ACTIVE_LARGE_RECORD_KEY, summary.id);
         setToast("棋谱已用分页后端打开");
         finishImportProgress(progressId, "大型棋谱已打开");
@@ -2276,8 +2949,11 @@ export default function App() {
       }
       const next = await loadLargeDocument(summary.id);
       if (!next) { setToast("大型棋谱文件不存在，索引已清理"); failImportProgress(progressId, "本机棋谱不存在，已清理失效记录"); await removeLargeDocument(summary.id); setLargeSummaries((items) => items.filter((item) => item.id !== summary.id)); return; }
-      performOpenRecord(next, next.rootId, summary.id);
+      performOpenRecord(next, next.rootId, summary.id, undefined, openMode);
       void loadDraftForDocument(summary.id).then((stored) => {
+        // A review session must never receive an editor draft. Also ignore a
+        // late response if the user has already switched to another record.
+        if (openMode !== "record" || recordSession.current.document.id !== summary.id) return;
         if (stored && compactIndexOf(next)) {
           const currentFingerprint = documentFingerprint(next);
           if (stored.baseFingerprint === currentFingerprint) setDraft({ operations: stored.operations, redo: stored.redo });
@@ -2286,8 +2962,9 @@ export default function App() {
       finishImportProgress(progressId, "大型棋谱已打开");
     } catch { setToast("大型棋谱读取失败，请检查本机存储"); failImportProgress(progressId, "读取失败，请检查本机存储"); }
   };
-  const openLargeRecord = (summary: LargeDocumentSummary) => withDraftGuard(() => { void performOpenLargeRecord(summary); });
+  const openLargeRecord = (summary: LargeDocumentSummary, openMode: Extract<AppMode, "record" | "review"> = "record") => withDraftGuard(() => { void performOpenLargeRecord(summary, openMode); });
   const performDeleteRecord = (item: GameDocument) => {
+    cancelActiveAiComputation("record-switch");
     const folder = libraryFolders.recordAssignments[item.id] || "未分类";
     setRecycleBin(addToRecycleBin({ id: item.id, kind: "record", item, folder, deletedAt: new Date().toISOString() }));
     if (mode === "record" && document.id === item.id) {
@@ -2306,6 +2983,7 @@ export default function App() {
   };
   const deleteRecord = (item: GameDocument) => withDraftGuard(() => performDeleteRecord(item));
   const performDeleteLargeRecord = (item: LargeDocumentSummary) => {
+    cancelActiveAiComputation("record-switch");
     const folder = libraryFolders.recordAssignments[item.id] || "未分类";
     void moveLargeDocumentToTrash(item.id).then((moved) => {
       if (!moved) throw new Error("大型棋谱不存在，未能移入回收站");
@@ -2329,6 +3007,7 @@ export default function App() {
   };
   const deleteLargeRecord = (item: LargeDocumentSummary) => withDraftGuard(() => performDeleteLargeRecord(item));
   const deletePuzzleCollection = (collection: PuzzleCollection) => withDraftGuard(() => {
+    cancelActiveAiComputation("record-switch");
     if (collection.id.startsWith("native-")) { setToast("内置题库不能删除"); return; }
     const folder = libraryFolders.puzzleAssignments[collection.id] || "我的题库";
     setRecycleBin(addToRecycleBin({ id: collection.id, kind: "puzzle-collection", item: collection, folder, deletedAt: new Date().toISOString() }));
@@ -2337,12 +3016,19 @@ export default function App() {
     setLibraryFolders((folders) => {
       const assignments = { ...folders.puzzleAssignments };
       delete assignments[collection.id];
-      return { ...folders, puzzleAssignments: assignments };
+      let order = folders.order;
+      if (order) {
+        const puzzleBucket = { ...(order.puzzles ?? {}) };
+        delete puzzleBucket[collection.id];
+        order = removeFromOrder({ ...order, puzzles: puzzleBucket }, "puzzleCollections", folder, collection.id);
+      }
+      return { ...folders, puzzleAssignments: assignments, order };
     });
     if (puzzleCollectionIndex >= next.length) setPuzzleCollectionIndex(Math.max(0, next.length - 1));
     setToast(`已移入回收站：${collection.title}`);
   });
   const restoreRecycleEntry = (entry: RecycleBinEntry) => {
+    cancelActiveAiComputation("record-switch");
     if (entry.kind === "record") {
       const next = saveToLibrary(entry.item);
       setLibrary(next);
@@ -2369,6 +3055,8 @@ export default function App() {
     }).catch((error) => setToast(error instanceof Error ? error.message : "大型棋谱恢复失败"));
   };
   const permanentlyDeleteRecycleEntry = (entry: RecycleBinEntry) => {
+    if (!window.confirm(permanentDeleteConfirmation(entry))) return;
+    cancelActiveAiComputation("record-switch");
     if (entry.kind === "large-record") {
       void removeLargeTrashDocument(entry.id).then(() => {
         setRecycleBin(removeFromRecycleBin(entry.kind, entry.id));
@@ -2380,6 +3068,8 @@ export default function App() {
     setToast(`已彻底删除：${entry.kind === "puzzle-collection" ? entry.item.title : entry.item.metadata.title}`);
   };
   const emptyRecycleBin = () => {
+    if (!recycleBin.length || !window.confirm(emptyRecycleBinConfirmation(recycleBin.length))) return;
+    cancelActiveAiComputation("record-switch");
     const largeEntries = recycleBin.filter((entry): entry is Extract<RecycleBinEntry, { kind: "large-record" }> => entry.kind === "large-record");
     void Promise.all(largeEntries.map((entry) => removeLargeTrashDocument(entry.id))).then(() => {
       localStorage.removeItem("banbu-recycle-bin-v1");
@@ -2387,18 +3077,32 @@ export default function App() {
       setToast("回收站已清空");
     }).catch(() => setToast("回收站清空失败，请稍后重试"));
   };
-  const createLibraryFolder = (kind: LibrarySection) => {
+  const createLibraryFolder = (kind: LibrarySection, parent = "") => {
+    setFolderSheetMode("create");
     setFolderCreationSection(kind);
+    setFolderCreationParent(parent);
     setNewFolderName("");
     setSheet("folder");
   };
+  const moveBatchSelectionToFolder = () => {
+    if (!batchSelectedIds.length || !folderCreationParent) return;
+    const selected = new Set(batchSelectedIds);
+    setLibraryFolders((folders) => ({ ...folders, recordAssignments: {
+      ...folders.recordAssignments,
+      ...Object.fromEntries([...selected].map((id) => [id, folderCreationParent])),
+    } }));
+    setToast(`已移动 ${selected.size} 份棋谱到“${folderCreationParent}”`);
+    setExpandedLibraryFolders((current) => new Set([...current, folderCreationParent]));
+    setSheet(null);
+  };
   const confirmCreateLibraryFolder = () => {
-    const name = newFolderName.trim();
+    const name = newFolderName.trim().split("\\").join(" ").split(FOLDER_SEPARATOR).join(" ");
     if (!name) { setToast("请输入文件夹名称"); return; }
     const key = folderCreationSection === "records" ? "recordFolders" : "puzzleFolders";
-    if (libraryFolders[key].includes(name)) { setToast("已经有同名文件夹"); return; }
-    setLibraryFolders((currentFolders) => ({ ...currentFolders, [key]: [...currentFolders[key], name] }));
-    setExpandedLibraryFolder(name); setToast(`已创建文件夹“${name}”`);
+    const path = folderCreationParent ? `${folderCreationParent}${FOLDER_SEPARATOR}${name}` : name;
+    if (libraryFolders[key].includes(path)) { setToast("当前文件夹中已经有同名子文件夹"); return; }
+    setLibraryFolders((currentFolders) => ({ ...currentFolders, [key]: [...currentFolders[key], path] }));
+    setExpandedLibraryFolders((current) => new Set([...current, folderCreationParent, path])); setToast(`已创建文件夹“${path}”`);
     setSheet(null);
   };
   const assignLibraryItem = (kind: LibrarySection, id: string, folder: string) => {
@@ -2406,8 +3110,93 @@ export default function App() {
     setLibraryFolders((currentFolders) => ({ ...currentFolders, [key]: { ...currentFolders[key], [id]: folder } }));
     setToast(`已移动到“${folder}”`);
   };
+  // Manual ordering: an absent order entry always means the natural insertion
+  // order, so clearing a key is the "恢复默认" action and stays reversible.
+  const updateLibraryOrder = (kind: LibraryOrderKind, key: string, ids: string[] | null) => setLibraryFolders((folders) => {
+    const maps: LibraryOrderMaps = { ...(folders.order ?? {}) };
+    const bucket = { ...(maps[kind] ?? {}) };
+    if (ids && ids.length > 1) bucket[key] = ids; else delete bucket[key];
+    if (Object.keys(bucket).length) maps[kind] = bucket; else delete maps[kind];
+    return { ...folders, order: maps };
+  });
+  const libraryFoldersRef = useRef(libraryFolders);
+  libraryFoldersRef.current = libraryFolders;
+  const naturalIdsFor = (kind: LibraryOrderKind, key: string): string[] => {
+    if (kind === "records") return [
+      ...library.filter((item) => (libraryFoldersRef.current.recordAssignments[item.id] || "未分类") === key).map((item) => item.id),
+      ...largeSummaries.filter((item) => (libraryFoldersRef.current.recordAssignments[item.id] || "未分类") === key).map((item) => item.id),
+    ];
+    if (kind === "puzzleCollections") return puzzleCollections
+      .filter((collection) => (libraryFoldersRef.current.puzzleAssignments[collection.id] || (collection.id.startsWith("native-") ? "内置题库" : "我的题库")) === key)
+      .map((collection) => collection.id);
+    if (kind === "puzzles") return puzzleCollections.find((collection) => collection.id === key)?.puzzles.map((puzzle) => puzzle.id) ?? [];
+    return folderChildren(kind === "recordFolders" ? libraryFoldersRef.current.recordFolders : libraryFoldersRef.current.puzzleFolders, key);
+  };
+  const performLibraryDrop = (kind: LibraryOrderKind, key: string, draggedId: string, targetId: string, placeBefore: boolean) => {
+    updateLibraryOrder(kind, key, moveRelative(applyOrder(naturalIdsFor(kind, key), libraryFoldersRef.current.order?.[kind]?.[key]), draggedId, targetId, placeBefore));
+  };
+  const touchDragBridge = useRef<{ enabled: () => boolean; performDrop: typeof performLibraryDrop }>({ enabled: () => true, performDrop: performLibraryDrop });
+  touchDragBridge.current = { enabled: () => !batchEditMode, performDrop: performLibraryDrop };
+  useEffect(() => attachLibraryTouchDrag({
+    enabled: () => touchDragBridge.current.enabled(),
+    performDrop: (kind, key, draggedId, targetId, placeBefore) => touchDragBridge.current.performDrop(kind, key, draggedId, targetId, placeBefore),
+  }), []);
+  const libraryDrag = useRef<{ kind: LibraryOrderKind; key: string; id: string } | null>(null);
+  const onLibraryDragStart = (kind: LibraryOrderKind, key: string, id: string) => (event: ReactDragEvent) => {
+    libraryDrag.current = { kind, key, id };
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", id);
+  };
+  const onLibraryDragOver = (event: ReactDragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    const target = event.currentTarget as HTMLElement;
+    const before = event.clientY < target.getBoundingClientRect().top + target.clientHeight / 2;
+    target.classList.toggle("drag-before", before);
+    target.classList.toggle("drag-after", !before);
+  };
+  const onLibraryDragLeave = (event: ReactDragEvent) => {
+    (event.currentTarget as HTMLElement).classList.remove("drag-before", "drag-after");
+  };
+  const onLibraryDrop = (kind: LibraryOrderKind, key: string, naturalIds: string[]) => (event: ReactDragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const target = event.currentTarget as HTMLElement;
+    const dragged = libraryDrag.current;
+    const targetId = target.dataset.orderId || "";
+    target.classList.remove("drag-before", "drag-after");
+    libraryDrag.current = null;
+    if (!dragged || dragged.kind !== kind || dragged.key !== key || !targetId || dragged.id === targetId) return;
+    const before = event.clientY < target.getBoundingClientRect().top + target.clientHeight / 2;
+    performLibraryDrop(kind, key, dragged.id, targetId, before);
+  };
+  const [librarySortMenu, setLibrarySortMenu] = useState<string | null>(null);
+  const toggleLibrarySortMenu = (menuId: string) => setLibrarySortMenu((current) => current === menuId ? null : menuId);
+  const announceOrderToast = (message: string) => {
+    // Same-commit toast mount + list remount crashes React DOM placement
+    // (insertBefore anchor); defer the toast to the next frame.
+    window.setTimeout(() => setToast(message), 0);
+  };
+  const sortLibraryContainer = (kind: LibraryOrderKind, key: string, naturalIds: string[], titleOf: (id: string) => string, direction: "az" | "za" | null) => {
+    setLibrarySortMenu(null);
+    if (!direction) { updateLibraryOrder(kind, key, null); announceOrderToast("已恢复默认排序"); return; }
+    const titles = Object.fromEntries(naturalIds.map((id) => [id, titleOf(id) || ""]));
+    updateLibraryOrder(kind, key, sortIdsByTitles(naturalIds, titles, direction));
+    announceOrderToast(direction === "az" ? "已按标题 A→Z 排序" : "已按标题 Z→A 排序");
+  };
+  const resetLibraryOrder = (targets: Array<[LibraryOrderKind, string]>) => {
+    targets.forEach(([kind, key]) => updateLibraryOrder(kind, key, null));
+    setLibrarySortMenu(null);
+    announceOrderToast("已恢复默认排序");
+  };
+  const renderLibrarySortMenu = (menuId: string, items: Array<[string, () => void]>) => librarySortMenu !== menuId ? null : <>
+    <div className="library-sort-backdrop" onClick={() => setLibrarySortMenu(null)}/>
+    <div className="library-sort-menu" role="menu" aria-label="排序方式">
+      {items.map(([label, action]) => <button key={label} type="button" role="menuitem" onClick={action}>{label}</button>)}
+    </div>
+  </>;
   const beginLibraryRename = (target: LibraryRenameTarget) => {
-    setRenameTarget(target); setRenameName(target.name); setSheet("rename");
+    setRenameTarget(target); setRenameName(target.kind.includes("folder") ? folderLabel(target.name) : target.name); setSheet("rename");
   };
   const confirmLibraryRename = async () => {
     if (!renameTarget) return;
@@ -2415,7 +3204,8 @@ export default function App() {
     if (!name) { setToast("请输入新的名称"); return; }
     if ((renameTarget.kind === "record-folder" || renameTarget.kind === "puzzle-folder") && name !== renameTarget.name) {
       const folders = renameTarget.kind === "record-folder" ? libraryFolders.recordFolders : libraryFolders.puzzleFolders;
-      if (folders.includes(name)) { setToast("已经有同名文件夹"); return; }
+      const nextPath = folderParent(renameTarget.name) ? `${folderParent(renameTarget.name)}/${name}` : name;
+      if (folders.includes(nextPath) && nextPath !== renameTarget.name) { setToast("当前文件夹中已经有同名子文件夹"); return; }
     }
     try {
       if (renameTarget.kind === "record-folder" || renameTarget.kind === "puzzle-folder") {
@@ -2423,27 +3213,31 @@ export default function App() {
         const folderKey = records ? "recordFolders" : "puzzleFolders";
         const assignmentKey = records ? "recordAssignments" : "puzzleAssignments";
         const oldName = renameTarget.name;
+        const newName = folderParent(oldName) ? `${folderParent(oldName)}/${name}` : name;
         setLibraryFolders((folders) => {
           const assignments = { ...folders[assignmentKey] };
-          Object.entries(assignments).forEach(([id, folder]) => { if (folder === oldName) assignments[id] = name; });
+          Object.entries(assignments).forEach(([id, folder]) => {
+            if (folder === oldName || folder.startsWith(`${oldName}/`)) assignments[id] = `${newName}${folder.slice(oldName.length)}`;
+          });
           if (records) {
             [...library, ...largeSummaries].forEach((item) => {
-              if ((folders.recordAssignments[item.id] || "未分类") === oldName) assignments[item.id] = name;
+              if ((folders.recordAssignments[item.id] || "未分类") === oldName) assignments[item.id] = newName;
             });
           } else {
             puzzleCollections.forEach((collection) => {
               const fallback = collection.id.startsWith("native-") ? "内置题库" : "我的题库";
-              if ((folders.puzzleAssignments[collection.id] || fallback) === oldName) assignments[collection.id] = name;
+              if ((folders.puzzleAssignments[collection.id] || fallback) === oldName) assignments[collection.id] = newName;
             });
           }
           return {
             ...folders,
-            [folderKey]: folders[folderKey].map((folder) => folder === oldName ? name : folder),
+            [folderKey]: folders[folderKey].map((folder) => folder === oldName || folder.startsWith(`${oldName}/`) ? `${newName}${folder.slice(oldName.length)}` : folder),
             [assignmentKey]: assignments,
+            order: remapFolderOrder(folders.order, folderKey, records ? "records" : "puzzleCollections", oldName, newName) ?? folders.order,
           } as LibraryFolders;
         });
-        if (expandedLibraryFolder === oldName) setExpandedLibraryFolder(name);
-        if (saveFolder === oldName) setSaveFolder(name);
+        setExpandedLibraryFolders((current) => new Set([...current].map((folder) => folder === oldName || folder.startsWith(`${oldName}/`) ? `${newName}${folder.slice(oldName.length)}` : folder)));
+        if (saveFolder === oldName || saveFolder.startsWith(`${oldName}/`)) setSaveFolder(`${newName}${saveFolder.slice(oldName.length)}`);
       } else if (renameTarget.kind === "record") {
         const renamed = renameInLibrary(renameTarget.id, name);
         setLibrary(renamed.library);
@@ -2477,14 +3271,18 @@ export default function App() {
   const beginImportProgress = (fileName: string, detail: string, totalFiles?: number) => {
     if (importProgressTimer.current !== null) window.clearTimeout(importProgressTimer.current);
     const id = ++importProgressId.current;
+    taskManager.current.start({ kind: "import", title: "导入棋谱", taskId: `import-${id}`, cancellable: true, retryable: true });
+    taskManager.current.update({ stage: "reading", message: detail, progress: 0 });
     setImportProgress({ id, phase: "reading", fileName, detail, currentFile: totalFiles ? 1 : undefined, totalFiles });
     return id;
   };
   const updateImportProgress = (id: number, patch: ImportProgressPatch) => {
     setImportProgress((current) => current?.id === id ? mergeImportProgress(current, patch) : current);
+    if (taskManager.current.state?.taskId === `import-${id}`) taskManager.current.update({ stage: patch.phase, message: patch.detail, progress: patch.progress });
   };
   const settleImportProgress = (id: number, phase: "complete" | "error", detail: string) => {
     updateImportProgress(id, { phase, detail, progress: phase === "complete" ? 1 : undefined });
+    if (taskManager.current.state?.taskId === `import-${id}`) phase === "complete" ? taskManager.current.success() : taskManager.current.fail(new Error(detail));
     if (importProgressTimer.current !== null) window.clearTimeout(importProgressTimer.current);
     importProgressTimer.current = window.setTimeout(() => {
       setImportProgress((current) => current?.id === id ? null : current);
@@ -2555,6 +3353,11 @@ export default function App() {
   const handleFiles = async (files?: FileList | File[]) => {
     const requested = files ? Array.from(files) : [];
     if (!requested.length) return;
+    if (requested.length === 1 && (/\.zip$/i.test(requested[0].name) || requested[0].type === "application/zip")) {
+      await handleZipFile(requested[0]);
+      return;
+    }
+    cancelActiveAiComputation("record-switch");
     const singleExtension = requested.length === 1 ? requested[0].name.split(".").pop()?.toLowerCase() || "" : "";
     if (requested.length === 1 && singleExtension === "json" && isPuzzleJsonText(await requested[0].text())) {
       await handlePuzzleFile(requested[0]);
@@ -2607,15 +3410,13 @@ export default function App() {
       }
       return;
     }
-    const supported = new Set(["sgf", "fgf", "pos", "txt", "ren", "renjs", "wzq", "lib", "renju", "json", "db", "dp"]);
+    const supported = new Set(["sgf", "fgf", "pos", "txt", "psq", "ren", "renjs", "wzq", "lib", "renju", "json", "db", "dp", "zip"]);
     const failures: { file: string; reason: unknown }[] = [];
     const selected = requested.filter((file) => {
       const extension = file.name.split(".").pop()?.toLowerCase() || "";
       const maximum = ["lib", "db", "dp"].includes(extension) ? Number.POSITIVE_INFINITY : MAX_OTHER_RECORD_BYTES;
       const maximumLabel = "64MB";
-      const reason = extension === "zip"
-        ? "ZIP 只是压缩包，不是棋谱格式；请先解压后选择其中的 LIB 文件"
-        : !supported.has(extension)
+      const reason = !supported.has(extension)
         ? `不支持 .${extension || "未知"} 文件`
         : file.size > maximum ? `${extension.toUpperCase()} 单个文件不能超过 ${maximumLabel}（按解压后的实际文件大小计算）` : "";
       if (reason) failures.push({ file: file.name, reason: new Error(reason) });
@@ -2769,7 +3570,7 @@ export default function App() {
     if (requested.length === 1) {
       const active = resolvedSingle;
       if (!active) { setToast("棋谱已解析，但写入大型棋谱库失败"); failImportProgress(progressId, "写入大型棋谱库失败"); return; }
-      if (active && tab === "library") { setLibrarySection("records"); setExpandedLibraryFolder(libraryFolders.recordAssignments[active.id] || "未分类"); }
+      if (active && tab === "library") { setLibrarySection("records"); setExpandedLibraryFolders(new Set([libraryFolders.recordAssignments[active.id] || "未分类"])); }
       else if (active) {
         const largeId = largeImports.length && !saved.library.some((item) => item.id === active.id) ? active.id : undefined;
         openRecord(active, active.rootId, { largeId, sourceFile: imported[0]?.file, onOpened: () => setImportState("document-opened", { id: active.id, title: active.metadata.title }) });
@@ -2789,6 +3590,7 @@ export default function App() {
   };
   const handleBoardImage = async (file?: File) => {
     if (!file) return;
+    cancelActiveAiComputation("record-switch");
     setImageRecognizing(true);
     recordAction(`图片识谱：${file.name}`);
     try {
@@ -2840,6 +3642,7 @@ export default function App() {
 
   const handlePuzzleFile = async (file?: File) => {
     if (!file) return;
+    cancelActiveAiComputation("record-switch");
     const progressId = beginImportProgress(file.name, "正在读取题库 JSON");
     try {
       updateImportProgress(progressId, { phase: "parsing", detail: "正在校验题目与棋盘数据" });
@@ -2848,7 +3651,7 @@ export default function App() {
       const nextCollections = [...puzzleCollections, report.collection];
       setPuzzleCollections(nextCollections); savePuzzleCollections(nextCollections);
       setLibraryFolders((currentFolders) => ({ ...currentFolders, puzzleAssignments: { ...currentFolders.puzzleAssignments, [report.collection.id]: "我的题库" } }));
-      if (tab === "library") { setLibrarySection("puzzles"); setExpandedLibraryFolder("我的题库"); }
+      if (tab === "library") { setLibrarySection("puzzles"); setExpandedLibraryFolders(new Set(["我的题库"])); }
       else guardedOpenPuzzle(nextCollections.length - 1, 0, nextCollections);
       setToast(`已导入 ${report.collection.puzzles.length} 题${report.skipped ? `，跳过 ${report.skipped} 个空项` : ""}${report.warnings.length ? `，${report.warnings.length} 条提示` : ""}`);
       void rememberRecentImport(file, "puzzle");
@@ -2859,17 +3662,182 @@ export default function App() {
     }
   };
 
+  /** VCF 生成：素材驱动（变形/原创），放到独立 worker 线程生成不阻塞 UI；完成后经开宝导入管线入库。 */
+  const runVcfGeneration = () => {
+    if (vcfGenRunning) {
+      vcfGenWorker.current?.terminate(); vcfGenWorker.current = null;
+      setVcfGenRunning(false); setToast("VCF 生成已停止");
+      return;
+    }
+    const seed = (Date.now() % 2147483647) | 0;
+    const target = vcfOptions.count;
+    const { tier, mode } = vcfOptions;
+    vcfGenWorker.current?.terminate(); vcfGenWorker.current = null;
+    setVcfGenRunning(true); setVcfProgress({ done: 0, attempts: 0 }); setVcfBatch([]); setVcfBatchIndex(0); setVcfSolveNote("");
+
+    const worker = new VcfGenWorker();
+    vcfGenWorker.current = worker;
+
+    const finish = (results: { puzzles: GeneratedVcfPuzzle[]; attempts: number; fallbackUsed: boolean; error: string | null }) => {
+      if (vcfGenWorker.current === worker) { vcfGenWorker.current?.terminate(); vcfGenWorker.current = null; }
+      setVcfGenRunning(false);
+      const drafts = results.puzzles;
+      if (!drafts.length) {
+        if (results.error) setVcfSolveNote(results.error);
+        setToast(results.error ? `生成失败：${results.error}` : "未生成有效 VCF 题，请再试一次");
+        return;
+      }
+      const stamp = new Date().toLocaleString("zh-CN", { hour12: false });
+      const title = `VCF 生成题集 ${stamp}`;
+      const exportJson = toKaibaoCollectionJson(drafts, title);
+      vcfExportJsonRef.current = exportJson;
+      try {
+        const report = importKaibaoPuzzleJson(exportJson, title);
+        const currentCollections = loadPuzzleCollections();
+        const nextCollections = [...currentCollections, report.collection];
+        savePuzzleCollections(nextCollections); setPuzzleCollections(nextCollections);
+        setLibraryFolders((currentFolders) => ({ ...currentFolders, puzzleAssignments: { ...currentFolders.puzzleAssignments, [report.collection.id]: "我的题库" } }));
+        const collectionIndex = nextCollections.length - 1;
+        setVcfBatch(drafts.map((p, i) => ({
+          depth: p.depth,
+          solutionText: p.solution.filter((m) => m.player === p.attacker).map(vcfCoordName).join(" → "),
+          collectionIndex, puzzleIndex: i,
+        })));
+        setToast(`${results.fallbackUsed ? "深档原创未产出、部分用真题变形补充：已生成 " : `已生成 ${drafts.length} 题（尝试 ${results.attempts} 次局面），` } 已存入题库"我的题库"`);
+      } catch (error) {
+        setToast(error instanceof Error ? `VCF 题集入库失败：${error.message}` : "VCF 题集入库失败");
+      }
+    };
+
+    worker.onmessage = (event: MessageEvent) => {
+      const m = event.data as { type: string; done?: number; attempts?: number; puzzles?: GeneratedVcfPuzzle[]; fallbackUsed?: boolean; error?: string | null };
+      if (m.type === "progress") setVcfProgress({ done: m.done ?? 0, attempts: m.attempts ?? 0 });
+      else if (m.type === "result") finish({ puzzles: m.puzzles ?? [], attempts: m.attempts ?? 0, fallbackUsed: m.fallbackUsed ?? false, error: m.error ?? null });
+    };
+    worker.onerror = () => {
+      if (vcfGenWorker.current === worker) vcfGenWorker.current = null;
+      setVcfGenRunning(false); setToast("VCF 生成线程启动失败");
+    };
+
+    void loadVcfMaterial().then((material: MaterialFile | null) => {
+      if (vcfGenWorker.current !== worker) return; // 已被停止/替换
+      if (!material || !material.items.length) {
+        worker.terminate(); vcfGenWorker.current = null;
+        setVcfGenRunning(false); setVcfSolveNote("素材库加载失败（/puzzles/vcf-material.json 缺失）");
+        return;
+      }
+      worker.postMessage({ type: "generate", tier, mode, count: target, seed, material });
+    });
+  };
+
+  /** 用 VCF 求解器分析当前局面（连续冲四）。 */
+  const solveCurrentBoardVcf = () => {
+    const board = boardAt(viewDocument, currentId);
+    const cells = new Int8Array(225);
+    board.forEach((row, r) => row.forEach((cell, c) => { if (cell === "black") cells[r * 15 + c] = 1; else if (cell === "white") cells[r * 15 + c] = 2; }));
+    const rule = viewDocument.metadata.rule;
+    const rules: VcfRules = rule === "renju" ? "renju" : "freestyle";
+    const attackerIsBlack = nextPlayerAt(viewDocument, currentId) === "black";
+    const sol = solveVcf(cells, { attacker: attackerIsBlack ? 1 : 2, rules, maxDepth: 9 });
+    if (!sol.win) { setVcfSolveNote(`当前局面（${rule === "renju" ? "连珠" : "无禁"}）在 9 手内未找到连续冲四胜，不代表无杀`); return; }
+    const attackerPlayer: Player = attackerIsBlack ? "black" : "white";
+    const line = sol.line.map((m) => `${vcfCoordName(m)}${m.player === (attackerIsBlack ? 1 : 2) ? "" : "防"}`);
+    setVcfSolveNote(`当前局面 VCF 成立（${attackerPlayer === "black" ? "黑" : "白"}先，${sol.line.filter((m) => m.player === (attackerIsBlack ? 1 : 2)).length} 手）：${line.join(" ")}`);
+  };
+
+  /** Import a portable ZIP container. A container may hold the native full
+   * backup JSON alongside ordinary record files and puzzle JSON files. Each
+   * category is routed through the same importer used by the corresponding
+   * picker, so validation, deduplication and storage behavior stay consistent.
+   */
+  const handleZipFile = async (file: File) => {
+    if (!file) return;
+    cancelActiveAiComputation("record-switch");
+    try {
+      const entries = await readZip(file);
+      if (!entries.length) throw new Error("ZIP 文件为空");
+      const makeFile = (entry: ZipEntry) => {
+        const copy = new Uint8Array(entry.data.length); copy.set(entry.data);
+        const name = entry.name.split("/").pop() || entry.name;
+        const extension = name.split(".").pop()?.toLowerCase() || "";
+        const type = extension === "json" ? "application/json" : extension === "sgf" ? "application/x-go-sgf" : "application/octet-stream";
+        return new File([copy.buffer], name, { type, lastModified: Date.now() });
+      };
+      const jsonEntries = entries.filter((entry) => /\.json$/i.test(entry.name));
+      const backupCandidates = jsonEntries
+        .filter((entry) => /backup|备份/i.test(entry.name))
+        .concat(jsonEntries.filter((entry) => !/backup|备份/i.test(entry.name)));
+      let backupEntry: ZipEntry | null = null;
+      let parsedBackup: ReturnType<typeof parseBackup> | null = null;
+      let restoredBackup = false;
+      for (const entry of backupCandidates) {
+        try { parsedBackup = parseBackup(textFromZipEntry(entry)); backupEntry = entry; break; } catch { /* ordinary JSON may be a puzzle/record */ }
+      }
+      if (parsedBackup) {
+        setBackupBusy(true);
+        recordAction(`恢复备份 ZIP：${file.name}`);
+        try {
+          await restoreBackup(parsedBackup);
+          restoredBackup = true;
+          setSheet(null); setToast("备份 ZIP 已恢复，正在处理包内其它文件");
+        } finally { setBackupBusy(false); }
+      }
+      const puzzleFiles: File[] = [];
+      const recordFiles: File[] = [];
+      for (const entry of entries) {
+        if (entry === backupEntry || entry.name.endsWith("/")) continue;
+        const converted = makeFile(entry);
+        const extension = converted.name.split(".").pop()?.toLowerCase() || "";
+        if (extension === "json") {
+          try {
+            if (isPuzzleJsonText(textFromZipEntry(entry))) { puzzleFiles.push(converted); continue; }
+          } catch { /* let the normal record importer report malformed JSON */ }
+        }
+        if (["sgf", "fgf", "pos", "txt", "psq", "ren", "renjs", "wzq", "lib", "renju", "json", "db", "dp"].includes(extension)) recordFiles.push(converted);
+      }
+      if (puzzleFiles.length) {
+        const reports = await Promise.all(puzzleFiles.map(async (puzzleFile) => importKaibaoPuzzleJson(await puzzleFile.text(), puzzleFile.name.replace(/\.json$/i, ""))));
+        const nextCollections = [...loadPuzzleCollections(), ...reports.map((report) => report.collection)];
+        savePuzzleCollections(nextCollections); setPuzzleCollections(nextCollections);
+        setLibraryFolders((currentFolders) => {
+          const baseFolders = restoredBackup ? loadLibraryFolders() : currentFolders;
+          return { ...baseFolders, puzzleAssignments: {
+          ...baseFolders.puzzleAssignments,
+          ...Object.fromEntries(reports.map((report) => [report.collection.id, "我的题库"])),
+          } };
+        });
+        void Promise.all(puzzleFiles.map((puzzleFile) => rememberRecentImport(puzzleFile, "puzzle")));
+      }
+      // Binary database formats open a live worker and therefore must be
+      // processed one at a time. Text records can retain the normal batch path.
+      const binary = recordFiles.filter((item) => /\.(lib|db|dp)$/i.test(item.name));
+      const textRecords = recordFiles.filter((item) => !/\.(lib|db|dp)$/i.test(item.name));
+      if (textRecords.length) await handleFiles(textRecords);
+      for (const binaryFile of binary) await handleFiles([binaryFile]);
+      if (restoredBackup) {
+        setToast(puzzleFiles.length || recordFiles.length ? "备份已恢复，包内其它文件也已导入" : "备份 ZIP 已恢复，页面即将重新加载");
+        window.setTimeout(() => window.location.reload(), 350);
+        return;
+      }
+      if (!parsedBackup && !puzzleFiles.length && !recordFiles.length) throw new Error("ZIP 中没有识别到棋谱、题库或半步五子棋打谱备份");
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "ZIP 导入失败，请检查文件是否完整");
+    }
+  };
+
   const exportDocument = hasDraft(draft) ? viewDocument : document;
+  const scopedExportDocument = useMemo(() => documentForExportScope(exportDocument, currentId, exportScope), [currentId, exportDocument, exportScope]);
   const createBoardShareFile = async () => {
-    const blob = await renderBoardSharePng(exportDocument, currentId, { ...boardShareOptions, rotation, mirrored });
+    const blob = await renderBoardSharePng(exportDocument, currentId, { ...boardShareOptions, rotation, mirrored, stoneOpacity });
     return new File([blob], boardShareFilename(exportDocument, currentId), { type: "image/png", lastModified: Date.now() });
   };
   const saveBoardShareFile = async (file: File, fallback = false) => {
     setSheet(null);
-    if (defaultDirectory) {
+    const destination = defaultDirectory || (supportsNativeExportDirectory() ? nativeExportDirectoryHandle() : null);
+    if (destination) {
       try {
-        await writeFileToDirectory(defaultDirectory, file.name, file, file.type);
-        setToast(`${fallback ? "当前平台不支持文件分享，" : ""}PNG 已写入“${defaultDirectory.name}”`);
+        await writeFileToDirectory(destination, file.name, file, file.type);
+        setToast(`${fallback ? "当前平台不支持文件分享，" : ""}PNG 已写入“${destination.name}”`);
         return;
       } catch {
         downloadFile(file, file.name, file.type);
@@ -2878,7 +3846,7 @@ export default function App() {
       }
     }
     downloadFile(file, file.name, file.type);
-    setToast(fallback ? "当前平台不支持文件分享，已自动下载 PNG" : "当前局面 PNG 已下载");
+    setToast(`${fallback ? "当前平台不支持文件分享，" : ""}PNG 已保存到浏览器默认“下载”位置：${file.name}`);
   };
   const saveBoardSharePng = async () => {
     if (boardShareGenerating) return;
@@ -2896,7 +3864,7 @@ export default function App() {
     setBoardShareGenerating(true);
     try {
       const file = await createBoardShareFile();
-      const result = await sharePngFile(file, exportDocument.metadata.title || "半步五子棋", `第 ${depthOf(exportDocument, currentId)} 手当前局面`);
+      const result = await sharePngFile(file, exportDocument.metadata.title || "半步五子棋打谱", `第 ${depthOf(exportDocument, currentId)} 手当前局面`);
       if (result === "shared") {
         setSheet(null);
         setToast("当前局面已交给系统分享");
@@ -2928,12 +3896,12 @@ export default function App() {
     : posSourceFormats.has(sourceFormat) ? sourceFormat.toUpperCase()
     : originalBinaryFile ? sourceFormat.toUpperCase() : `${sourceFormat.toUpperCase()}（原文件未保留）`;
   const exportAsFormat = (format: "sgf" | "json") => {
-    const name = safeName(exportDocument.metadata.title);
+    const name = `${safeName(exportDocument.metadata.title)}-${exportScopeSuffix(exportScope)}`;
     if (format === "sgf") {
-      void exportRecordFile(exportSgf(exportDocument), `${name}.sgf`, "application/x-go-sgf;charset=utf-8", "SGF 棋谱已导出");
+      void exportRecordFile(exportSgf(scopedExportDocument), `${name}.sgf`, "application/x-go-sgf;charset=utf-8", `${exportScopeSuffix(exportScope)} SGF 已导出`);
       return;
     }
-    void exportRecordFile(exportJson(exportDocument), `${name}.json`, "application/json;charset=utf-8", "JSON 棋谱已导出");
+    void exportRecordFile(exportJson(scopedExportDocument), `${name}.json`, "application/json;charset=utf-8", `${exportScopeSuffix(exportScope)} JSON 已导出`);
   };
   const exportDirect = () => {
     const name = safeName(exportDocument.metadata.title);
@@ -2986,11 +3954,13 @@ export default function App() {
   };
   const openExportSheet = () => {
     setBoardShareOptions((value) => ({ ...value, showMoveNumbers: showNumbers, showCoordinates }));
+    setExportScope("whole");
     setExportFormatMenuOpen(false);
     setSheet("export");
   };
 
-  const sheetTitle = sheet === "comment" ? "节点注释" : sheet === "branches" ? "变化分支" : sheet === "tree" ? "棋谱树" : sheet === "metadata" ? "棋谱信息" : sheet === "save" ? "保存棋谱" : sheet === "folder" ? `新建${folderCreationSection === "records" ? "棋谱" : "题库"}文件夹` : sheet === "rename" ? "重命名" : sheet === "export" ? "导出与分享" : sheet === "manual" ? "使用手册" : sheet === "about" ? "关于半步五子棋" : sheet === "feedback" ? "反馈与建议" : sheet === "find" ? "查找本谱" : sheet === "analysis" ? "局面分析" : sheet === "positionSearch" ? "跨谱局面检索" : sheet === "marks" ? "棋盘标注" : sheet === "import" ? "选择导入方式" : sheet === "aiGame" ? "AI 人机对战" : sheet === "think" ? "AI 思考" : sheet === "wrongbook" ? "错题本" : sheet === "trash" ? "回收站" : sheet === "batchEdit" ? "批量处理" : "使用提示";
+  const sheetTitle = sheet === "comment" ? "节点注释" : sheet === "branches" ? "变化分支" : sheet === "tree" ? "棋谱树" : sheet === "metadata" ? "棋谱信息" : sheet === "save" ? "保存棋谱" : sheet === "folder" ? (folderSheetMode === "batch-move" ? "移动棋谱" : `新建${folderCreationSection === "records" ? "棋谱" : "题库"}文件夹`) : sheet === "rename" ? "重命名" : sheet === "export" ? "导出与分享" : sheet === "manual" ? "使用手册" : sheet === "rules" ? "规则说明" : sheet === "about" ? "关于半步五子棋打谱" : sheet === "feedback" ? "反馈与建议" : sheet === "find" ? "查找本谱" : sheet === "analysis" ? "局面分析" : sheet === "positionSearch" ? "跨谱局面检索" : sheet === "import" ? "选择导入方式" : sheet === "aiGame" ? "AI 人机对战" : sheet === "fifthCount" ? "选择五手打数量" : sheet === "think" ? "AI 思考" : sheet === "wrongbook" ? "错题本" : sheet === "trash" ? "回收站" : sheet === "dataSafety" ? "资料安全" : sheet === "batchEdit" ? "批量处理" : "使用提示";
+  const displaySheetTitle = sheet === "tree" ? "分支树" : sheetTitle;
   // A branch exists only at a real split point: the position must have at
   // least two direct continuations. Walk backwards so a long single-line
   // continuation never gets mistaken for a branch.
@@ -3029,30 +3999,206 @@ export default function App() {
     }
     return { start, end, ids };
   }, [branchIndex, branchViewIndex, branchView, branchScrollTop, branchTotal, branchOverlayChildren]);
+  // Android convention: back first leaves a non-home tab for the home
+  // (record) tab; at home, the root sentinel turns a single press into a
+  // "press again to exit" hint instead of quitting outright. Overlays own
+  // their history entries via BottomSheet/QuickDrawer, so their back closes
+  // the overlay first.
+  useRootBackExit(() => {
+    if (tab !== "record") { setTab("record"); return; }
+    setToast(ROOT_BACK_MESSAGE);
+  });
+  const playbackBlocked = mode === "puzzle" || Boolean(aiGame) || machineThinking || dynamicNavigationBusy;
+  const playback = useRecordPlayback({
+    currentId,
+    childIds: current.children,
+    preferredChildId: current.preferredChildId,
+    sessionKey: `${mode}:${document.id}`,
+    disabled: playbackBlocked,
+    onAdvance: (targetId) => {
+      clearBoardMotion();
+      playSound("navigate");
+      const target = viewDocument.nodes[targetId];
+      const dynamicSession = dynamicViewSession.current;
+      if (dynamicSession && isDynamicDatabaseView(document) && target?.move && !draftOverlay.added.has(targetId)) {
+        navigateDynamic(dynamicSession, () => dynamicSession.move(target.move!));
+        return true;
+      }
+      const session = pagedSession.current;
+      if (session) {
+        const index = session.indexForId(targetId);
+        if (index === undefined) return false;
+        pagedNavigate.current(index);
+        return true;
+      }
+      if (!target) return false;
+      setCurrentId(targetId);
+      return true;
+    },
+    onLoop: (targetId) => {
+      clearBoardMotion();
+      const dynamicSession = dynamicViewSession.current;
+      if (dynamicSession && isDynamicDatabaseView(document) && !draftOverlay.added.has(targetId)) {
+        navigateDynamic(dynamicSession, () => dynamicSession.toDepth(depthOf(viewDocument, targetId)));
+        return true;
+      }
+      const session = pagedSession.current;
+      if (session) {
+        const index = session.indexForId(targetId);
+        if (index === undefined) return false;
+        pagedNavigate.current(index);
+        return true;
+      }
+      if (!viewDocument.nodes[targetId]) return false;
+      setCurrentId(targetId);
+      return true;
+    },
+  });
+  useEffect(() => {
+    if (playback.stopReason !== "idle") setToast(playbackStatusText(playback.stopReason));
+  }, [playback.stopReason]);
   const visiblePositionMatches = positionMatches.filter((match) => match.documentId !== document.id || match.nodeId !== currentId);
-  const currentHasComment = mode === "record" && hasNativeAnnotation(current);
+  const currentHasComment = mode !== "puzzle" && hasNativeAnnotation(current);
+  const dismissFirstRunWelcome = () => {
+    markFirstRunWelcomeRead();
+    setWelcomeOpen(false);
+  };
+  const openManualFromFirstRun = () => {
+    dismissFirstRunWelcome();
+    setSheet("manual");
+  };
   const currentAnnotationLines = currentHasComment ? annotationLines(current) : [];
   const commentToggleLabel = commentExpanded ? "收起注释" : currentHasComment ? "展开注释" : "打开注释（当前无内容）";
-  const commentPreviewContent = currentAnnotationLines.length
-    ? currentAnnotationLines.map((text, index) => <div key={`${current.id}-annotation-${index}`}>{text}</div>)
+  const commentPreviewText = currentAnnotationLines.length
+    ? currentAnnotationLines.join("\n")
     : "当前局面暂无注释";
   const customAppStyle = themePreference === "custom" ? {
     backgroundColor: customBackgroundColor,
     ...(customBackgroundImage ? { backgroundImage: `linear-gradient(#1118, #1118), url("${customBackgroundImage}")`, backgroundSize: "cover", backgroundPosition: "center" } : {}),
   } : undefined;
-  return <div className={`app-shell ${fontScaleClass(fontScale)} ${enhancementSettings.tabletSplit ? "split-layout-enabled" : ""}`} lang="zh-CN" style={customAppStyle}>
+  const statusStepLabel = mode !== "puzzle"
+    ? `第 ${depthOf(viewDocument, currentId)} 手${compactNodeCount(document) ? " · 大型" : ` / ${mainLineLength(viewDocument)}`}`
+    : `${puzzleIndex + 1} / ${puzzleCollections[puzzleCollectionIndex]?.puzzles.length || 0}`;
+  const statusRuleChoice = mode !== "puzzle"
+    ? AI_RULE_CHOICES.find((choice) => choice.rule === viewDocument.metadata.rule && choice.openingRule === viewDocument.metadata.openingRule)
+      || (aiGame ? AI_RULE_CHOICES.find((choice) => choice.rule === viewDocument.metadata.rule && choice.openingRule === aiGame.opening.rule) : undefined)
+    : undefined;
+  const statusRuleLabel = statusRuleChoice?.name;
+  const statusTurnLabel = mode !== "puzzle"
+    ? aiGame?.outcome ? "对局结束" : `${nextPlayer === "black" ? "黑" : "白"}方落子`
+    : puzzleSetup ? `${activePlacementPlayer === "black" ? "黑" : "白"}棋摆放` : puzzleOutcome ? "本题结束" : `${currentPuzzle?.player === "black" ? "黑" : "白"}方应战`;
+  const statusStateKind = machineThinking ? "analysis" : playback.isPlaying ? "playing" : hasDraft(draft) ? "draft" : saved ? "saved" : "neutral";
+  const statusStateLabel = machineThinking
+    ? aiThinking ? aiGame?.unlimitedThinking ? "AI 不限时思考" : "AI 思考中" : thinkRunning ? "AI 分析" : "VCF 搜索"
+    : playback.isPlaying ? "自动演示"
+    : mode === "puzzle" ? puzzleSetup ? "摆棋中" : puzzleOutcome === "won" ? "挑战成功" : puzzleOutcome === "lost" ? "本题失败" : "练习中"
+    : annotationActive ? `标注中 · ${currentAnnotationLabel || "自定义"}`
+    : mode === "review" ? "只读浏览"
+    : aiGame ? aiClockActive ? `对弈 · ${formatGameClock(aiHumanElapsedMs)}` : "AI 对弈"
+    : hasDraft(draft) ? "未保存草稿" : saved ? "已保存" : "保存中";
+  const canResumeAiGame = Boolean(aiGame && !aiGame.outcome && nextPlayerAt(document, currentId) === aiGame.aiPlayer);
+  const isPuzzleMode = mode === "puzzle";
+  const toggleLibraryFolder = (folder: string) => setExpandedLibraryFolders((current) => {
+    const next = new Set(current);
+    if (next.has(folder)) next.delete(folder); else next.add(folder);
+    return next;
+  });
+  const folderOptions = (folders: string[]) => folders.map((folder) => <option key={folder} value={folder}>{`${"　".repeat(folder.split("/").length - 1)}${folderDisplayLabel(folder)}`}</option>);
+  const renderRecordFolder = (folder: string): ReactNode => {
+    const items = filteredLibrary.filter((item) => (libraryFolders.recordAssignments[item.id] || "未分类") === folder);
+    const largeItems = filteredLargeSummaries.filter((item) => (libraryFolders.recordAssignments[item.id] || "未分类") === folder);
+    const naturalIds = [...items.map((item) => item.id), ...largeItems.map((item) => item.id)];
+    const fullNaturalIds = [
+      ...library.filter((item) => (libraryFolders.recordAssignments[item.id] || "未分类") === folder).map((item) => item.id),
+      ...largeSummaries.filter((item) => (libraryFolders.recordAssignments[item.id] || "未分类") === folder).map((item) => item.id),
+    ];
+    const orderedIds = applyOrder(naturalIds, libraryFolders.order?.records?.[folder]);
+    const regularById = new Map(items.map((item) => [item.id, item] as const));
+    const largeById = new Map(largeItems.map((item) => [item.id, item] as const));
+    const titleForRecord = (id: string) => regularById.get(id)?.metadata.title || largeById.get(id)?.metadata.title || "";
+    const query = libraryQuery.trim().toLowerCase();
+    const nativeDatabaseVisible = folder === NATIVE_RECORD_FOLDER && (!query || [NATIVE_RECORD_FOLDER, NATIVE_DATABASE_TITLE, "九天指南v5-1.db", "局面数据库", "DP", "DB"].some((value) => value.toLowerCase().includes(query)));
+    const children = folderChildren(libraryFolders.recordFolders, folder);
+    const expanded = Boolean(libraryQuery.trim()) || expandedLibraryFolders.has(folder);
+    const parentFolder = folderParent(folder);
+    const siblingFolders = folderChildren(libraryFolders.recordFolders, parentFolder);
+    const sortMenuId = `records:${folder}`;
+    return <section key={folder} className="library-folder-section">
+      <div className="library-folder-row"><button className="library-folder-head" draggable={!batchEditMode} onDragStart={onLibraryDragStart("recordFolders", parentFolder, folder)} onDragOver={onLibraryDragOver} onDragLeave={onLibraryDragLeave} onDrop={onLibraryDrop("recordFolders", parentFolder, siblingFolders)} data-order-id={folder} data-drag-kind="recordFolders" data-drag-key={parentFolder} onClick={() => toggleLibraryFolder(folder)} aria-expanded={expanded} title="点击展开，拖动调整顺序"><FolderOpen size={19}/><span><b>{folderLabel(folder)}</b><small>{items.length + largeItems.length + (nativeDatabaseVisible ? 1 : 0)} 份棋谱{children.length ? ` · ${children.length} 个子文件夹` : ""}</small></span><ChevronDown size={18}/></button><button className="library-inline-action" onClick={() => toggleLibrarySortMenu(sortMenuId)} aria-label={`排序“${folderLabel(folder)}”中的内容`} aria-expanded={librarySortMenu === sortMenuId} title="排序"><ArrowDownUp size={16}/></button>{renderLibrarySortMenu(sortMenuId, [
+        ...(children.length ? [
+          ["子文件夹 A→Z", () => sortLibraryContainer("recordFolders", folder, children, (id: string) => folderLabel(id), "az")],
+          ["子文件夹 Z→A", () => sortLibraryContainer("recordFolders", folder, children, (id: string) => folderLabel(id), "za")],
+        ] as Array<[string, () => void]> : []),
+        ["内容 A→Z", () => sortLibraryContainer("records", folder, fullNaturalIds, titleForRecord, "az")],
+        ["内容 Z→A", () => sortLibraryContainer("records", folder, fullNaturalIds, titleForRecord, "za")],
+        ["恢复默认排序", () => resetLibraryOrder([["records", folder], ["recordFolders", folder]])],
+      ])}<button className="library-inline-action" onClick={() => createLibraryFolder("records", folder)} aria-label={`在“${folder}”中新建子文件夹`} title="新建子文件夹"><FolderPlus size={16}/></button><button className="library-inline-action" onClick={() => beginLibraryRename({ kind: "record-folder", name: folder })} aria-label={`重命名文件夹“${folder}”`}><PenLine size={16}/></button></div>
+      {expanded && <div className="folder-items record-list" key={orderedIds.join("|")}>
+        {children.length > 0 && <div className="nested-folder-list">{children.map(renderRecordFolder)}</div>}
+        {nativeDatabaseVisible && <article className="native-record-entry" onClick={openNativeDatabase}><div className="mini-board"><span>DB</span><span>↗</span><b>实时</b></div><div className="record-info"><h3>{NATIVE_DATABASE_TITLE}</h3><p>内置 DP/DB 局面数据库 · 点击打开实时查询</p></div><div className="library-item-actions"><ChevronRight size={18}/></div></article>}
+        {orderedIds.map((id) => {
+          const regular = regularById.get(id);
+          if (regular) return <article key={id} onDragOver={onLibraryDragOver} onDragLeave={onLibraryDragLeave} onDrop={onLibraryDrop("records", folder, fullNaturalIds)} data-order-id={id} data-drag-kind="records" data-drag-key={folder} className={batchEditMode ? `batch-selectable ${batchSelectedIds.includes(regular.id) ? "selected" : ""}`.trim() : ""} title="拖动可调整顺序" onClick={() => batchEditMode ? toggleBatchSelection(regular.id) : openRecord(regular)}><span className="puzzle-row-drag" draggable onDragStart={onLibraryDragStart("records", folder, id)} title="拖动调整顺序"><GripVertical size={12}/></span>{batchEditMode && <label className="batch-selection-checkbox" onClick={(event) => event.stopPropagation()}><input type="checkbox" checked={batchSelectedIds.includes(regular.id)} onChange={() => toggleBatchSelection(regular.id)} aria-label={`选择棋谱“${regular.metadata.title}”`}/><i/></label>}<div className="mini-board"><span>●</span><span>○</span><b>{mainLineLength(regular)}</b></div><div className="record-info"><h3>{regular.metadata.title}</h3><p>{regular.metadata.black} vs {regular.metadata.white}</p><select value={folder} onClick={(event) => event.stopPropagation()} onChange={(event) => assignLibraryItem("records", regular.id, event.target.value)}>{folderOptions(libraryFolders.recordFolders)}</select></div><div className="library-item-actions">{!batchEditMode && <><button onClick={(event) => { event.stopPropagation(); beginLibraryRename({ kind: "record", id: regular.id, name: regular.metadata.title }); }} aria-label={`重命名棋谱“${regular.metadata.title}”`}><PenLine size={16}/></button><button className="delete-record" onClick={(event) => { event.stopPropagation(); deleteRecord(regular); }} aria-label={`删除棋谱“${regular.metadata.title}”`}><Trash2 size={17}/></button></>}</div></article>;
+          const large = largeById.get(id);
+          if (!large) return null;
+          return <article key={id} onDragOver={onLibraryDragOver} onDragLeave={onLibraryDragLeave} onDrop={onLibraryDrop("records", folder, fullNaturalIds)} data-order-id={id} data-drag-kind="records" data-drag-key={folder}><span className="puzzle-row-drag" draggable onDragStart={onLibraryDragStart("records", folder, id)} title="拖动调整顺序"><GripVertical size={12}/></span><div className="mini-board"><span>●</span><span>○</span><b>{large.mainLineLength}</b></div><div className="record-info"><h3>{large.metadata.title}</h3><p>{large.metadata.black} vs {large.metadata.white} · 大型棋谱 · {large.nodeCount.toLocaleString()} 节点</p><select value={folder} onClick={(event) => event.stopPropagation()} onChange={(event) => assignLibraryItem("records", large.id, event.target.value)}>{folderOptions(libraryFolders.recordFolders)}</select></div><div className="library-item-actions"><button onClick={(event) => { event.stopPropagation(); beginLibraryRename({ kind: "large-record", id: large.id, name: large.metadata.title }); }} aria-label={`重命名棋谱“${large.metadata.title}”`}><PenLine size={16}/></button><button className="delete-record" onClick={(event) => { event.stopPropagation(); deleteLargeRecord(large); }} aria-label={`删除棋谱“${large.metadata.title}”`}><Trash2 size={17}/></button></div></article>;
+        })}
+        {!items.length && !largeItems.length && !nativeDatabaseVisible && !children.length && <p className="folder-empty">这个文件夹还是空的</p>}
+      </div>}
+    </section>;
+  };
+
+  const renderPuzzleFolder = (folder: string): ReactNode => {
+    const collections = filteredPuzzleCollections.filter(({ collection }) => (libraryFolders.puzzleAssignments[collection.id] || (collection.id.startsWith("native-") ? "内置题库" : "我的题库")) === folder);
+    const naturalIds = puzzleCollections.filter((collection) => (libraryFolders.puzzleAssignments[collection.id] || (collection.id.startsWith("native-") ? "内置题库" : "我的题库")) === folder).map((collection) => collection.id);
+    const orderedIds = applyOrder(collections.map(({ collection }) => collection.id), libraryFolders.order?.puzzleCollections?.[folder]);
+    const entryById = new Map(collections.map((entry) => [entry.collection.id, entry]));
+    const children = folderChildren(libraryFolders.puzzleFolders, folder);
+    const expanded = Boolean(libraryQuery.trim()) || expandedLibraryFolders.has(folder);
+    const sortMenuId = `puzzle-collections:${folder}`;
+    return <section key={folder} className="library-folder-section">
+      <div className="library-folder-row"><button className="library-folder-head" draggable onDragStart={onLibraryDragStart("puzzleFolders", folderParent(folder), folder)} onDragOver={onLibraryDragOver} onDragLeave={onLibraryDragLeave} onDrop={onLibraryDrop("puzzleFolders", folderParent(folder), folderChildren(libraryFolders.puzzleFolders, folderParent(folder)))} data-order-id={folder} data-drag-kind="puzzleFolders" data-drag-key={folderParent(folder)} onClick={() => toggleLibraryFolder(folder)} aria-expanded={expanded} title="点击展开，拖动调整顺序"><FolderOpen size={19}/><span><b>{folderLabel(folder)}</b><small>{collections.length} 个题集{children.length ? ` · ${children.length} 个子文件夹` : ""}</small></span><ChevronDown size={18}/></button><button className="library-inline-action" onClick={() => toggleLibrarySortMenu(sortMenuId)} aria-label={`排序“${folderLabel(folder)}”中的内容`} aria-expanded={librarySortMenu === sortMenuId} title="排序"><ArrowDownUp size={16}/></button>{renderLibrarySortMenu(sortMenuId, [
+        ...(children.length ? [
+          ["子文件夹 A→Z", () => sortLibraryContainer("puzzleFolders", folder, children, (id: string) => folderLabel(id), "az")],
+          ["子文件夹 Z→A", () => sortLibraryContainer("puzzleFolders", folder, children, (id: string) => folderLabel(id), "za")],
+        ] as Array<[string, () => void]> : []),
+        ["题集 A→Z", () => sortLibraryContainer("puzzleCollections", folder, naturalIds, (id: string) => puzzleCollections.find((collection) => collection.id === id)?.title || "", "az")],
+        ["题集 Z→A", () => sortLibraryContainer("puzzleCollections", folder, naturalIds, (id: string) => puzzleCollections.find((collection) => collection.id === id)?.title || "", "za")],
+        ["恢复默认排序", () => resetLibraryOrder([["puzzleCollections", folder], ["puzzleFolders", folder]])],
+      ])}<button className="library-inline-action" onClick={() => createLibraryFolder("puzzles", folder)} aria-label={`在“${folder}”中新建子文件夹`} title="新建子文件夹"><FolderPlus size={16}/></button><button className="library-inline-action" onClick={() => beginLibraryRename({ kind: "puzzle-folder", name: folder })} aria-label={`重命名文件夹“${folder}”`}><PenLine size={16}/></button></div>
+      {expanded && <div className="puzzle-collection-list folder-items" key={orderedIds.join("|")}>
+        {children.length > 0 && <div className="nested-folder-list">{children.map(renderPuzzleFolder)}</div>}
+        {orderedIds.map((id) => { const entry = entryById.get(id); if (!entry) return null; const { collection, puzzles, collectionIndex } = entry; const solved = collection.puzzles.filter((puzzle) => puzzleProgress[puzzleProgressKey(collection.id, puzzle.id)]?.solved).length; const managing = managedPuzzleCollectionId === collection.id; const naturalPuzzleIds = collection.puzzles.map((puzzle) => puzzle.id); const orderedPuzzleIds = applyOrder(naturalPuzzleIds, libraryFolders.order?.puzzles?.[collection.id]); const puzzleById = new Map(collection.puzzles.map((puzzle) => [puzzle.id, puzzle])); const puzzleSortMenuId = `puzzles:${collection.id}`; return <article key={collection.id} onDragOver={onLibraryDragOver} onDragLeave={onLibraryDragLeave} onDrop={onLibraryDrop("puzzleCollections", folder, naturalIds)} data-order-id={collection.id} data-drag-kind="puzzleCollections" data-drag-key={folder}><div className="puzzle-collection-main"><span className="puzzle-row-drag" draggable data-order-id={collection.id} data-drag-kind="puzzleCollections" data-drag-key={folder} title="拖动调整顺序" onDragStart={onLibraryDragStart("puzzleCollections", folder, collection.id)}><GripVertical size={14}/></span><button onClick={() => guardedOpenPuzzle(collectionIndex, 0)}><span className="puzzle-folder-icon">題</span><div><b>{collection.title}</b><small>{libraryQuery.trim() && puzzles.length !== collection.puzzles.length ? `${puzzles.length} / ${collection.puzzles.length} 道题匹配 · ` : `${solved} / ${collection.puzzles.length} 已完成 · `}{collection.source}</small></div><ChevronRight size={18}/></button><button className="library-inline-action" onClick={() => beginLibraryRename({ kind: "puzzle-collection", id: collection.id, name: collection.title })} aria-label={`重命名题集“${collection.title}”`}><PenLine size={15}/></button>{!collection.id.startsWith("native-") && <button className="library-inline-action delete-puzzle-collection" onClick={() => deletePuzzleCollection(collection)} aria-label={`删除题集“${collection.title}”`}><Trash2 size={15}/></button>}</div><div className="puzzle-collection-tools"><select value={folder} onChange={(event) => assignLibraryItem("puzzles", collection.id, event.target.value)} aria-label={`移动题集“${collection.title}”到文件夹`}>{folderOptions(libraryFolders.puzzleFolders)}</select><button onClick={() => setManagedPuzzleCollectionId(managing ? null : collection.id)} aria-expanded={managing}>{managing ? "收起题目" : `管理 ${puzzles.length} 道题`}</button><button className="library-inline-action" onClick={() => toggleLibrarySortMenu(puzzleSortMenuId)} aria-label={`排序题集“${collection.title}”中的题目`} aria-expanded={librarySortMenu === puzzleSortMenuId} title="排序题目"><ArrowDownUp size={15}/></button>{renderLibrarySortMenu(puzzleSortMenuId, [
+          ["题目 A→Z", () => sortLibraryContainer("puzzles", collection.id, naturalPuzzleIds, (id: string) => puzzleById.get(id)?.title || "", "az")],
+          ["题目 Z→A", () => sortLibraryContainer("puzzles", collection.id, naturalPuzzleIds, (id: string) => puzzleById.get(id)?.title || "", "za")],
+          ["恢复默认排序", () => resetLibraryOrder([["puzzles", collection.id]])],
+        ])}</div>{managing && <div className="puzzle-manager-list" key={orderedPuzzleIds.join("|")}>{orderedPuzzleIds.map((puzzleId) => { const puzzle = puzzleById.get(puzzleId); if (!puzzle) return null; const puzzleIndexInCollection = naturalPuzzleIds.indexOf(puzzleId); return <div key={puzzleId} onDragOver={onLibraryDragOver} onDragLeave={onLibraryDragLeave} onDrop={onLibraryDrop("puzzles", collection.id, naturalPuzzleIds)} data-order-id={puzzleId} data-drag-kind="puzzles" data-drag-key={collection.id}><span className="puzzle-row-drag" draggable data-order-id={puzzleId} data-drag-kind="puzzles" data-drag-key={collection.id} title="拖动调整顺序" onDragStart={onLibraryDragStart("puzzles", collection.id, puzzleId)}><GripVertical size={13}/></span><button onClick={() => guardedOpenPuzzle(collectionIndex, puzzleIndexInCollection)}><span>{puzzleIndexInCollection + 1}</span><b>{puzzle.title}</b></button><button onClick={() => beginLibraryRename({ kind: "puzzle", collectionId: collection.id, id: puzzle.id, name: puzzle.title })} aria-label={`重命名题目“${puzzle.title}”`}><PenLine size={14}/></button></div>; })}</div>}</article>; })}
+        {!collections.length && !children.length && <p className="folder-empty">这个文件夹还是空的</p>}
+      </div>}
+    </section>;
+  };
+  // 走棋导航按钮：常驻行（默认）与「并入功能栏」两种布局复用同一份，data-moves-labels 控制文字/纯图标。
+  const movesNavButtons = <>
+    <button onClick={goRoot} disabled={dynamicNavigationBusy} aria-label="到第一手"><ChevronFirst/><span>起点</span></button>
+    <button onClick={goPrev} disabled={dynamicNavigationBusy || !current.parentId} aria-label="上一手"><ChevronLeft/><span>上一手</span></button>
+    <button className="accent" onClick={goNext} disabled={dynamicNavigationBusy || !preferredNext(viewDocument, currentId)} aria-label="下一手"><ChevronRight/><span>下一手</span></button>
+    <button onClick={goPreferredEnd} disabled={dynamicNavigationBusy} aria-label="到最后一手"><ChevronLast/><span>终点</span></button>
+    {mode === "review" && <PlaybackButton isPlaying={playback.isPlaying} disabled={playbackBlocked} stopReason={playback.stopReason} onToggle={playback.toggle}/>}
+    {mode === "record" && <><button onClick={undoDraftChange} disabled={!draft.operations.length} aria-label="撤销编辑" title={draft.operations.length ? "撤销最近一次编辑" : "暂无可撤销的编辑"}><Undo2/><span>撤销</span></button><button onClick={redoDraftChange} disabled={!draft.redo.length} aria-label="重做编辑" title={draft.redo.length ? "恢复最近一次撤销的编辑" : "暂无可重做的编辑"}><Redo2/><span>重做</span></button><button onClick={discardDraft} disabled={!hasDraft(draft)} aria-label="放弃编辑" title={hasDraft(draft) ? "放弃当前未保存修改" : "暂无未保存修改"}><X/><span>放弃</span></button></>}
+  </>;
+  return <div className={`app-shell ${fontScaleClass(fontScale)} ${enhancementSettings.tabletSplit ? "split-layout-enabled" : ""}`} lang="zh-CN" data-ai-worker-state={aiWorkerController.current.snapshot.running ? "running" : "idle"} data-ai-request-id={aiWorkerController.current.snapshot.requestId || undefined} style={customAppStyle}>
     <a className="skip-link" href="#main-content">跳到主要内容</a>
-    <input ref={singleFileInput} type="file" hidden accept="*/*" onChange={(event) => { void handleFiles(event.target.files || undefined); event.target.value = ""; }}/>
-    <input ref={puzzleFileInput} type="file" hidden accept=".json,application/json" onChange={(event) => { void handlePuzzleFile(event.target.files?.[0]); event.target.value = ""; }}/>
+    <input ref={singleFileInput} type="file" hidden accept=".sgf,.fgf,.pos,.txt,.psq,.ren,.renjs,.wzq,.lib,.renju,.json,.db,.dp,.zip,*/*" onChange={(event) => { void handleFiles(event.target.files || undefined); event.target.value = ""; }}/>
+    <input ref={puzzleFileInput} type="file" hidden accept=".json,.zip,application/json,application/zip" onChange={(event) => { const file = event.target.files?.[0]; void (file?.name.toLowerCase().endsWith(".zip") ? handleZipFile(file) : handlePuzzleFile(file)); event.target.value = ""; }}/>
     <input ref={imageFileInput} type="file" hidden accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/avif,image/heic,image/heif,image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif" onChange={(event) => { void handleBoardImage(event.target.files?.[0]); event.target.value = ""; }}/>
-    <input ref={backupFileInput} type="file" hidden accept=".json,application/json" onChange={(event) => { void handleBackupFile(event.target.files?.[0]); event.target.value = ""; }}/>
+    <input ref={backupFileInput} type="file" hidden accept=".json,.zip,application/json,application/zip" onChange={(event) => { void handleBackupFile(event.target.files?.[0]); event.target.value = ""; }}/>
     <input ref={backgroundFileInput} type="file" hidden accept="image/png,image/jpeg,image/webp,image/gif,image/*" onChange={(event) => { handleBackgroundImage(event.target.files?.[0]); event.target.value = ""; }}/>
-    <header className="topbar"><div className="brand"><button type="button" className="brand-trigger" onClick={() => setQuickDrawerOpen(true)} aria-label="打开快捷中心" aria-expanded={quickDrawerOpen} aria-controls="quick-drawer"><img className="brand-mark" src="./icon.svg" alt="" aria-hidden="true"/></button><div><b>半步五子棋</b><small className={mode === "record" && aiGame ? "ai-clock-status" : undefined} aria-live="polite">{mode === "record" && aiGame ? aiGame.timeLimitMs === 0 ? aiGame.outcome ? `本局结束 · 人类用时 ${formatGameClock(aiHumanElapsedMs)}` : aiThinking ? `AI 思考中 · 暂停计时 · 已用 ${formatGameClock(aiHumanElapsedMs)}` : aiClockActive ? `你的回合 · 已用 ${formatGameClock(aiHumanElapsedMs)}` : `计时暂停 · 已用 ${formatGameClock(aiHumanElapsedMs)}` : aiGame.outcome ? `本局结束 · ${formatGameClock(Math.max(0, aiGame.timeLimitMs - aiHumanElapsedMs))} 剩余` : aiThinking ? `AI 思考中 · 暂停计时 · ${formatGameClock(Math.max(0, aiGame.timeLimitMs - aiHumanElapsedMs))} 剩余` : aiClockActive ? `你的回合 · ${formatGameClock(Math.max(0, aiGame.timeLimitMs - aiHumanElapsedMs))} 剩余` : `计时暂停 · ${formatGameClock(Math.max(0, aiGame.timeLimitMs - aiHumanElapsedMs))} 剩余` : mode === "puzzle" ? `${puzzleCollections.reduce((sum, item) => sum + item.puzzles.length, 0)} 道题已就绪` : hasDraft(draft) ? "有未保存草稿" : saved ? <><Check size={12}/> 已保存</> : "保存中…"}</small></div></div><div className="top-actions"><button className="icon-button" onClick={openImportSheet} aria-label="打开导入方式"><Download size={20}/></button>{mode === "record" && <><button className="icon-button" onClick={openExportSheet} aria-label="打开导出方式"><Upload size={20}/></button><button className="icon-button save-action" onClick={openSaveDialog} aria-label="保存棋谱"><Save size={20}/></button></>}</div></header>
+    <header className="topbar"><div className="brand"><button type="button" className="brand-trigger" onClick={() => setQuickDrawerOpen(true)} aria-label="打开快捷中心" aria-expanded={quickDrawerOpen} aria-controls="quick-drawer"><img className="brand-mark" src="./icon.svg" alt="" aria-hidden="true"/></button><div><b>半步五子棋打谱</b><small>本地棋谱研究工具</small></div></div><div className="top-actions"><button className="icon-button" onClick={openImportSheet} aria-label="打开导入方式"><Download size={20}/></button>{mode === "record" && <><button className="icon-button" onClick={openExportSheet} aria-label="打开导出方式"><Upload size={20}/></button><button className="icon-button save-action" onClick={openSaveDialog} aria-label="保存棋谱"><Save size={20}/></button></>}</div></header>
     <QuickDrawer
       open={quickDrawerOpen}
       onClose={() => setQuickDrawerOpen(false)}
-      title={mode === "record" ? viewDocument.metadata.title : currentPuzzle?.title || "当前题目"}
-      subtitle={mode === "record" ? `第 ${depthOf(viewDocument, currentId)} 手 · 下一手${nextPlayer === "black" ? "黑" : "白"}方` : `${puzzleCollections[puzzleCollectionIndex]?.title || "题库"} · 第 ${puzzleIndex + 1} 题`}
+      title={mode !== "puzzle" ? viewDocument.metadata.title : currentPuzzle?.title || "当前题目"}
+      subtitle={mode !== "puzzle" ? `第 ${depthOf(viewDocument, currentId)} 手 · 下一手${nextPlayer === "black" ? "黑" : "白"}方` : `${puzzleCollections[puzzleCollectionIndex]?.title || "题库"} · 第 ${puzzleIndex + 1} 题`}
       thinkPopup={thinkSheetOnStart}
        onThinkPopupChange={setThinkSheetOnStart}
        thinkDirectMove={thinkDirectMove}
@@ -3061,101 +4207,254 @@ export default function App() {
       thinkResultLabel={thinkResult?.move ? coordinateName(thinkResult.move) : undefined}
       onThink={() => { setQuickDrawerOpen(false); startThink(); }}
       onOpenThinkResult={() => { setQuickDrawerOpen(false); setSheet("think"); }}
+      playbackSpeed={playback.speed}
+      onPlaybackSpeedChange={playback.setSpeed}
+      playbackBranchPolicy={playback.branchPolicy}
+      onPlaybackBranchPolicyChange={playback.setBranchPolicy}
+      playbackLoop={playback.loop}
+      onPlaybackLoopChange={playback.setLoop}
       themePreference={themePreference}
       onThemePreferenceChange={(value) => { if (isThemePreference(value)) setThemePreference(value); }}
       boardTheme={boardTheme}
       onBoardThemeChange={(value) => { if (isBoardTheme(value)) setBoardTheme(value); }}
-      stoneTheme={stoneTheme}
+       stoneTheme={stoneTheme}
        onStoneThemeChange={(value) => { if (isStoneTheme(value)) setStoneTheme(value); }}
+       defaultBoardSize={defaultBoardSize}
+       onDefaultBoardSizeChange={setDefaultBoardSize}
     />
-     <main id="main-content" className="app-main">
-      {tab === "record" && <div className="record-page">
-        <section className="workspace-bar"><button className={`workspace-current ${workspaceSelectorOpen ? "open" : ""}`} onClick={() => { setWorkspaceSelectorOpen((open) => !open); if (workspaceSelectorOpen) { setWorkspaceListExpanded(false); setExpandedCollectionId(null); } }}><span>{mode === "record" ? "谱" : "题"}</span><div><b>{mode === "record" ? viewDocument.metadata.title : currentPuzzle?.title || "选择题目"}</b><small>{mode === "record" ? `${viewDocument.metadata.black} vs ${viewDocument.metadata.white} · 第 ${depthOf(viewDocument, currentId)} 手` : `${puzzleCollections[puzzleCollectionIndex]?.title || "题库"} · ${puzzleIndex + 1}/${puzzleCollections[puzzleCollectionIndex]?.puzzles.length || 0}`}</small></div><ChevronDown size={18}/></button>{mode === "record" && <div className="workspace-meta"><span>{hasDraft(draft) ? "有未保存草稿" : candidateLabel ? `标注「${candidateLabel}」` : current.move ? `${current.move.player === "black" ? "黑" : "白"} · ${coordinateName(current.move)}` : nodeKindLabel(current)}</span><small>{depthOf(viewDocument, currentId)} / {compactNodeCount(document) ? "大型" : mainLineLength(document)} 手 · {branchCount(viewDocument)} 处分支</small></div>}<div className="workspace-mode-stack"><button className={`workspace-mode-toggle ${mode}`} onClick={() => switchMode(mode === "record" ? "puzzle" : "record")} role="switch" aria-checked={mode === "puzzle"} aria-label={`当前${mode === "record" ? "打谱" : "做题"}模式，点击切换`}><i/><span>打谱</span><span>做题</span></button>{mode === "record" && aiGame && <button className="exit-ai-game" onClick={exitAiGame}>退出对弈</button>}</div></section>
-        {workspaceSelectorOpen && <section className="inline-workspace-selector" aria-label={mode === "record" ? "本页切换棋谱" : "本页切换题目"}>
-          <button className="selector-master-toggle" onClick={() => setWorkspaceListExpanded((expanded) => !expanded)}><span><b>{mode === "record" ? "选择棋谱" : "选择题集与题目"}</b><small>{mode === "record" ? `${searchableDocuments.length + largeSummaries.filter((item) => item.id !== document.id).length} 份棋谱，可上下滑动` : `${puzzleCollections.length} 个题集，可上下滑动`}</small></span><span>{workspaceListExpanded ? "收起" : "展开全部"}<ChevronDown size={17}/></span></button>
-          {workspaceListExpanded && mode === "record" && <div className="inline-record-list">{searchableDocuments.map((item) => <button key={item.id} className={item.id === document.id ? "current" : ""} onClick={() => openRecord(item)}><span className="picker-record-stone">{mainLineLength(item)}</span><div><b>{item.metadata.title}</b><small>{item.metadata.black} vs {item.metadata.white} · {item.metadata.rule === "renju" ? "连珠" : "五子棋"}</small></div>{item.id === document.id ? <Check size={17}/> : <ChevronRight size={17}/>}</button>)}{largeSummaries.filter((item) => item.id !== document.id).map((item) => <button key={item.id} onClick={() => { void openLargeRecord(item); }}><span className="picker-record-stone">{item.mainLineLength}</span><div><b>{item.metadata.title}</b><small>{item.metadata.black} vs {item.metadata.white} · 大型棋谱</small></div><ChevronRight size={17}/></button>)}</div>}
-          {workspaceListExpanded && mode === "puzzle" && <div className="inline-collection-list">{puzzleCollections.map((collection, collectionIndex) => { const solved = collection.puzzles.filter((puzzle) => puzzleProgress[puzzleProgressKey(collection.id, puzzle.id)]?.solved).length; const expanded = expandedCollectionId === collection.id; const query = expanded ? puzzleQuery.trim().toLowerCase() : ""; const visiblePuzzles = collection.puzzles.filter((puzzle, index) => !query || puzzle.title.toLowerCase().includes(query) || puzzle.prompt.toLowerCase().includes(query) || String(index + 1).includes(query)); return <section key={collection.id} className={expanded ? "expanded" : ""}><button className="collection-accordion-head" onClick={() => { setExpandedCollectionId(expanded ? null : collection.id); setPuzzleQuery(""); }}><span className="puzzle-folder-icon"><FolderOpen size={18}/></span><div><b>{collection.title}</b><small>{solved}/{collection.puzzles.length} 已完成</small></div><ChevronDown size={18}/></button>{expanded && <div className="collection-accordion-body"><label className="picker-search"><Search size={16}/><input value={puzzleQuery} onChange={(event) => setPuzzleQuery(event.target.value)} placeholder="输入题号或关键词"/><button onClick={() => setPuzzleQuery("")} aria-label="清除"><X size={15}/></button></label><div className="inline-puzzle-list">{visiblePuzzles.map((puzzle) => { const actualIndex = collection.puzzles.indexOf(puzzle); const solvedPuzzle = puzzleProgress[puzzleProgressKey(collection.id, puzzle.id)]?.solved; return <button key={puzzle.id} className={collectionIndex === puzzleCollectionIndex && actualIndex === puzzleIndex ? "current" : ""} onClick={() => openPuzzle(collectionIndex, actualIndex)}><span className={solvedPuzzle ? "solved" : ""}>{solvedPuzzle ? <Check size={14}/> : actualIndex + 1}</span><div><b>{puzzle.title || `第 ${actualIndex + 1} 题`}</b><small>{puzzle.player === "black" ? "黑先" : "白先"} · {puzzle.prompt}</small></div><ChevronRight size={16}/></button>; })}</div></div>}</section>; })}</div>}
-        </section>}
-        {mode === "record" && (isDynamicDatabaseView(document) || isPagedLibraryView(document)) && <div className={`database-edit-hint ${dynamicNavigationBusy ? "is-reading" : ""}`}><Lock size={15}/><span><b>{dynamicNavigationBusy ? "正在读取分支" : "数据库浏览模式"}</b><small>{dynamicNavigationBusy ? "正在读取所选分支，请稍候…" : isDynamicDatabaseView(document) && current.children.length === 0 ? "当前分支已到数据库终点；可直接进入编辑模式，继续添加后续变化。" : "点已有分支继续浏览；点其他空位、标注或编辑注释会创建本地编辑副本。"}</small></span>{isDynamicDatabaseView(document) && current.children.length === 0 && <button className="database-edit-button" onClick={() => { detachViewForEditing(emptyDraft()); setContinuationEditMode(true); }} disabled={dynamicNavigationBusy}>在此处继续编辑</button>}</div>}
+     <main id="main-content" className={`app-main ${tab === "settings" ? "settings-main" : ""}`.trim()}>
+      {tab === "record" && <div className={`record-page ${recordToolsCount >= 2 ? "record-tools-stacked" : ""} ${commentExpandedWithTools ? "comment-expanded-with-tools" : ""}`.trim()}>
+        <UnifiedStatusBar
+          kind={mode === "puzzle" ? "puzzle" : mode}
+          title={mode !== "puzzle" ? viewDocument.metadata.title : currentPuzzle?.title || "选择题目"}
+          subtitle={mode !== "puzzle" ? `${viewDocument.metadata.black || "黑方"} vs ${viewDocument.metadata.white || "白方"}` : puzzleCollections[puzzleCollectionIndex]?.title || "题库"}
+          ruleLabel={statusRuleLabel}
+          stepLabel={statusStepLabel}
+          turnLabel={statusTurnLabel}
+          stateLabel={statusStateLabel}
+          stateKind={statusStateKind}
+          selectorOpen={workspaceSelectorOpen}
+          mode={mode}
+          aiGame={Boolean(aiGame)}
+          aiThinking={Boolean(aiGame && aiThinking)}
+          onToggleSelector={() => { if (mode === "puzzle") setSheet(null); setWorkspaceSelectorOpen((open) => !open); }}
+          onToggleMode={(nextMode) => switchMode(nextMode)}
+          onExitAiGame={exitAiGame}
+          onStopAiThinking={stopAiGameThinking}
+        />
          {mode === "record" && aiGame && aiOpeningStage?.kind !== "normal" && <section className="ai-opening-banner" aria-live="polite"><span className="ai-opening-step">开</span><div><b>{openingRuleName(aiGame.opening.rule, aiGame.opening.n)}</b><small>{openingInstruction(aiGame.opening)}</small></div>{aiOpeningStage?.kind === "swap" && aiOpeningStage.chooser === "human" && <div className="ai-opening-actions"><button onClick={() => chooseOpeningSwap(false)}>{aiOpeningStage.taraguchiChoice ? "进入十打" : "不交换"}</button><button className="accent" onClick={() => chooseOpeningSwap(true)}>交换</button></div>}{aiThinking && <i className="ai-opening-thinking"/>}</section>}
-          <Board document={viewDocument} currentId={currentId} currentBookmarked={activeBookmarks.some((bookmark) => bookmark.nodeId === currentId)} showNumbers={showNumbers} showCoordinates={showCoordinates} largeBoard={largeBoard} rotation={rotation} mirrored={mirrored} boardTheme={boardTheme} stoneTheme={stoneTheme} initialDepth={mode === "puzzle" ? puzzleInitialDepth : 0} forbiddenMarkers={boardForbiddenMarkers} winningLines={boardWinningLines} openingCandidates={enhancementSettings.aiBoardHints ? aiGame?.opening.candidates || [] : []} openingStage={aiOpeningStage} thinkingMove={enhancementSettings.aiBoardHints && thinkContextKey === currentPositionKey ? thinkResult?.move : null} thinking={aiThinking || thinkRunning} motion={boardMotion} feedback={boardFeedback} result={boardResult} gestureZoomEnabled={enhancementSettings.gestureZoom} gestureSwipeEnabled={enhancementSettings.gestureSwipe} disabled={dynamicNavigationBusy || (mode === "puzzle" && (aiThinking || !!puzzleOutcome)) || aiBoardDisabled} onPlay={play} onVariation={mode === "record" && !aiGame && !continuationEditMode ? navigateVariation : undefined} onMark={mode === "record" && !aiGame ? mark : () => undefined} onGestureStep={mode === "record" ? (delta) => { if (delta < 0) goPrev(); else goNext(); } : undefined}/>
-         <div className={`workspace-status ${puzzleOutcome || ""}`}>{mode === "record" ? <><div className="record-command-bar" aria-label="常驻打谱工具">
-             {mode === "record" && <button className={`command-comment ${currentHasComment ? "has-comment" : ""} ${commentExpanded ? "active" : ""}`} onClick={() => setCommentExpanded((open) => !open)} aria-label={commentToggleLabel} title={commentToggleLabel}><MessageSquareText/></button>}
-            {mode === "record" && <button className="command-new" onClick={newRecord} aria-label="新建空白棋局" title="新建空白棋局"><FilePlus2/></button>}
-            <button className={`command-save ${hasDraft(draft) ? "pending" : ""}`} onClick={saveCurrentDraft} aria-label={hasDraft(draft) ? `保存当前棋谱修改（${draft.operations.length} 项）` : "当前棋谱已保存"} title={hasDraft(draft) ? "保存修改" : "已保存"}><Save/></button>
-            <button className="command-delete" onClick={deleteCurrentVariation} disabled={!current.parentId} aria-label="删除当前一步及后续变化" title={!current.parentId ? "起始局面不可删除" : isPagedLibraryView(document) || isDynamicDatabaseView(document) ? "将在本地编辑副本中删除，原数据库不变" : "删除本步及后续变化"}><Trash2/></button>
-            <button className={`command-think ${machineThinking ? "running machine-thinking" : ""} think-state-${thinkVisualState}`} data-think-state={thinkVisualState} onClick={startThink} disabled={vcfRunning || !!aiGame} aria-label={thinkRunning ? "中断 AI 思考" : machineThinking ? "AI 正在思考" : thinkVisualState === "complete" ? "AI 推荐已完成" : thinkVisualState === "error" ? "AI 思考异常，可重试" : "思考当前局面的下一步"} title={aiGame ? "人机对局会自动思考" : thinkRunning ? "再次点击中断 AI 思考" : machineThinking ? "AI 正在思考" : thinkVisualState === "complete" ? "推荐已完成，点击重新思考" : "思考当前局面的下一步"}><Bot/></button>
-            <div className={`stone-color-switch ${activePlacementPlayer} ${placementLocked ? "locked" : "following"}`} role="radiogroup" aria-label="落子颜色">
+          <Board document={reviewDocument} currentId={currentId} currentBookmarked={activeBookmarks.some((bookmark) => bookmark.nodeId === currentId)} showNumbers={showNumbers} showCoordinates={showCoordinates} largeBoard={largeBoard} rotation={rotation} mirrored={mirrored} boardTheme={boardTheme} stoneTheme={stoneTheme} boardOpacity={boardOpacity} stoneOpacity={stoneOpacity} annotationHighlight={annotationHighlight} initialDepth={isPuzzleMode ? puzzleSetup ? 0 : puzzleInitialDepth : 0} forbiddenMarkers={boardForbiddenMarkers} winningLines={boardWinningLines} openingCandidates={aiGame?.opening.candidates || []} openingStage={aiOpeningStage} thinkingMove={enhancementSettings.aiBoardHints && thinkContextKey === currentPositionKey ? thinkResult?.move : null} thinking={aiThinking || thinkRunning} motion={boardMotion} feedback={boardFeedback} result={boardResult} gestureZoomEnabled={enhancementSettings.gestureZoom} gestureSwipeEnabled={enhancementSettings.gestureSwipe} disabled={dynamicNavigationBusy || (isPuzzleMode && !puzzleSetup && (aiThinking || !!puzzleOutcome)) || aiBoardDisabled} onPlay={play} onVariation={!isPuzzleMode && !aiGame && !continuationEditMode && !annotationActive ? navigateVariation : undefined} onMark={(mode === "record" || mode === "review") && !aiGame ? mark : () => undefined} onGestureStep={!isPuzzleMode ? (delta) => { if (delta < 0) goPrev(); else goNext(); } : undefined}/>
+          {(mode === "record" || mode === "review" || mode === "puzzle") && <div className={`workspace-status ${mode === "puzzle" ? "puzzle-mode" : ""} ${puzzleOutcome || ""}`}>{mode !== "puzzle" ? <><div className="record-command-bar" aria-label="常驻打谱工具">
+            <button className={`command-comment ${currentHasComment ? "has-comment" : ""} ${commentExpanded ? "active" : ""}`} onClick={() => setCommentExpanded((open) => !open)} aria-label={commentToggleLabel} title={commentToggleLabel}><MessageSquareText/></button>
+            <button className={`command-new ${mode === "review" ? "review-blocked" : ""}`} onClick={mode === "review" ? reviewBlocked : newRecord} aria-label="新建空白棋局" title={mode === "review" ? "读谱模式无法进行该操作" : "新建空白棋局"}><FilePlus2/></button>
+            <button className={`command-save ${hasDraft(draft) ? "pending" : ""} ${mode === "review" ? "review-blocked" : ""}`} onClick={mode === "review" ? reviewBlocked : saveCurrentDraft} aria-label={mode === "review" ? "读谱模式无法保存棋谱" : hasDraft(draft) ? `保存当前棋谱修改（${draft.operations.length} 项）` : "当前棋谱已保存"} title={mode === "review" ? "读谱模式无法进行该操作" : hasDraft(draft) ? "保存修改" : "已保存"}><Save/></button>
+            <button className={`command-delete ${mode === "review" ? "review-blocked" : ""}`} onClick={mode === "review" ? reviewBlocked : deleteCurrentVariation} disabled={mode === "record" && !current.parentId} aria-label="删除当前一步及后续变化" title={mode === "review" ? "读谱模式无法进行该操作" : !current.parentId ? "起始局面不可删除" : isPagedLibraryView(document) || isDynamicDatabaseView(document) ? "将在本地编辑副本中删除，原数据库不变" : "删除本步及后续变化"}><Trash2/></button>
+            <button className={`command-think ${machineThinking ? "running machine-thinking" : ""} think-state-${thinkVisualState}`} data-think-state={thinkVisualState} onClick={aiGame ? (aiThinking ? stopAiGameThinking : resumeAiGameThinking) : startThink} disabled={vcfRunning || Boolean(aiGame && !aiThinking && !canResumeAiGame)} aria-label={aiGame ? aiThinking ? "停止人机 AI 思考" : "继续人机 AI 思考" : thinkRunning ? "中断 AI 思考" : machineThinking ? "AI 正在思考" : thinkVisualState === "complete" ? "AI 推荐已完成" : thinkVisualState === "error" ? "AI 思考异常，可重试" : "思考当前局面的下一步"} title={aiGame ? aiThinking ? "立即停止并终止计算线程" : canResumeAiGame ? "继续让 AI 完成本手" : "当前轮到你落子" : thinkRunning ? "再次点击中断 AI 思考" : machineThinking ? "AI 正在思考" : thinkVisualState === "complete" ? "推荐已完成，点击重新思考" : "思考当前局面的下一步"}><Bot/></button>
+            <div className={`stone-color-switch ${activePlacementPlayer} ${placementLocked ? "locked" : "following"} ${mode === "review" ? "review-blocked" : ""}`} role="radiogroup" aria-label="落子颜色">
               <i aria-hidden="true"/>
-              <button className={activePlacementPlayer === "black" ? "selected" : ""} onClick={() => { setPlacementPlayer("black"); setPlacementLocked(true); }} role="radio" aria-checked={activePlacementPlayer === "black"} aria-label="黑棋" title="锁定黑棋"><span className="player-stone black"/></button>
-              <button className={activePlacementPlayer === "white" ? "selected" : ""} onClick={() => { setPlacementPlayer("white"); setPlacementLocked(true); }} role="radio" aria-checked={activePlacementPlayer === "white"} aria-label="白棋" title="锁定白棋"><span className="player-stone white"/></button>
-              <button className={`lock-toggle ${placementLocked ? "locked" : ""}`} onClick={() => setPlacementLocked((locked) => !locked)} aria-pressed={placementLocked} aria-label={placementLocked ? "解除颜色锁定，自动换色" : "跟随当前棋谱颜色"} title={placementLocked ? "解除锁定" : "自动换色"}><Lock/></button>
+              <button className={activePlacementPlayer === "black" ? "selected" : ""} onClick={mode === "review" ? reviewBlocked : () => { setPlacementPlayer("black"); setPlacementLocked(true); }} role="radio" aria-checked={activePlacementPlayer === "black"} aria-label="黑棋" title={mode === "review" ? "读谱模式无法进行该操作" : "锁定黑棋"}><span className="player-stone black"/></button>
+              <button className={activePlacementPlayer === "white" ? "selected" : ""} onClick={mode === "review" ? reviewBlocked : () => { setPlacementPlayer("white"); setPlacementLocked(true); }} role="radio" aria-checked={activePlacementPlayer === "white"} aria-label="白棋" title={mode === "review" ? "读谱模式无法进行该操作" : "锁定白棋"}><span className="player-stone white"/></button>
+              <button className={`lock-toggle ${placementLocked ? "locked" : ""}`} onClick={mode === "review" ? reviewBlocked : () => setPlacementLocked((locked) => !locked)} aria-pressed={placementLocked} aria-label={placementLocked ? "解除颜色锁定，自动换色" : "跟随当前棋谱颜色"} title={mode === "review" ? "读谱模式无法进行该操作" : placementLocked ? "解除锁定" : "自动换色"}><Lock/></button>
             </div>
-          </div></> : <><span>{puzzleOutcome === "won" ? "挑战成功" : puzzleOutcome === "lost" ? "本题失败" : puzzleOutcome === "stopped" ? "思考已停止" : aiThinking ? "陪练思考中" : `${currentPuzzle?.player === "black" ? "黑" : "白"}方由你落子`}</span><small>{puzzleOutcome ? "可悔棋或重启本题" : currentPuzzle?.prompt}</small>{machineThinking && <span className="machine-thinking-status" aria-label="AI 正在思考"><Bot size={16}/></span>}</>}</div>
-        {mode === "record" && commentExpanded && <div className="comment-review"><div className={commentPreviewClass} aria-live="polite">{commentPreviewContent}</div></div>}
+          </div></> : <><div className="puzzle-mode-selectors"><PuzzleRuleSelector value={currentPuzzleRule} onChange={changePuzzleRule}/><PuzzleThinkSpeedSelector value={puzzleThinkSpeed} onChange={changePuzzleThinkSpeed}/></div><div className="puzzle-status-copy"><span>{puzzleSetup ? "自由摆棋" : puzzleOutcome === "won" ? "挑战成功" : puzzleOutcome === "lost" ? "本题失败" : puzzleOutcome === "stopped" ? "思考已停止" : aiThinking ? "陪练思考中" : `${currentPuzzle?.player === "black" ? "黑" : "白"}方由你落子`}</span><small>{puzzleSetup ? "回退后重新落子会覆盖旧后续" : puzzleOutcome ? "可悔棋或重启本题" : currentPuzzle?.prompt}</small>{!puzzleSetup && machineThinking && <span className="machine-thinking-status" aria-label="AI 正在思考"><Bot size={16}/></span>}</div></>}</div>}
+        {mode !== "puzzle" && commentExpanded && <div className="comment-review"><textarea id="comment-preview" className={`${commentPreviewClass} ${commentPreviewExpanded ? "expanded" : ""}`} readOnly value={commentPreviewText} onDoubleClick={() => setCommentPreviewExpanded((expanded) => !expanded)} aria-label="当前局面注释" title={commentPreviewExpanded ? "双击或点击右侧按钮收起注释框" : "双击或点击右侧按钮展开注释框"}/><button type="button" className="comment-expand-toggle" onClick={() => setCommentPreviewExpanded((expanded) => !expanded)} aria-controls="comment-preview" aria-expanded={commentPreviewExpanded} aria-label={commentPreviewExpanded ? "收起注释文本框" : "展开注释文本框"} title={commentPreviewExpanded ? "收起注释" : "展开注释"}>{commentPreviewExpanded ? <Minimize2 aria-hidden="true"/> : <Maximize2 aria-hidden="true"/>}</button></div>}
+        {mode !== "puzzle" && !enhancementSettings.dockMergeMoves && <div className="moves-row" aria-label="走棋导航" data-moves-labels={enhancementSettings.movesTextDisplay ? "on" : "off"}>{movesNavButtons}</div>}
         <section className="context-dock">
-          <nav className="dock-tabs">{mode === "record" ? <><button aria-label="行棋" className={dockPanel === "moves" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "moves" ? null : "moves")}><Redo2/>走棋</button><button aria-label="编辑" className={dockPanel === "notes" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "notes" ? null : "notes")}><MessageSquareText/>编辑</button><button aria-label="更多" className={dockPanel === "view" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "view" ? null : "view")}><MoreHorizontal/>更多</button><button aria-label="标注" className={candidateLabel ? "active" : ""} onClick={() => setSheet("marks")}><Tag/>标注</button></> : <><button className={dockPanel === "play" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "play" ? null : "play")}><Undo2/>应战</button><button className={dockPanel === "puzzles" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "puzzles" ? null : "puzzles")}><BookOpen/>题目</button><button className={dockPanel === "view" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "view" ? null : "view")}><MoreHorizontal/>更多</button></>}</nav>
-          {dockPanel && <div className="dock-panel">
-            {mode === "record" && dockPanel === "moves" && <><button onClick={goRoot} disabled={dynamicNavigationBusy} aria-label="到第一手"><ChevronFirst/><span>起点</span></button><button onClick={goPrev} disabled={dynamicNavigationBusy || !current.parentId} aria-label="上一手"><ChevronLeft/><span>上一手</span></button><button className="accent" onClick={goNext} disabled={dynamicNavigationBusy || !preferredNext(viewDocument, currentId)} aria-label="下一手"><ChevronRight/><span>下一手</span></button><button onClick={goPreferredEnd} disabled={dynamicNavigationBusy} aria-label="到最后一手"><ChevronLast/><span>终点</span></button><button onClick={() => setSheet("tree")} disabled={dynamicNavigationBusy} aria-label="打开棋谱树"><ListTree/><span>棋谱树</span></button>{branchTotal >= 2 && <button onClick={() => { setBranchPage(1); setSheet("branches"); }} disabled={dynamicNavigationBusy}><GitBranch/><span>分支</span></button>}{hasDraft(draft) && <><button onClick={undoDraftChange}><Undo2/><span>撤销</span></button><button onClick={discardDraft}><X/><span>放弃</span></button></>}</>}
-             {mode === "record" && dockPanel === "notes" && <><button onClick={() => setSheet("comment")}><MessageSquareText/><span>注释</span></button><button onClick={() => setSheet("metadata")}><Save/><span>信息</span></button><button onClick={() => setRotation((value) => ((value + 90) % 360) as BoardRotation)}><RotateCw/><span>旋转</span></button><button onClick={() => setMirrored((value) => !value)}><FlipHorizontal/><span>镜像</span></button></>}
-             {dockPanel === "view" && <><button onClick={() => setSheet("find")}><Search/><span>查找</span></button><button onClick={() => { setDockPanel(null); setSheet("positionSearch"); }}><GitBranch/><span>跨谱查找</span></button><button onClick={() => setShowNumbers((value) => !value)}><Tag/><span>{showNumbers ? "隐藏手数" : "显示手数"}</span></button><button onClick={() => setShowCoordinates((value) => !value)}><Menu/><span>{showCoordinates ? "隐藏坐标" : "显示坐标"}</span></button></>}
-            {mode === "puzzle" && dockPanel === "play" && <><button onClick={undoPuzzleTurn} disabled={depthOf(document, currentId) <= puzzleInitialDepth}><Undo2/><span>悔棋</span></button><button onClick={restartPuzzle}><RotateCw/><span>重启</span></button><button className={aiThinking ? "danger" : "accent"} onClick={aiThinking ? stopPuzzleAi : () => movePuzzle(1)}>{aiThinking ? <X/> : <ChevronRight/>}<span>{aiThinking ? "停止" : "下一题"}</span></button></>}
-{mode === "puzzle" && dockPanel === "puzzles" && <><button onClick={() => movePuzzle(-1)}><ChevronLeft/><span>上一题</span></button><button className="accent" onClick={() => { setWorkspaceSelectorOpen(true); setWorkspaceListExpanded(true); setExpandedCollectionId(puzzleCollections[puzzleCollectionIndex]?.id || null); window.scrollTo({ top: 0, behavior: "smooth" }); }}><BookOpen/><span>选题</span></button><button onClick={() => movePuzzle(1)}><ChevronRight/><span>下一题</span></button></>}
+        <nav className={`dock-tabs${enhancementSettings.dockMergeMoves && !isPuzzleMode ? " dock-tabs-five" : ""}`}>{!isPuzzleMode ? <>{enhancementSettings.dockMergeMoves && <button aria-label="行棋" aria-pressed={dockPanel === "moves"} className={dockPanel === "moves" ? "active" : ""} onClick={() => setDockPanel((panel) => panel === "moves" ? null : "moves")} title="走棋导航"><Redo2/>走棋</button>}<button aria-label="标注" aria-pressed={annotationActive} className={annotationActive ? "active" : ""} onClick={() => { if (aiGame) { setToast("人机对局中暂不能标注，请先退出对局"); return; } setDockPanel((panel) => { const next = panel === "annotation" ? null : "annotation"; if (!next) setAnnotationPopover(null); return next; }); }} title={annotationActive ? "关闭标注模式" : "打开当前局面标注模式"}><Tag/>标注</button><button aria-label="编辑" className={dockPanel === "notes" ? "active" : ""} onClick={() => setDockPanel((panel) => panel === "notes" ? null : "notes")}><MessageSquareText/>编辑</button><button aria-label="打开分支树" className={sheet === "tree" ? "active" : ""} onClick={() => setSheet("tree")}><ListTree/>分支树</button><button aria-label="更多" className={dockPanel === "view" ? "active" : ""} onClick={() => setDockPanel((panel) => panel === "view" ? null : "view")}><MoreHorizontal/>更多</button></> : <><button className={!puzzleSetup && dockPanel === "play" ? "active" : ""} onClick={exitPuzzleSetup}><Undo2/>应战</button><button className={puzzleSetup ? "active" : ""} onClick={enterPuzzleSetup}><PenLine/>摆棋</button><button className={dockPanel === "vcf" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "vcf" ? null : "vcf")} aria-label="VCF 生成器"><Sparkles/>VCF</button><button className={dockPanel === "view" ? "active" : ""} onClick={() => setDockPanel(dockPanel === "view" ? null : "view")}><MoreHorizontal/>更多</button></>}</nav>
+          {dockPanel && <div className={`dock-panel dock-panel-${dockPanel}`}>
+            {!isPuzzleMode && dockPanel === "moves" && <>{movesNavButtons}</>}
+            {!isPuzzleMode && dockPanel === "annotation" && <div className="mark-studio" ref={markStudioRef} aria-label="当前局面标注工具">
+              <div className="mark-studio-grid">
+                <div className="mark-studio-preview" aria-label="标注预览"><MarkGlyph style={annotationStyle} color={annotationColor} value={currentAnnotationLabel}/><small>预览</small></div>
+                <button type="button" className={`mark-studio-box ${annotationPopover === "style" ? "open" : ""}`} onClick={() => openAnnotationPopover("style")} aria-expanded={annotationPopover === "style"}><small>样式</small><b>{ANNOTATION_STYLES.find((item) => item.id === annotationStyle)?.label}</b></button>
+                <button type="button" className={`mark-studio-box ${annotationPopover === "color" ? "open" : ""}`} onClick={() => openAnnotationPopover("color")} aria-expanded={annotationPopover === "color"}><small>颜色</small><b><span className="mark-studio-swatch" style={{ background: annotationColor }}/></b></button>
+                <button type="button" className={`mark-studio-box ${annotationPopover === "type" ? "open" : ""}`} onClick={() => openAnnotationPopover("type")} aria-expanded={annotationPopover === "type"}><small>类型</small><b>{annotationTypePreset(annotationType).label}</b></button>
+                {annotationType === "custom"
+                  ? <input className="mark-studio-box mark-studio-input" value={annotationValue} maxLength={4} placeholder="输入文字" aria-label="自定义标注文字" onChange={(event) => setAnnotationValue(event.target.value)}/>
+                  : <button type="button" className={`mark-studio-box ${annotationPopover === "value" ? "open" : ""}`} onClick={() => openAnnotationPopover("value")} aria-expanded={annotationPopover === "value"}><small>内容</small><b>{annotationValue}</b></button>}
+              </div>
+              {annotationPopover && createPortal(<>
+                <div className="mark-studio-backdrop" onClick={() => setAnnotationPopover(null)} aria-hidden="true"/>
+                <div className="mark-studio-popover" role="dialog" aria-label="标注选项" style={{ bottom: annotationPopoverBottom }}>
+                  {annotationPopover === "style" && <div className="mark-studio-options styles">{ANNOTATION_STYLES.map((item) => <button key={item.id} type="button" className={annotationStyle === item.id ? "selected" : ""} onClick={() => { setAnnotationStyle(item.id); setAnnotationPopover(null); }} aria-pressed={annotationStyle === item.id}><MarkGlyph style={item.id} color={annotationColor} value={annotationType === "custom" ? "" : annotationValue}/><small>{item.label}</small></button>)}</div>}
+                  {annotationPopover === "color" && <div className="mark-studio-options colors">{ANNOTATION_COLORS.map(([color, label]) => <button key={color} type="button" className={annotationColor === color ? "selected" : ""} style={{ "--annotation-color": color } as React.CSSProperties} onClick={() => { setAnnotationColor(color); setAnnotationPopover(null); }} aria-label={`${label}色`} aria-pressed={annotationColor === color} title={label}><span className="mark-studio-swatch"><Check size={12}/></span><small>{label}</small></button>)}</div>}
+                  {annotationPopover === "type" && <div className="mark-studio-options types">{ANNOTATION_TYPES.map((preset) => <button key={preset.id} type="button" className={annotationType === preset.id ? "selected" : ""} onClick={() => { switchAnnotationType(preset.id); setAnnotationPopover(preset.values.length ? "value" : null); }} aria-pressed={annotationType === preset.id}><b>{preset.label}</b><small>{preset.hint}</small></button>)}</div>}
+                  {annotationPopover === "value" && <div className="mark-studio-options values">{annotationTypePreset(annotationType).values.map((value) => <button key={value} type="button" className={annotationValue === value ? "selected" : ""} onClick={() => { setAnnotationValue(value); setAnnotationPopover(null); }} aria-pressed={annotationValue === value}>{value}</button>)}</div>}
+                </div>
+              </>, window.document.body)}
+              <p className="mark-studio-hint">{mode === "review" ? "点击标注可覆盖 / 去除标注；仅保存在本机，不修改原棋谱。" : "点击标注可覆盖 / 去除标注；不会落子或进入分支。"}</p>
+            </div>}
+             {!isPuzzleMode && dockPanel === "notes" && <><button className={mode === "review" ? "review-blocked" : ""} onClick={mode === "review" ? reviewBlocked : () => setSheet("comment")} title={mode === "review" ? "读谱模式无法进行该操作" : "编辑节点注释"}><MessageSquareText/><span>注释</span></button><button className={mode === "review" ? "review-blocked" : ""} onClick={mode === "review" ? reviewBlocked : () => setSheet("metadata")} title={mode === "review" ? "读谱模式无法进行该操作" : "编辑棋谱信息"}><Save/><span>信息</span></button><button onClick={() => setRotation((value) => ((value + 90) % 360) as BoardRotation)}><RotateCw/><span>旋转</span></button><button onClick={() => setMirrored((value) => !value)}><FlipHorizontal/><span>镜像</span></button></>}
+             {dockPanel === "view" && <>{!isPuzzleMode && <><button onClick={() => setSheet("find")}><Search/><span>查找</span></button><button onClick={() => { setDockPanel(null); setSheet("positionSearch"); }}><GitBranch/><span>跨谱查找</span></button><label className={`dock-board-size ${mode === "review" ? "review-blocked" : ""}`}><span>棋盘路数</span><select className="board-size-select" aria-label="选择新棋谱棋盘路数" value={viewDocument.metadata.boardSize || 15} onChange={(event) => { if (mode === "review") reviewBlocked(); else createBoardWithSize(Number(event.target.value)); }}><option value={viewDocument.metadata.boardSize || 15}>{viewDocument.metadata.boardSize || 15}路</option>{Array.from({ length: 17 }, (_, index) => index + 5).filter((size) => size !== (viewDocument.metadata.boardSize || 15)).map((size) => <option key={size} value={size}>{size}路</option>)}</select></label></>}<button onClick={() => setShowNumbers((value) => !value)}><Tag/><span>{showNumbers ? "隐藏手数" : "显示手数"}</span></button><button onClick={() => setShowCoordinates((value) => !value)}><Menu/><span>{showCoordinates ? "隐藏坐标" : "显示坐标"}</span></button></>}
+            {isPuzzleMode && dockPanel === "play" && <><button onClick={undoPuzzleTurn} disabled={depthOf(document, currentId) <= puzzleInitialDepth}><Undo2/><span>悔棋</span></button><button onClick={restartPuzzle}><RotateCw/><span>重启</span></button><button className={aiThinking ? "danger" : "accent"} onClick={aiThinking ? stopPuzzleAi : () => movePuzzle(1)}>{aiThinking ? <X/> : <ChevronRight/>}<span>{aiThinking ? "停止" : "下一题"}</span></button><button onClick={() => movePuzzle(-1)} aria-label="上一题"><ChevronLeft/><span>上一题</span></button><button onClick={() => { setSheet(null); setWorkspaceSelectorOpen(true); }} aria-label="选题"><BookOpen/><span>选题</span></button></>}
+            {isPuzzleMode && puzzleSetup && dockPanel === "setup" && <><button onClick={() => navigatePuzzleSetup(0)} disabled={puzzleSetup.session.cursor === 0} aria-label="摆棋起点"><ChevronFirst/><span>起点</span></button><button onClick={() => navigatePuzzleSetup(puzzleSetup.session.cursor - 1)} disabled={puzzleSetup.session.cursor === 0} aria-label="摆棋上一手"><ChevronLeft/><span>上一手</span></button><button className="accent" onClick={() => navigatePuzzleSetup(puzzleSetup.session.cursor + 1)} disabled={puzzleSetup.session.cursor >= puzzleSetup.session.moves.length} aria-label="摆棋下一手"><ChevronRight/><span>下一手</span></button><button onClick={() => navigatePuzzleSetup(puzzleSetup.session.moves.length)} disabled={puzzleSetup.session.cursor >= puzzleSetup.session.moves.length} aria-label="摆棋终点"><ChevronLast/><span>终点</span></button><div className={`setup-stone-switch stone-color-switch ${activePlacementPlayer} ${placementLocked ? "locked" : "following"}`} role="radiogroup" aria-label="摆棋颜色"><i aria-hidden="true"/><button className={activePlacementPlayer === "black" ? "selected" : ""} onClick={() => { setPlacementPlayer("black"); setPlacementLocked(true); }} role="radio" aria-checked={activePlacementPlayer === "black"} aria-label="摆黑棋"><span className="player-stone black"/></button><button className={activePlacementPlayer === "white" ? "selected" : ""} onClick={() => { setPlacementPlayer("white"); setPlacementLocked(true); }} role="radio" aria-checked={activePlacementPlayer === "white"} aria-label="摆白棋"><span className="player-stone white"/></button><button className={`lock-toggle ${placementLocked ? "locked" : ""}`} onClick={() => setPlacementLocked((locked) => !locked)} aria-pressed={placementLocked} aria-label={placementLocked ? "解除颜色锁定" : "自动交替颜色"} title={placementLocked ? "解除锁定" : "自动换色"}><Lock/></button></div></>}
+{isPuzzleMode && dockPanel === "vcf" && <div className="vcf-panel">
+              {vcfBatch.length > 0 && (() => { const solvedCount = vcfBatch.filter((item) => { const collection = puzzleCollections[item.collectionIndex]; const entry = collection && puzzleProgress[puzzleProgressKey(collection.id, collection.puzzles[item.puzzleIndex]?.id || "")]; return entry?.solved; }).length; return <div className="vcf-group vcf-group-batch">
+                <div className="vcf-group-head"><b>本次生成 · {vcfBatch.length} 题</b><small>{solvedCount} / {vcfBatch.length} 已完成</small></div>
+                <div className="vcf-chips" role="group" aria-label="本次生成的 VCF 题目列表">
+                  {vcfBatch.map((item, index) => {
+                    const collection = puzzleCollections[item.collectionIndex];
+                    const entry = collection && puzzleProgress[puzzleProgressKey(collection.id, collection.puzzles[item.puzzleIndex]?.id || "")];
+                    const current = puzzleCollectionIndex === item.collectionIndex && puzzleIndex === item.puzzleIndex;
+                    const flag = entry?.solved ? "✓" : (entry?.attempts || 0) > 0 ? "·" : "";
+                    return <button key={index} type="button" className={`vcf-chip${current ? " current" : ""}${entry?.solved ? " solved" : ""}${!entry?.solved && (entry?.attempts || 0) > 0 ? " attempted" : ""}`} aria-pressed={current} title={`第 ${index + 1} 题 · ${item.depth} 手 · ${entry?.solved ? "已通过" : (entry?.attempts || 0) > 0 ? `尝试 ${entry.attempts} 次` : "未做"}`} onClick={() => { setVcfBatchIndex(index); if (current) setDockPanel(null); else guardedOpenPuzzle(item.collectionIndex, item.puzzleIndex); }}><span className="vcf-chip-no">{index + 1}</span><span className="vcf-chip-depth">{item.depth} 手</span><i className="vcf-chip-flag" aria-hidden="true">{flag}</i></button>;
+                  })}
+                </div>
+                <p className="vcf-group-hint" role="status">第 {Math.min(vcfBatchIndex, vcfBatch.length - 1) + 1} 题 · {vcfBatch[Math.min(vcfBatchIndex, vcfBatch.length - 1)]?.depth} 手 · 正解 {vcfBatch[Math.min(vcfBatchIndex, vcfBatch.length - 1)]?.solutionText}；点题号直达，当前题再次点击收起面板</p>
+              </div>; })()}
+              <div className="vcf-group vcf-group-settings">
+                <div className="vcf-group-head"><b>出题设置</b>{vcfGenRunning && <small className="vcf-running">{vcfProgress.done} / {vcfOptions.count} 题 · 已尝试 {vcfProgress.attempts} 次</small>}</div>
+                <div className="vcf-opt"><span className="vcf-opt-label">模式</span><div className="vcf-seg" role="radiogroup" aria-label="VCF 出题模式"><button type="button" className={vcfOptions.mode === "transform" ? "on" : ""} disabled={vcfGenRunning} role="radio" aria-checked={vcfOptions.mode === "transform"} title="真题换朝向" onClick={() => setVcfOptions({ ...vcfOptions, mode: "transform" })}>变形</button><button type="button" className={vcfOptions.mode === "novel" ? "on" : ""} disabled={vcfGenRunning} role="radio" aria-checked={vcfOptions.mode === "novel"} title="造题库里没有的新题" onClick={() => setVcfOptions({ ...vcfOptions, mode: "novel" })}>原创</button></div></div>
+                <div className="vcf-opt"><span className="vcf-opt-label">档位</span><div className="vcf-seg" role="radiogroup" aria-label="VCF 难度档位">{(["short", "middle", "deep"] as VcfTier[]).map((t) => <button key={t} type="button" className={vcfOptions.tier === t ? "on" : ""} disabled={vcfGenRunning} role="radio" aria-checked={vcfOptions.tier === t} title={VCF_TIER_LABEL[t]} onClick={() => setVcfOptions({ ...vcfOptions, tier: t })}>{t === "short" ? "短" : t === "middle" ? "中" : "深"}</button>)}</div></div>
+                <div className="vcf-opt"><span className="vcf-opt-label">数量</span><div className="vcf-seg" role="radiogroup" aria-label="VCF 生成数量">{[1, 5, 10].map((n) => <button key={n} type="button" className={vcfOptions.count === n ? "on" : ""} disabled={vcfGenRunning} role="radio" aria-checked={vcfOptions.count === n} onClick={() => setVcfOptions({ ...vcfOptions, count: n })}>{n}</button>)}</div></div>
+              </div>
+              <div className="vcf-group vcf-group-actions">
+                <div className="vcf-group-head"><b>操作</b></div>
+                <div className="vcf-actions">
+                  <button className={vcfGenRunning ? "danger" : "accent"} onClick={runVcfGeneration} aria-label={vcfGenRunning ? "停止生成" : "开始生成"} title={vcfGenRunning ? "停止生成" : "按当前设置生成题目"}>{vcfGenRunning ? <X/> : <Sparkles/>}<span>{vcfGenRunning ? "停止生成" : "生成题目"}</span></button>
+                  <button onClick={() => { if (vcfExportJsonRef.current) downloadFile(vcfExportJsonRef.current, `vcf-${vcfOptions.tier}-题集.json`, "application/json"); }} disabled={!vcfBatch.length} aria-label="导出本次生成的题库 JSON" title="导出本次生成的题库 JSON"><Download/><span>导出题集</span></button>
+                  <button onClick={solveCurrentBoardVcf} aria-label="解答当前局面连续冲四" title="解答当前局面连续冲四"><ListTree/><span>解答本局</span></button>
+                </div>
+              </div>
+              {!vcfBatch.length && !vcfGenRunning && <p className="vcf-progress" role="status">选模式与档位后点“生成题目”：真题变形换朝向，原创作曲造新局；自动存入题库“我的题库”，题号列表会记录每题状态。</p>}
+              {vcfSolveNote && <p className="vcf-progress" role="status">{vcfSolveNote}</p>}
+            </div>}
           </div>}
         </section>
       </div>}
 
       {tab === "library" && <div className="library-page page-padding">
-        <div className="library-segment" role="tablist"><button className={librarySection === "puzzles" ? "active" : ""} onClick={() => { setLibrarySection("puzzles"); setExpandedLibraryFolder(libraryFolders.puzzleFolders[0] || null); }} role="tab">题库 <small>{puzzleCollections.length}</small></button><button className={librarySection === "records" ? "active" : ""} onClick={() => { setLibrarySection("records"); setExpandedLibraryFolder(libraryFolders.recordFolders[0] || null); }} role="tab">棋谱 <small>{library.length + largeSummaries.length}</small></button></div>
+        <div className="library-segment" role="tablist"><button className={librarySection === "puzzles" ? "active" : ""} onClick={() => { setLibrarySection("puzzles"); setExpandedLibraryFolders(new Set([libraryFolders.puzzleFolders[0] || ""])); }} role="tab">题库 <small>{puzzleCollections.length}</small></button><button className={librarySection === "records" ? "active" : ""} onClick={() => { setLibrarySection("records"); setExpandedLibraryFolders(new Set([libraryFolders.recordFolders[0] || ""])); }} role="tab">棋谱 <small>{library.length + largeSummaries.length}</small></button></div>
         <label className="library-search"><Search size={17}/><input value={libraryQuery} onChange={(event) => setLibraryQuery(event.target.value)} placeholder={librarySection === "records" ? "搜索棋谱名、棋手或主题" : "搜索题库、题目或题面"}/><button type="button" onClick={() => setLibraryQuery("")} aria-label="清除搜索"><X size={15}/></button></label>
         {librarySection === "records" ? <>
+          <ResearchLibraryOverview
+            activeTitle={(mode === "record" ? viewDocument : recordSession.current.document).metadata.title}
+            activeDepth={depthOf(mode === "record" ? viewDocument : recordSession.current.document, mode === "record" ? currentId : recordSession.current.currentId)}
+            activeHasDraft={mode === "record" ? hasDraft(draft) : regularDraftIds.has(recordSession.current.document.id) || largeDraftIdSet.has(recordSession.current.document.id)}
+            activeUpdatedAt={(mode === "record" ? viewDocument : recordSession.current.document).updatedAt}
+            activeId={(mode === "record" ? document : recordSession.current.document).id}
+            records={library}
+            largeRecords={largeSummaries}
+            regularDraftIds={regularDraftIds}
+            largeDraftIds={largeDraftIdSet}
+            filter={recordFilter}
+            onFilterChange={setRecordFilter}
+            onContinue={() => { if (mode === "puzzle") switchMode("record"); setTab("record"); }}
+            onOpenRecord={openRecord}
+            onOpenLargeRecord={openLargeRecord}
+            onOpenDataSafety={() => setSheet("dataSafety")}
+            recycleCount={recycleBin.length}
+          />
           <div className={`library-actions batch-actions ${batchEditMode ? "batch-active" : ""}`}><button onClick={openRecordImportPicker}><Download/>导入棋谱<small>单个 LIB / SGF / JSON</small></button><button onClick={() => createLibraryFolder("records")}><FolderPlus/>新建文件夹<small>整理棋谱分组</small></button><button onClick={newRecord}><FilePlus2/>新建棋谱<small>从空棋盘开始</small></button><button onClick={() => { setBatchEditMode((active) => !active); setBatchSelectedIds([]); }}><ListTree/>{batchEditMode ? "退出批量" : "批量处理"}<small>{batchEditMode ? `已选择 ${batchSelectedIds.length} 份` : "选择普通棋谱后批量处理"}</small></button></div>
-          {batchEditMode && <div className="batch-selection-bar" role="status" aria-live="polite"><span>已选择 {batchSelectedIds.length} 份</span><button type="button" onClick={selectAllBatchResults}>全选</button><button type="button" onClick={clearBatchSelection}>清空选择</button><button type="button" className="accent" disabled={!batchSelectedIds.length} onClick={() => setSheet("batchEdit")}>批量处理</button></div>}
-          <button className="settings-link image-import-entry" onClick={openImageImportPicker} disabled={imageRecognizing}><span><Download/><b>{imageRecognizing ? "正在识别棋盘…" : "图片识谱"}</b><small>自动定位网格识别棋子与颜色，带手数截图可恢复落子顺序</small></span><ChevronRight/></button><button className="settings-link recycle-bin-entry" onClick={() => setSheet("trash")}><span><ArchiveRestore/><b>回收站</b><small>{recycleBin.length ? `${recycleBin.length} 项已删除，可恢复` : "暂时没有已删除内容"}</small></span><ChevronRight/></button>
-          <div className="folder-library-list">{libraryFolders.recordFolders.map((folder) => {
-            const items = filteredLibrary.filter((item) => (libraryFolders.recordAssignments[item.id] || "未分类") === folder);
-            const largeItems = filteredLargeSummaries.filter((item) => (libraryFolders.recordAssignments[item.id] || "未分类") === folder);
-            const expanded = expandedLibraryFolder === folder;
-            return <section key={folder}>
-              <div className="library-folder-row"><button className="library-folder-head" onClick={() => setExpandedLibraryFolder(expanded ? null : folder)}><FolderOpen size={19}/><span><b>{folder}</b><small>{items.length + largeItems.length} 份棋谱</small></span><ChevronDown size={18}/></button><button className="library-inline-action" onClick={() => beginLibraryRename({ kind: "record-folder", name: folder })} aria-label={`重命名文件夹“${folder}”`}><PenLine size={16}/></button></div>
-              {expanded && <div className="record-list folder-items">
-                {items.map((item) => <article key={item.id} className={batchEditMode ? "batch-selectable" : ""} onClick={() => batchEditMode ? toggleBatchSelection(item.id) : openRecord(item)}>{batchEditMode && <label className="batch-selection-checkbox" onClick={(event) => event.stopPropagation()}><input type="checkbox" checked={batchSelectedIds.includes(item.id)} onChange={() => toggleBatchSelection(item.id)} aria-label={`选择棋谱“${item.metadata.title}”`}/><i/></label>}<div className="mini-board"><span>●</span><span>○</span><b>{mainLineLength(item)}</b></div><div className="record-info"><h3>{item.metadata.title}</h3><p>{item.metadata.black} vs {item.metadata.white}</p><select value={folder} onClick={(event) => event.stopPropagation()} onChange={(event) => assignLibraryItem("records", item.id, event.target.value)}>{libraryFolders.recordFolders.map((name) => <option key={name}>{name}</option>)}</select></div><div className="library-item-actions">{!batchEditMode && <><button onClick={(event) => { event.stopPropagation(); beginLibraryRename({ kind: "record", id: item.id, name: item.metadata.title }); }} aria-label={`重命名棋谱“${item.metadata.title}”`}><PenLine size={16}/></button><button className="delete-record" onClick={(event) => { event.stopPropagation(); deleteRecord(item); }} aria-label={`删除棋谱“${item.metadata.title}”`}><Trash2 size={17}/></button></>}</div></article>)}
-                {largeItems.map((item) => <article key={item.id} onClick={() => { void openLargeRecord(item); }}><div className="mini-board"><span>●</span><span>○</span><b>{item.mainLineLength}</b></div><div className="record-info"><h3>{item.metadata.title}</h3><p>{item.metadata.black} vs {item.metadata.white} · 大型棋谱 · {item.nodeCount.toLocaleString()} 节点</p><select value={folder} onClick={(event) => event.stopPropagation()} onChange={(event) => assignLibraryItem("records", item.id, event.target.value)}>{libraryFolders.recordFolders.map((name) => <option key={name}>{name}</option>)}</select></div><div className="library-item-actions"><button onClick={(event) => { event.stopPropagation(); beginLibraryRename({ kind: "large-record", id: item.id, name: item.metadata.title }); }} aria-label={`重命名棋谱“${item.metadata.title}”`}><PenLine size={16}/></button><button className="delete-record" onClick={(event) => { event.stopPropagation(); deleteLargeRecord(item); }} aria-label={`删除棋谱“${item.metadata.title}”`}><Trash2 size={17}/></button></div></article>)}
-                {!items.length && !largeItems.length && <StateIllustration variant={libraryQuery.trim() ? "search" : "library"} title={libraryQuery.trim() ? "没有匹配的棋谱" : "这个文件夹还是空的"} description={libraryQuery.trim() ? "换一个棋谱名、棋手或主题关键词。" : "导入棋谱，或从空棋盘开始记录。"}/>}
-              </div>}
-            </section>;
-          })}</div>
-        </> : <>
-          <div className="library-actions puzzle-actions three"><button onClick={() => setSheet("wrongbook")}><Layers3/>错题本<small>{wrongPuzzleEntries.length ? `${wrongPuzzleEntries.length} 道待复习` : "尝试过但尚未攻克的题目"}</small></button><button onClick={openPuzzleImportPicker}><Download/>导入 JSON 题库<small>支持 puzzles 题库对象和二维题目数组</small></button><button onClick={() => createLibraryFolder("puzzles")}><FolderPlus/>新建文件夹<small>自由整理题集</small></button></div><button className="settings-link recycle-bin-entry" onClick={() => setSheet("trash")}><span><ArchiveRestore/><b>回收站</b><small>{recycleBin.length ? `${recycleBin.length} 项已删除，可恢复` : "暂时没有已删除内容"}</small></span><ChevronRight/></button>
-          <div className="folder-library-list">{libraryFolders.puzzleFolders.map((folder) => {
-            const collections = filteredPuzzleCollections.filter(({ collection }) => (libraryFolders.puzzleAssignments[collection.id] || (collection.id.startsWith("native-") ? "内置题库" : "我的题库")) === folder);
-            const expanded = expandedLibraryFolder === folder;
-            return <section key={folder}>
-              <div className="library-folder-row"><button className="library-folder-head" onClick={() => setExpandedLibraryFolder(expanded ? null : folder)}><FolderOpen size={19}/><span><b>{folder}</b><small>{collections.length} 个题集</small></span><ChevronDown size={18}/></button><button className="library-inline-action" onClick={() => beginLibraryRename({ kind: "puzzle-folder", name: folder })} aria-label={`重命名文件夹“${folder}”`}><PenLine size={16}/></button></div>
-              {expanded && <div className="puzzle-collection-list folder-items">{collections.map(({ collection, puzzles, collectionIndex }) => {
-                const solved = collection.puzzles.filter((puzzle) => puzzleProgress[puzzleProgressKey(collection.id, puzzle.id)]?.solved).length;
-                const managing = managedPuzzleCollectionId === collection.id;
-                return <article key={collection.id}><div className="puzzle-collection-main"><button onClick={() => guardedOpenPuzzle(collectionIndex, 0)}><span className="puzzle-folder-icon">題</span><div><b>{collection.title}</b><small>{libraryQuery.trim() && puzzles.length !== collection.puzzles.length ? `${puzzles.length} / ${collection.puzzles.length} 道题匹配 · ` : `${solved} / ${collection.puzzles.length} 已完成 · `}{collection.source}</small></div><ChevronRight size={18}/></button><button className="library-inline-action" onClick={() => beginLibraryRename({ kind: "puzzle-collection", id: collection.id, name: collection.title })} aria-label={`重命名题集“${collection.title}”`}><PenLine size={15}/></button>{!collection.id.startsWith("native-") && <button className="library-inline-action delete-puzzle-collection" onClick={() => deletePuzzleCollection(collection)} aria-label={`删除题集“${collection.title}”`}><Trash2 size={15}/></button>}</div><div className="puzzle-collection-tools"><select value={folder} onChange={(event) => assignLibraryItem("puzzles", collection.id, event.target.value)} aria-label={`移动题集“${collection.title}”到文件夹`}>{libraryFolders.puzzleFolders.map((name) => <option key={name}>{name}</option>)}</select><button onClick={() => setManagedPuzzleCollectionId(managing ? null : collection.id)} aria-expanded={managing}>{managing ? "收起题目" : `管理 ${puzzles.length} 道题`}</button></div>{managing && <div className="puzzle-manager-list">{puzzles.map((puzzle) => { const puzzleIndexInCollection = collection.puzzles.indexOf(puzzle); return <div key={puzzle.id}><button onClick={() => guardedOpenPuzzle(collectionIndex, puzzleIndexInCollection)}><span>{puzzleIndexInCollection + 1}</span><b>{puzzle.title}</b></button><button onClick={() => beginLibraryRename({ kind: "puzzle", collectionId: collection.id, id: puzzle.id, name: puzzle.title })} aria-label={`重命名题目“${puzzle.title}”`}><PenLine size={14}/></button></div>; })}</div>}</article>;
-              })}{!collections.length && <StateIllustration variant={libraryQuery.trim() ? "search" : "puzzle"} title={libraryQuery.trim() ? "没有匹配的题库或题目" : "这个文件夹还是空的"} description={libraryQuery.trim() ? "换一个题集、题目或题面关键词。" : "导入 JSON 题库后即可开始练习。"}/>}</div>}
-            </section>;
-          })}</div>
+          {batchEditMode && <div className="batch-selection-bar" role="status" aria-live="polite"><span>已选择 {batchSelectedIds.length} 份</span><button type="button" onClick={selectAllBatchResults}>全选</button><button type="button" onClick={clearBatchSelection}>取消全选</button><button type="button" disabled={!batchSelectedIds.length} onClick={() => { setFolderSheetMode("batch-move"); setFolderCreationParent(libraryFolders.recordFolders[0] || "未分类"); setSheet("folder"); }}>移动</button><button type="button" className="batch-delete-action" disabled={!batchSelectedIds.length} onClick={() => { if (window.confirm(`确认删除已选择的 ${batchSelectedIds.length} 份棋谱？`)) { batchSelectedDocuments.forEach((item) => deleteRecord(item)); closeBatchEdit(); } }}>删除</button><button type="button" className="accent" disabled={!batchSelectedIds.length} onClick={() => setSheet("batchEdit")}>更多</button><button type="button" onClick={closeBatchEdit}>退出</button></div>}
+          <button className="settings-link image-import-entry" onClick={openImageImportPicker} disabled={imageRecognizing}><span><Download/><b>{imageRecognizing ? "正在识别棋盘…" : "图片识谱"}</b><small>自动定位网格识别棋子与颜色，带手数截图可恢复落子顺序</small></span><ChevronRight/></button>
+          <div className="folder-library-list">{folderChildren(libraryFolders.recordFolders, "").map(renderRecordFolder)}</div>
+         </> : <>
+           <RecentPuzzleSection items={recentPuzzles} onOpen={(item: RecentPuzzleItem) => guardedOpenPuzzle(item.collectionIndex, item.puzzleIndex)} />
+           <div className="library-actions puzzle-actions three"><button onClick={() => setSheet("wrongbook")}><Layers3/>错题本<small>{wrongPuzzleEntries.length ? `${wrongPuzzleEntries.length} 道待复习` : "尝试过但尚未攻克的题目"}</small></button><button onClick={openPuzzleImportPicker}><Download/>导入 JSON 题库<small>支持 puzzles 题库对象和二维题目数组</small></button><button onClick={() => createLibraryFolder("puzzles")}><FolderPlus/>新建文件夹<small>自由整理题集</small></button></div><button className="settings-link recycle-bin-entry" onClick={() => setSheet("dataSafety")}><span><ArchiveRestore/><b>资料安全</b><small>{recycleBin.length ? `${recycleBin.length} 项可恢复；也可备份全部资料` : "回收站、完整备份与恢复"}</small></span><ChevronRight/></button>
+          <div className="folder-library-list">{folderChildren(libraryFolders.puzzleFolders, "").map(renderPuzzleFolder)}</div>
         </>}
       </div>}
 
-      {tab === "settings" && <div className="settings-page page-padding"><div className="page-title"><div><span>WORKSPACE</span><h1>设置</h1><p>棋盘、文件、兼容性与项目选项</p></div></div><SettingsSection title="思考" summary={thinkDirectMove ? "完成后直接落子" : thinkSheetOnStart ? "完成后弹出结果面板" : "后台显示推荐点"}><SettingRow title="思考后直接落子" text="跳过推荐确认，自动在当前棋谱创建推荐落点" checked={thinkDirectMove} onChange={setThinkDirectMove}/><SettingRow title="思考后弹出结果面板" text={thinkDirectMove ? "直接落子开启时暂不弹出，关闭后恢复此偏好" : "关闭后只在棋盘标出推荐点"} checked={thinkSheetOnStart} disabled={thinkDirectMove} onChange={setThinkSheetOnStart}/></SettingsSection><SettingsSection title="无障碍与字号" summary="调整文字大小，改善键盘与屏幕阅读器使用体验"><div className="font-scale-options" role="radiogroup" aria-label="界面字号">{[["normal", "正常"], ["large", "大字"], ["xlarge", "特大字"]].map(([value, label]) => <button key={value} type="button" className={fontScale === value ? "selected" : ""} role="radio" aria-checked={fontScale === value} onClick={() => setFontScale(value as FontScale)}><b>{label}</b><small>{value === "normal" ? "100%" : value === "large" ? "115%" : "130%"}</small></button>)}</div><p className="helper">字号只放大界面文字与控件，不整体缩放棋盘，避免棋盘布局变形。</p></SettingsSection><SettingsSection title="外观主题" summary={`当前为${resolvedTheme === "dark" ? "深色" : resolvedTheme === "eye" ? "护眼" : resolvedTheme === "mono" ? "黑白极简" : resolvedTheme === "rain" ? "雨幕" : resolvedTheme === "bamboo" ? "水墨竹林" : resolvedTheme === "snow" ? "雪落" : resolvedTheme === "porcelain" ? "青花瓷影" : resolvedTheme === "plum" ? "梅枝映雪" : resolvedTheme === "jiangnan" ? "夜雨江南" : resolvedTheme === "firefly" ? "萤火森林" : resolvedTheme === "rice" ? "宣纸留白" : resolvedTheme === "pixel" ? "像素街机" : resolvedTheme === "cyber" ? "霓虹赛博" : resolvedTheme === "custom" ? "自定义" : "浅色"} · ${themePreference === "system" ? "跟随系统" : themePreference === "dark" ? "手动深色" : themePreference === "eye" ? "护眼" : themePreference === "mono" ? "黑白极简" : themePreference === "rain" ? "雨幕" : themePreference === "bamboo" ? "水墨竹林" : themePreference === "snow" ? "雪落" : themePreference === "porcelain" ? "青花瓷影" : themePreference === "plum" ? "梅枝映雪" : themePreference === "jiangnan" ? "夜雨江南" : themePreference === "firefly" ? "萤火森林" : themePreference === "rice" ? "宣纸留白" : themePreference === "pixel" ? "像素街机" : themePreference === "cyber" ? "霓虹赛博" : themePreference === "custom" ? "自定义背景" : "手动浅色"}`}><div className="theme-preference" role="radiogroup" aria-label="外观主题">{([["system", "跟随系统", "根据设备外观自动切换"], ["light", "浅色", "保持明亮纸张风格"], ["dark", "深色", "降低夜间屏幕亮度"], ["eye", "护眼", "降低蓝光感，适合长时间复盘"], ["mono", "黑白极简", "低彩度、清晰专注"], ["rain", "雨幕", "缓慢雨丝，适合夜间复盘"], ["bamboo", "水墨竹林", "青绿竹影与竹叶缓慢飘落"], ["snow", "雪落", "冷色雪花安静飘落"], ["porcelain", "青花瓷影", "青白瓷纹与水墨留白"], ["plum", "梅枝映雪", "梅枝、雪点与冷色宣纸"], ["jiangnan", "夜雨江南", "屋檐雨丝与远处灯火"], ["firefly", "萤火森林", "深林暗色与微弱萤火"], ["rice", "宣纸留白", "极简宣纸与淡墨晕染"], ["pixel", "像素街机", "低分辨率像素与复古色块"], ["cyber", "霓虹赛博", "蓝紫霓虹与电路光"], ["custom", "自定义背景", "支持静态图和 GIF 动图"]] as const).map(([value, label, text]) => <button key={value} type="button" className={themePreference === value ? "selected" : ""} role="radio" aria-checked={themePreference === value} onClick={() => setThemePreference(value)}><span className={`theme-swatch ${value}`} aria-hidden="true"/><span><b>{label}</b><small>{text}</small></span><Check className="theme-check" aria-hidden="true"/></button>)}</div>{themePreference === "custom" && <div className="custom-background-controls"><label><span>背景颜色</span><input type="color" value={customBackgroundColor} onChange={(event) => setCustomBackgroundColor(event.target.value)}/></label><button type="button" onClick={() => backgroundFileInput.current?.click()}>选择本地背景图片</button>{customBackgroundImage && <button type="button" className="custom-background-clear" onClick={() => setCustomBackgroundImage("")}>清除图片背景</button>}<p>图片只保存在本机，最大 2MB；使用深色半透明遮罩保证文字和棋盘控件可读。</p></div>}</SettingsSection><SettingsSection title="棋盘与棋子" summary="青花瓷、白玉、胡桃木、磨砂玻璃、电路与多种棋子"><VisualThemeSettings boardTheme={boardTheme} stoneTheme={stoneTheme} onBoardThemeChange={setBoardTheme} onStoneThemeChange={setStoneTheme}/></SettingsSection><SettingsSection title="声音与反馈" summary={soundSettings.enabled ? `${soundSettings.profile === "wood" ? "木石" : soundSettings.profile === "crystal" ? "清响" : "经典"} · 音量 ${Math.round(soundSettings.volume * 100)}%` : "已静音"}><SoundSettingsPanel settings={soundSettings} onChange={setSoundSettings} onPreview={playSound}/></SettingsSection><SettingsSection title="棋盘显示" summary={`显示、坐标、禁手辅助 · 动效${motionEnabled ? "开启" : "关闭"}`}><SettingRow title="显示手数" text="在棋子上显示落子序号" checked={showNumbers} onChange={setShowNumbers}/><SettingRow title="显示坐标" text="棋盘边缘显示 A–O / 1–15" checked={showCoordinates} onChange={setShowCoordinates}/><SettingRow title="禁手辅助" text="提示黑方常见三三、四四与长连" checked={showForbidden} onChange={setShowForbidden}/><SettingRow title="界面动效" text="关闭落子、导航、胜线与界面过渡" checked={motionEnabled} onChange={setMotionEnabled}/></SettingsSection><SettingsSection title="文件与存储" summary="应用内保存与默认导出文件夹"><StorageSettings defaultDirectory={defaultDirectory} directorySupported={supportsDirectoryPicker()} onChoose={() => { void chooseDefaultDirectory(); }} onClear={() => { void clearDefaultDirectory(); }}/></SettingsSection><SettingsSection title="数据与兼容" summary="导入、导出、备份与格式说明"><button className="settings-link" onClick={() => singleFileInput.current?.click()}><span><Download/><b>导入棋谱</b><small>SGF / JSON / LIB / DP / DB，以及 SGF 同族扩展名</small></span><ChevronRight/></button><button className="settings-link" onClick={() => { setExportFormatMenuOpen(false); setSheet("export"); }}><span><Upload/><b>导出棋谱</b><small>识别原始格式直接导出，或转换为完整 SGF / JSON</small></span><ChevronRight/></button><button className="settings-link" disabled={backupBusy} onClick={() => { void exportBackup(); }}><span><Save/><b>{backupBusy ? "正在处理备份…" : "一键备份"}</b><small>棋谱库、题库、进度、草稿、设置与大型索引清单</small></span><ChevronRight/></button><button className="settings-link" disabled={backupBusy} onClick={() => backupFileInput.current?.click()}><span><RotateCw/><b>恢复备份</b><small>导入前完整校验，失败自动回滚，不覆盖目录授权</small></span><ChevronRight/></button><button className="settings-link" onClick={() => setSheet("help")}><span><Info/><b>格式兼容说明</b><small>各格式的可写能力、保真范围与数据库边界</small></span><ChevronRight/></button></SettingsSection><SettingsSection title="关于" summary="项目说明、维护计划与下载地址"><button className="settings-link" onClick={() => setSheet("about")}><span><Info/><b>关于半步五子棋</b><small>个人项目说明、后续维护与 GitHub 下载</small></span><ChevronRight/></button></SettingsSection><div className="version-note">半步五子棋 1.1.4 · Web / PWA / Android</div></div>}
-      {tab === "settings" && <section className="settings-help-extension page-padding" aria-label="使用手册与反馈"><SettingsSection open title="使用手册与反馈" summary="先看操作说明，再反馈问题或建议"><button className="settings-link manual-entry-link" onClick={() => setSheet("manual")}><span><BookOpen/><b>使用手册</b><small>逐项了解棋盘、棋谱库、题库、AI、导入导出和设置</small></span><ChevronRight/></button><button className="settings-link" onClick={() => setSheet("feedback")}><span><Mail/><b>反馈问题或建议</b><small>通过邮件或 GitHub Issue 发送，内容不会自动上传</small></span><ChevronRight/></button></SettingsSection></section>}
-      {tab === "settings" && <section className="settings-enhancement-extension page-padding" aria-label="可选增强功能"><SettingsSection title="可选增强功能" summary={`${Object.values(enhancementSettings).filter(Boolean).length} 项已开启 · 新功能默认关闭`}><div className="enhancement-settings"><p className="settings-feature-note">下面这些功能会增加界面提示或触摸处理，默认关闭；需要时逐项打开即可。</p><SettingRow title="双指缩放棋盘" text="用两根手指放大或缩小棋盘，适合平板复盘" checked={enhancementSettings.gestureZoom} onChange={(gestureZoom) => setEnhancementSettings({ ...enhancementSettings, gestureZoom })}/><SettingRow title="双指滑动切手" text="双指左右滑动切换上一手或下一手" checked={enhancementSettings.gestureSwipe} onChange={(gestureSwipe) => setEnhancementSettings({ ...enhancementSettings, gestureSwipe })}/><SettingRow title="最近导入列表" text="在导入面板保留最近 5 个可快速重开的文件" checked={enhancementSettings.recentImports} onChange={(recentImports) => setEnhancementSettings({ ...enhancementSettings, recentImports })}/><SettingRow title="AI 棋盘提示点" text="在棋盘上显示 AI 推荐落点和开局候选编号" checked={enhancementSettings.aiBoardHints} onChange={(aiBoardHints) => setEnhancementSettings({ ...enhancementSettings, aiBoardHints })}/><SettingRow title="操作引导卡片" text="在记录、棋谱库和设置页显示轻量使用提示" checked={enhancementSettings.coachMarks} onChange={(coachMarks) => setEnhancementSettings({ ...enhancementSettings, coachMarks })}/></div></SettingsSection></section>}
-      {tab === "settings" && <section className="settings-layout-extension page-padding" aria-label="设备布局"><SettingsSection title="设备布局" summary={enhancementSettings.tabletSplit ? "平板横屏双栏已开启" : "默认单栏 · 双栏默认关闭"}><SettingRow title="平板横屏双栏" text="在平板或横屏设备上将棋盘与操作区并排显示" checked={enhancementSettings.tabletSplit} onChange={(tabletSplit) => setEnhancementSettings({ ...enhancementSettings, tabletSplit })}/></SettingsSection></section>}
+      {tab === "settings" && <SettingsPage
+        thinkDirectMove={thinkDirectMove}
+        thinkSheetOnStart={thinkSheetOnStart}
+        onThinkDirectMoveChange={setThinkDirectMove}
+        onThinkSheetOnStartChange={setThinkSheetOnStart}
+        playbackSpeed={playback.speed}
+        onPlaybackSpeedChange={playback.setSpeed}
+        playbackBranchPolicy={playback.branchPolicy}
+        onPlaybackBranchPolicyChange={playback.setBranchPolicy}
+        playbackLoop={playback.loop}
+        onPlaybackLoopChange={playback.setLoop}
+        fontScale={fontScale}
+        onFontScaleChange={setFontScale}
+        resolvedTheme={resolvedTheme}
+        themePreference={themePreference}
+        onThemePreferenceChange={setThemePreference}
+        customBackgroundColor={customBackgroundColor}
+        customBackgroundImage={customBackgroundImage}
+        onCustomBackgroundColorChange={setCustomBackgroundColor}
+        onChooseBackgroundImage={() => backgroundFileInput.current?.click()}
+        onClearBackgroundImage={() => setCustomBackgroundImage("")}
+        boardTheme={boardTheme}
+        stoneTheme={stoneTheme}
+        boardOpacity={boardOpacity}
+        stoneOpacity={stoneOpacity}
+        annotationHighlight={annotationHighlight}
+        defaultBoardSize={defaultBoardSize}
+        onDefaultBoardSizeChange={setDefaultBoardSize}
+        onBoardThemeChange={setBoardTheme}
+        onStoneThemeChange={setStoneTheme}
+        onBoardOpacityChange={setBoardOpacity}
+        onStoneOpacityChange={setStoneOpacity}
+        onAnnotationHighlightChange={setAnnotationHighlight}
+        soundSettings={soundSettings}
+        onSoundSettingsChange={setSoundSettings}
+        onPreviewSound={playSound}
+        showNumbers={showNumbers}
+        showCoordinates={showCoordinates}
+        showForbidden={showForbidden}
+         motionEnabled={motionEnabled}
+         restoreLastPosition={restoreLastPosition}
+        onShowNumbersChange={setShowNumbers}
+        onShowCoordinatesChange={setShowCoordinates}
+        onShowForbiddenChange={setShowForbidden}
+         onMotionEnabledChange={setMotionEnabled}
+         onRestoreLastPositionChange={setRestoreLastPosition}
+        defaultDirectory={defaultDirectory}
+        directorySupported={supportsDirectoryPicker()}
+        nativeDirectorySupported={supportsNativeExportDirectory()}
+        onChooseDefaultDirectory={() => { void chooseDefaultDirectory(); }}
+        onClearDefaultDirectory={() => { void clearDefaultDirectory(); }}
+        backupBusy={backupBusy}
+        onImportRecord={() => singleFileInput.current?.click()}
+        onOpenExport={openExportSheet}
+        onExportBackup={() => { void exportBackup(); }}
+        onRestoreBackup={() => backupFileInput.current?.click()}
+        onOpenHelp={() => setSheet("help")}
+        onOpenAbout={() => setSheet("about")}
+        onOpenManual={() => setSheet("manual")}
+        onOpenFeedback={() => setSheet("feedback")}
+        enhancementSettings={enhancementSettings}
+        onEnhancementSettingsChange={setEnhancementSettings}
+      />}
       </main>
 
     <nav className="bottom-nav" aria-label="主导航"><button aria-current={tab === "record" ? "page" : undefined} className={tab === "record" ? "active" : ""} onClick={() => setTab("record")}><Home/><span>{mode === "puzzle" ? "做题" : "打谱"}</span></button><button aria-current={tab === "library" ? "page" : undefined} className={tab === "library" ? "active" : ""} onClick={() => setTab("library")}><Library/><span>棋谱库</span></button><button className="nav-center" onClick={openImportSheet}><Download/><span>导入</span></button><button className={aiGame ? "active" : ""} onClick={openAiGameSheet}><Bot/><span>AI</span></button><button aria-current={tab === "settings" ? "page" : undefined} className={tab === "settings" ? "active" : ""} onClick={() => setTab("settings")}><Settings/><span>设置</span></button></nav>
-    {importProgress && <ImportProgressCard state={importProgress}/>}
-      {enhancementSettings.coachMarks && coachMark && <CoachMark id={coachMark} onAction={handleCoachMarkAction}/>}
-    {toast && <AppToast message={toast} onClose={() => setToast("")}/>}
+      {importProgress && <ImportProgressCard state={importProgress}/>}
+       {enhancementSettings.coachMarks && coachMark && <CoachMark id={coachMark} onAction={handleCoachMarkAction}/>}
+     <AppToast message={toast} onClose={() => setToast("")}/>
 
-    {pendingSwitch && <BottomSheet title="有未保存草稿" className="draft-guard-backdrop" onClose={() => setPendingSwitch(null)}><div className="sheet-body"><p className="section-note">继续当前操作前请先处理当前未保存的草稿，否则将丢失。</p><button className="primary-button" onClick={savePendingSwitch}><Save/>保存草稿并切换</button><button className="secondary-button" onClick={discardPendingSwitch}><X/>放弃草稿并切换</button><button className="secondary-button" onClick={() => setPendingSwitch(null)}>取消</button></div></BottomSheet>}
+     {welcomeOpen && <FirstRunWelcome onDismiss={dismissFirstRunWelcome} onOpenManual={openManualFromFirstRun}/>}
 
-    {sheet && <BottomSheet title={sheetTitle} onClose={() => setSheet(null)}>
+     {workspaceSelectorOpen && mode === "puzzle" && <PuzzleSelectorSheet
+      collections={puzzleCollections}
+      progress={puzzleProgress}
+      currentCollectionIndex={puzzleCollectionIndex}
+      currentPuzzleIndex={puzzleIndex}
+      folders={libraryFolders.puzzleFolders}
+      assignments={libraryFolders.puzzleAssignments}
+      onSelect={(collectionIndex, nextPuzzleIndex) => openPuzzle(collectionIndex, nextPuzzleIndex)}
+       onNext={() => movePuzzle(1)}
+       onClose={() => setWorkspaceSelectorOpen(false)}
+      />}
+
+      {workspaceSelectorOpen && (mode === "record" || mode === "review") && <RecordSelectorSheet
+        records={selectorRecords}
+        largeRecords={largeSummaries}
+        currentId={document.id}
+        folders={libraryFolders.recordFolders}
+        assignments={libraryFolders.recordAssignments}
+        onSelectRecord={(item) => { closeWorkspaceSelector(); openRecord(item, item.rootId, { mode: mode === "review" ? "review" : "record" }); }}
+        onSelectLargeRecord={(item) => { closeWorkspaceSelector(); openLargeRecord(item, mode === "review" ? "review" : "record"); }}
+        nativeDatabase={{ title: NATIVE_DATABASE_TITLE, hint: "内置局面数据库 · 分支按局面实时查询", onOpen: () => { closeWorkspaceSelector(); openNativeDatabase(); } }}
+        onClose={closeWorkspaceSelector}
+      />}
+
+     {pendingSwitch && <BottomSheet title="有未保存草稿" className="draft-guard-backdrop" manageHistory onClose={() => setPendingSwitch(null)}><div className="sheet-body"><p className="section-note">继续当前操作前请先处理当前未保存的草稿，否则将丢失。</p><button className="primary-button" onClick={savePendingSwitch}><Save/>保存草稿并切换</button><button className="secondary-button" onClick={discardPendingSwitch}><X/>放弃草稿并切换</button><button className="secondary-button" onClick={() => setPendingSwitch(null)}>取消</button></div></BottomSheet>}
+
+    {sheet && <BottomSheet title={displaySheetTitle} className={sheet === "tree" ? "tree-sheet-backdrop" : sheet === "manual" ? "manual-sheet-backdrop" : ""} manageHistory onClose={() => setSheet(null)}>
     {sheet === "batchEdit" && <div className="sheet-body batch-action-sheet">
         <p className="section-note">仅处理普通棋谱，不会改写大型数据库。大型 LIB、DP、DB 只支持单独打开或导出。</p>
         <button className="export-primary-card" disabled={!batchSelectedIds.length} onClick={runBatchExport}><span className="format-icon"><Download/></span><div><b>批量导出</b><small>{batchSelectedIds.length ? "已选择 " + batchSelectedIds.length + " 项" : "请先选择至少一份普通棋谱"}</small></div><Upload/></button>
@@ -3163,34 +4462,88 @@ export default function App() {
         <button className="secondary-button" onClick={closeBatchEdit}><X/>完成</button>
       </div>}
       {sheet === "aiGame" && <div className="sheet-body ai-game-setup">
-        <section className="ai-setup-hero"><span><Bot size={24}/></span><div><b>新建人机棋局</b><small>完整开局流程、交换选择与禁手裁判均在本机运行</small></div></section>
-        <section className="ai-setup-group"><b>对局规则</b><div className="ai-option-grid two"><button className={aiRuleFamily === "renju" ? "selected" : ""} onClick={() => { setAiRuleFamily("renju"); setAiForbiddenEnabled(true); }}><span>连珠规则</span><small>黑方三三、四四、长连禁手</small></button><button className={aiRuleFamily === "standard" ? "selected" : ""} onClick={() => { setAiRuleFamily("standard"); setAiForbiddenEnabled(false); setAiOpeningRule("free"); }}><span>标准五子棋</span><small>双方自由落子，五子连线获胜</small></button></div></section>
-        <section className="ai-setup-group"><b>对局时长</b><div className="ai-time-grid">{AI_TIME_OPTIONS.map((option) => <button key={option.value} className={aiTimeLimitMs === option.value ? "selected" : ""} onClick={() => setAiTimeLimitMs(option.value)} aria-pressed={aiTimeLimitMs === option.value}><span>{option.title}</span><small>{option.text}</small></button>)}</div><p className="ai-time-note">只统计你的操作时间；AI 思考、浏览历史局面和对局结束后都会暂停。</p></section>
-        <section className="ai-setup-group"><b>AI 强度</b><div className="ai-strength-grid fixed">{AI_STRENGTH_OPTIONS.filter((option) => option.value !== "自由").map((option) => <button key={option.value} className={aiStrength === option.value ? "selected" : ""} onClick={() => setAiStrength(option.value)} aria-pressed={aiStrength === option.value}><span>{option.title}</span><small>{option.text}</small></button>)}</div>{AI_STRENGTH_OPTIONS.filter((option) => option.value === "自由").map((option) => <button key={option.value} className={`ai-strength-free-option ${aiStrength === option.value ? "selected" : ""}`} onClick={() => setAiStrength(option.value)} aria-pressed={aiStrength === option.value}><span>{option.title}</span><small>{option.text}</small></button>)}{aiStrength === "自由" && <div className="ai-free-controls"><label><span>思考时间</span><div className="ai-free-time-entry"><input aria-label="自定义思考时间（秒）" type="number" min="0.3" max="300" step="0.1" value={(aiFreeTimeMs / 1000).toFixed(1)} onChange={(event) => setAiFreeTimeMs(Math.max(300, Math.min(300000, Math.round((Number(event.target.value) || 0.3) * 1000))))}/><em>秒</em></div><input aria-label="思考时间滑杆" type="range" min="300" max="300000" step="100" value={aiFreeTimeMs} onChange={(event) => setAiFreeTimeMs(Number(event.target.value))}/><small>可输入 0.3–300 秒，最长 5 分钟</small></label><label><span>搜索深度</span><output>{aiFreeDepth} 层</output><input aria-label="搜索深度滑杆" type="range" min="16" max="128" step="8" value={aiFreeDepth} onChange={(event) => setAiFreeDepth(Number(event.target.value))}/></label></div>}</section>
-        {aiRuleFamily === "renju" && <section className="ai-setup-group"><b>开局规则</b><div className="ai-opening-grid">{([
-          ["free", "自由开局", "直接从天元开始正常轮流落子"],
-          ["five-two", "五手两打", "黑5提供两个候选，白方选择"],
-          ["five-n", "五手多打", "可设置 3–10 个黑5候选"],
-          ["taraguchi-10", "塔十", "塔拉山口-10，含交换与十打"],
-          ["tarannikov", "塔拉", "中心区域逐步扩大，五次交换"],
-        ] as Array<[OpeningRule, string, string]>).map(([rule, title, text]) => <button key={rule} className={aiOpeningRule === rule ? "selected" : ""} onClick={() => setAiOpeningRule(rule)}><span>{title}</span><small>{text}</small></button>)}</div>{aiOpeningRule === "five-n" && <label className="opening-n-control"><span><b>候选数量</b><small>黑方第5手提供 {aiOpeningN} 个不同棋形</small></span><input type="range" min="3" max="10" value={aiOpeningN} onChange={(event) => setAiOpeningN(Number(event.target.value))}/><em>{aiOpeningN}</em></label>}</section>}
-        <section className="ai-setup-group"><b>禁手裁判</b><div className="ai-option-grid two"><button className={aiForbiddenEnabled ? "selected" : ""} onClick={() => { setAiForbiddenEnabled(true); setAiRuleFamily("renju"); }}><span>启用禁手</span><small>实时红色 X，并阻止非法落子</small></button><button className={!aiForbiddenEnabled ? "selected" : ""} onClick={() => setAiForbiddenEnabled(false)}><span>关闭禁手</span><small>适合自由规则练习</small></button></div></section>
-        <section className="ai-setup-group"><b>初始执子</b><div className="ai-option-grid two player"><button className={aiHumanPlayer === "black" ? "selected" : ""} onClick={() => setAiHumanPlayer("black")}><i className="player-stone black"/><span>执黑 · 开局方</span><small>交换后执子颜色可能改变</small></button><button className={aiHumanPlayer === "white" ? "selected" : ""} onClick={() => setAiHumanPlayer("white")}><i className="player-stone white"/><span>执白 · 应对方</span><small>在规则允许时可选择交换</small></button></div></section>
-        <button className="primary-button ai-start-button" onClick={startNewAiGame}><Bot size={18}/>{aiGame ? "按新规则重新开始" : "开始人机对战"}</button><p className="helper">开局候选是临时选择点，只有白方选中的黑5会写入棋谱；交换会同步更新双方执子颜色。</p>
+        <section className="ai-setup-hero"><span><Bot size={24}/></span><div><b>新建人机棋局</b><small>规则、交换与强度都在本机设置好，再开始对局</small></div></section>
+        <details className="ai-setup-folder" open>
+          <summary className="ai-setup-folder-head"><span><FolderOpen size={16}/>规则</span><small>所有规则集中在一个目录</small><ChevronDown size={18}/></summary>
+          <div className="ai-setup-folder-body">
+            <div className="ai-rule-list">
+              {AI_RULE_CHOICES.map((choice) => {
+                const selected = selectedAiRule.key === choice.key;
+                return <div className={`ai-rule-row ${selected ? "selected" : ""}`} key={choice.key}>
+                  <button type="button" className="ai-rule-choice" onClick={() => applyAiRuleChoice(choice)} aria-pressed={selected}><span>{choice.name} · {choice.badge}</span><small>{choice.summary}</small></button>
+                  <button type="button" className="ai-rule-help" aria-label={`查看${choice.name}规则说明`} title={`查看${choice.name}规则说明`} onClick={() => setAiRuleDetail(aiRuleDetail === choice.key ? null : choice.key)}>?</button>
+                </div>;
+              })}
+            </div>
+            {aiRuleDetail && (() => { const choice = AI_RULE_CHOICES.find((item) => item.key === aiRuleDetail); if (!choice) return null; return <section className="ai-rule-detail"><div><b>{choice.name} · {choice.badge}</b><button type="button" onClick={() => setAiRuleDetail(null)} aria-label="关闭规则详情"><X size={15}/></button></div><p>{choice.detail}</p><small><b>流程：</b>{choice.steps}</small><small><b>胜负：</b>{choice.winning}</small></section>; })()}
+            <button type="button" className="rule-guide-entry ai-rule-guide-entry" onClick={() => setSheet("rules")}><CircleHelp size={16}/>查看完整规则说明</button>
+          </div>
+        </details>
+        <details className="ai-setup-folder" open>
+          <summary className="ai-setup-folder-head"><span><FolderOpen size={16}/>对局时长</span><small>只统计你操作棋盘的时间</small><ChevronDown size={18}/></summary>
+          <div className="ai-setup-folder-body">
+            <div className="ai-time-grid">{AI_TIME_OPTIONS.map((option) => <button key={option.value} className={aiTimeLimitMs === option.value ? "selected" : ""} onClick={() => { cancelActiveAiComputation("settings-change"); setAiTimeLimitMs(option.value); }} aria-pressed={aiTimeLimitMs === option.value}><span>{option.title}</span><small>{option.text}</small></button>)}</div>
+            <p className="ai-time-note">AI 思考、浏览历史局面和对局结束后都会暂停计时。</p>
+          </div>
+        </details>
+        <details className="ai-setup-folder" open>
+          <summary className="ai-setup-folder-head"><span><FolderOpen size={16}/>AI 强度</span><small>先给一个档位，再决定是否自由搜索</small><ChevronDown size={18}/></summary>
+          <div className="ai-setup-folder-body">
+            <div className="ai-strength-grid fixed">{AI_STRENGTH_OPTIONS.filter((option) => option.value !== "自由").map((option) => <button key={option.value} className={aiStrength === option.value ? "selected" : ""} onClick={() => { cancelActiveAiComputation("settings-change"); setAiStrength(option.value); }} aria-pressed={aiStrength === option.value}><span>{option.title}</span><small>{option.text}</small></button>)}</div>
+            {AI_STRENGTH_OPTIONS.filter((option) => option.value === "自由").map((option) => <button key={option.value} className={`ai-strength-free-option ${aiStrength === option.value ? "selected" : ""}`} onClick={() => { cancelActiveAiComputation("settings-change"); setAiStrength(option.value); }} aria-pressed={aiStrength === option.value}><span>{option.title}</span><small>{option.text}</small></button>)}
+            {aiStrength === "自由" && <div className="ai-free-controls"><button type="button" className={`ai-unlimited-option ${aiFreeUnlimited ? "selected" : ""}`} aria-pressed={aiFreeUnlimited} onClick={() => { cancelActiveAiComputation("settings-change"); setAiFreeUnlimited((value) => !value); }}><span><b>不限时思考</b><small>持续搜索，直到你主动停止、切换局面或应用进入后台</small></span><Check/></button><label className={aiFreeUnlimited ? "disabled" : ""}><span>思考时间</span><div className="ai-free-time-entry"><input aria-label="自定义思考时间（秒）" type="number" min="0.3" max="300" step="0.1" disabled={aiFreeUnlimited} value={(aiFreeTimeMs / 1000).toFixed(1)} onChange={(event) => { cancelActiveAiComputation("settings-change"); setAiFreeTimeMs(Math.max(300, Math.min(300000, Math.round((Number(event.target.value) || 0.3) * 1000)))); }}/><em>秒</em></div><input aria-label="思考时间滑杆" type="range" min="300" max="300000" step="100" disabled={aiFreeUnlimited} value={aiFreeTimeMs} onChange={(event) => { cancelActiveAiComputation("settings-change"); setAiFreeTimeMs(Number(event.target.value)); }}/><small>{aiFreeUnlimited ? "不限时模式不会自动到时落子" : "可输入 0.3–300 秒，最长 5 分钟"}</small></label><label><span>搜索深度</span><output>{aiFreeUnlimited ? "持续加深" : `${aiFreeDepth} 层`}</output><input aria-label="搜索深度滑杆" type="range" min="16" max="128" step="8" value={aiFreeDepth} onChange={(event) => { cancelActiveAiComputation("settings-change"); setAiFreeDepth(Number(event.target.value)); }}/></label></div>}
+          </div>
+        </details>
+        <section className="ai-setup-player">
+          <b>初始执子</b>
+          <div className="ai-option-grid two player"><button className={aiHumanPlayer === "black" ? "selected" : ""} onClick={() => { cancelActiveAiComputation("settings-change"); setAiHumanPlayer("black"); }}><i className="player-stone black"/><span>执黑 · 开局方</span><small>交换后执子颜色可能改变</small></button><button className={aiHumanPlayer === "white" ? "selected" : ""} onClick={() => { cancelActiveAiComputation("settings-change"); setAiHumanPlayer("white"); }}><i className="player-stone white"/><span>执白 · 应对方</span><small>在规则允许时可选择交换</small></button></div>
+        </section>
+        <button className="primary-button ai-start-button" onClick={startNewAiGame}><Bot size={18}/>{aiGame ? "按新规则重新开始" : "开始人机对战"}</button><p className="helper">开局交换只影响起始流程，后续仍按当前规则继续。</p>
       </div>}
-      {sheet === "folder" && <div className="sheet-body form-grid folder-sheet"><label>文件夹名称<input autoFocus value={newFolderName} onChange={(event) => setNewFolderName(event.target.value)} placeholder={`例如：${folderCreationSection === "records" ? "我的实战棋谱" : "冲四题库"}`} onKeyDown={(event) => { if (event.key === "Enter") confirmCreateLibraryFolder(); }}/></label><p className="helper">新建后可在保存棋谱或题库时选择这个分组。</p><button className="primary-button" onClick={confirmCreateLibraryFolder}><FolderPlus/>创建文件夹</button></div>}
-      {sheet === "rename" && renameTarget && <div className="sheet-body form-grid rename-sheet"><div className="rename-summary"><span><PenLine size={18}/></span><div><b>{renameTarget.kind.includes("folder") ? "文件夹" : renameTarget.kind === "puzzle" ? "题目" : renameTarget.kind === "puzzle-collection" ? "题集" : "棋谱"}</b><small>当前名称：{renameTarget.name}</small></div></div><label>新的名称<input autoFocus value={renameName} onChange={(event) => setRenameName(event.target.value)} maxLength={80} onKeyDown={(event) => { if (event.key === "Enter") void confirmLibraryRename(); }}/></label><p className="helper">只修改显示名称，不会改变棋谱内容、题目进度或所在文件夹。</p><button className="primary-button" onClick={() => { void confirmLibraryRename(); }}><Check/>确认重命名</button></div>}
-      {sheet === "marks" && <div className="annotation-options"><p className="section-note"><b>棋盘标注：</b>选择文字或形状与颜色后，点棋盘即可放置；也可以在棋盘交叉点长按，依次切换圆圈、三角、叉号和清除。</p><h3>显示样式</h3><div className="annotation-style-grid">{([['text','文字'],['circle','圆圈'],['triangle','三角'],['cross','叉号']] as const).map(([style, label]) => <button key={style} className={annotationStyle === style ? "selected" : ""} onClick={() => setAnnotationStyle(style)} aria-pressed={annotationStyle === style}><span className={`annotation-preview ${style}`}>{style === "text" ? "A" : style === "circle" ? "○" : style === "triangle" ? "△" : "×"}</span><small>{label}</small></button>)}</div><h3>标注颜色</h3><div className="annotation-color-grid">{[["#1d1c19","墨黑"],["#4f5357","石墨"],["#2872b8","蓝"],["#0f766e","青"],["#365e4b","松绿"],["#6b4f3a","棕"],["#b27b18","金"],["#c46a20","橙"],["#b94b3f","朱红"],["#b04474","莓红"],["#7b4fb3","紫"],["#7d8790","雾灰"]].map(([color, label]) => <button key={color} className={annotationColor === color ? "selected" : ""} style={{ "--annotation-color": color } as React.CSSProperties} onClick={() => setAnnotationColor(color)} aria-label={`${label}色`} aria-pressed={annotationColor === color} title={label}><span className="annotation-color-swatch"><Check size={11}/></span><small>{label}</small></button>)}</div></div>}
-      {sheet === "find" && <div className="sheet-body find-sheet"><label className="find-input"><Search size={17}/><input autoFocus value={findQuery} onChange={(event) => setFindQuery(event.target.value)} placeholder="坐标、手数、标注、注释或局面文字"/><button type="button" onClick={() => setFindQuery("")} aria-label="清除查找"><X size={15}/></button></label>{findQuery && <p className="section-note">找到 {findResults.length} 个节点（最多显示 20 个）</p>}{findQuery && !findResults.length && <div className="sheet-empty"><Search/><b>没有找到匹配节点</b><span>可以试试 H8、2、A、圆圈，或注释中的关键词。</span></div>}{findResults.length > 0 && <div className="find-results">{findResults.map((node) => <button key={node.id} onClick={() => { setCurrentId(node.id); setSheet(null); }}><span className={`branch-stone ${node.move?.player || node.passPlayer || "black"}`}>{node.move || node.passPlayer ? depthOf(document, node.id) : node.parentId ? "·" : "起"}</span><div><b>{nodeKindLabel(node)}</b><small>{node.boardText || node.comment || (node.marks?.length ? node.marks.map((mark) => `${coordinateName(mark)}${mark.label ? `：${mark.label}` : ` · ${markKindLabel(mark)}`}`).join("，") : "无局面文字、注释或标注")}</small></div><ChevronRight/></button>)}</div>}<p className="helper">查找会覆盖当前棋谱的主线、所有变化和棋盘标注，点击结果即可跳到对应节点。</p></div>}
+      {sheet === "fifthCount" && aiGame?.opening.stage.kind === "choose-fifth-count" && (() => {
+        const openingRule = aiGame.opening.rule;
+        const range = openingRule === "soosyrv-8" ? [1, 2, 3, 4, 5, 6, 7, 8] : openingRule === "yamaguchi" ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : [3, 4, 5, 6, 7, 8, 9, 10];
+        const note = openingRule === "soosyrv-8"
+          ? "索索夫-8：白方落第4手时宣布 1–8 个第5手打点数量；宣布后对方仍有一次交换权。"
+          : openingRule === "yamaguchi"
+            ? "山口：请宣布本局第5手打点数量（1–10）；宣布后由对方决定是否交换，再由白方落第4手。"
+            : "五手多打的数量在对局中决定。请选择本局要提供的不同第5手候选数量。";
+        return <div className="sheet-body fifth-count-sheet"><p className="section-note">{note}</p><div className="fifth-count-grid">{range.map((count) => <button key={count} onClick={() => chooseOpeningFifthCount(count)}><b>{count}</b><span>个打点</span><small>A1–A{count}</small></button>)}</div></div>;
+      })()}
+      {sheet === "folder" && <div className="sheet-body form-grid folder-sheet"><label>{folderSheetMode === "batch-move" ? "移动到文件夹" : "上级文件夹"}<select value={folderCreationParent} onChange={(event) => setFolderCreationParent(event.target.value)}>{folderSheetMode === "create" && <option value="">根目录</option>}{folderOptions(folderCreationSection === "records" ? libraryFolders.recordFolders : libraryFolders.puzzleFolders)}</select></label>{folderSheetMode === "create" ? <><label>文件夹名称<input autoFocus value={newFolderName} onChange={(event) => setNewFolderName(event.target.value)} placeholder={`例如：${folderCreationSection === "records" ? "我的实战棋谱" : "冲四题库"}`} onKeyDown={(event) => { if (event.key === "Enter") confirmCreateLibraryFolder(); }}/></label><p className="helper">可选择上级文件夹建立子目录；移动棋谱或题集时也会显示完整层级。</p><button className="primary-button" onClick={confirmCreateLibraryFolder}><FolderPlus/>创建文件夹</button></> : <><p className="helper">已选择 {batchSelectedIds.length} 份棋谱，将移动到所选文件夹。</p><button className="primary-button" onClick={moveBatchSelectionToFolder}><FolderOpen/>确认移动</button></>}</div>}
+      {sheet === "rename" && renameTarget && <div className="sheet-body form-grid rename-sheet"><div className="rename-summary"><span><PenLine size={18}/></span><div><b>{renameTarget.kind.includes("folder") ? "文件夹" : renameTarget.kind === "puzzle" ? "题目" : renameTarget.kind === "puzzle-collection" ? "题集" : "棋谱"}</b><small>当前位置：{renameTarget.kind.includes("folder") ? folderDisplayLabel(renameTarget.name) : renameTarget.name}</small></div></div><label>新的名称<input autoFocus value={renameName} onChange={(event) => setRenameName(event.target.value)} maxLength={80} onKeyDown={(event) => { if (event.key === "Enter") void confirmLibraryRename(); }}/></label><p className="helper">{renameTarget.kind.includes("folder") ? "重命名父文件夹时，里面的子文件夹和内容会一起保留并更新路径。" : "只修改显示名称，不会改变棋谱内容、题目进度或所在文件夹。"}</p><button className="primary-button" onClick={() => { void confirmLibraryRename(); }}><Check/>确认重命名</button></div>}
+      {sheet === "find" && <RecordSearchPanel document={document} query={findQuery} results={findResults} onQueryChange={setFindQuery} onJump={(nodeId) => { clearBoardMotion(); setCurrentId(nodeId); }}/>}
       {sheet === "positionSearch" && <div className="sheet-body position-search-sheet"><label className="match-toggle"><span><b>包含旋转与镜像</b><small>不同棋盘朝向也视为同一局面</small></span><input type="checkbox" checked={matchSymmetry} onChange={(event) => setMatchSymmetry(event.target.checked)}/><i/></label><p className="section-note">已扫描 {searchableDocuments.length} 份本地棋谱的主线和全部变化，找到 {visiblePositionMatches.length} 个其他节点{positionMatches.length >= 60 ? "（只显示前 60 个）" : ""}。</p><div className="position-match-list">{visiblePositionMatches.map((match) => <button key={`${match.documentId}-${match.nodeId}`} onClick={() => { const target = searchableDocuments.find((item) => item.id === match.documentId); if (!target) return; openRecord(target, match.nodeId, { onOpened: () => { setSheet(null); setToast(`已跳转到《${match.title}》第 ${match.depth} 手`); } }); }}><span>{match.depth}</span><div><b>{match.title}</b><small>第 {match.depth} 手{match.coordinate ? ` · ${match.coordinate}` : " · 起始局面"}</small></div><ChevronRight size={18}/></button>)}</div>{!visiblePositionMatches.length && <div className="sheet-empty"><Search/><b>棋谱库中没有其他相同局面</b><span>{matchSymmetry ? "已同时比较旋转与镜像方向。" : "可开启旋转与镜像后再试。"}</span></div>}<p className="helper">匹配同时比较黑白棋位置和下一手行棋方；点击结果会直接打开对应棋谱节点。</p></div>}
-      {sheet === "think" && <div className="sheet-body think-sheet"><section className="think-hero"><span><Bot size={21}/></span><div><b>思考当前局面</b><small>轮到{nextPlayer === "black" ? "黑" : "白"}方 · 只分析，不会自动改谱</small></div></section>{thinkRunning && <div className="think-running"><i/><div><b>正在寻找下一步</b><span>先检查强制成五、连续冲四，再进行迭代加深搜索…</span></div></div>}{!thinkRunning && thinkResult?.move && <section className="think-result"><div className="think-recommend"><span>荐</span><div><small>AI 推荐落点</small><b>{coordinateName(thinkResult.move)}</b></div><em className={thinkResult.source === "verified-vcf" ? "proof" : "search"}>{thinkResult.source === "verified-vcf" ? "已验证强制胜" : thinkResult.source === "rapfi" ? "Rapfi 推荐" : "搜索候选"}</em></div><div className="think-stats"><span><b>{thinkResult.depth}</b> 层深度</span><span><b>{thinkResult.nodes.toLocaleString()}</b> 节点</span><span><b>{Math.round(thinkResult.elapsedMs)}ms</b> 用时</span><span><b>{thinkResult.winRate === undefined ? "暂无" : `${Math.round(thinkResult.winRate * 100)}%`}</b> 胜率</span></div>{thinkResult.source !== "rapfi" && <p className="think-engine-note">当前为{thinkResult.source === "verified-vcf" ? "已验证 VCF" : "自研启发式"}回退，未伪造 Rapfi 胜率。</p>}{thinkResult.candidates?.length ? <div className="think-top-candidates"><small>Top-3 推荐{thinkResult.candidates.length < 3 ? ` · 引擎返回 ${thinkResult.candidates.length} 项` : ""}</small><div>{thinkResult.candidates.slice(0, 3).map((candidate, index) => <div className={`think-candidate ${index === 0 ? "primary" : ""}`} key={`${candidate.move.row}-${candidate.move.col}`}><b>{index + 1}. {coordinateName(candidate.move)}</b><span>{candidate.winRate === undefined ? candidate.score !== undefined && thinkResult.scoreAvailable ? `${Math.round(candidate.score)} 分` : "暂无胜率" : `${Math.round(candidate.winRate * 100)}%`}</span></div>)}</div></div> : <div className="think-top-candidates unavailable"><small>Top-3 推荐</small><span>当前回退搜索只返回主推荐，未把启发式排序冒充 Rapfi 多候选。</span></div>}{thinkResult.principalVariation?.length ? <div className="think-pv"><small>主变化 · 最多 10 手</small><div>{thinkResult.principalVariation.slice(0, 10).map((move, index) => <span key={`${move.row}-${move.col}-${index}`} className={move.player}>{index + 1}. {coordinateName(move)}</span>)}</div></div> : <p className="helper">这是启发式搜索排序结果，不代表已经证明必胜；如需严格证明，可打开“局面分析”搜索 VCF。</p>}<button className="primary-button" onClick={() => { const move = thinkResult.move; if (!move) return; setSheet(null); play(move); }}><GitBranch size={16}/>用推荐落点创建变化</button></section>}{!thinkRunning && !thinkResult?.move && <div className={`sheet-empty think-empty ${thinkVisualState}`}><Bot/><b>{thinkVisualState === "error" ? "思考线程异常" : thinkVisualState === "cancelled" ? "已停止旧局面分析" : thinkVisualState === "unavailable" ? "没有合法推荐点" : "暂时没有可用推荐"}</b><span>{thinkVisualState === "error" ? "本次计算已安全停止，可重新尝试。" : thinkVisualState === "cancelled" ? "棋盘局面已经变化，需要按当前局面重新思考。" : thinkVisualState === "unavailable" ? "棋盘可能已满，或当前规则下没有合法落点。" : "请确认棋盘还有空位，然后点击下方按钮。"}</span></div>}<button className="secondary-button" disabled={thinkRunning} onClick={startThink}>{thinkRunning ? "思考中…" : thinkVisualState === "idle" ? "开始思考" : "重新思考"}</button><p className="helper">AI 会遵守当前棋谱的规则设置。红色禁手点不会作为黑方推荐；Rapfi 只在引擎真实输出胜率时显示胜率，否则明确标记暂无。</p></div>}
-      {sheet === "analysis" && <div className="sheet-body analysis-sheet"><section className="vcf-panel"><div className="vcf-heading"><div><span>强制胜证明</span><b>VCF · 连续冲四</b></div><em>最多 5 次进攻</em></div>{!vcfResult && !vcfRunning && <p>穷举进攻方的成五与冲四，并验证防守方所有合法挡点；只有全部防守都失败才报告胜法。</p>}{vcfRunning && <div className="vcf-running"><i/><span>正在搜索合法冲四与全部防点…</span></div>}{vcfResult?.status === "win" && <div className="vcf-result win"><b><Check size={17}/>已找到连续冲四胜法</b><div className="proof-line">{vcfResult.principalVariation.map((move, index) => <span key={`${move.row}-${move.col}-${index}`} className={move.player}>{index + 1}. {coordinateName(move)}</span>)}</div><small>搜索 {vcfResult.nodes.toLocaleString()} 节点 · {Math.round(vcfResult.elapsedMs)}ms</small><button onClick={() => { const first = vcfResult.principalVariation[0]; if (first) { setSheet(null); play(first); } }}>从证明首手创建变化</button></div>}{vcfResult?.status === "not-found" && <div className="vcf-result neutral"><b>当前深度未找到 VCF</b><span>这不代表局面无胜，只表示最多 5 次连续冲四内没有证明。</span><small>搜索 {vcfResult.nodes.toLocaleString()} 节点 · {Math.round(vcfResult.elapsedMs)}ms</small></div>}{vcfResult?.status === "budget" && <div className="vcf-result warning"><b>达到手机计算预算</b><span>搜索已安全中止，没有把未完成结果当作胜法。</span><small>检查 {vcfResult.nodes.toLocaleString()} 节点 · {Math.round(vcfResult.elapsedMs)}ms</small></div>}<button className="vcf-search-button" disabled={vcfRunning} onClick={() => { void runVcf(); }}><Search size={16}/>{vcfRunning ? "搜索中…" : vcfResult ? "重新搜索 VCF" : "搜索 VCF 胜法"}</button></section><button className="position-search-entry" onClick={() => setSheet("positionSearch")}><span><Search size={18}/></span><div><b>跨谱查找相同局面</b><small>支持旋转、镜像和所有变化节点</small></div><ChevronRight size={18}/></button><p className="section-note">下面是启发式候选排序：综合成五、活四、冲四、活三与防守点，用于研究和标记，不等同于 VCF/VCT 证明。</p><div className="analysis-list">{candidates.map((candidate, index) => <div className="analysis-row" key={`${candidate.position.row}-${candidate.position.col}`}><div className="analysis-rank">{String.fromCharCode(65 + index)}</div><div className="analysis-copy"><b>{coordinateName(candidate.position)} <small>{Math.round(candidate.score)} 分</small></b><span>{candidate.reasons.join(" · ")}</span></div><button className="analysis-mark" onClick={() => markCandidate(index)}>标记</button></div>)}</div>{!candidates.length && <div className="sheet-empty"><Search/><b>当前没有可评估的候选点</b><span>棋盘可能已满，或局面没有明显的局部连接。</span></div>}<div className="analysis-actions"><button className="primary-button" onClick={markTopCandidates}>标记前五候选</button><button className="secondary-button" onClick={() => setSheet("marks")}>打开标注面板</button></div><p className="helper">候选点会保存到当前节点，可导出为 SGF 的 LB 标记。</p></div>}
+      {sheet === "think" && <div className="sheet-body think-sheet"><section className="think-hero"><span><Bot size={21}/></span><div><b>思考当前局面</b><small>轮到{nextPlayer === "black" ? "黑" : "白"}方 · 只分析，不会自动改谱</small></div></section>{thinkRunning && <div className="think-running"><i/><div><b>正在寻找下一步</b><span>先检查强制成五、连续冲四，再进行迭代加深搜索…</span></div></div>}{!thinkRunning && thinkResult?.move && <section className="think-result"><div className="think-recommend"><span>荐</span><div><small>AI 推荐落点</small><b>{coordinateName(thinkResult.move)}</b></div><em className={thinkResult.source === "verified-vcf" ? "proof" : "search"}>{thinkResult.source === "verified-vcf" ? "已验证强制胜" : thinkResult.source === "rapfi" ? "Rapfi 推荐" : "搜索候选"}</em></div><div className="think-stats"><span><b>{thinkResult.depth}</b> 层深度</span><span><b>{thinkResult.nodes.toLocaleString()}</b> 节点</span><span><b>{Math.round(thinkResult.elapsedMs)}ms</b> 用时</span><span><b>{thinkResult.winRate === undefined ? "暂无" : `${Math.round(thinkResult.winRate * 100)}%`}</b> 胜率</span></div>{thinkResult.source !== "rapfi" && <p className="think-engine-note">当前为{thinkResult.source === "verified-vcf" ? "已验证 VCF" : "自研启发式"}回退，未伪造 Rapfi 胜率。</p>}{thinkResult.candidates?.length ? <div className="think-top-candidates"><small>Top-3 推荐{thinkResult.candidates.length < 3 ? ` · 引擎返回 ${thinkResult.candidates.length} 项` : ""}</small><div>{thinkResult.candidates.slice(0, 3).map((candidate, index) => <div className={`think-candidate ${index === 0 ? "primary" : ""}`} key={`${candidate.move.row}-${candidate.move.col}`}><b>{index + 1}. {coordinateName(candidate.move)}</b><span>{candidate.winRate === undefined ? candidate.score !== undefined && thinkResult.scoreAvailable ? `${Math.round(candidate.score)} 分` : "暂无胜率" : `${Math.round(candidate.winRate * 100)}%`}</span></div>)}</div></div> : <div className="think-top-candidates unavailable"><small>Top-3 推荐</small><span>当前回退搜索只返回主推荐，未把启发式排序冒充 Rapfi 多候选。</span></div>}{thinkResult.principalVariation?.length ? <div className="think-pv"><small>主变化 · 最多 10 手</small><div>{thinkResult.principalVariation.slice(0, 10).map((move, index) => <span key={`${move.row}-${move.col}-${index}`} className={move.player}>{index + 1}. {coordinateName(move)}</span>)}</div></div> : <p className="helper">这是启发式搜索排序结果，不代表已经证明必胜；如需严格证明，可打开“局面分析”搜索 VCF。</p>}<button className="primary-button" onClick={() => { const move = thinkResult.move; if (!move) return; setSheet(null); play(move); }}><GitBranch size={16}/>用推荐落点创建变化</button></section>}{!thinkRunning && !thinkResult?.move && <div className={`sheet-empty think-empty ${thinkVisualState}`}><Bot/><b>{thinkVisualState === "error" ? "思考线程异常" : thinkVisualState === "cancelled" ? "已停止旧局面分析" : thinkVisualState === "unavailable" ? "没有合法推荐点" : "暂时没有可用推荐"}</b><span>{thinkVisualState === "error" ? "本次计算已安全停止，可重新尝试。" : thinkVisualState === "cancelled" ? "棋盘局面已经变化，需要按当前局面重新思考。" : thinkVisualState === "unavailable" ? "棋盘可能已满，或当前规则下没有合法落点。" : "请确认棋盘还有空位，然后点击下方按钮。"}</span></div>}<button className={`secondary-button ${thinkRunning ? "danger" : ""}`} onClick={startThink}>{thinkRunning ? "停止思考" : thinkVisualState === "idle" ? "开始思考" : "重新思考"}</button><p className="helper">AI 会遵守当前棋谱的规则设置。红色禁手点不会作为黑方推荐；Rapfi 只在引擎真实输出胜率时显示胜率，否则明确标记暂无。</p></div>}
+      {sheet === "analysis" && <div className="sheet-body analysis-sheet"><section className="vcf-panel"><div className="vcf-heading"><div><span>强制胜证明</span><b>VCF · 连续冲四</b></div><em>最多 5 次进攻</em></div>{!vcfResult && !vcfRunning && <p>穷举进攻方的成五与冲四，并验证防守方所有合法挡点；只有全部防守都失败才报告胜法。</p>}{vcfRunning && <div className="vcf-running"><i/><span>正在搜索合法冲四与全部防点…</span></div>}{vcfResult?.status === "win" && <div className="vcf-result win"><b><Check size={17}/>已找到连续冲四胜法</b><div className="proof-line">{vcfResult.principalVariation.map((move, index) => <span key={`${move.row}-${move.col}-${index}`} className={move.player}>{index + 1}. {coordinateName(move)}</span>)}</div><small>搜索 {vcfResult.nodes.toLocaleString()} 节点 · {Math.round(vcfResult.elapsedMs)}ms</small><button onClick={() => { const first = vcfResult.principalVariation[0]; if (first) { setSheet(null); play(first); } }}>从证明首手创建变化</button></div>}{vcfResult?.status === "not-found" && <div className="vcf-result neutral"><b>当前深度未找到 VCF</b><span>这不代表局面无胜，只表示最多 5 次连续冲四内没有证明。</span><small>搜索 {vcfResult.nodes.toLocaleString()} 节点 · {Math.round(vcfResult.elapsedMs)}ms</small></div>}{vcfResult?.status === "budget" && <div className="vcf-result warning"><b>达到手机计算预算</b><span>搜索已安全中止，没有把未完成结果当作胜法。</span><small>检查 {vcfResult.nodes.toLocaleString()} 节点 · {Math.round(vcfResult.elapsedMs)}ms</small></div>}<button className="vcf-search-button" disabled={vcfRunning} onClick={() => { void runVcf(); }}><Search size={16}/>{vcfRunning ? "搜索中…" : vcfResult ? "重新搜索 VCF" : "搜索 VCF 胜法"}</button></section><button className="position-search-entry" onClick={() => setSheet("positionSearch")}><span><Search size={18}/></span><div><b>跨谱查找相同局面</b><small>支持旋转、镜像和所有变化节点</small></div><ChevronRight size={18}/></button><p className="section-note">下面是启发式候选排序：综合成五、活四、冲四、活三与防守点，用于研究和标记，不等同于 VCF/VCT 证明。</p><div className="analysis-list">{candidates.map((candidate, index) => <div className="analysis-row" key={`${candidate.position.row}-${candidate.position.col}`}><div className="analysis-rank">{String.fromCharCode(65 + index)}</div><div className="analysis-copy"><b>{coordinateName(candidate.position)} <small>{Math.round(candidate.score)} 分</small></b><span>{candidate.reasons.join(" · ")}</span></div><button className="analysis-mark" onClick={() => markCandidate(index)}>标记</button></div>)}</div>{!candidates.length && <div className="sheet-empty"><Search/><b>当前没有可评估的候选点</b><span>{matchSymmetry ? "已同时比较旋转与镜像方向。" : "可开启旋转与镜像后再试。"}</span></div>}<div className="analysis-actions"><button className="primary-button" onClick={markTopCandidates}>标记前五候选</button><button className="secondary-button" onClick={() => { setSheet(null); setDockPanel("annotation"); }}>打开标注模式</button></div><p className="helper">候选点会保存到当前节点，可导出为 SGF 的 LB 标记。</p></div>}
       {sheet === "comment" && <div className="sheet-body"><textarea autoFocus value={current.comment} placeholder="例如：这里白棋若防在 J9，黑棋可以继续冲四…" onChange={(event) => safeUpdateNode({ comment: event.target.value })}/><p className="helper">注释保存在当前节点，导出 SGF 时会写入 C 属性。</p>{current.renLibAnnotations?.length ? <section className="native-annotation-panel"><h3>原谱内容</h3>{annotationLines(current).map((text, index) => <p key={`${current.id}-native-${index}`}>{text}</p>)}</section> : null}<button className="primary-button" onClick={() => setSheet(null)}><Check/>完成</button></div>}
-       {sheet === "tree" && <div className="sheet-body tree-sheet"><TreePanel document={viewDocument} currentId={currentId} path={path} compactIndex={compactIndexOf(document)} onSelect={selectTreeNode}/></div>}
-       {sheet === "branches" && <div className="sheet-body"><p className="section-note">当前分叉点有 {branchTotal.toLocaleString()} 条直接分支。下面的“上一个 / 下一个分支”是在这些分支之间切换，不是书签；书签用于记住常用局面，可单独跳转。</p><section className="branch-bookmarks"><button className="branch-bookmarks-head" onClick={() => setBookmarksExpanded((expanded) => !expanded)}><span><GitBranch size={16}/><b>分支书签</b><small>{activeBookmarks.length ? `${activeBookmarks.length} 个已保存局面` : "记录常用局面"}</small></span><ChevronDown className={bookmarksExpanded ? "expanded" : ""}/></button>{bookmarksExpanded && <div className="branch-bookmarks-body"><button className="save-bookmark-button" onClick={saveBranchBookmark}><GitBranch/>保存当前局面为书签</button>{activeBookmarks.map((bookmark) => <div className="branch-bookmark-row" key={bookmark.id}>{editingBookmarkId === bookmark.id ? <div className="bookmark-edit"><input autoFocus value={editingBookmarkName} onChange={(event) => setEditingBookmarkName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") commitRenameBranchBookmark(); if (event.key === "Escape") { setEditingBookmarkId(null); setEditingBookmarkName(""); } }} /><button onClick={commitRenameBranchBookmark} aria-label="确认重命名" title="确认"><Check size={15}/></button><button onClick={() => { setEditingBookmarkId(null); setEditingBookmarkName(""); }} aria-label="取消重命名" title="取消"><X size={15}/></button></div> : <><button className="bookmark-jump" onClick={() => jumpToBranchBookmark(bookmark)}><span>书</span><div><b>{bookmark.name}</b><small>{viewDocument.nodes[bookmark.nodeId] ? nodeKindLabel(viewDocument.nodes[bookmark.nodeId]!) : "节点已删除"}</small></div></button><button onClick={() => beginRenameBranchBookmark(bookmark)} aria-label="重命名" title="重命名"><PenLine size={15}/></button><button onClick={() => deleteBranchBookmark(bookmark.id)} aria-label="删除" title="删除"><Trash2 size={15}/></button></>}</div>)}{!activeBookmarks.length && <p className="helper">保存后会记住这个棋谱中的局面位置，不影响其他棋谱。</p>}</div>}</section>{branchTotal > 1 && <div className="branch-switcher"><button onClick={() => switchBranch(-1)} disabled={dynamicNavigationBusy || branchCurrentIndex <= 0}><ChevronLeft/><span>上一个分支</span></button><span>{branchCurrentIndex >= 0 ? `${branchCurrentIndex + 1} / ${branchTotal}` : "选择分支"}</span><button onClick={() => switchBranch(1)} disabled={dynamicNavigationBusy || branchCurrentIndex < 0 || branchCurrentIndex >= branchTotal - 1}><span>下一个分支</span><ChevronRight/></button></div>}<div ref={branchListRef} className="branch-list branch-list-virtual" onScroll={(event) => setBranchScrollTop(event.currentTarget.scrollTop)}>{branchTotal > 0 && <div style={{ height: branchTotal * BRANCH_ROW_HEIGHT, position: "relative" }}>{branchWindow.ids.map((id, offset) => { const index = branchWindow.start + offset; const node = viewDocument.nodes[id]; if (!node) return null; const preview = variationPreview(viewDocument, id, 3); return <button key={id} className={id === branchChildId ? "current-branch" : ""} style={{ position: "absolute", top: index * BRANCH_ROW_HEIGHT, left: 0, right: 0, height: BRANCH_ROW_HEIGHT }} onClick={() => chooseChild(id, branchView.id)} disabled={dynamicNavigationBusy}><span className={`branch-stone ${node.move?.player || node.passPlayer || "black"}`}>{index + 1}</span><div><b>{nodeKindLabel(node)}</b><small>{node.comment || `分支 ${index + 1} · 后续 ${node.children.length} 支`}</small>{preview && <small className="branch-preview">续：{preview}</small>}</div>{id === branchChildId && <em>当前分支</em>}{branchView.preferredChildId === id && id !== branchChildId && <em>主线</em>}<ChevronRight/></button>; })}</div>}{!branchTotal && <div className="sheet-empty"><GitBranch/><b>这里还没有后续分支</b><span>关闭面板，在棋盘空位落子即可创建。</span></div>}</div>{branchPivotId && <button className="branch-create-button" onClick={() => { setCurrentId(branchPivotId); setSheet(null); setToast("已回到上一个分支点，在棋盘空位落子即可创建新分支"); }} disabled={dynamicNavigationBusy}><GitBranch/>回到上一个分支点</button>}{current.parentId && <button className="danger-button" onClick={() => { recordDraft({ type: "delete-subtree", parentId: current.parentId || document.rootId, rootId: currentId }); setCurrentId(current.parentId || document.rootId); setSheet(null); setToast("已加入删除草稿，点击保存后生效"); }} disabled={dynamicNavigationBusy}><Trash2/>删除当前分支及后续</button>}</div>}
-      {sheet === "save" && <div className="sheet-body form-grid save-sheet"><label>保存名称<input autoFocus value={viewDocument.metadata.title} onChange={(event) => updateMetadata({ title: event.target.value })}/></label><div className="save-destination" role="tablist" aria-label="保存类型"><button className={saveDestination === "records" ? "selected" : ""} onClick={() => { setSaveDestination("records"); setSaveFolder(libraryFolders.recordFolders[0] || "未分类"); }} role="tab">棋谱</button><button className={saveDestination === "puzzles" ? "selected" : ""} onClick={() => { setSaveDestination("puzzles"); setSaveFolder(libraryFolders.puzzleFolders[0] || "我的题库"); }} role="tab">题库</button></div><label>保存到分组<select value={saveFolder} onChange={(event) => setSaveFolder(event.target.value)}>{(saveDestination === "records" ? libraryFolders.recordFolders : libraryFolders.puzzleFolders).map((folder) => <option key={folder}>{folder}</option>)}</select></label>{saveDestination === "puzzles" && <p className="helper">将当前局面保存为一道练习题，保留当前棋盘上的全部棋子。</p>}<details className="save-info-disclosure"><summary><span><b>编辑棋谱信息</b><small>棋手、赛事、规则与开局设置</small></span><ChevronDown/></summary><div className="save-info-content form-grid"><MetadataFields metadata={viewDocument.metadata} onChange={updateMetadata}/></div></details><button className="primary-button" onClick={() => { void confirmSave(); }}><Save/>确认保存</button></div>}
+       {sheet === "tree" && <div className="sheet-body tree-sheet"><TreePanel
+         document={viewDocument}
+         currentId={currentId}
+         path={path}
+         compactIndex={compactIndexOf(document)}
+         bookmarks={activeBookmarks}
+         clipboard={treeClipboard}
+         busy={dynamicNavigationBusy}
+         readOnly={false}
+         branchNameOverrides={reviewBranchNames[viewDocument.id] || {}}
+         onLocate={selectTreeNode}
+         onCreateBranch={createBranchFromTree}
+         onRenameBranch={renameTreeBranch}
+         onDeleteBranch={deleteTreeBranch}
+         onCopy={copyTreeBranch}
+         onCut={cutTreeBranch}
+         onPaste={pasteTreeBranch}
+         onCancelCopy={() => { setTreeClipboard(null); setToast("已取消分支复制"); }}
+         onToggleBookmark={toggleTreeBookmark}
+         onEditBookmark={editTreeBookmark}
+         onDeleteBookmark={deleteTreeBookmark}
+       /></div>}
+       {sheet === "branches" && <div className="sheet-body"><div className="support-row"><b>分支操作已并入棋谱树</b><span>在树中点选节点即可切换、创建、复制、重命名或删除分支。</span></div><button className="primary-button" onClick={() => setSheet("tree")}><ListTree/>打开棋谱树</button></div>}
+      {sheet === "save" && <div className="sheet-body form-grid save-sheet"><label>保存名称<input autoFocus value={viewDocument.metadata.title} onChange={(event) => updateMetadata({ title: event.target.value })}/></label><div className="save-destination" role="tablist" aria-label="保存类型"><button className={saveDestination === "records" ? "selected" : ""} onClick={() => { setSaveDestination("records"); setSaveFolder(libraryFolders.recordFolders[0] || "未分类"); }} role="tab">棋谱</button><button className={saveDestination === "puzzles" ? "selected" : ""} onClick={() => { setSaveDestination("puzzles"); setSaveFolder(libraryFolders.puzzleFolders[0] || "我的题库"); }} role="tab">题库</button></div><label>保存到分组<select value={saveFolder} onChange={(event) => setSaveFolder(event.target.value)}>{folderOptions(saveDestination === "records" ? libraryFolders.recordFolders : libraryFolders.puzzleFolders)}</select></label>{saveDestination === "puzzles" && <p className="helper">将当前局面保存为一道练习题，保留当前棋盘上的全部棋子。</p>}<details className="save-info-disclosure"><summary><span><b>编辑棋谱信息</b><small>棋手、赛事、规则与开局设置</small></span><ChevronDown/></summary><div className="save-info-content form-grid"><MetadataFields metadata={viewDocument.metadata} onChange={updateMetadata}/></div></details><button className="primary-button" onClick={() => { void confirmSave(); }}><Save/>确认保存</button></div>}
       {sheet === "metadata" && <div className="sheet-body form-grid"><MetadataFields metadata={viewDocument.metadata} onChange={updateMetadata}/><button className="primary-button" onClick={() => setSheet(null)}><Save/>保存信息</button></div>}
       {sheet === "import" && <div className="sheet-body import-options"><button className="import-choice" onClick={() => { setSheet(null); if (mode === "puzzle") puzzleFileInput.current?.click(); else singleFileInput.current?.click(); }}><span className="format-icon"><Download/></span><div><b>{mode === "puzzle" ? "导入题库文件" : "导入棋谱文件"}</b><small>{mode === "puzzle" ? "puzzles 题库对象、连续坐标串、二维 JSON 数组" : "SGF、LIB、JSON、POS 等格式；题库 JSON 会自动识别"}</small></div><ChevronRight/></button><button className="import-choice" onClick={() => { setSheet(null); imageFileInput.current?.click(); }}><span className="format-icon json"><Download/></span><div><b>图片识谱</b><small>自动定位网格识别棋子与颜色，带手数截图可恢复落子顺序</small></div><ChevronRight/></button>{enhancementSettings.recentImports && recentImports.length > 0 && <section className="recent-imports" aria-label="最近导入"><div className="recent-imports-heading"><b>最近导入</b><small>保留最近 5 个来源文件</small></div><div className="recent-import-list">{recentImports.map((entry) => <button key={entry.id} className="recent-import-item" onClick={() => { void reopenRecentImport(entry); }} aria-label={`重新打开 ${entry.name}`}><span className="recent-import-icon">{entry.kind === "puzzle" ? "题" : "谱"}</span><span className="recent-import-copy"><b title={entry.name}>{entry.name}</b><small>{entry.kind === "puzzle" ? "题库" : "棋谱"} · {entry.available ? "可一键重开" : "文件较大，请重新选择"}</small></span><ChevronRight size={16}/></button>)}</div></section>}{mode === "puzzle" && <p className="helper">题库 JSON 可使用 puzzles 包装格式：每题支持 stones 连续坐标串，或 blackStones / whiteStones 分色坐标串；也兼容旧格式的“坐标,颜色编号”二维数组。side 会作为题目先手读取，空题会跳过。</p>}{mode !== "puzzle" && <p className="helper">图片识谱会自动定位网格并识别棋子颜色；截图带手数时还能恢复落子顺序。识别后请快速核对一遍，题库 JSON 选择后会自动转入题库。</p>}</div>}
+      {sheet === "dataSafety" && <DataSafetyPanel recycleCount={recycleBin.length} backupBusy={backupBusy} onOpenTrash={() => setSheet("trash")} onExportBackup={() => { void exportBackup(); }} onRestoreBackup={() => backupFileInput.current?.click()}/>}
       {sheet === "trash" && <div className="sheet-body recycle-bin-sheet"><div className="support-row"><b>已删除内容</b><span>删除后会暂存于此，恢复时会保留原来的文件夹归属。</span></div>{recycleBin.length ? <><div className="recycle-bin-toolbar"><span>{recycleBin.length} 项</span><button className="danger-text-button" onClick={emptyRecycleBin}><Trash2 size={14}/>清空回收站</button></div><div className="recycle-bin-list">{recycleBin.map((entry) => { const isPuzzle = entry.kind === "puzzle-collection"; const title = isPuzzle ? entry.item.title : entry.item.metadata.title; const detail = isPuzzle ? `${entry.item.puzzles.length} 道题 · ${entry.item.source}` : entry.kind === "large-record" ? `大型棋谱 · ${entry.item.nodeCount.toLocaleString()} 节点` : `${entry.item.metadata.black} vs ${entry.item.metadata.white}`; return <article key={`${entry.kind}-${entry.id}`} className="recycle-bin-card"><div className={`recycle-bin-icon ${isPuzzle ? "puzzle" : "record"}`}><ArchiveRestore size={18}/></div><div className="recycle-bin-copy"><b>{title}</b><small>{detail}</small><small>原文件夹：{entry.folder} · {new Date(entry.deletedAt).toLocaleDateString("zh-CN")}</small></div><div className="recycle-bin-actions"><button onClick={() => restoreRecycleEntry(entry)} aria-label={`恢复“${title}”`} title="恢复"><ArchiveRestore size={16}/></button><button className="delete-record" onClick={() => permanentlyDeleteRecycleEntry(entry)} aria-label={`彻底删除“${title}”`} title="彻底删除"><Trash2 size={16}/></button></div></article>; })}</div></> : <div className="sheet-empty"><ArchiveRestore size={34}/><b>回收站是空的</b><span>从棋谱库删除的棋谱、用户题集会先出现在这里。</span></div>}</div>}
       {sheet === "wrongbook" && <div className="sheet-body"><div className="support-row"><b>错题本</b><span>只收录已尝试但当前尚未攻克的题目。</span></div>{wrongPuzzleEntries.length ? <div className="export-options">{wrongPuzzleEntries.map((entry) => <button key={`${entry.collectionId}/${entry.puzzleId}`} className="settings-link" onClick={() => { setSheet(null); guardedOpenPuzzle(entry.collectionIndex, entry.puzzleIndex); }}><span><Layers3/><b>{entry.puzzleTitle}</b><small>{entry.collectionTitle} · {entry.attempts} 次尝试 · {new Date(entry.updatedAt).toLocaleDateString("zh-CN")}</small></span><ChevronRight/></button>)}</div> : <div className="sheet-empty"><Layers3 size={34}/><b>还没有错题</b><span>先做几道题，没过的题会自动收进这里。</span></div>}</div>}
       {sheet === "export" && <div className="sheet-body export-hub">
@@ -3207,152 +4560,30 @@ export default function App() {
           <div className="board-share-actions"><button className="primary-button" disabled={boardShareGenerating} onClick={() => { void shareBoardPng(); }}><Upload/>{boardShareGenerating ? "正在生成…" : "系统分享"}</button><button className="secondary-button" disabled={boardShareGenerating} onClick={() => { void saveBoardSharePng(); }}><Download/>保存 PNG</button></div>
           <p>图片只包含当前可见局面；AI 推荐点、禁手提示和点击区域不会进入图片。</p>
         </section>
-        <div className="export-source-card"><span>当前棋谱</span><b>{sourceFormat ? `识别为 ${sourceFormat.toUpperCase()}` : "没有原始文件格式"}</b><small>{sourceFormat ? directExportAvailable ? `可直接导出为 ${directFormatLabel}` : `${directFormatLabel}，当前只能转换导出` : "直接导出默认使用 SGF；也可以自己选择格式"}</small></div>
-        {sourceFormat === "lib" && <button className="export-primary-card lib-convert" disabled={!fullLibSgfAvailable || libSgfExporting} onClick={() => { void exportFullLibAsSgf(); }}><span className="format-icon">SGF</span><div><b>{libSgfExporting ? "正在转换完整 LIB…" : "完整 LIB 转换为 SGF"}</b><small>{libSgfSourceTooLarge ? "源文件超过 64MB；转换会额外申请完整 SGF 缓冲区，为避免设备内存不足已停用" : fullLibSgfAvailable ? "由 RenLib 核心转换当前未编辑的完整源棋谱" : "只对当前刚打开且未编辑、仍保留原文件的 LIB 可用"}</small></div><Upload/></button>}
+        <section className="export-scope-section"><div className="export-section-heading"><b>1. 选择导出范围</b><small>先决定内容，再选择文件格式</small></div><div className="export-scope-grid">{([
+          ["whole", "整份棋谱", exportsVisibleDatabaseContent ? "当前已加载路径、分支与注释" : "完整变化树、注释与标注"],
+          ["variation", "当前变化", "从起点到当前选择，并沿主线到末尾"],
+          ["position", "当前局面", "只保留盘面、轮到谁走与当前标注"],
+        ] as const).map(([scope, label, detail]) => <button key={scope} className={exportScope === scope ? "selected" : ""} onClick={() => setExportScope(scope)} aria-pressed={exportScope === scope}><b>{label}</b><small>{detail}</small></button>)}</div></section>
+        <div className="export-source-card"><span>当前选择</span><b>{exportScopeSuffix(exportScope)} · {sourceFormat ? sourceFormat.toUpperCase() : "新建棋谱"}</b><small>{exportScope === "whole" ? sourceFormat ? directExportAvailable ? `可按原格式直接导出：${directFormatLabel}` : `${directFormatLabel}，当前只能转换导出` : "可导出为 SGF 或 JSON" : "范围导出会生成新的 SGF 或 JSON，不会伪装成原二进制文件"}</small></div>
+        {sourceFormat === "lib" && <button className="export-primary-card lib-convert" disabled={exportScope !== "whole" || !fullLibSgfAvailable || libSgfExporting} onClick={() => { void exportFullLibAsSgf(); }}><span className="format-icon">SGF</span><div><b>{libSgfExporting ? "正在转换完整 LIB…" : "完整 LIB 转换为 SGF"}</b><small>{exportScope !== "whole" ? "完整 LIB 转换只适用于“整份棋谱”范围" : libSgfSourceTooLarge ? "源文件超过 64MB；转换会额外申请完整 SGF 缓冲区，为避免设备内存不足已停用" : fullLibSgfAvailable ? "由 RenLib 核心转换当前未编辑的完整源棋谱" : "只对当前刚打开且未编辑、仍保留原文件的 LIB 可用"}</small></div><Upload/></button>}
         <button className="export-primary-card choose" onClick={() => setExportFormatMenuOpen((open) => !open)}><span className="format-icon"><Upload/></span><div><b>选择格式导出</b><small>{exportsVisibleDatabaseContent ? "可将已加载路径、可见分支与注释导出为 SGF 或 JSON" : "展开后选择 SGF 或 JSON"}</small></div><ChevronDown className={exportFormatMenuOpen ? "expanded" : ""}/></button>
         {exportFormatMenuOpen && <div className="export-format-list">
-          <button onClick={() => exportAsFormat("sgf")}><span className="format-icon">SGF</span><div><b>{exportsVisibleDatabaseContent ? "SGF（当前可见内容）" : "SGF 标准棋谱"}</b><small>{exportsVisibleDatabaseContent ? "只包含已加载路径、可见分支与注释，不代表整个原始数据库" : "完整保留变化树、注释、评价和棋盘标注；兼容 FGF / REN / WZQ 等 SGF 同族文件"}</small></div><Upload/></button>
-          <button onClick={() => exportAsFormat("json")}><span className="format-icon json">JSON</span><div><b>{exportsVisibleDatabaseContent ? "JSON（当前可见内容）" : "JSON（半步完整棋谱）"}</b><small>{exportsVisibleDatabaseContent ? "保存当前已加载的浏览窗口，不重新生成 LIB、DP 或 DB 数据库" : "完整保留本应用全部可编辑数据，扩展名为 .json"}</small></div><Upload/></button>
+          <button onClick={() => exportAsFormat("sgf")}><span className="format-icon">SGF</span><div><b>SGF（{exportScopeSuffix(exportScope)}）</b><small>{exportScope === "whole" && exportsVisibleDatabaseContent ? "只包含已加载路径、可见分支与注释，不代表整个原始数据库" : exportScope === "position" ? "使用 SGF 设置局面保存当前盘面，可被常见棋谱软件读取" : "保留所选范围内的变化、注释、评价和棋盘标注"}</small></div><Upload/></button>
+          <button onClick={() => exportAsFormat("json")}><span className="format-icon json">JSON</span><div><b>JSON（{exportScopeSuffix(exportScope)}）</b><small>{exportScope === "position" ? "只保存当前盘面和当前节点资料" : "保存所选范围内的半步完整可编辑数据"}</small></div><Upload/></button>
           <button disabled><span className="format-icon muted">LIB</span><div><b>RenLib LIB</b><small>可读取并可原样导出已打开的 LIB；当前不把普通棋谱伪造为 LIB</small></div><Lock/></button>
           <button disabled><span className="format-icon muted">DP</span><div><b>DP / DB 局面数据库</b><small>可原样导出已打开的源文件，但不重新编码或生成新的 DP / DB</small></div><Lock/></button>
         </div>}
-        <button className="export-primary-card direct" disabled={!directExportAvailable} onClick={exportDirect}><span className="format-icon direct"><Download/></span><div><b>直接导出</b><small>{sourceFormat ? `已有格式直接导出：${directFormatLabel}` : "当前没有原始格式，将按默认 SGF 导出"}</small></div><Upload/></button>
+        <button className="export-primary-card direct" disabled={exportScope !== "whole" || !directExportAvailable} onClick={exportDirect}><span className="format-icon direct"><Download/></span><div><b>原格式直接导出</b><small>{exportScope !== "whole" ? "切换到“整份棋谱”后可使用原格式直出" : sourceFormat ? `已有格式直接导出：${directFormatLabel}` : "当前没有原始格式，将按默认 SGF 导出"}</small></div><Upload/></button>
         <p className="helper">导出位置：{defaultDirectory ? `“${defaultDirectory.name}”文件夹` : supportsDirectoryPicker() ? "浏览器默认下载目录（可在设置中选择文件夹）" : "浏览器默认下载目录"}。LIB 可在当前未编辑会话中完整转换为 SGF，但源文件超过 64MB 时只允许原文件直出或导出当前可见内容；DP / DB 不会被重新编码。</p>
       </div>}
-       {sheet === "help" && <div className="sheet-body help-content"><div className="support-row"><b>棋谱导入</b><span>RenLib 3.x / 旧版无头 LIB（按设备能力分页导入）、SGF / FGF、REN / RENJS / WZQ（SGF 语法）、JSON、POS，以及 DP / DB 局面数据库。SGF 支持设置局面、过手、UTF-16 和同文件多盘棋。</span></div><div className="support-row"><b>导出与保真</b><span>普通 SGF 和 JSON 会重新生成当前完整变化树。当前刚打开且未编辑的 LIB 在 64MB 以内可由 RenLib 核心完整转换为 SGF，也可原文件直出；大型 LIB 只允许原文件直出或导出当前可见内容。编辑副本可导出 SGF / JSON，但不会写回 LIB。DP / DB 可原文件直出或导出当前可见内容，不生成新数据库。</span></div><div className="support-row"><b>规则与开局</b><span>连珠规则：黑方受三三、四四、长连禁手约束，双方五连获胜；标准五子棋：双方无禁手，先成五者胜；无禁手：双方自由落子，先成五者胜。开局规则目前支持自由开局、五手两打、五手多打（3–10 打）、塔十（塔拉山口-10）和塔拉（五次交换），可在棋谱信息或人机设置中查看与使用。</span></div><div className="support-row"><b>JSON 的用途</b><span>棋谱库读取本软件的完整变化树或带明确 moves 字段的落子列表对象；题库页读取 puzzles 包装题库、连续坐标串、黑白分色坐标串和旧版二维数组。数字坐标棋谱必须声明 coordinateBase，不猜测任意数组。</span></div><div className="support-row"><b>AI 完全本地</b><span>人机与“思考”使用应用内置 Rapfi WASM 数据，不访问 gomocalc.com，也不会上传当前棋局。</span></div><div className="support-row warning"><b>棋盘路数边界</b><span>棋盘支持 5–25 路方形棋盘，范围外的 SGF SZ 会明确拒绝，不会缩放后生成错误棋谱；内置题库固定为十五路。</span></div><div className="support-row warning"><b>TXT 不是统一棋谱标准</b><span>TXT 仅作为纯文本坐标序列兼容入口，例如 H8 I8 H9；带专有结构的文本应使用原软件导出的 SGF。</span></div><div className="support-row warning"><b>LIB 兼容边界</b><span>大型 LIB 在后台线程解析并按页存储。完整转 SGF 会额外申请整份输出缓冲区，因此源文件超过 64MB 时主动停用，避免手机或低内存设备崩溃。原谱的普通注释、局面文字和 RenLib 标记会分别保留并在节点详情中显示；超出 RenLib 3.4 的扩展仍会提示。</span></div><h3>手机快捷操作</h3><ul><li>点空交叉点：落子；点已有棋子：不会改变局面</li><li>底部“标注”：放置数字、胜败平衡和自定义文字</li><li>长按交叉点：圆圈 → 三角 → 叉号 → 清除</li><li>左右方向键（外接键盘）：前后导航</li></ul><button className="primary-button" onClick={() => setSheet(null)}>知道了</button></div>}
-      {sheet === "about" && <div className="sheet-body about-sheet"><section className="about-hero"><span>半</span><div><b>半步五子棋</b><small>版本 1.1.4 · 个人 Vibecoding 项目</small></div></section><section className="creator-message"><b>个人项目说明</b><p>这是一个由个人通过 Vibecoding 制作的五子棋工具。开发过程中借鉴了一些公开的五子棋代码、文件格式和算法实现，仅用于学习、研究和个人使用。如有任何内容涉及侵权，请通过 GitHub 联系，我会立即删除或调整相关内容。</p></section><section className="about-card"><h3><Layers3 size={17}/>后续维护</h3><p>后续有时间会继续更新功能、改善使用体验并修复发现的 Bug。项目的新版网页、安装包和更新说明会优先发布在 GitHub，可从下面的项目主页查看和下载。</p></section><a className="github-link" href="https://github.com/gugujiao953-ship-it/banbu-gomoku" target="_blank" rel="noreferrer"><Code2 size={20}/><span><b>GitHub 项目主页与下载</b><small>github.com/gugujiao953-ship-it/banbu-gomoku</small></span><ChevronRight size={18}/></a><button className="primary-button" onClick={() => setSheet(null)}>完成</button></div>}
-      {sheet === "feedback" && <FeedbackPanel version="1.1.4" location={tab === "settings" ? "设置" : tab === "library" ? "棋谱库" : "打谱"} onNotice={setToast}/>}
-      {sheet === "marks" && <div className="sheet-body mark-sheet"><p className="section-note">文字、形状和颜色都会保存到当前局面，与节点注释相互独立。</p><section><h3>数字标注</h3><div className="mark-preset-grid numbers">{["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((label) => <button key={label} onClick={() => { setCandidateLabel(label); setSheet(null); }}><span>{label}</span></button>)}</div></section><section><h3>局面结论</h3><div className="mark-preset-grid words">{["胜", "败", "平", "平衡", "攻", "守", "要", "疑"].map((label) => <button key={label} onClick={() => { setCandidateLabel(label); setSheet(null); }}><span>{label}</span></button>)}</div></section><section><h3>字母标注</h3><div className="mark-preset-grid letters">{["A", "B", "C", "D", "E"].map((label) => <button key={label} onClick={() => { setCandidateLabel(label); setSheet(null); }}><span>{label}</span></button>)}</div></section><div className="mark-custom-section"><h3>自定义文字</h3><div className="custom-mark-row"><input maxLength={4} value={customMarkLabel} onChange={(event) => setCustomMarkLabel(event.target.value)} placeholder="输入最多 4 个字"/><button disabled={!customMarkLabel.trim()} onClick={() => { setCandidateLabel(Array.from(customMarkLabel.trim()).slice(0, 4).join("")); setSheet(null); }}>使用</button></div><button className="mark-delete-button" disabled={!current.marks.length} onClick={() => { safeClearMarks(); setCandidateLabel(null); setSheet(null); setToast("已清除当前局面的全部标注"); }}><Trash2/>删除现有标注{current.marks.length ? `（${current.marks.length}）` : ""}</button></div></div>}
-      {sheet === "manual" && <UserManual onClose={() => setSheet(null)}/>}
+       {sheet === "help" && <div className="sheet-body help-content"><div className="support-row"><b>棋谱导入</b><span>RenLib 3.x / 旧版无头 LIB（按设备能力分页导入）、SGF / FGF、REN / RENJS / WZQ（SGF 语法）、JSON、POS，以及 DP / DB 局面数据库。SGF 支持设置局面、过手、UTF-16 和同文件多盘棋。</span></div><div className="support-row"><b>导出与保真</b><span>普通 SGF 和 JSON 会重新生成当前完整变化树。当前刚打开且未编辑的 LIB 在 64MB 以内可由 RenLib 核心完整转换为 SGF，也可原文件直出；大型 LIB 只允许原文件直出或导出当前可见内容。编辑副本可导出 SGF / JSON，但不会写回 LIB。DP / DB 可原文件直出或导出当前可见内容，不生成新数据库。</span></div><div className="support-row"><b>规则与开局</b><span>连珠规则：黑方恰五获胜、白方五个以上获胜，黑方受三三、四四、长连禁手约束；标准五子棋：双方无禁手，必须恰好五连；自由五子棋：双方无禁手，五个以上即可获胜。开局规则目前支持自由开局、五手两打、五手多打（3–10 打）、山口（先手方开局时宣布 1–10 打）、索索夫-8（白4后宣布 1–8 打，宣布后可再交换）、塔十（塔拉山口-10）和塔拉（五次交换），可在人机设置的“规则说明”中比较。</span></div><div className="support-row"><b>JSON 的用途</b><span>棋谱库读取本软件的完整变化树或带明确 moves 字段的落子列表对象；题库页读取 puzzles 包装题库、连续坐标串、黑白分色坐标串和旧版二维数组。数字坐标棋谱必须声明 coordinateBase，不猜测任意数组。</span></div><div className="support-row"><b>AI 完全本地</b><span>人机与“思考”使用应用内置 Rapfi WASM 数据，不访问 gomocalc.com，也不会上传当前棋局。</span></div><div className="support-row warning"><b>棋盘路数边界</b><span>棋盘支持 5–25 路方形棋盘，范围外的 SGF SZ 会明确拒绝，不会缩放后生成错误棋谱；内置题库固定为十五路。</span></div><div className="support-row warning"><b>TXT 不是统一棋谱标准</b><span>TXT 仅作为纯文本坐标序列兼容入口，例如 H8 I8 H9；带专有结构的文本应使用原软件导出的 SGF。</span></div><div className="support-row warning"><b>LIB 兼容边界</b><span>大型 LIB 在后台线程解析并按页存储。完整转 SGF 会额外申请整份输出缓冲区，因此源文件超过 64MB 时主动停用，避免手机或低内存设备崩溃。原谱的普通注释、局面文字和 RenLib 标记会分别保留并在节点详情中显示；超出 RenLib 3.4 的扩展仍会提示。</span></div><h3>手机快捷操作</h3><ul><li>点空交叉点：落子；点已有棋子：不会改变局面</li><li>底部“标注”：放置数字、胜败平衡和自定义文字</li><li>长按交叉点：圆圈 → 三角 → 叉号 → 清除</li><li>左右方向键（外接键盘）：前后导航</li></ul><button className="primary-button" onClick={() => setSheet(null)}>知道了</button></div>}
+      {sheet === "about" && <AboutPanel onClose={() => setSheet(null)}/>}
+      {sheet === "feedback" && <FeedbackPanel version="1.1.6" location={tab === "settings" ? "设置" : tab === "library" ? "棋谱库" : "打谱"} onNotice={setToast}/>}
+      {sheet === "manual" && <UserManual onClose={() => setSheet(null)} onOpenRules={() => setSheet("rules")}/>}
+      {sheet === "rules" && (
+        <RuleGuide onOpenManual={() => setSheet("manual")}/>
+      )}
     </BottomSheet>}
   </div>;
-}
-
-type ManualIconName = "home" | "new" | "save" | "import" | "export" | "library" | "folder" | "comment" | "mark" | "search" | "branch" | "tree" | "ai" | "undo" | "backup" | "settings" | "help" | "info";
-
-const manualSections: Array<{ icon: ManualIconName; title: string; summary: string; body: string[]; steps?: string[]; tip?: string }> = [
-  { icon: "home", title: "打谱首页：认识主界面", summary: "这里是落子、浏览和编辑棋谱的主要工作区。", body: ["打开应用后默认进入打谱页。上方是当前棋谱名称与保存状态，中间是棋盘，下方是行棋、编辑、更多和标注工具。底部导航用于切换打谱、棋谱库、导入、AI 和设置。", "棋盘上的每个交叉点都对应一个位置。空点可以落子，已有棋子不会被覆盖；当前手、禁手点、候选点和胜线会用不同的颜色或形状区分。"], steps: ["先看棋盘中央的当前局面。", "需要落子时直接点击空交叉点。", "需要切换功能时使用棋盘下方的工具栏。"], tip: "如果不确定某个按钮做什么，可以先打开本手册对应条目；手册中的图标就是界面实际使用的图标。" },
-  { icon: "new", title: "新建空白棋局", summary: "清理当前棋盘并开始一份新的空白棋谱。", body: ["棋盘下方的文件加号图标就是“新建空白棋局”。点击后会创建一个只有起始局面的新棋谱，当前棋盘上的棋子、当前浏览位置和临时标注都会切换到新的空白局面。", "如果当前存在未保存草稿，系统不会直接清理，而是先要求你选择保存草稿、放弃草稿或取消。这是为了防止误删正在编辑的变化。"], steps: ["点击棋盘下方的文件加号图标。", "没有草稿时直接进入空棋盘。", "有草稿时选择“保存草稿并切换”或“放弃草稿并切换”。"], tip: "新建不会删除棋谱库里已经保存的旧棋谱；它只会切换当前编辑会话。" },
-  { icon: "save", title: "保存棋谱与草稿保护", summary: "把当前修改写入本机棋谱库。", body: ["顶部保存图标用于提交当前棋谱修改。普通棋谱会保存到本机存储；大型 LIB、DP、DB 浏览源会按照应用的编辑副本规则处理，不会擅自改写原始数据库。", "落子、删除变化、注释、标注和棋谱信息修改后会先形成未保存草稿。看到“有未保存草稿”时，切换棋谱、导入或新建前都要先处理它。"], steps: ["编辑棋盘或信息。", "点击保存图标提交修改。", "等待状态变为“已保存”后再关闭或切换。"], tip: "保存失败时不要反复覆盖原文件；先导出备份或查看错误提示。" },
-  { icon: "import", title: "导入棋谱与题库", summary: "打开 SGF、LIB、JSON、POS、DP、DB 等文件。", body: ["底部中间的下载箭头是导入入口。它会根据当前模式打开棋谱文件或题库文件选择器。普通棋谱支持 SGF/FGF、REN/RENJS/WZQ、JSON、POS、TXT 等兼容格式；大型 LIB、DP、DB 会在后台解析或按需读取。", "导入过程中会显示解析、索引和完成状态。大型文件不要在后台解析时强制关闭页面，否则可能需要重新建立索引。"], steps: ["点击底部“导入”。", "选择“导入棋谱文件”或“图片识谱”。", "选择文件后等待解析完成，再检查棋盘、分支和注释。"], tip: "TXT 只是坐标序列兼容入口，不是统一棋谱标准；重要棋谱优先使用原软件导出的 SGF。" },
-  { icon: "export", title: "导出与分享", summary: "保存为 SGF/JSON，或生成棋盘图片分享。", body: ["顶部上传箭头是导出入口。普通棋谱可导出为完整 SGF 或应用完整 JSON；刚打开的原始 LIB、DP、DB 可以按界面提示原样导出或导出当前可见内容。", "分享图片会按当前棋盘、棋子主题、坐标、手数、标注和水印选项生成 PNG。导出的图片是副本，不会改变原棋谱。"], steps: ["点击顶部导出图标。", "选择直接导出或指定 SGF/JSON。", "如需发给别人，选择图片导出并检查预览。"], tip: "大型数据库不等于已经全部加载；导出的“当前可见内容”只代表已打开的路径和分支。" },
-  { icon: "library", title: "棋谱库：查找与打开棋谱", summary: "管理已经保存的棋谱、题库和文件夹。", body: ["底部“棋谱库”用于查看本机保存的普通棋谱和大型棋谱。顶部的“题库/棋谱”切换按钮只改变当前列表，不会改变棋谱数据。搜索框可以按棋谱名、棋手、赛事或主题筛选。", "点击一条棋谱会回到打谱页并打开它；右侧编辑图标用于重命名，垃圾桶用于删除。删除前如果有草稿，系统会先要求处理草稿。"], steps: ["进入底部“棋谱库”。", "选择“棋谱”或“题库”。", "搜索、打开、重命名或删除目标记录。"], tip: "删除的内容会进入回收站，不是立即永久消失。" },
-  { icon: "folder", title: "文件夹整理", summary: "用文件夹给棋谱和题集分类。", body: ["棋谱库中的文件夹用于整理记录，不会改变棋谱内容。可以新建文件夹、重命名文件夹，并通过每条记录的下拉选择移动到其他文件夹。", "题库和棋谱拥有各自的文件夹体系；在题库页整理题集，不会把题集混入棋谱列表。"], steps: ["在棋谱库点击“新建文件夹”。", "在记录或题集的文件夹选择器中重新归类。", "点击文件夹标题展开或收起内容。"], tip: "文件夹只是管理视图，备份和恢复时会一并保留归类信息。" },
-  { icon: "comment", title: "注释与棋谱信息", summary: "记录当前局面的讲解、棋手和赛事信息。", body: ["棋盘下方“编辑”里的对话框图标打开当前节点注释。注释属于当前节点，可以随着变化树保存并导出到 SGF 的 C 属性。", "“信息”入口用于编辑棋谱名称、黑方、白方、赛事/主题、日期、规则和开局规则。信息修改也会进入草稿，需要保存后才正式写入。"], steps: ["点击“编辑”→“注释”填写说明。", "点击“编辑”→“信息”修改棋谱元数据。", "点击保存提交。"], tip: "节点注释和棋盘上的数字、胜负、攻守标注是两套独立信息，可以同时使用。" },
-  { icon: "mark", title: "棋盘标注", summary: "在局面上放置数字、结论、字母或自定义文字。", body: ["棋盘下方的标签图标打开标注面板。数字适合表示阅读顺序，胜/败/平衡/攻/守等文字适合表达判断，字母或自定义文字适合建立个人记号。", "长按棋盘交叉点也可以快速循环标记样式：圆圈、三角、叉号，再次操作可清除。标注会绑定到当前节点，不会自动套用到其他分支。"], steps: ["进入“标注”面板选择一种标记。", "或长按一个交叉点快速标注。", "需要删除时在标注面板清除当前局面标注。"], tip: "标注不是落子；它不会改变轮到谁，也不会参与胜负判定。" },
-  { icon: "undo", title: "走棋导航与撤销", summary: "在起点、上一手、下一手和终点之间浏览。", body: ["“行棋”面板包含起点、上一手、下一手、终点和分支入口。它只改变当前浏览节点，不会删除棋谱内容。", "如果当前有草稿，“撤销”只撤销最近一次草稿操作；“放弃”会清除当前未保存修改并恢复到最近保存状态。"], steps: ["点击“行棋”展开导航按钮。", "使用左右方向键也可以前后浏览。", "编辑中的临时操作用撤销回退，全部不要时用放弃。"], tip: "浏览旧节点后再落子通常会创建变化分支，不会悄悄覆盖原主线。" },
-  { icon: "branch", title: "变化分支与棋谱树", summary: "查看、切换和理解同一局面下的不同变化。", body: ["当某个节点有多个后续走法时，棋盘下方会显示分支提示。分支面板列出当前分叉点的直接子变化，可以在分支之间切换，也可以回到分叉点创建新变化。", "棋谱树以层级方式展示整份变化树，点击节点可跳到对应局面。大型棋谱采用按需窗口显示，避免一次性渲染全部节点。"], steps: ["点击“行棋”→“分支”或“棋谱树”。", "选择目标分支或树节点。", "回到分叉点后在空位落子即可创建新分支。"], tip: "切换分支不会删除其他变化；只有明确使用删除功能并保存后才会移除。" },
-  { icon: "search", title: "查找与跨谱局面检索", summary: "在当前棋谱或整个棋谱库中快速定位内容。", body: ["“更多”里的查找可以按坐标、手数、标注、注释和局面文字搜索当前棋谱。跨谱查找会在已建立索引的棋谱库中寻找相同局面，并可选择是否把旋转和镜像视为同一局面。", "点击结果会直接跳到匹配节点；搜索只改变视图，不会修改棋谱。"], steps: ["在“更多”中点击“查找”或“跨谱查找”。", "输入坐标、关键词或局面条件。", "点击结果打开对应节点。"], tip: "大型数据库的索引可能在后台建立；索引未完成时，结果范围会明确提示。" },
-  { icon: "ai", title: "AI 人机对战", summary: "在本机与 Rapfi AI 对弈。", body: ["底部 AI 入口用于新建人机棋局。可以选择连珠规则或标准五子棋、执黑或执白、开局规则和 AI 强度。AI 和规则判断在本机运行，不上传当前棋局。", "开局规则需要按照界面提示完成交换、五手两打、五手多打、塔十或塔拉等步骤；在特殊阶段，棋盘会限制可落子区域并给出说明。"], steps: ["点击底部“AI”。", "选择规则、强度、执子方和开局规则。", "点击开始后按状态提示落子或等待 AI。"], tip: "如果 AI 正在思考，先等待或使用停止按钮；不要连续点击开始，避免重复启动计算线程。" },
-  { icon: "tree", title: "局面思考与候选点", summary: "让 AI 分析当前局面并显示推荐走法。", body: ["“思考”会分析当前局面，显示候选点、排序理由、节点数和耗时；Rapfi 能提供真实胜率时会显示胜率，否则会明确标记为暂无。", "候选点是研究辅助，不等于裁判证明。VCF 等专项搜索会单独说明是否找到完整证明，不要把普通启发式候选当成必胜结论。"], steps: ["在打谱页点击 AI 思考入口。", "等待分析完成或取消。", "查看候选理由，必要时标记或从首手创建变化。"], tip: "分析结果只针对当前节点；切换棋谱或落子后应重新思考。" },
-  { icon: "backup", title: "一键备份与恢复", summary: "迁移棋谱库、题库、设置和进度。", body: ["设置中的“一键备份”会打包普通棋谱、大型棋谱索引清单、题库、做题进度、草稿、主题和音效设置。恢复前会校验版本和内容，失败会回滚，避免半恢复状态。", "备份文件是数据迁移副本，不等于把文件上传到云端。请把导出的 JSON 备份保存到可靠位置。"], steps: ["设置→数据与兼容→一键备份。", "在新浏览器或新设备进入同一位置选择“恢复备份”。", "等待校验完成，再检查棋谱库和设置。"], tip: "原始 LIB/DP/DB 文件本身不一定包含在备份包中；如需保留原文件，请单独保存源文件。" },
-  { icon: "settings", title: "外观、棋盘与声音设置", summary: "调整主题、棋盘材质、棋子材质和音效。", body: ["外观主题控制应用整体色彩和背景；棋盘与棋子控制棋盘材质、棋子外观；声音与反馈控制音效总开关、音色、音量和提示音类别。", "这些设置只影响显示和反馈，不改变棋谱规则、落子结果或文件格式。声音使用轻量程序化音效，不下载大音频包。"], steps: ["设置→外观主题选择整体风格。", "设置→棋盘与棋子选择材质。", "设置→声音与反馈试听并调整音量。"], tip: "夜间或长时间复盘可选择深色/护眼主题，并关闭不需要的动效或声音。" },
-  { icon: "settings", title: "棋盘显示、动效和无障碍", summary: "控制手数、坐标、禁手提示、动效和字号。", body: ["“棋盘显示”可以开关落子手数、坐标、禁手辅助和界面动效。无障碍与字号可以把界面文字放大到大字或特大字，棋盘本身不会被强行拉伸。", "界面支持键盘焦点、可见焦点轮廓、屏幕阅读器标签和减少动态效果路径。关闭动效后仍会保留颜色、文字和图标等状态信息。"], steps: ["设置→棋盘显示调整显示辅助。", "设置→无障碍与字号选择文字大小。", "需要安静或减少刺激时关闭界面动效。"], tip: "颜色不是唯一信息来源；禁手、选中和错误状态同时有形状或文字提示。" },
-  { icon: "import", title: "图片识谱", summary: "从棋盘截图识别棋子，并进入可校对的棋谱草稿。", body: ["图片识谱会尝试定位棋盘网格、识别黑白棋子，并在有手数信息时推断落子顺序。识别结果不会直接写入棋谱库，而是先打开为可检查的当前会话。", "由于截图可能有透视、阴影、棋子遮挡或主题差异，识别后必须逐点核对，尤其是边缘棋子、最后一步和棋子颜色。"], steps: ["底部导入→图片识谱，或从棋谱库点击图片识谱。", "选择 PNG/JPG/WebP 等棋盘截图。", "检查棋盘和手数，确认后再保存。"], tip: "图片越正、棋盘边界越完整、棋子越清晰，识别结果越可靠。" },
-  { icon: "help", title: "格式兼容与规则边界", summary: "了解可读、可写和不会被误处理的格式。", body: ["设置→数据与兼容→格式兼容说明会解释 SGF、JSON、LIB、DP、DB、TXT 的能力边界。应用支持 5–25 路方形棋盘，但内置题库固定为十五路。", "连珠规则会约束黑方三三、四四和长连；标准五子棋与无禁手模式不启用这些禁手。导入时如果棋盘尺寸、坐标基准或格式结构不明确，应用会拒绝或提示，而不是猜测。"], steps: ["先查看文件扩展名和来源。", "导入后检查规则、路数和分支。", "需要交给其他软件时优先导出标准 SGF。"], tip: "大型 LIB/DP/DB 的“原样导出”和“当前可见内容导出”含义不同，请看导出面板说明。" },
-  { icon: "undo", title: "回收站与删除恢复", summary: "恢复误删的棋谱，或永久清理不需要的记录。", body: ["棋谱库和题库中的删除操作会把记录移到回收站。回收站里可以查看删除项目、恢复项目或永久删除。恢复后会重新回到原有的管理数据中。", "永久删除不可依赖应用恢复，因此请在清理前确认标题、来源和删除范围。"], steps: ["进入棋谱库或题库。", "打开回收站。", "选择恢复或确认永久删除。"], tip: "如果删除前有未保存草稿，先处理草稿再删除，避免把临时修改误当成正式版本。" },
-  { icon: "info", title: "关于、反馈与更新", summary: "查看版本、项目说明、下载和问题反馈入口。", body: ["设置中的“关于”会显示当前版本、项目说明和 GitHub 下载入口；“反馈问题或建议”用于提交可复现的问题、功能想法和设备信息。", "反馈时最好附上操作步骤、棋谱格式、设备/浏览器、是否能稳定复现，以及页面提示或诊断信息。不要在公开反馈中放入私人棋谱或敏感文件。"], steps: ["设置→关于查看版本和项目主页。", "设置→使用手册与反馈→反馈问题或建议。", "按步骤描述问题并附必要截图。"], tip: "提交前先确认是否为当前版本问题，并说明是网页、PWA 还是 Android 安装包。" },
-];
-
-function ManualIcon({ name }: { name: ManualIconName }) {
-  const props = { size: 20, strokeWidth: 2 };
-  if (name === "home") return <Home {...props}/>;
-  if (name === "new") return <FilePlus2 {...props}/>;
-  if (name === "save") return <Save {...props}/>;
-  if (name === "import") return <Download {...props}/>;
-  if (name === "export") return <Upload {...props}/>;
-  if (name === "library") return <Library {...props}/>;
-  if (name === "folder") return <FolderOpen {...props}/>;
-  if (name === "comment") return <MessageSquareText {...props}/>;
-  if (name === "mark") return <Tag {...props}/>;
-  if (name === "search") return <Search {...props}/>;
-  if (name === "branch") return <GitBranch {...props}/>;
-  if (name === "tree") return <ListTree {...props}/>;
-  if (name === "ai") return <Bot {...props}/>;
-  if (name === "undo") return <Undo2 {...props}/>;
-  if (name === "backup") return <ArchiveRestore {...props}/>;
-  if (name === "settings") return <Settings {...props}/>;
-  if (name === "help") return <CircleHelp {...props}/>;
-  return <Info {...props}/>;
-}
-
-function UserManual({ onClose }: { onClose: () => void }) {
-  return <div className="sheet-body manual-sheet"><div className="manual-intro"><span className="manual-intro-icon"><BookOpen size={24}/></span><div><b>先看这里，再开始操作</b><p>本手册按“打谱 → 管理 → 分析 → 设置”介绍所有主要功能。点击下面任意条目展开详细说明；每个条目顶部的图标就是界面中的真实图标。</p></div></div><div className="manual-icon-legend"><span>图标示例</span><div><span><Home size={15}/>主界面</span><span><Save size={15}/>保存</span><span><Download size={15}/>导入</span><span><Bot size={15}/>AI</span><span><Settings size={15}/>设置</span></div></div><div className="manual-list">{manualSections.map((section, index) => <details className="manual-item" key={section.title}><summary><span className="manual-icon-shot"><ManualIcon name={section.icon}/></span><span className="manual-summary-copy"><b>{String(index + 1).padStart(2, "0")} · {section.title}</b><small>{section.summary}</small></span><ChevronDown className="manual-chevron" size={18}/></summary><div className="manual-item-body">{section.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}{section.steps && <div className="manual-steps"><b>怎么操作</b><ol>{section.steps.map((step) => <li key={step}>{step}</li>)}</ol></div>}{section.tip && <div className="manual-tip"><Info size={15}/><span><b>小提示</b>{section.tip}</span></div>}</div></details>)}</div><button className="primary-button" onClick={onClose}><Check/>知道了</button></div>;
-}
-
-function MetadataFields({ metadata, onChange }: { metadata: GameDocument["metadata"]; onChange: (patch: Partial<GameDocument["metadata"]>) => void }) {
-  return <><label>棋谱名称<input value={metadata.title} onChange={(event) => onChange({ title: event.target.value })}/></label><div className="two-cols"><label>黑方<input value={metadata.black} onChange={(event) => onChange({ black: event.target.value })}/></label><label>白方<input value={metadata.white} onChange={(event) => onChange({ white: event.target.value })}/></label></div><label>赛事 / 主题<input value={metadata.event} onChange={(event) => onChange({ event: event.target.value })}/></label><div className="two-cols"><label>日期<input type="date" value={metadata.date} onChange={(event) => onChange({ date: event.target.value })}/></label><label>规则<select value={metadata.rule} onChange={(event) => onChange({ rule: event.target.value as GameDocument["metadata"]["rule"] })}><option value="renju">连珠规则</option><option value="standard">标准五子棋</option><option value="freestyle">无禁手</option></select></label></div><label>开局规则<select value={metadata.openingRule || "free"} onChange={(event) => onChange({ openingRule: event.target.value as OpeningRule, openingN: event.target.value === "five-n" ? (metadata.openingN || 3) : undefined })}>{OPENING_RULE_OPTIONS.map(([rule, title]) => <option key={rule} value={rule}>{title}</option>)}</select></label>{metadata.openingRule === "five-n" && <label>五手多打候选数<input type="number" min="3" max="10" value={metadata.openingN || 3} onChange={(event) => onChange({ openingN: Math.max(3, Math.min(10, Number(event.target.value) || 3)) })}/></label>}<p className="helper">开局规则会作为棋谱信息保存；五手两打、五手多打、塔十和塔拉目前可在人机模式中使用。</p></>;
-}
-
-function SettingsSection({ title, summary, open = false, children }: { title: string; summary: string; open?: boolean; children: React.ReactNode }) {
-  const settingsOrder: Record<string, number> = {
-    "使用手册与反馈": 0,
-    "思考": 10,
-    "棋盘显示": 20,
-    "棋盘与棋子": 30,
-    "声音与反馈": 40,
-    "外观主题": 50,
-    "无障碍与字号": 60,
-    "文件与存储": 70,
-    "数据与兼容": 80,
-    "关于": 90,
-    "可选增强功能": 100,
-    "设备布局": 110,
-  };
-  const order = settingsOrder[title];
-  return <details className={`settings-group settings-collapsible${order === undefined ? "" : ` settings-order-${order}`}`} open={open}><summary className="settings-section-toggle"><span className="settings-section-title"><b>{title}</b><small>{summary}</small></span><ChevronDown/></summary><div className="settings-section-content">{children}</div></details>;
-}
-
-function StorageSettings({ defaultDirectory, directorySupported, onChoose, onClear }: { defaultDirectory: DirectoryHandleLike | null; directorySupported: boolean; onChoose: () => void; onClear: () => void }) {
-  return <div className="storage-settings-body"><div className="storage-summary"><span className="storage-icon"><Save size={18}/></span><div><div className="storage-summary-heading"><b>应用内保存</b><em>本机</em></div><p>保存按钮写入本机棋谱库，可在“棋谱库”中继续查看和编辑。</p></div></div><div className="storage-divider"/><div className="storage-destination"><span className={`storage-icon folder ${defaultDirectory ? "ready" : ""}`}><FolderOpen size={18}/></span><div className="storage-destination-copy"><div className="storage-summary-heading"><b>默认导出文件夹</b>{defaultDirectory && <em className="ready">已设置</em>}</div><p>{defaultDirectory ? `导出文件会直接写入“${defaultDirectory.name}”` : directorySupported ? "尚未设置，将使用浏览器默认下载目录" : "当前浏览器不支持选择文件夹，将使用默认下载目录"}</p></div><button className="storage-action" onClick={onChoose}>{defaultDirectory ? "更换" : "选择"}</button></div>{defaultDirectory && <button className="storage-remove" onClick={onClear}><X size={14}/>取消默认位置</button>}<div className="storage-tip"><Info size={14}/><span>{directorySupported ? "网页只会记住文件夹授权和名称，不会读取系统完整路径；可随时更换。" : "可在支持目录权限的浏览器中选择文件夹；当前环境会继续使用默认下载目录。"}</span></div></div>;
-}
-
-function SettingRow({ title, text, checked, disabled = false, onChange }: { title: string; text: string; checked: boolean; disabled?: boolean; onChange: (value: boolean) => void }) {
-  return <label className={`setting-row ${disabled ? "disabled" : ""}`}><span><b>{title}</b><small>{text}</small></span><input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)}/><i/></label>;
-}
-
-function EnhancementSettingsPanel({ settings, onChange }: { settings: EnhancementSettings; onChange: (value: EnhancementSettings) => void }) {
-  const update = (patch: Partial<EnhancementSettings>) => onChange({ ...settings, ...patch });
-  return <div className="enhancement-settings">
-    <p className="settings-feature-note">下面这些功能会增加界面提示或触摸处理，默认关闭；需要时逐项打开即可。</p>
-    <SettingRow title="双指缩放棋盘" text="用两根手指放大或缩小棋盘，适合平板复盘" checked={settings.gestureZoom} onChange={(gestureZoom) => update({ gestureZoom })}/>
-    <SettingRow title="双指滑动切手" text="双指左右滑动切换上一手或下一手" checked={settings.gestureSwipe} onChange={(gestureSwipe) => update({ gestureSwipe })}/>
-    <SettingRow title="最近导入列表" text="在导入面板保留最近 5 个可快速重开的文件" checked={settings.recentImports} onChange={(recentImports) => update({ recentImports })}/>
-    <SettingRow title="AI 棋盘提示点" text="在棋盘上显示 AI 推荐落点和开局候选编号" checked={settings.aiBoardHints} onChange={(aiBoardHints) => update({ aiBoardHints })}/>
-    <SettingRow title="操作引导卡片" text="在记录、棋谱库和设置页显示轻量使用提示" checked={settings.coachMarks} onChange={(coachMarks) => update({ coachMarks })}/>
-  </div>;
-}
-
-function SoundSettingsPanel({ settings, onChange, onPreview }: { settings: SoundSettings; onChange: (value: SoundSettings) => void; onPreview: (cue: SoundCue) => void }) {
-  const update = (patch: Partial<SoundSettings>) => onChange({ ...settings, ...patch });
-  return <div className="sound-settings">
-    <SettingRow title="启用音效" text="关闭后不会创建或唤醒音频上下文" checked={settings.enabled} onChange={(enabled) => update({ enabled })}/>
-    <SettingRow title="落子与导航音" text="黑白落子使用不同音色，前后浏览使用轻提示" checked={settings.moveEnabled} onChange={(moveEnabled) => update({ moveEnabled })}/>
-    <SettingRow title="结果与警告音" text="胜利、禁手、非法操作与错误反馈" checked={settings.feedbackEnabled} onChange={(feedbackEnabled) => update({ feedbackEnabled })}/>
-    <div className="sound-profile">
-      <span><b>落子音色</b><small>只改变黑白落子的质感，导航与提示音保持清晰</small></span>
-      <div role="radiogroup" aria-label="落子音色">
-        {([[
-          "classic", "经典", "均衡、熟悉",
-        ], ["wood", "木石", "低沉、短促"], ["crystal", "清响", "明亮、轻柔"]] as const).map(([profile, label, text]) => <button key={profile} type="button" className={settings.profile === profile ? "selected" : ""} role="radio" aria-checked={settings.profile === profile} onClick={() => update({ profile })}><b>{label}</b><small>{text}</small><Check aria-hidden="true"/></button>)}
-      </div>
-    </div>
-    <label className={`sound-volume ${!settings.enabled ? "disabled" : ""}`}>
-      <span><b>音量</b><small>只调整半步五子棋，不改变系统媒体音量</small></span>
-      <output>{Math.round(settings.volume * 100)}%</output>
-      <input aria-label="音效音量" type="range" min="0" max="100" step="1" value={Math.round(settings.volume * 100)} disabled={!settings.enabled} onChange={(event) => update({ volume: Number(event.target.value) / 100 })}/>
-    </label>
-    <div className="sound-preview" aria-label="试听音效">
-      <button type="button" disabled={!settings.enabled || !settings.moveEnabled} onClick={() => onPreview("move-black")}>试听落子</button>
-      <button type="button" disabled={!settings.enabled || !settings.feedbackEnabled} onClick={() => onPreview("success")}>试听完成</button>
-      <button type="button" disabled={!settings.enabled || !settings.feedbackEnabled} onClick={() => onPreview("warning")}>试听警告</button>
-    </div>
-    <p className="sound-budget-note">音效由 Web Audio 实时合成，不下载声音文件；首次试听或落子后才会启用浏览器音频。</p>
-  </div>;
-}
-
-function VisualThemeSettings({ boardTheme, stoneTheme, onBoardThemeChange, onStoneThemeChange }: { boardTheme: BoardTheme; stoneTheme: StoneTheme; onBoardThemeChange: (value: BoardTheme) => void; onStoneThemeChange: (value: StoneTheme) => void }) {
-  const boards: Array<[BoardTheme, string, string]> = [["wood", "原木棋盘", "温暖木色，默认风格"], ["jade", "玉石棋盘", "青玉底色，柔和对比"], ["notebook", "练习本", "纸张横线与红色边线"], ["emerald", "翡翠棋盘", "深翠绿与金色网格"], ["porcelain", "青花瓷棋盘", "青白瓷纹与清晰网格"], ["whitejade", "白玉棋盘", "柔白玉色，冷静通透"], ["walnut", "深胡桃木", "深棕木纹与暖色边框"], ["frosted", "磨砂玻璃", "半透明雾面与柔和网格"], ["circuit", "电路棋盘", "暗色底与蓝绿发光线路"], ["minimal", "极简棋盘", "纯色棋面与清晰灰黑网格"]];
-  const stones: Array<[StoneTheme, string, string]> = [["classic", "经典棋子", "黑白高光"], ["jade", "玉石棋子", "青玉与白玉"], ["yun", "云子棋子", "温润黑白云子"], ["ink", "墨蓝棋子", "练习本墨水质感"], ["mono", "黑白极简", "纯黑纯白，无光泽"], ["notebook", "勾叉棋子", "黑叉与红勾手绘笔迹"], ["porcelain", "青花瓷棋子", "青白瓷釉与蓝色纹样"], ["snow", "雪晶棋子", "冰晶质感与冷色边缘"], ["terminal", "终端字符棋子", "X / O 字符，避开禁手红叉"], ["gold-diamond", "黑钻白金棋子", "黑棋钻石质感，白棋黄金质感"]];
-  return <div className="visual-theme-settings"><div><b className="visual-theme-label">棋盘材质</b><div className="visual-option-grid">{boards.map(([value, label, text]) => <button key={value} type="button" className={boardTheme === value ? "selected" : ""} onClick={() => onBoardThemeChange(value)}><i className={`board-preview ${value}`} aria-hidden="true"/><span><b>{label}</b><small>{text}</small></span><Check className="visual-check" aria-hidden="true"/></button>)}</div></div><div><b className="visual-theme-label">棋子材质</b><div className="visual-option-grid">{stones.map(([value, label, text]) => <button key={value} type="button" className={stoneTheme === value ? "selected" : ""} onClick={() => onStoneThemeChange(value)}><i className={`stone-preview ${value}`} aria-hidden="true"/><span><b>{label}</b><small>{text}</small></span><Check className="visual-check" aria-hidden="true"/></button>)}</div></div><p className="visual-theme-note"><b>建议关闭显示手数。</b> 手绘勾叉需要保持笔触完整；禁手叉号、AI 推荐点、胜负光效和落子编号会自动使用适合当前材质的对比色，动画也会尊重系统的减少动态效果设置。</p></div>;
 }

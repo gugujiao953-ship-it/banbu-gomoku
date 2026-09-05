@@ -351,6 +351,34 @@ const decodeText = (buffer: ArrayBuffer) => {
   catch { return new TextDecoder("gb18030").decode(bytes); }
 };
 
+const normalizeLegacySgfMoveSeparators = (text: string) => {
+  let normalized = "", inValue = false, escaped = false, nodeHasProperty = false, repaired = 0;
+  for (let index = 0; index < text.length;) {
+    const char = text[index];
+    if (inValue) {
+      normalized += char; index += 1;
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === "]") inValue = false;
+      continue;
+    }
+    if (char === "[") { inValue = true; normalized += char; index += 1; continue; }
+    if (char === ";" || char === "(") { nodeHasProperty = false; normalized += char; index += 1; continue; }
+    if (char === ")") { nodeHasProperty = false; normalized += char; index += 1; continue; }
+    if (/[A-Za-z0-9]/.test(char)) {
+      let end = index + 1;
+      while (/[A-Za-z0-9]/.test(text[end] ?? "")) end += 1;
+      const key = text.slice(index, end);
+      if ((key.toUpperCase() === "B" || key.toUpperCase() === "W") && nodeHasProperty) {
+        normalized += ";"; nodeHasProperty = false; repaired += 1;
+      }
+      normalized += key; nodeHasProperty = true; index = end; continue;
+    }
+    normalized += char; index += 1;
+  }
+  return { text: normalized, repaired };
+};
+
 const parseSgfCollection = (text: string): SgfNode[] => {
   let index = 0;
   const skipSpace = () => { while (/\s/.test(text[index] ?? "")) index += 1; };
@@ -512,12 +540,16 @@ const importSgfTree = (tree: SgfNode, fallbackTitle: string): { document: GameDo
 };
 
 const importSgf = (text: string): ImportResult => {
-  const trees = parseSgfCollection(text);
+  const normalized = normalizeLegacySgfMoveSeparators(text);
+  const trees = parseSgfCollection(normalized.text);
   const imported = trees.map((tree, index) => importSgfTree(tree, trees.length > 1 ? `导入棋谱（${index + 1}）` : "导入棋谱"));
   return {
     document: imported[0].document,
     additionalDocuments: imported.slice(1).map((item) => item.document),
-    warnings: imported.flatMap((item, index) => item.warnings.map((warning) => trees.length > 1 ? `第 ${index + 1} 盘：${warning}` : warning)),
+    warnings: [
+      ...(normalized.repaired ? [`SGF 有 ${normalized.repaired} 处连续落子缺少节点分号，已按 B/W 着法顺序兼容读取`] : []),
+      ...imported.flatMap((item, index) => item.warnings.map((warning) => trees.length > 1 ? `第 ${index + 1} 盘：${warning}` : warning)),
+    ],
     format: trees.length > 1 ? `SGF Collection (${trees.length})` : "SGF",
   };
 };
@@ -536,6 +568,31 @@ const importPos = (text: string, title: string): ImportResult => {
   }
   if (currentId === document.rootId) throw new Error("没有识别到 A1–O15 形式的落子序列");
   return { document, warnings, format: "POS/TXT" };
+};
+
+const importPsq = (text: string, filename: string): ImportResult => {
+  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/);
+  const header = lines.shift()?.trim() || "";
+  const match = /^Piskvorky\s+(\d+)x(\d+)\s*,/i.exec(header);
+  if (!match) throw new Error("PSQ 文件头无效；应以 Piskvorky 宽x高 开头");
+  const width = Number(match[1]), height = Number(match[2]);
+  if (width !== height || !isSupportedBoardSize(width)) throw new Error(`不支持的 PSQ 棋盘尺寸：${width}x${height}（支持 5-25 路方形棋盘）`);
+  const moveLines = lines.map((line, index) => ({ line: line.trim(), number: index + 2 })).filter((entry) => entry.line);
+  if (!moveLines.length) throw new Error("PSQ 落子列表为空");
+  let document = createDocument(filename.replace(/\.[^.]+$/, ""), width), currentId = document.rootId;
+  for (let index = 0; index < moveLines.length; index += 1) {
+    const entry = moveLines[index];
+    const fields = /^(\d+)\s*,\s*(\d+)\s*,\s*([01])$/.exec(entry.line);
+    if (!fields) throw new Error(`PSQ 第 ${entry.number} 行无法识别：${entry.line}`);
+    const col = Number(fields[1]), rowFromBottom = Number(fields[2]);
+    if (col < 0 || col >= width || rowFromBottom < 1 || rowFromBottom > height) throw new Error(`PSQ 第 ${index + 1} 手坐标越界：${col},${rowFromBottom}`);
+    const position = { row: height - rowFromBottom, col };
+    const player: Player = fields[3] === "0" ? "black" : "white";
+    const added = addMoveAs(document, currentId, position, player);
+    if (!added.created) throw new Error(`PSQ 第 ${index + 1} 手与已有棋子冲突：${col},${rowFromBottom}`);
+    document = added.document; currentId = added.nodeId;
+  }
+  return { document, warnings: [], format: "PSQ (Piskvorky)" };
 };
 
 /** A byte reader that keeps the LIB import off the main thread without ever
@@ -868,7 +925,8 @@ export const importRecordFile = async (file: File, _options?: { onPreview?: (pre
     }
   }
   if (["sgf", "fgf", "ren", "renjs", "wzq"].includes(extension) || trimmed.startsWith("(")) return importSgf(text);
-  if (!["pos", "txt", ""].includes(extension)) throw new Error(`不支持 .${extension} 格式；请使用 SGF、LIB、RENJU JSON、POS 或 TXT`);
+  if (extension === "psq" || /^Piskvorky\s+\d+x\d+\s*,/i.test(trimmed)) return importPsq(text, file.name);
+  if (!["pos", "txt", ""].includes(extension)) throw new Error(`不支持 .${extension} 格式；请使用 SGF、PSQ、LIB、RENJU JSON、POS 或 TXT`);
   return importPos(text, file.name);
 };
 

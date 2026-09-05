@@ -2,12 +2,21 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <!-- user-scalable 不关闭：WCAG 1.4.4 要求允许系统缩放；棋盘触摸交互由 touch-action:manipulation 单独处理 -->
+    <!-- CSP 兼容策略说明（2026-09-04）：
+         'unsafe-inline'：vite legacy 插件必须在 head 注入内联检测/回退脚本，Android WebView 83（Redmi K20 等兼容目标）
+         不支持 hash/nonce 的 <meta> 用法，无法逐条豁免。
+         'unsafe-eval'：Chromium 84 才引入 'wasm-unsafe-eval'；83 及以下只有带 'unsafe-eval' 的策略才允许 WebAssembly
+         编译，否则 RenLib.wasm 与 Rapfi WASM 在目标旧 WebView 上直接抛 CSP 错误。两者同时保留是「旧设备可用」的下限。
+         即便如此，本策略仍挡住了：外部脚本注入、外部资源加载（data: 仅图片）、跨源网络行为（connect 仅本机+GitHub）、
+         object/base/form/manifest 全部收紧。未来若放弃 WebView 83 兼容，可去掉 'unsafe-inline'/'unsafe-eval' 收紧一档。 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' data: blob: https://api.github.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
     <meta name="theme-color" content="#365e4b" />
-    <meta name="description" content="半步五子棋：移动优先的五子棋打谱与做题工具" />
+    <meta name="description" content="半步五子棋打谱：移动优先的五子棋打谱与做题工具" />
     <meta name="mobile-web-app-capable" content="yes" />
     <link rel="icon" href="./icon.svg" />
-    <title>半步五子棋</title>
+    <title>半步五子棋打谱</title>
   </head>
   <body>
     <div id="root"></div>

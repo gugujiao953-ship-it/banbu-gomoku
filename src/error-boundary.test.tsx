@@ -31,7 +31,7 @@ describe("diagnostics ring buffer", () => {
     expect(report.error?.message).toBe("测试异常");
     expect(report.componentStack).toBeUndefined();
     expect(report.recentActions[report.recentActions.length - 1]?.action).toBe("导出一键备份");
-    expect(diagnosticsFilename()).toMatch(/^半步五子棋诊断-\d{4}-\d{2}-\d{2}T/);
+    expect(diagnosticsFilename()).toMatch(/^半步五子棋打谱诊断-\d{4}-\d{2}-\d{2}T/);
   });
 
   it("includes a component stack when one is supplied", () => {
@@ -73,7 +73,7 @@ describe("top-level ErrorBoundary", () => {
     });
     const card = container.querySelector(".error-boundary-card");
     expect(card).not.toBeNull();
-    expect(card?.textContent).toContain("半步五子棋遇到异常");
+    expect(card?.textContent).toContain("半步五子棋打谱遇到异常");
     expect(card?.textContent).toContain("人为注入的渲染异常");
     expect(card?.textContent).toContain("导出诊断信息");
     expect(card?.textContent).toContain("重新加载应用");

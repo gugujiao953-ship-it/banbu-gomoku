@@ -49,7 +49,7 @@ export const buildFeedbackBody = (draft: FeedbackDraft, context: FeedbackContext
   draft.contactEmail?.trim() ? `回复邮箱：${draft.contactEmail.trim()}` : "",
 ].filter(Boolean).join("\n");
 
-export const buildFeedbackSubject = (kind: FeedbackKind) => `[半步五子棋] ${feedbackKindLabel(kind)}`;
+export const buildFeedbackSubject = (kind: FeedbackKind) => `[半步五子棋打谱] ${feedbackKindLabel(kind)}`;
 
 export const buildMailtoUrl = (draft: FeedbackDraft, context: FeedbackContext, destinationEmail: string) => {
   const subject = buildFeedbackSubject(draft.kind);

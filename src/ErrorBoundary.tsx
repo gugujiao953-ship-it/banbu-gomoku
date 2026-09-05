@@ -24,7 +24,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   componentDidCatch(error: Error, info: ErrorInfo) {
     recordAction(`渲染异常：${error.message.slice(0, 120)}`);
     this.setState({ componentStack: info.componentStack || undefined });
-    console.error("半步五子棋遇到未处理异常", error, info.componentStack);
+    console.error("半步五子棋打谱遇到未处理异常", error, info.componentStack);
   }
 
   private handleCopy = () => {
@@ -45,7 +45,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       <div className="error-boundary" role="alert">
         <div className="error-boundary-card">
           <span className="error-boundary-mark" aria-hidden="true">半</span>
-          <h1>半步五子棋遇到异常</h1>
+          <h1>半步五子棋打谱遇到异常</h1>
           <p>页面崩溃了，但你的棋谱、题库与设置仍保存在本机。可先导出诊断信息，再重新加载应用。</p>
           <p className="error-boundary-message">{error.message || "未知错误"}</p>
           {error.stack && (
@@ -59,7 +59,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <button type="button" className="secondary-button" onClick={this.handleCopy}>{this.state.copied ? "已复制错误内容" : "复制错误内容"}</button>
             <button type="button" className="secondary-button" onClick={this.handleReload}>重新加载应用</button>
           </div>
-          <small className="error-boundary-version">半步五子棋 {APP_VERSION} · 诊断信息只保存在导出文件中，不会自动上传</small>
+          <small className="error-boundary-version">半步五子棋打谱 {APP_VERSION} · 诊断信息只保存在导出文件中，不会自动上传</small>
         </div>
       </div>
     );

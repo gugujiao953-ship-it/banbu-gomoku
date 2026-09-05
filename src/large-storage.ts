@@ -571,7 +571,8 @@ export const commitDraftAsDerivedVersion = async (
       updatedAt: new Date().toISOString(),
       currentId,
     });
-    const addedCount = fullOperations.filter((op) => op.type === "add-move").length;
+    const addedCount = fullOperations.reduce((count, op) => count
+      + (op.type === "add-move" ? 1 : op.type === "add-subtree" ? Object.keys(op.nodes).length : 0), 0);
     const summary: LargeDocumentSummary = {
       id: derivedId,
       metadata,

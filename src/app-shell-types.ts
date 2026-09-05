@@ -1,0 +1,91 @@
+export type Tab = "record" | "library" | "settings";
+
+export type AppMode = "record" | "review" | "puzzle";
+
+export type ThemePreference =
+  | "system"
+  | "light"
+  | "dark"
+  | "eye"
+  | "mono"
+  | "rain"
+  | "bamboo"
+  | "snow"
+  | "porcelain"
+  | "plum"
+  | "jiangnan"
+  | "firefly"
+  | "rice"
+  | "pixel"
+  | "cyber"
+  | "blackgold"
+  | "pale"
+  | "kawaii"
+  | "aurora"
+  | "deepsea"
+  | "baroque"
+  | "custom";
+
+export type ResolvedTheme = Exclude<ThemePreference, "system">;
+
+export type BoardTheme =
+  | "wood"
+  | "jade"
+  | "notebook"
+  | "emerald"
+  | "porcelain"
+  | "whitejade"
+  | "walnut"
+  | "frosted"
+  | "circuit"
+  | "minimal"
+  | "blackgold"
+  | "pale"
+  | "kawaii"
+  | "aurora";
+
+export type StoneTheme =
+  | "classic"
+  | "jade"
+  | "yun"
+  | "ink"
+  | "mono"
+  | "notebook"
+  | "porcelain"
+  | "snow"
+  | "terminal"
+  | "gold-diamond"
+  | "gold"
+  | "diamond"
+  | "blackgold"
+  | "pale"
+  | "kawaii"
+  | "aurora";
+
+export type Sheet =
+  | "comment"
+  | "branches"
+  | "tree"
+  | "metadata"
+  | "save"
+  | "folder"
+  | "rename"
+  | "export"
+  | "help"
+  | "manual"
+  | "about"
+  | "feedback"
+  | "find"
+  | "analysis"
+  | "positionSearch"
+  | "marks"
+  | "import"
+  | "aiGame"
+  | "fifthCount"
+  | "think"
+  | "rules"
+  | "wrongbook"
+  | "trash"
+  | "dataSafety"
+  | "batchEdit"
+  | null;
