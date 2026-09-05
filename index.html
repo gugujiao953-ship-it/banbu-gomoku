@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>半步五子棋打谱 — 移动优先的五子棋 / 连珠打谱工具</title>
+<meta name="description" content="半步五子棋打谱：移动优先的五子棋 / 连珠打谱、做题与人机对战工具。导入 SGF / LIB / DP 棋谱，本地运行，永久免费，开源。">
+<meta property="og:title" content="半步五子棋打谱 — 把每一手，看进半步之内">
+<meta property="og:description" content="移动优先的五子棋 / 连珠打谱、做题与人机对战工具。本地运行，永久免费，开源。">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<header class="nav" id="nav">
+  <a class="nav-brand" href="#top" aria-label="返回顶部">
+    <img src="assets/icon.svg" alt="" class="nav-logo">
+    <span class="nav-name">半步五子棋打谱</span>
+  </a>
+  <nav class="nav-links" aria-label="页面导航">
+    <a href="#pillars">功能</a>
+    <a href="#engine">引擎</a>
+    <a href="#ai">AI</a>
+    <a href="#themes">主题</a>
+    <a href="#formats">格式</a>
+  </nav>
+  <div class="nav-cta">
+    <a class="btn btn-ghost" href="https://github.com/gugujiao953-ship-it/banbu-gomoku" target="_blank" rel="noopener">GitHub</a>
+    <a class="btn btn-solid" href="#download">下载</a>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="hero-bg" aria-hidden="true">
+    <img src="assets/generated/hero-wide.png" alt="" class="hero-bg-img">
+    <div class="hero-bg-veil"></div>
+    <div class="hero-grid-lines"></div>
+  </div>
+  <div class="hero-inner">
+    <div class="hero-copy">
+      <p class="eyebrow reveal"><span class="eyebrow-line"></span>移动优先 · 本地运行 · 永久免费开源</p>
+      <h1 class="hero-title reveal">
+        <span class="hero-title-line">半步五子棋</span>
+        <span class="hero-title-line accent">打谱</span>
+      </h1>
+      <p class="hero-tagline reveal">把每一手，看进半步之内。</p>
+      <p class="hero-sub reveal">一款为手机而生的五子棋 / 连珠研究工具。导入棋谱、读谱标注、做题训练、人机对战——全部在设备本地完成，无需账号，无需联网。1.2GB 的大型棋谱，也能装进口袋。</p>
+      <div class="hero-actions reveal">
+        <a class="btn btn-solid btn-lg" href="#download">下载 Android</a>
+        <a class="btn btn-outline btn-lg" href="https://github.com/gugujiao953-ship-it/banbu-gomoku" target="_blank" rel="noopener">查看源码</a>
+      </div>
+      <dl class="hero-stats reveal">
+        <div class="stat"><dt>大型谱解析</dt><dd><span class="count" data-count="22078100">0</span><small>节点</small></dd></div>
+        <div class="stat"><dt>内置题库</dt><dd><span class="count" data-count="436">0</span><small>题</small></dd></div>
+        <div class="stat"><dt>棋盘皮肤</dt><dd><span class="count" data-count="14">0</span><small>套</small></dd></div>
+        <div class="stat"><dt>开局规则</dt><dd><span class="count" data-count="8">0</span><small>种</small></dd></div>
+      </dl>
+    </div>
+    <div class="hero-phone reveal">
+      <div class="phone">
+        <div class="phone-island"></div>
+        <img src="assets/shots/01-hero-board.png" alt="半步五子棋打谱：2018 祁观 vs 弈心人机大战第 2 局，第 40 手局面" class="phone-screen">
+      </div>
+      <p class="phone-caption">2018 成都棋院 · 祁观 vs 弈心 人机大战第 2 局（真实棋谱导入）</p>
+    </div>
+  </div>
+  <a class="hero-scroll" href="#pillars" aria-label="向下滚动"><span></span></a>
+</section>
+
+<!-- ============ PILLARS ============ -->
+<section class="section" id="pillars">
+  <div class="section-head">
+    <p class="eyebrow reveal">三个主场</p>
+    <h2 class="section-title reveal">一块棋盘，<em>三种用法</em></h2>
+    <p class="section-sub reveal">打谱、做题、对战共享同一块棋盘与同一套棋谱模型——切换模式，会话完整保留。</p>
+  </div>
+  <div class="pillars">
+    <article class="pillar reveal">
+      <div class="pillar-phone">
+        <div class="phone phone-sm">
+          <img src="assets/shots/01-hero-board.png" alt="打谱界面：真实比赛棋谱的完整局面与手数" class="phone-screen">
+        </div>
+      </div>
+      <div class="pillar-body">
+        <span class="pillar-no">01</span>
+        <h3>打谱</h3>
+        <p>完整变化树、改着、候选点 A–E、节点注释与着法评价、谱内查找。从 2018 人机大战到 12,097 局 Gomocup，真实对局随手可研。</p>
+        <ul class="pillar-points">
+          <li>变化树：创建分支 / 设主线 / 删除后续</li>
+          <li>节点注释 · 局面文字 · 好手坏手评价</li>
+          <li>谱内查找坐标、手数、注释，一键跳转</li>
+        </ul>
+      </div>
+    </article>
+    <article class="pillar pillar-reverse reveal">
+      <div class="pillar-phone">
+        <div class="phone phone-sm">
+          <img src="assets/shots/10-puzzle.png" alt="做题界面：开宝兼容题集与 AI 陪练" class="phone-screen">
+        </div>
+      </div>
+      <div class="pillar-body">
+        <span class="pillar-no">02</span>
+        <h3>做题</h3>
+        <p>兼容开宝二维 JSON 题库，内置 8 套共 436 题。落子后由独立 Worker 陪练应对，错题自动进错题本，进度跨设备备份。</p>
+        <ul class="pillar-points">
+          <li>三手胜 / 发阳论 / 坂田吾朗追诘胜等经典题集</li>
+          <li>AI 陪练：独立 Worker 应对，可强制停止</li>
+          <li>题集文件夹 · 完成进度 · 错题本</li>
+        </ul>
+      </div>
+    </article>
+    <article class="pillar reveal">
+      <div class="pillar-phone">
+        <div class="phone phone-sm">
+          <img src="assets/shots/07-ai-game-2.png" alt="人机对战界面：本地 AI 对局进行中" class="phone-screen">
+        </div>
+      </div>
+      <div class="pillar-body">
+        <span class="pillar-no">03</span>
+        <h3>人机对战</h3>
+        <p>本地 Rapfi 引擎全程离线对弈：连珠 / 标准规则、禁手裁判、执黑执白，以及从五手两打到塔拉的完整开局规则。</p>
+        <ul class="pillar-points">
+          <li>初级 / 中级 / 高级 / 大师四档强度</li>
+          <li>五手两打 · 多打（3–10 打）· 塔十 · 塔拉</li>
+          <li>禁手辅助提示，研究模式不阻止落子</li>
+        </ul>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ============ QUOTE BAND ============ -->
+<section class="quote-band" aria-label="引言">
+  <div class="quote-bg" aria-hidden="true"><img src="assets/generated/hand-stone.png" alt=""></div>
+  <div class="quote-veil" aria-hidden="true"></div>
+  <blockquote class="quote-inner reveal">
+    <p>「棋不在多，在每一步都看得清。」</p>
+    <footer>打谱的意义，是把别人的胜负，走成自己的理解。</footer>
+  </blockquote>
+</section>
+
+<!-- ============ ENGINE ============ -->
+<section class="section section-dark" id="engine">
+  <div class="section-head">
+    <p class="eyebrow reveal">大型棋谱引擎</p>
+    <h2 class="section-title reveal">1.2GB 的棋谱，<em>装进口袋</em></h2>
+    <p class="section-sub reveal">网页版 RenLib WASM 核心在独立 Worker 中解析，软件层不设文件大小上限；分支与原生注释按当前局面实时查询，不再把整谱搬进内存。</p>
+  </div>
+  <div class="engine-grid">
+    <div class="engine-copy reveal">
+      <ul class="engine-list">
+        <li>
+          <b>22,078,100 节点</b>
+          <span>松月.lib（131MB）完整解析成功；1,709 万节点标注谱浏览器导入后导航 P95 约 32ms。</span>
+        </li>
+        <li>
+          <b>约 1.5 秒首屏</b>
+          <span>1.18GB 的斜月.lib 分页后端：标题与首批 25 万节点先行呈现，页面立即可操作。</span>
+        </li>
+        <li>
+          <b>分支树可视化</b>
+          <span>当前路径附近节点成树展开，30%–10× 缩放，定位、书签、复制、重命名、删除一气呵成。</span>
+        </li>
+        <li>
+          <b>原生注释保真</b>
+          <span>RenLib 节点文字（boardText）与 DP 局面标注按局面实时读取，69 万处标注不丢失。</span>
+        </li>
+      </ul>
+    </div>
+    <div class="engine-shots">
+      <figure class="shot-card reveal">
+        <div class="phone phone-sm"><img src="assets/shots/04-branch-tree.png" alt="分支树面板：23 个后续分支的树状视图" class="phone-screen"></div>
+        <figcaption>分支树 · 九天指南 DP 库 23 个后续</figcaption>
+      </figure>
+      <figure class="shot-card reveal">
+        <div class="phone phone-sm"><img src="assets/shots/03-annotations.png" alt="导入棋谱后的原生标注点：每个分支点显示变化名称" class="phone-screen"></div>
+        <figcaption>原生标注点 · 分支名首字落位</figcaption>
+      </figure>
+      <figure class="shot-card reveal">
+        <div class="phone phone-sm"><img src="assets/shots/05-win-line.png" alt="Gomocup 2025 真实对局：导航到终局，五连胜线高亮" class="phone-screen"></div>
+        <figcaption>Gomocup 2019 终局 · 胜线高亮</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ============ AI ============ -->
+<section class="section section-ai" id="ai">
+  <div class="ai-bg" aria-hidden="true"><img src="assets/generated/ai-circuit.png" alt=""></div>
+  <div class="ai-veil" aria-hidden="true"></div>
+  <div class="section-head">
+    <p class="eyebrow reveal">AI 与分析</p>
+    <h2 class="section-title reveal">AI 在你的手机里<em>思考</em></h2>
+    <p class="section-sub reveal">本地 Rapfi 分析推荐落点、胜率与主变化；VCF 强制胜搜索带独立证明校验；候选点按成五、活四、冲四、活三与防守点给出可解释排序。引擎不可用时明确回退标注，不伪造胜率。</p>
+  </div>
+  <div class="ai-grid">
+    <figure class="shot-card shot-card-lg reveal">
+      <div class="phone"><img src="assets/shots/07-ai-setup.png" alt="人机对战设置：8 种开局规则、4 档强度、执子选择" class="phone-screen"></div>
+      <figcaption>开局规则：无禁手 → 塔拉，8 种可选</figcaption>
+    </figure>
+    <div class="ai-copy reveal">
+      <h3>可解释的每一步</h3>
+      <p>AI 思考面板给出推荐点、胜率估计与 Top-3 候选；局面分析把「为什么走这里」拆成成五、活四、冲四、活三、防守点五项证据，而不是一句「AI 觉得好」。</p>
+      <ul class="ai-points">
+        <li><b>VCF 强制胜搜索</b><span>连续冲四推演，独立证明校验</span></li>
+        <li><b>连珠禁手裁判</b><span>长连 / 四四 / 三三，落子即判</span></li>
+        <li><b>开局规则引擎</b><span>五手两打、多打、塔十、塔拉交换</span></li>
+      </ul>
+    </div>
+    <figure class="shot-card reveal">
+      <div class="phone phone-sm"><img src="assets/shots/07-ai-game-1.png" alt="人机对战进行中：黑方落子 H8，AI 应手" class="phone-screen"></div>
+      <figcaption>对局中 · 黑先 H8</figcaption>
+    </figure>
+    <figure class="shot-card reveal">
+      <div class="phone phone-sm"><img src="assets/shots/07-ai-game-2.png" alt="人机对战进行到第 4 手：双方着法与局面" class="phone-screen"></div>
+      <figcaption>对局中 · 第 4 手</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ IMAGE RECOGNITION ============ -->
+<section class="section" id="recognize">
+  <div class="section-head">
+    <p class="eyebrow reveal">图片识谱</p>
+    <h2 class="section-title reveal">截图一张棋，<em>变成一份谱</em></h2>
+    <p class="section-sub reveal">自动定位网格、识别棋子颜色与手数。带完整序号的截图可恢复落子顺序——识别后直接读谱、复盘、建分支。</p>
+  </div>
+  <div class="recog-grid">
+    <figure class="recog-card reveal">
+      <img src="assets/shots/recog-source.jpg" alt="棋盘截图：2018 人机大战第 1 局第 17 手局面，带手数" class="recog-img">
+      <figcaption><span class="recog-tag">输入</span>一张带手数的棋盘截图</figcaption>
+    </figure>
+    <div class="recog-arrow reveal" aria-hidden="true">
+      <svg viewBox="0 0 120 24" fill="none"><path d="M2 12h108m0 0-10-9m10 9-10 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <figure class="shot-card reveal">
+      <div class="phone phone-sm"><img src="assets/shots/08-image-recognition.png" alt="识谱结果：15 路棋盘，识别 17 子，置信度 80%" class="phone-screen"></div>
+      <figcaption><span class="recog-tag recog-tag-out">输出</span>识别 17 子 · 置信度 80% · 进入棋谱库</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ THEMES ============ -->
+<section class="section section-dark" id="themes">
+  <div class="section-head">
+    <p class="eyebrow reveal">主题</p>
+    <h2 class="section-title reveal">二十多种氛围，<em>同一块棋</em></h2>
+    <p class="section-sub reveal">雨幕、水墨、雪落、青花瓷、像素、赛博……二十余套主题，主题动效、棋盘透明度、棋子透明度均可单独调节，夜间打谱友好。以下为其中六例。</p>
+  </div>
+  <div class="theme-grid">
+    <figure class="theme-card reveal"><div class="phone phone-sm"><img src="assets/shots/theme-rain.png" alt="雨幕主题" class="phone-screen" loading="lazy"></div><figcaption>雨幕<small>缓慢雨丝，适合夜间复盘</small></figcaption></figure>
+    <figure class="theme-card reveal"><div class="phone phone-sm"><img src="assets/shots/theme-bamboo.png" alt="水墨竹林主题" class="phone-screen" loading="lazy"></div><figcaption>水墨竹林<small>青绿竹影与竹叶飘落</small></figcaption></figure>
+    <figure class="theme-card reveal"><div class="phone phone-sm"><img src="assets/shots/theme-snow.png" alt="雪落主题" class="phone-screen" loading="lazy"></div><figcaption>雪落<small>冷色雪花安静飘落</small></figcaption></figure>
+    <figure class="theme-card reveal"><div class="phone phone-sm"><img src="assets/shots/theme-porcelain.png" alt="青花瓷影主题" class="phone-screen" loading="lazy"></div><figcaption>青花瓷影<small>瓷白、钴蓝纹样与藏青</small></figcaption></figure>
+    <figure class="theme-card reveal"><div class="phone phone-sm"><img src="assets/shots/theme-pixel.png" alt="像素街机主题" class="phone-screen" loading="lazy"></div><figcaption>像素街机<small>低分辨率像素与复古色块</small></figcaption></figure>
+    <figure class="theme-card reveal"><div class="phone phone-sm"><img src="assets/shots/theme-cyber.png" alt="霓虹赛博主题" class="phone-screen" loading="lazy"></div><figcaption>霓虹赛博<small>蓝紫霓虹与电路光</small></figcaption></figure>
+  </div>
+</section>
+
+<!-- ============ BOARDS & STONES ============ -->
+<section class="section" id="skins">
+  <div class="section-head">
+    <p class="eyebrow reveal">棋盘与棋子</p>
+    <h2 class="section-title reveal">14 种棋盘 × 16 种棋子</h2>
+    <p class="section-sub reveal">从原木到青花瓷，从云子到钻石——棋盘材质、棋子质感、透明度各自独立，组合出属于你的棋桌。</p>
+  </div>
+  <div class="skin-grid">
+    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-wood-classic.png" alt="原木棋盘与经典棋子" class="phone-screen" loading="lazy"></div><figcaption>原木 · 经典</figcaption></figure>
+    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-porcelain-porcelain.png" alt="青花瓷棋盘与青花瓷棋子" class="phone-screen" loading="lazy"></div><figcaption>青花瓷</figcaption></figure>
+    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-circuit-terminal.png" alt="电路棋盘与终端字符棋子" class="phone-screen" loading="lazy"></div><figcaption>电路 · 终端</figcaption></figure>
+    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-blackgold-blackgold.png" alt="尊贵黑金棋盘与黑金棋子" class="phone-screen" loading="lazy"></div><figcaption>尊贵黑金</figcaption></figure>
+    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-notebook-notebook.png" alt="练习本棋盘与勾叉棋子" class="phone-screen" loading="lazy"></div><figcaption>练习本 · 勾叉</figcaption></figure>
+    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-kawaii-kawaii.png" alt="卡哇伊棋盘与卡哇伊棋子" class="phone-screen" loading="lazy"></div><figcaption>卡哇伊</figcaption></figure>
+    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-aurora-aurora.png" alt="极光棋盘与极光棋子" class="phone-screen" loading="lazy"></div><figcaption>极光</figcaption></figure>
+    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-jade-jade.png" alt="玉石棋盘与玉石棋子" class="phone-screen" loading="lazy"></div><figcaption>玉石</figcaption></figure>
+    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-emerald-gold-diamond.png" alt="翡翠棋盘与黑钻白金棋子" class="phone-screen" loading="lazy"></div><figcaption>翡翠 · 黑钻白金</figcaption></figure>
+    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-frosted-diamond.png" alt="磨砂玻璃棋盘与钻石棋子" class="phone-screen" loading="lazy"></div><figcaption>磨砂 · 钻石</figcaption></figure>
+  </div>
+</section>
+
+<!-- ============ LIBRARY & FORMATS ============ -->
+<section class="section section-dark" id="formats">
+  <div class="section-head">
+    <p class="eyebrow reveal">棋谱库与格式</p>
+    <h2 class="section-title reveal">几乎所有格式，<em>都认得</em></h2>
+    <p class="section-sub reveal">本地棋谱库按名称、棋手、赛事即时检索，文件夹自由分组；导入导出覆盖 SGF 生态与 RenLib 二进制世界。</p>
+  </div>
+  <div class="lib-grid">
+    <div class="lib-left">
+      <figure class="shot-card shot-card-lg reveal">
+        <div class="phone"><img src="assets/shots/06-library.png" alt="棋谱库：2018 人机大战五局、Gomocup 2024/2025 等真实棋谱" class="phone-screen"></div>
+        <figcaption>棋谱库 · 真实导入的 2018 人机大战与 Gomocup 对局</figcaption>
+      </figure>
+      <ul class="lib-features reveal">
+        <li>按棋谱名、棋手、赛事即时检索</li>
+        <li>文件夹自由分组，支持嵌套子文件夹</li>
+        <li>批量处理：移动、删除、重命名</li>
+        <li>回收站：删除的棋谱可恢复</li>
+      </ul>
+    </div>
+    <div class="formats reveal">
+      <h3 class="formats-h">导入</h3>
+      <ul class="format-list">
+        <li><div class="fmt-chips"><code>.sgf</code><code>.fgf</code></div><div><b>SGF FF[4] 游戏树</b><span>UTF-8 / UTF-16 · 设置局面（AB/AW/AE/PL）· 过手 · 多顶层棋谱集合 · 注释、节点名、常用标记与着法评价 · 5–25 路方形棋盘</span></div></li>
+        <li><div class="fmt-chips"><code>.lib</code></div><div><b>RenLib 二进制变化树</b><span>网页版 ReadLib / RenLib WASM 核心，独立 Worker 解析；软件层不设文件大小上限，分支与原生注释按局面实时查询</span></div></li>
+        <li><div class="fmt-chips"><code>.db</code><code>.dp</code></div><div><b>DP / DB 局面数据库</b><span>LZ4 压缩库：提取坐标记录、合并为变化树、保留节点文字，支持实时局面查询（已用九天指南真实验收）</span></div></li>
+        <li><div class="fmt-chips"><code>.pos</code><code>.txt</code></div><div><b>坐标序列</b><span>h8i8h9 / H8 I8 H9 形式的纯文本着法串，必须是完整坐标序列才接受</span></div></li>
+        <li><div class="fmt-chips"><code>.ren</code><code>.renjs</code><code>.wzq</code></div><div><b>SGF 语法变体</b><span>内容为 SGF 语法时直接读取</span></div></li>
+        <li><div class="fmt-chips"><code>.renju</code><code>.json</code></div><div><b>跨端数据格式</b><span>本软件完整变化树（注释 / 标记 / 元数据）；也兼容带明确 moves 字段的落子列表对象</span></div></li>
+        <li><div class="fmt-chips"><code>图片</code></div><div><b>图片识谱</b><span>PNG / JPG / WEBP 棋盘截图：自动定位网格，识别棋子颜色与手数，完整序号可恢复落子顺序</span></div></li>
+        <li><div class="fmt-chips"><code>题库</code></div><div><b>开宝兼容题集</b><span>二维 JSON 题库：星级、空占位、A–O / 1–15 坐标与黑白尾码；内置 8 套 436 题</span></div></li>
+      </ul>
+      <h3 class="formats-h">导出与备份</h3>
+      <ul class="format-list">
+        <li><div class="fmt-chips"><code>.sgf</code></div><div><b>SGF 导出</b><span>与 RenLib 及其他棋谱工具交换</span></div></li>
+        <li><div class="fmt-chips"><code>.renju</code></div><div><b>完整格式导出</b><span>变化树、注释、标记与元数据全量保存，供三端互通</span></div></li>
+        <li><div class="fmt-chips"><code>备份</code></div><div><b>一键备份 / 恢复</b><span>棋谱库、题库、进度、草稿、设置与大型索引清单整包导出导入，恢复前完整校验</span></div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OPEN SOURCE ============ -->
+<section class="section section-paper" id="download">
+  <div class="paper-bg" aria-hidden="true"><img src="assets/generated/mist-mountain.png" alt=""></div>
+  <div class="paper-veil" aria-hidden="true"></div>
+  <div class="paper-inner">
+    <p class="eyebrow eyebrow-ink reveal">开源与致谢</p>
+    <h2 class="section-title section-title-ink reveal">永久免费，<em>开放源码</em></h2>
+    <p class="paper-copy reveal">这是一个 Vibecoding 的产物，以 MIT License 开放。网页版可安装为 PWA 离线使用；Android 应用通过 Capacitor 打包，Android 8 以上均可安装。如内容涉及侵权，请通过 GitHub Issue 联系，会及时处理或删除。</p>
+    <div class="paper-actions reveal">
+      <a class="btn btn-ink btn-lg" href="https://github.com/gugujiao953-ship-it/banbu-gomoku" target="_blank" rel="noopener">GitHub 仓库</a>
+      <a class="btn btn-ink-outline btn-lg" href="https://github.com/gugujiao953-ship-it/banbu-gomoku/releases" target="_blank" rel="noopener">Releases 下载</a>
+    </div>
+    <div class="paper-cards reveal">
+      <div class="paper-card"><b>打谱</b><span>参考爱五子棋打谱软件与 RenLib / SGF 生态</span></div>
+      <div class="paper-card"><b>做题</b><span>交互与题集格式参考开宝五子棋</span></div>
+      <div class="paper-card"><b>AI</b><span>搜索思路参考 SlowRenju 等公开项目</span></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <img src="assets/icon.svg" alt="" class="footer-logo">
+      <div>
+        <b>半步五子棋打谱</b>
+        <small>v1.1.7 · MIT License · 本地棋谱研究工具</small>
+      </div>
+    </div>
+    <nav class="footer-links" aria-label="页脚导航">
+      <a href="#pillars">功能</a>
+      <a href="#engine">引擎</a>
+      <a href="#ai">AI</a>
+      <a href="#themes">主题</a>
+      <a href="#formats">格式</a>
+      <a href="https://github.com/gugujiao953-ship-it/banbu-gomoku" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+    <p class="footer-note">感谢 RenLib / SGF 生态、开宝五子棋与 SlowRenju 等开源项目。<br>© 2026 半步五子棋打谱</p>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>
