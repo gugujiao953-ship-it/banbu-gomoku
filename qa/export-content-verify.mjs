@@ -14,6 +14,7 @@ page.on('pageerror', e => consoleErrors.push(String(e)));
 await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
 await page.evaluate(async () => {
   localStorage.clear();
+  localStorage.setItem('banbu-first-run-welcome-v1', 'true');
   if (indexedDB.databases) { const dbs = await indexedDB.databases(); await Promise.all(dbs.map(d => d.name ? new Promise(r => { const q = indexedDB.deleteDatabase(d.name); q.onsuccess = q.onerror = q.onblocked = () => r(); }) : null)); }
 });
 await page.reload({ waitUntil: 'domcontentloaded' });
@@ -37,12 +38,12 @@ await page.waitForTimeout(300);
 await page.getByRole('button', { name: '打开导出方式' }).click();
 await page.waitForTimeout(200);
 await page.getByRole('button', { name: '选择格式导出' }).click();
-const [sgfDownload] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /SGF 标准棋谱/ }).click()]);
+const [sgfDownload] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /SGF（整谱）/ }).click()]);
 await page.getByRole('button', { name: '打开导出方式' }).click();
-if (await page.getByRole('button', { name: /JSON（半步完整棋谱）/ }).count() === 0) {
+if (await page.getByRole('button', { name: /JSON（整谱）/ }).count() === 0) {
   await page.getByRole('button', { name: '选择格式导出' }).click();
 }
-const [jsonDownload] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /JSON（半步完整棋谱）/ }).click()]);
+const [jsonDownload] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /JSON（整谱）/ }).click()]);
 assert(sgfDownload.suggestedFilename().endsWith('.sgf'), 'SGF 文件名错误');
 assert(jsonDownload.suggestedFilename().endsWith('.json'), 'JSON 文件名错误');
 const sgfPath = join(dir, 'export.sgf'), jsonPath = join(dir, 'export.json');
@@ -71,3 +72,4 @@ console.log(JSON.stringify({
   consoleErrors,
 }, null, 2));
 await browser.close();
+

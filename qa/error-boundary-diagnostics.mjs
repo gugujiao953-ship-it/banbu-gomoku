@@ -12,7 +12,7 @@ try {
   await page.goto(baseURL, { waitUntil: "domcontentloaded" });
 
   const card = page.getByRole("alert");
-  await card.getByRole("heading", { name: "半步五子棋遇到异常" }).waitFor();
+  await card.getByRole("heading", { name: "半步五子棋打谱遇到异常" }).waitFor();
   if (!(await card.getByText("人为注入的渲染异常（ErrorBoundary 验收）", { exact: true }).isVisible())) {
     throw new Error("ErrorBoundary 未显示开发注入的异常内容");
   }
@@ -26,7 +26,7 @@ try {
   for await (const chunk of stream) chunks.push(chunk);
   const report = JSON.parse(Buffer.concat(chunks).toString("utf8"));
 
-  if (!download.suggestedFilename().startsWith("半步五子棋诊断-")) throw new Error("诊断文件名不符合约定");
+  if (!download.suggestedFilename().startsWith("半步五子棋打谱诊断-")) throw new Error("诊断文件名不符合约定");
   if (report.app !== "banbu-gomoku") throw new Error("诊断报告缺少应用标识");
   if (report.error?.message !== "人为注入的渲染异常（ErrorBoundary 验收）") throw new Error("诊断报告缺少异常信息");
   if (!Array.isArray(report.recentActions)) throw new Error("诊断报告缺少最近操作记录");

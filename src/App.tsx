@@ -803,7 +803,7 @@ export default function App() {
   const [puzzleInitialId, setPuzzleInitialId] = useState("");
   const [puzzleInitialDepth, setPuzzleInitialDepth] = useState(0);
   const [puzzleRulePreference, setPuzzleRulePreference] = useState<PuzzleRuleMode>(loadPuzzleRulePreference);
-  const [puzzleThinkSpeed, setPuzzleThinkSpeed] = useState<PuzzleThinkSpeed>("slow");
+  const [puzzleThinkSpeed, setPuzzleThinkSpeed] = useState<PuzzleThinkSpeed>("fast");
   const [aiThinking, setAiThinking] = useState(false);
   const [puzzleOutcome, setPuzzleOutcome] = useState<"won" | "lost" | "stopped" | null>(null);
   const [puzzleSetup, setPuzzleSetup] = useState<PuzzleSetupWorkspace | null>(null);
@@ -2031,7 +2031,7 @@ export default function App() {
     setBackupBusy(true);
     recordAction("导出一键备份");
     try {
-      const snapshot = await createBackupSnapshot("1.1.6");
+      const snapshot = await createBackupSnapshot("1.1.7");
       const stamp = snapshot.exportedAt.replace(/[:.]/g, "-").replace("Z", "");
       const zip = await createZip([
         { name: "banbu-backup.json", data: serializeBackup(snapshot) },
@@ -4579,7 +4579,7 @@ export default function App() {
       </div>}
        {sheet === "help" && <div className="sheet-body help-content"><div className="support-row"><b>棋谱导入</b><span>RenLib 3.x / 旧版无头 LIB（按设备能力分页导入）、SGF / FGF、REN / RENJS / WZQ（SGF 语法）、JSON、POS，以及 DP / DB 局面数据库。SGF 支持设置局面、过手、UTF-16 和同文件多盘棋。</span></div><div className="support-row"><b>导出与保真</b><span>普通 SGF 和 JSON 会重新生成当前完整变化树。当前刚打开且未编辑的 LIB 在 64MB 以内可由 RenLib 核心完整转换为 SGF，也可原文件直出；大型 LIB 只允许原文件直出或导出当前可见内容。编辑副本可导出 SGF / JSON，但不会写回 LIB。DP / DB 可原文件直出或导出当前可见内容，不生成新数据库。</span></div><div className="support-row"><b>规则与开局</b><span>连珠规则：黑方恰五获胜、白方五个以上获胜，黑方受三三、四四、长连禁手约束；标准五子棋：双方无禁手，必须恰好五连；自由五子棋：双方无禁手，五个以上即可获胜。开局规则目前支持自由开局、五手两打、五手多打（3–10 打）、山口（先手方开局时宣布 1–10 打）、索索夫-8（白4后宣布 1–8 打，宣布后可再交换）、塔十（塔拉山口-10）和塔拉（五次交换），可在人机设置的“规则说明”中比较。</span></div><div className="support-row"><b>JSON 的用途</b><span>棋谱库读取本软件的完整变化树或带明确 moves 字段的落子列表对象；题库页读取 puzzles 包装题库、连续坐标串、黑白分色坐标串和旧版二维数组。数字坐标棋谱必须声明 coordinateBase，不猜测任意数组。</span></div><div className="support-row"><b>AI 完全本地</b><span>人机与“思考”使用应用内置 Rapfi WASM 数据，不访问 gomocalc.com，也不会上传当前棋局。</span></div><div className="support-row warning"><b>棋盘路数边界</b><span>棋盘支持 5–25 路方形棋盘，范围外的 SGF SZ 会明确拒绝，不会缩放后生成错误棋谱；内置题库固定为十五路。</span></div><div className="support-row warning"><b>TXT 不是统一棋谱标准</b><span>TXT 仅作为纯文本坐标序列兼容入口，例如 H8 I8 H9；带专有结构的文本应使用原软件导出的 SGF。</span></div><div className="support-row warning"><b>LIB 兼容边界</b><span>大型 LIB 在后台线程解析并按页存储。完整转 SGF 会额外申请整份输出缓冲区，因此源文件超过 64MB 时主动停用，避免手机或低内存设备崩溃。原谱的普通注释、局面文字和 RenLib 标记会分别保留并在节点详情中显示；超出 RenLib 3.4 的扩展仍会提示。</span></div><h3>手机快捷操作</h3><ul><li>点空交叉点：落子；点已有棋子：不会改变局面</li><li>底部“标注”：放置数字、胜败平衡和自定义文字</li><li>长按交叉点：圆圈 → 三角 → 叉号 → 清除</li><li>左右方向键（外接键盘）：前后导航</li></ul><button className="primary-button" onClick={() => setSheet(null)}>知道了</button></div>}
       {sheet === "about" && <AboutPanel onClose={() => setSheet(null)}/>}
-      {sheet === "feedback" && <FeedbackPanel version="1.1.6" location={tab === "settings" ? "设置" : tab === "library" ? "棋谱库" : "打谱"} onNotice={setToast}/>}
+      {sheet === "feedback" && <FeedbackPanel version="1.1.7" location={tab === "settings" ? "设置" : tab === "library" ? "棋谱库" : "打谱"} onNotice={setToast}/>}
       {sheet === "manual" && <UserManual onClose={() => setSheet(null)} onOpenRules={() => setSheet("rules")}/>}
       {sheet === "rules" && (
         <RuleGuide onOpenManual={() => setSheet("manual")}/>

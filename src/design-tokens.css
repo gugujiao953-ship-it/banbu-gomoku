@@ -249,10 +249,10 @@
 }
 .app-shell .puzzle-rule-selector button.selected,
 .app-shell .puzzle-think-speed-selector button.selected {
-  background: var(--jade);
-  border: 1px solid var(--green);
-  color: var(--green-2, var(--green));
-  box-shadow: 0 2px 7px var(--surface-shadow, #0001), inset 0 1px 0 #fff6;
+  background: var(--green);
+  border: 1px solid var(--green-2, var(--green));
+  color: #fff;
+  box-shadow: 0 3px 10px var(--surface-shadow, #0002), inset 0 1px 0 #ffffff40;
 }
 
 .app-shell .quick-actions button,

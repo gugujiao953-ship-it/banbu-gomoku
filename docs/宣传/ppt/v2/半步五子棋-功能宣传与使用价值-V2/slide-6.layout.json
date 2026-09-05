@@ -1,0 +1,927 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/233xo0",
+    "id": "233xo0",
+    "slide": 6,
+    "layoutId": "90f48de1-b6c8-418c-9e9a-b189b560f853",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "96a1e7b5-1d86-4d3f-8551-25617a2595b3",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#0A1512",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "90f48de1-b6c8-418c-9e9a-b189b560f853",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "96a1e7b5-1d86-4d3f-8551-25617a2595b3",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "96a1e7b5-1d86-4d3f-8551-25617a2595b3",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3ixc3md0",
+      "id": "1",
+      "bbox": [
+        64,
+        24,
+        560,
+        24
+      ],
+      "geometry": "rect",
+      "text": "做题 · 棋力训练",
+      "textPreview": "做题 · 棋力训练",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#79C4A6",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "做题 · 棋力训练"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "做题 · 棋力训练",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#79C4A6",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "做题 · 棋力训练",
+              "fontSize": 14,
+              "color": "#79C4A6",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/oj6dcrel",
+      "id": "2",
+      "bbox": [
+        1180,
+        22,
+        40,
+        24
+      ],
+      "geometry": "rect",
+      "text": "06",
+      "textPreview": "06",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "bold": true,
+        "alignment": "right",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "06"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "06",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#B6C2BA",
+            "bold": true,
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "06",
+              "fontSize": 14,
+              "color": "#B6C2BA",
+              "bold": true,
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pkfe5wv6",
+      "id": "3",
+      "bbox": [
+        64,
+        58,
+        1152,
+        56
+      ],
+      "geometry": "rect",
+      "text": "把研究成果变成可以反复练习的题目",
+      "textPreview": "把研究成果变成可以反复练习的题目",
+      "resolvedFontSize": 40,
+      "resolvedTextStyle": {
+        "fontSize": 40,
+        "typeface": "+mn-lt",
+        "color": "#F5F0E2",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "把研究成果变成可以反复练习的题目"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "把研究成果变成可以反复练习的题目",
+          "resolvedTextStyle": {
+            "fontSize": 40,
+            "color": "#F5F0E2",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "把研究成果变成可以反复练习的题目",
+              "fontSize": 40,
+              "color": "#F5F0E2",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ed4v6hwj",
+      "id": "4",
+      "bbox": [
+        66,
+        116,
+        1110,
+        34
+      ],
+      "geometry": "rect",
+      "text": "题集、题目与禁手偏好都在同一套棋盘工作区内完成。",
+      "textPreview": "题集、题目与禁手偏好都在同一套棋盘工作区内完成。",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "题集、题目与禁手偏好都在同一套棋盘工作区内完成。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "题集、题目与禁手偏好都在同一套棋盘工作区内完成。",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "color": "#B6C2BA"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "题集、题目与禁手偏好都在同一套棋盘工作区内完成。",
+              "fontSize": 18,
+              "color": "#B6C2BA"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fedczmd4",
+      "id": "5",
+      "bbox": [
+        64,
+        154,
+        72,
+        4
+      ],
+      "geometry": "rect",
+      "fillColor": "#D8B764",
+      "lineColor": "#D8B764",
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gfmd87ep",
+      "id": "6",
+      "bbox": [
+        440,
+        182,
+        782,
+        445
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#173027",
+      "lineColor": "#335044",
+      "lineWidth": 1
+    },
+    {
+      "order": 7,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/kbalgbqt",
+      "id": "7",
+      "bbox": [
+        446,
+        188,
+        770,
+        433
+      ],
+      "geometry": "roundRect",
+      "alt": "做题完整界面",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 1848"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "a4df84e7-b6d9-4728-a680-f6d10deb3257",
+        "contentType": "image/png",
+        "byteLength": 795412
+      }
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/y98vi1wn",
+      "id": "8",
+      "bbox": [
+        68,
+        224,
+        76,
+        40
+      ],
+      "geometry": "rect",
+      "text": "01",
+      "textPreview": "01",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "fontSize": 27,
+        "typeface": "+mn-lt",
+        "color": "#D8B764",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "01"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "01",
+          "resolvedTextStyle": {
+            "fontSize": 27,
+            "color": "#D8B764",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "01",
+              "fontSize": 27,
+              "color": "#D8B764",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zahwb6d8",
+      "id": "9",
+      "bbox": [
+        156,
+        225,
+        274,
+        31
+      ],
+      "geometry": "rect",
+      "text": "题集管理",
+      "textPreview": "题集管理",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "fontSize": 23,
+        "typeface": "+mn-lt",
+        "color": "#F5F0E2",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "题集管理"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "题集管理",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "color": "#F5F0E2",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "题集管理",
+              "fontSize": 23,
+              "color": "#F5F0E2",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zmto32tc",
+      "id": "10",
+      "bbox": [
+        156,
+        261,
+        274,
+        60
+      ],
+      "geometry": "rect",
+      "text": "本地题库与内置题目统一选择。",
+      "textPreview": "本地题库与内置题目统一选择。",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "本地题库与内置题目统一选择。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "本地题库与内置题目统一选择。",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#B6C2BA"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "本地题库与内置题目统一选择。",
+              "fontSize": 17,
+              "color": "#B6C2BA"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/elk7axsr",
+      "id": "11",
+      "bbox": [
+        68,
+        356,
+        76,
+        40
+      ],
+      "geometry": "rect",
+      "text": "02",
+      "textPreview": "02",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "fontSize": 27,
+        "typeface": "+mn-lt",
+        "color": "#79C4A6",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "02"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "02",
+          "resolvedTextStyle": {
+            "fontSize": 27,
+            "color": "#79C4A6",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "02",
+              "fontSize": 27,
+              "color": "#79C4A6",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/18b65sbi",
+      "id": "12",
+      "bbox": [
+        156,
+        357,
+        274,
+        31
+      ],
+      "geometry": "rect",
+      "text": "规则一致",
+      "textPreview": "规则一致",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "fontSize": 23,
+        "typeface": "+mn-lt",
+        "color": "#F5F0E2",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "规则一致"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "规则一致",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "color": "#F5F0E2",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "规则一致",
+              "fontSize": 23,
+              "color": "#F5F0E2",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/072pc7ax",
+      "id": "13",
+      "bbox": [
+        156,
+        393,
+        274,
+        60
+      ],
+      "geometry": "rect",
+      "text": "按题目要求选择有禁或无禁判断。",
+      "textPreview": "按题目要求选择有禁或无禁判断。",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "按题目要求选择有禁或无禁判断"
+          },
+          {
+            "index": 2,
+            "text": "。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "按题目要求选择有禁或无禁判断。",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#B6C2BA"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "按题目要求选择有禁或无禁判断。",
+              "fontSize": 17,
+              "color": "#B6C2BA"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nato7298",
+      "id": "14",
+      "bbox": [
+        68,
+        488,
+        76,
+        40
+      ],
+      "geometry": "rect",
+      "text": "03",
+      "textPreview": "03",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "fontSize": 27,
+        "typeface": "+mn-lt",
+        "color": "#FF806F",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "03"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "03",
+          "resolvedTextStyle": {
+            "fontSize": 27,
+            "color": "#FF806F",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "03",
+              "fontSize": 27,
+              "color": "#FF806F",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/m9k7exs3",
+      "id": "15",
+      "bbox": [
+        156,
+        489,
+        274,
+        31
+      ],
+      "geometry": "rect",
+      "text": "错题复习",
+      "textPreview": "错题复习",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "fontSize": 23,
+        "typeface": "+mn-lt",
+        "color": "#F5F0E2",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "错题复习"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "错题复习",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "color": "#F5F0E2",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "错题复习",
+              "fontSize": 23,
+              "color": "#F5F0E2",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9cv69cre",
+      "id": "16",
+      "bbox": [
+        156,
+        525,
+        274,
+        60
+      ],
+      "geometry": "rect",
+      "text": "记录尚未攻克的题目，集中回看。",
+      "textPreview": "记录尚未攻克的题目，集中回看。",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "记录尚未攻克的题目，集中回看"
+          },
+          {
+            "index": 2,
+            "text": "。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "记录尚未攻克的题目，集中回看。",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#B6C2BA"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "记录尚未攻克的题目，集中回看。",
+              "fontSize": 17,
+              "color": "#B6C2BA"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

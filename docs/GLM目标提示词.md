@@ -2,11 +2,11 @@
 
 你现在接手本地项目：
 
-    D:\Projects\经济学知识\15_半步五子棋
+    D:\Projects\经济学知识\15_半步五子棋打谱
 
 请先完整阅读：
 
-    D:\Projects\经济学知识\15_半步五子棋\docs\GLM交接文档.md
+    D:\Projects\经济学知识\15_半步五子棋打谱\docs\GLM交接文档.md
 
 把这当作真实工程交付，不是代码建议，也不是局部修补。直接检查、修改、运行、压测和回归，直到满足验收标准。
 
@@ -56,7 +56,7 @@
 
 ## 必须先做的命令
 
-    cd D:\Projects\经济学知识\15_半步五子棋
+    cd D:\Projects\经济学知识\15_半步五子棋打谱
     npm test -- --run
     npm run build
     git diff --check

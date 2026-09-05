@@ -1,0 +1,991 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/x7ij2d",
+    "id": "x7ij2d",
+    "slide": 2,
+    "layoutId": "90f48de1-b6c8-418c-9e9a-b189b560f853",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "96a1e7b5-1d86-4d3f-8551-25617a2595b3",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#0A1512",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "90f48de1-b6c8-418c-9e9a-b189b560f853",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "96a1e7b5-1d86-4d3f-8551-25617a2595b3",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "96a1e7b5-1d86-4d3f-8551-25617a2595b3",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/u10z69o3",
+      "id": "1",
+      "bbox": [
+        64,
+        24,
+        560,
+        24
+      ],
+      "geometry": "rect",
+      "text": "半步五子棋打谱 · 本地棋谱研究工具",
+      "textPreview": "半步五子棋打谱 · 本地棋谱研究工具",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#79C4A6",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "半步五子棋打谱 · 本地棋谱研究工具"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "半步五子棋打谱 · 本地棋谱研究工具",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#79C4A6",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "半步五子棋打谱 · 本地棋谱研究工具",
+              "fontSize": 14,
+              "color": "#79C4A6",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/h4bihonu",
+      "id": "2",
+      "bbox": [
+        1180,
+        22,
+        40,
+        24
+      ],
+      "geometry": "rect",
+      "text": "02",
+      "textPreview": "02",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "bold": true,
+        "alignment": "right",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "02"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "02",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#B6C2BA",
+            "bold": true,
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "02",
+              "fontSize": 14,
+              "color": "#B6C2BA",
+              "bold": true,
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/w32h8j69",
+      "id": "3",
+      "bbox": [
+        64,
+        58,
+        1152,
+        56
+      ],
+      "geometry": "rect",
+      "text": "研究不是一次操作，而是一条可回溯的路径",
+      "textPreview": "研究不是一次操作，而是一条可回溯的路径",
+      "resolvedFontSize": 40,
+      "resolvedTextStyle": {
+        "fontSize": 40,
+        "typeface": "+mn-lt",
+        "color": "#F5F0E2",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "研究不是一次操作，而是一条可回溯的路径"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "研究不是一次操作，而是一条可回溯的路径",
+          "resolvedTextStyle": {
+            "fontSize": 40,
+            "color": "#F5F0E2",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "研究不是一次操作，而是一条可回溯的路径",
+              "fontSize": 40,
+              "color": "#F5F0E2",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7y9gbe5c",
+      "id": "4",
+      "bbox": [
+        66,
+        116,
+        1110,
+        34
+      ],
+      "geometry": "rect",
+      "text": "从落子、解释到复盘，所有关键动作都围绕同一份棋谱展开。",
+      "textPreview": "从落子、解释到复盘，所有关键动作都围绕同一份棋谱展开。",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "从落子、解释到复盘，所有关键动作都围绕同一份棋谱展开。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "从落子、解释到复盘，所有关键动作都围绕同一份棋谱展开。",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "color": "#B6C2BA"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "从落子、解释到复盘，所有关键动作都围绕同一份棋谱展开。",
+              "fontSize": 18,
+              "color": "#B6C2BA"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/md0z29o7",
+      "id": "5",
+      "bbox": [
+        64,
+        154,
+        72,
+        4
+      ],
+      "geometry": "rect",
+      "fillColor": "#D8B764",
+      "lineColor": "#D8B764",
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/90rid4ni",
+      "id": "6",
+      "bbox": [
+        82,
+        224,
+        70,
+        60
+      ],
+      "geometry": "rect",
+      "text": "01",
+      "textPreview": "01",
+      "resolvedFontSize": 46,
+      "resolvedTextStyle": {
+        "fontSize": 46,
+        "typeface": "+mn-lt",
+        "color": "#D8B764",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "01"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "01",
+          "resolvedTextStyle": {
+            "fontSize": 46,
+            "color": "#D8B764",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "01",
+              "fontSize": 46,
+              "color": "#D8B764",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8zih4z6x",
+      "id": "7",
+      "bbox": [
+        82,
+        303,
+        300,
+        44
+      ],
+      "geometry": "rect",
+      "text": "记录",
+      "textPreview": "记录",
+      "resolvedFontSize": 31,
+      "resolvedTextStyle": {
+        "fontSize": 31,
+        "typeface": "+mn-lt",
+        "color": "#F5F0E2",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "记录"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "记录",
+          "resolvedTextStyle": {
+            "fontSize": 31,
+            "color": "#F5F0E2",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "记录",
+              "fontSize": 31,
+              "color": "#F5F0E2",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zapg7u5g",
+      "id": "8",
+      "bbox": [
+        82,
+        366,
+        322,
+        100
+      ],
+      "geometry": "rect",
+      "text": "保存每一步、每条变化和节点注释。",
+      "textPreview": "保存每一步、每条变化和节点注释。",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "fontSize": 21,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "保存每一步、每条变化和节点注"
+          },
+          {
+            "index": 2,
+            "text": "释。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "保存每一步、每条变化和节点注释。",
+          "resolvedTextStyle": {
+            "fontSize": 21,
+            "color": "#B6C2BA"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "保存每一步、每条变化和节点注释。",
+              "fontSize": 21,
+              "color": "#B6C2BA"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/y9gzypov",
+      "id": "9",
+      "bbox": [
+        82,
+        500,
+        320,
+        2
+      ],
+      "geometry": "rect",
+      "fillColor": "#29463A",
+      "lineColor": "#29463A",
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0vq5ozix",
+      "id": "10",
+      "bbox": [
+        480,
+        224,
+        70,
+        60
+      ],
+      "geometry": "rect",
+      "text": "02",
+      "textPreview": "02",
+      "resolvedFontSize": 46,
+      "resolvedTextStyle": {
+        "fontSize": 46,
+        "typeface": "+mn-lt",
+        "color": "#79C4A6",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "02"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "02",
+          "resolvedTextStyle": {
+            "fontSize": 46,
+            "color": "#79C4A6",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "02",
+              "fontSize": 46,
+              "color": "#79C4A6",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1wzmh4zi",
+      "id": "11",
+      "bbox": [
+        480,
+        303,
+        300,
+        44
+      ],
+      "geometry": "rect",
+      "text": "理解",
+      "textPreview": "理解",
+      "resolvedFontSize": 31,
+      "resolvedTextStyle": {
+        "fontSize": 31,
+        "typeface": "+mn-lt",
+        "color": "#F5F0E2",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "理解"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "理解",
+          "resolvedTextStyle": {
+            "fontSize": 31,
+            "color": "#F5F0E2",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "理解",
+              "fontSize": 31,
+              "color": "#F5F0E2",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/et8nmp0r",
+      "id": "12",
+      "bbox": [
+        480,
+        366,
+        322,
+        100
+      ],
+      "geometry": "rect",
+      "text": "在读谱中浏览已有变化，并保留本机独立标注。",
+      "textPreview": "在读谱中浏览已有变化，并保留本机独立标注。",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "fontSize": 21,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "在读谱中浏览已有变化，并保留"
+          },
+          {
+            "index": 2,
+            "text": "本机独立标注。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "在读谱中浏览已有变化，并保留本机独立标注。",
+          "resolvedTextStyle": {
+            "fontSize": 21,
+            "color": "#B6C2BA"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "在读谱中浏览已有变化，并保留本机独立标注。",
+              "fontSize": 21,
+              "color": "#B6C2BA"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fuh4fuhc",
+      "id": "13",
+      "bbox": [
+        480,
+        500,
+        320,
+        2
+      ],
+      "geometry": "rect",
+      "fillColor": "#29463A",
+      "lineColor": "#29463A",
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/srq5kfi1",
+      "id": "14",
+      "bbox": [
+        878,
+        224,
+        70,
+        60
+      ],
+      "geometry": "rect",
+      "text": "03",
+      "textPreview": "03",
+      "resolvedFontSize": 46,
+      "resolvedTextStyle": {
+        "fontSize": 46,
+        "typeface": "+mn-lt",
+        "color": "#D8B764",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "03"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "03",
+          "resolvedTextStyle": {
+            "fontSize": 46,
+            "color": "#D8B764",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "03",
+              "fontSize": 46,
+              "color": "#D8B764",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dszmdkz6",
+      "id": "15",
+      "bbox": [
+        878,
+        303,
+        300,
+        44
+      ],
+      "geometry": "rect",
+      "text": "验证",
+      "textPreview": "验证",
+      "resolvedFontSize": 31,
+      "resolvedTextStyle": {
+        "fontSize": 31,
+        "typeface": "+mn-lt",
+        "color": "#F5F0E2",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "验证"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "验证",
+          "resolvedTextStyle": {
+            "fontSize": 31,
+            "color": "#F5F0E2",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "验证",
+              "fontSize": 31,
+              "color": "#F5F0E2",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/q58ni50v",
+      "id": "16",
+      "bbox": [
+        878,
+        366,
+        322,
+        100
+      ],
+      "geometry": "rect",
+      "text": "通过做题、规则判断和 AI 对战检验思路。",
+      "textPreview": "通过做题、规则判断和 AI 对战检验思路。",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "fontSize": 21,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "通过做题、规则判断和 AI"
+          },
+          {
+            "index": 2,
+            "text": "对战检验思路。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "通过做题、规则判断和 AI 对战检验思路。",
+          "resolvedTextStyle": {
+            "fontSize": 21,
+            "color": "#B6C2BA"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "通过做题、规则判断和 AI 对战检验思路。",
+              "fontSize": 21,
+              "color": "#B6C2BA"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rqh4bahg",
+      "id": "17",
+      "bbox": [
+        878,
+        500,
+        320,
+        2
+      ],
+      "geometry": "rect",
+      "fillColor": "#29463A",
+      "lineColor": "#29463A",
+      "lineWidth": 0
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cna5wjy5",
+      "id": "18",
+      "bbox": [
+        82,
+        565,
+        1100,
+        54
+      ],
+      "geometry": "rect",
+      "text": "最终得到的不是一张截图，而是一套能继续研究的本地资料。",
+      "textPreview": "最终得到的不是一张截图，而是一套能继续研究的本地资料。",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "fontSize": 28,
+        "typeface": "+mn-lt",
+        "color": "#E7DAC0",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "最终得到的不是一张截图，而是一套能继续研究的本地资料。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "最终得到的不是一张截图，而是一套能继续研究的本地资料。",
+          "resolvedTextStyle": {
+            "fontSize": 28,
+            "color": "#E7DAC0",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "最终得到的不是一张截图，而是一套能继续研究的本地资料。",
+              "fontSize": 28,
+              "color": "#E7DAC0",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

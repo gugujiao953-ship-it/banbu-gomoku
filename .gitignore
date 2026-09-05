@@ -23,7 +23,32 @@ android/.idea/
 
 # Local tooling
 .codex/
+.codex-tmp/
 .claude/
 .mimosa/
+.workbuddy/
 .env
 .env.*
+!.env.example
+
+# ===== 2026-09-03 baseline 补充：签名材料显式防线（artifacts/ 已含一层，此处防其他路径出现）=====
+*.p12
+*.credential.xml
+**/signing/
+
+# 本机临时与运行证据目录
+.tmp/
+/qa-artifacts/
+/%SystemDrive%/
+/temp-apk-compare/
+*.dex
+
+# 根目录调试产物（设备截图/转储/APK，均为可再生文件）
+/artifacts-*.png
+/artifacts-*.xml
+/browser-*.png
+/cache-check.png
+/device-*.png
+/diag-*.png
+/tmp-*.png
+*.apk

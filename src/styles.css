@@ -659,7 +659,7 @@ html[data-theme="dark"] .stone-opacity-setting,html[data-theme="dark"] .rule-car
 .puzzle-rule-selector{width:112px}
 .puzzle-think-speed-selector{width:94px}
 .puzzle-rule-selector button,.puzzle-think-speed-selector button{min-height:36px;padding:0 5px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--muted);font-size:11px;font-weight:700;white-space:nowrap}
-.puzzle-rule-selector button.selected,.puzzle-think-speed-selector button.selected{background:var(--jade);border-color:var(--green);color:var(--green);box-shadow:0 2px 7px var(--surface-shadow,#0001),inset 0 1px 0 #fff6}
+.puzzle-rule-selector button.selected,.puzzle-think-speed-selector button.selected{background:var(--green);border-color:var(--green-2,var(--green));color:#fff;box-shadow:0 3px 10px var(--surface-shadow,#0002),inset 0 1px 0 #ffffff40}
 .puzzle-rule-selector button:not(.selected),.puzzle-think-speed-selector button:not(.selected){background:var(--surface-2,#f1f4f2);border-color:var(--line)}
 .puzzle-rule-selector button:disabled{opacity:1;cursor:not-allowed}
 .dock-panel .setup-stone-switch{grid-column:span 2;min-height:48px;height:48px;border:1px solid #e1dbd0;background:#dfdbd2}

@@ -22,7 +22,7 @@ try {
   await page.getByLabel("最近导入列表").check();
   await page.getByRole("button", { name: "打谱" }).click();
 
-  const input = page.locator('input[accept="*/*"]');
+  const input = page.locator('input[type="file"][accept*=".sgf"]');
   await input.setInputFiles({
     name: "最近导入测试.sgf",
     mimeType: "application/x-go-sgf",
@@ -49,7 +49,7 @@ try {
   assert.match(reopenedText, /最近导入测试/, `最近导入重开后页面未恢复棋谱：${reopenedText.slice(-800)}`);
   assert.equal(await reopenedPage.locator(".import-options").count(), 0, "一键重开后导入面板应关闭");
   assert.match(reopenedText, /最近导入测试/);
-  assert.match(reopenedText, /0 \/ 2 手/, "最近导入重开后应恢复完整主线长度");
+  assert.equal(await reopenedPage.locator(".unified-status-facts").getByText("第 0 手 / 2", { exact: true }).count(), 1, "最近导入重开后应恢复完整主线长度");
   await reopenedPage.getByRole("button", { name: "到最后一手", exact: true }).click();
   const reopenedStones = await reopenedPage.locator(".stone").count();
   assert.equal(reopenedStones, 2, `跳到终点后应恢复棋谱内容，当前棋子数=${reopenedStones}；页面状态：${(await reopenedPage.locator("body").innerText()).slice(-1000)}`);

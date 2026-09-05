@@ -1,0 +1,273 @@
+{"kind":"deck","id":"pr/v4u9wc","name":"Deck"}
+{"kind":"layout","layoutId":"b6487ab5-771f-42cf-9382-e98f45701cfc","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"37272c15-2a24-4b69-bc8a-94b8596aaf60","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/fqdchv","slide":1,"title":"LOCAL GOMOKU STUDY WORKSPACE","textShapes":6}
+{"kind":"textbox","id":"sh/sfy5c3i9","slide":1,"text":"LOCAL GOMOKU STUDY WORKSPACE","textPreview":"LOCAL GOMOKU STUDY WORKSPACE","textChars":28,"textLines":1,"bbox":[72,52,430,26]}
+{"kind":"textbox","id":"sh/rep4jyho","slide":1,"text":"半步五子棋打谱","textPreview":"半步五子棋打谱","textChars":5,"textLines":1,"bbox":[72,116,500,86]}
+{"kind":"textbox","id":"sh/6dwnat03","slide":1,"text":"在本机，把每一盘棋\n变成可以继续研究的知识。","textPreview":"在本机，把每一盘棋 | 变成可以继续研究的知识。","textChars":22,"textLines":2,"bbox":[72,222,500,144]}
+{"kind":"textbox","id":"sh/1k7mp8zq","slide":1,"text":"打谱 · 读谱 · 做题 · AI 对战\n棋谱库、分支树、规则说明与本机标注","textPreview":"打谱 · 读谱 · 做题 · AI 对战 | 棋谱库、分支树、规则说明与本机标注","textChars":38,"textLines":2,"bbox":[72,410,500,92]}
+{"kind":"shape","id":"sh/gjy5g3il","slide":1,"bbox":[72,548,176,7]}
+{"kind":"shape","id":"sh/fip4nyh0","slide":1,"bbox":[658,42,550,584]}
+{"kind":"shape","id":"sh/honmd4zm","slide":1,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/wnel4zi1","slide":1,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/qpojap4r","slide":1,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"image","id":"im/zq5472pk","slide":1,"name":"","geometry":"roundRect","alt":"半步五子棋打谱工作区真实截图","bbox":[668,52,530,564]}
+{"kind":"notes","id":"nt/fqdchv","slide":1,"text":"[Sources]\n- 真实界面截图：01-workspace-empty.png\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/pqz6qp","slide":2,"title":"一块棋盘，串起四种训练动作","textShapes":16}
+{"kind":"textbox","id":"sh/knmhwfa1","slide":2,"name":"slide-title","text":"一块棋盘，串起四种训练动作","textPreview":"一块棋盘，串起四种训练动作","textChars":13,"textLines":1,"bbox":[72,52,1136,62]}
+{"kind":"textbox","id":"sh/zmdg3atg","slide":2,"text":"不是孤立工具的集合，而是一条从落子、理解到验证的学习路径。","textPreview":"不是孤立工具的集合，而是一条从落子、理解到验证的学习路径。","textChars":29,"textLines":1,"bbox":[72,124,1080,52]}
+{"kind":"textbox","id":"sh/yl4zu5sv","slide":2,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[72,224,78,36]}
+{"kind":"textbox","id":"sh/9cfy9kbi","slide":2,"text":"打谱","textPreview":"打谱","textChars":2,"textLines":1,"bbox":[164,224,430,38]}
+{"kind":"textbox","id":"sh/8b6h0fax","slide":2,"text":"记录主线与变化，把每一步留下来。","textPreview":"记录主线与变化，把每一步留下来。","textChars":16,"textLines":1,"bbox":[164,274,430,84]}
+{"kind":"shape","id":"sh/7axg7atc","slide":2,"bbox":[72,390,500,0]}
+{"kind":"textbox","id":"sh/m94zy5s7","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[656,224,78,36]}
+{"kind":"textbox","id":"sh/hgfidkbu","slide":2,"text":"读谱","textPreview":"读谱","textChars":2,"textLines":1,"bbox":[748,224,430,38]}
+{"kind":"textbox","id":"sh/wf6h4za9","slide":2,"text":"只读浏览已有变化，保护原谱不被误改。","textPreview":"只读浏览已有变化，保护原谱不被误改。","textChars":18,"textLines":1,"bbox":[748,274,430,84]}
+{"kind":"shape","id":"sh/6toz69c7","slide":2,"bbox":[656,390,500,0]}
+{"kind":"textbox","id":"sh/ruxgfets","slide":2,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[72,432,78,36]}
+{"kind":"textbox","id":"sh/sv6h8jud","slide":2,"text":"做题","textPreview":"做题","textChars":2,"textLines":1,"bbox":[164,432,430,38]}
+{"kind":"textbox","id":"sh/twzyh4by","slide":2,"text":"把棋形判断变成主动练习与反馈。","textPreview":"把棋形判断变成主动练习与反馈。","textChars":15,"textLines":1,"bbox":[164,482,430,84]}
+{"kind":"shape","id":"sh/ex8za9sj","slide":2,"bbox":[72,598,500,0]}
+{"kind":"textbox","id":"sh/fihgjeto","slide":2,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[656,432,78,36]}
+{"kind":"textbox","id":"sh/gjqhcja9","slide":2,"text":"AI 对战","textPreview":"AI 对战","textChars":5,"textLines":1,"bbox":[748,432,430,38]}
+{"kind":"textbox","id":"sh/1kzylobu","slide":2,"text":"按规则、强度和执子方式开始本机练习。","textPreview":"按规则、强度和执子方式开始本机练习。","textChars":18,"textLines":1,"bbox":[748,482,430,84]}
+{"kind":"shape","id":"sh/u14fypcz","slide":2,"bbox":[656,598,500,0]}
+{"kind":"shape","id":"sh/vmdg7utk","slide":2,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/z6twfq9c","slide":2,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/y5kv6lsr","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"notes","id":"nt/pqz6qp","slide":2,"text":"[Sources]\n- 应用顶部工作模式与底部主导航的当前可见功能\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/i3qzrf","slide":3,"title":"打谱把每一步变成可回看的记录","textShapes":11}
+{"kind":"textbox","id":"sh/bidcry1w","slide":3,"name":"slide-title","text":"打谱把每一步变成可回看的记录","textPreview":"打谱把每一步变成可回看的记录","textChars":14,"textLines":1,"bbox":[72,52,1136,62]}
+{"kind":"textbox","id":"sh/cjmd032h","slide":3,"text":"落子编号、当前手数、轮次、保存状态和导航始终围绕同一块棋盘。","textPreview":"落子编号、当前手数、轮次、保存状态和导航始终围绕同一块棋盘。","textChars":30,"textLines":1,"bbox":[72,124,1080,52]}
+{"kind":"shape","id":"sh/xkfut8j2","slide":3,"bbox":[72,194,720,432]}
+{"kind":"textbox","id":"sh/zmxcvy1s","slide":3,"text":"记录的不只是结果","textPreview":"记录的不只是结果","textChars":8,"textLines":1,"bbox":[840,214,300,26]}
+{"kind":"textbox","id":"sh/kn6d432d","slide":3,"text":"逐手编号","textPreview":"逐手编号","textChars":4,"textLines":1,"bbox":[840,260,350,38]}
+{"kind":"textbox","id":"sh/lofux8jy","slide":3,"text":"棋盘直接标出走子顺序，复盘时无需猜测先后。","textPreview":"棋盘直接标出走子顺序，复盘时无需猜测先后。","textChars":21,"textLines":1,"bbox":[840,310,350,78]}
+{"kind":"textbox","id":"sh/epkbq9k3","slide":3,"text":"随时导航","textPreview":"随时导航","textChars":4,"textLines":1,"bbox":[840,390,350,38]}
+{"kind":"textbox","id":"sh/fqtczelo","slide":3,"text":"起点、上一手、下一手、终点都在同一操作区。","textPreview":"起点、上一手、下一手、终点都在同一操作区。","textChars":21,"textLines":1,"bbox":[840,440,350,78]}
+{"kind":"textbox","id":"sh/3id4r6do","slide":3,"text":"保存边界清楚","textPreview":"保存边界清楚","textChars":6,"textLines":1,"bbox":[840,520,350,38]}
+{"kind":"textbox","id":"sh/2h4ni1w3","slide":3,"text":"已保存与未保存草稿状态明确可见。","textPreview":"已保存与未保存草稿状态明确可见。","textChars":16,"textLines":1,"bbox":[840,570,350,82]}
+{"kind":"shape","id":"sh/pkvmtgve","slide":3,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/4jm5kbe9","slide":3,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/fut4n6dc","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"image","id":"im/7ax4fyh4","slide":3,"name":"","geometry":"roundRect","alt":"已落九手的打谱棋盘真实截图","bbox":[84,206,696,408]}
+{"kind":"notes","id":"nt/i3qzrf","slide":3,"text":"[Sources]\n- 真实界面截图：02-recording-board.png\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/0zzcq7","slide":4,"title":"棋谱树让主线与变化都留得住","textShapes":7}
+{"kind":"textbox","id":"sh/5s7utkj2","slide":4,"name":"slide-title","text":"棋谱树让主线与变化都留得住","textPreview":"棋谱树让主线与变化都留得住","textChars":13,"textLines":1,"bbox":[72,52,1136,62]}
+{"kind":"textbox","id":"sh/ipwbip0b","slide":4,"text":"主线继续向前，分支也有自己的位置；研究过程不必被“覆盖”。","textPreview":"主线继续向前，分支也有自己的位置；研究过程不必被“覆盖”。","textChars":29,"textLines":1,"bbox":[72,124,1080,52]}
+{"kind":"textbox","id":"sh/3q5cru1w","slide":4,"text":"VARIATION TREE","textPreview":"VARIATION TREE","textChars":14,"textLines":1,"bbox":[72,204,240,26]}
+{"kind":"textbox","id":"sh/gnetgfil","slide":4,"text":"每一次“如果这样下”\n都能成为可返回的节点。","textPreview":"每一次“如果这样下” | 都能成为可返回的节点。","textChars":22,"textLines":2,"bbox":[72,250,430,126]}
+{"kind":"textbox","id":"sh/honupkjq","slide":4,"text":"分支树面板把变化结构、当前节点和导航放在一起。适合整理定式、比较应手，也适合把讲解拆成清晰的变化路径。","textPreview":"分支树面板把变化结构、当前节点和导航放在一起。适合整理定式、比较应手，也适合把讲解拆成清晰的变化路径。","textChars":51,"textLines":1,"bbox":[72,408,430,150]}
+{"kind":"shape","id":"sh/ulwbe50f","slide":4,"bbox":[72,586,270,7]}
+{"kind":"shape","id":"sh/vm5cna10","slide":4,"bbox":[548,190,660,438]}
+{"kind":"shape","id":"sh/1kru14ja","slide":4,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/583ihgne","slide":4,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/47uh8bmt","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"image","id":"im/10rypk36","slide":4,"name":"","geometry":"roundRect","alt":"分支树面板真实截图","bbox":[560,202,636,414]}
+{"kind":"notes","id":"nt/0zzcq7","slide":4,"text":"[Sources]\n- 真实界面截图：03-branch-tree.png\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/d3y5v0","slide":5,"title":"读谱模式让研究与编辑保持边界","textShapes":13}
+{"kind":"textbox","id":"sh/14zu5gzq","slide":5,"name":"slide-title","text":"读谱模式让研究与编辑保持边界","textPreview":"读谱模式让研究与编辑保持边界","textChars":14,"textLines":1,"bbox":[72,52,1136,62]}
+{"kind":"textbox","id":"sh/eh8va10z","slide":5,"text":"可以浏览已有变化、切换分支与做本机标注，但不会把原棋谱变成草稿。","textPreview":"可以浏览已有变化、切换分支与做本机标注，但不会把原棋谱变成草稿。","textChars":32,"textLines":1,"bbox":[72,124,1080,52]}
+{"kind":"shape","id":"sh/f2hc36hk","slide":5,"bbox":[72,190,560,438]}
+{"kind":"textbox","id":"sh/p8je9gzm","slide":5,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[684,214,54,34]}
+{"kind":"textbox","id":"sh/258ve10b","slide":5,"text":"浏览已有变化","textPreview":"浏览已有变化","textChars":6,"textLines":1,"bbox":[756,214,440,38]}
+{"kind":"textbox","id":"sh/n6hw76hw","slide":5,"text":"沿主线和分支前后移动，专注理解棋局。","textPreview":"沿主线和分支前后移动，专注理解棋局。","textChars":18,"textLines":1,"bbox":[756,264,440,72]}
+{"kind":"textbox","id":"sh/4b6d4rix","slide":5,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[684,334,54,34]}
+{"kind":"textbox","id":"sh/5cfuxczi","slide":5,"text":"保留入口反馈","textPreview":"保留入口反馈","textChars":6,"textLines":1,"bbox":[756,334,440,38]}
+{"kind":"textbox","id":"sh/tcne58jq","slide":5,"text":"编辑型入口仍可见，点击时明确提示读谱模式不能修改。","textPreview":"编辑型入口仍可见，点击时明确提示读谱模式不能修改。","textChars":25,"textLines":1,"bbox":[756,384,440,72]}
+{"kind":"textbox","id":"sh/srexc325","slide":5,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[684,454,54,34]}
+{"kind":"textbox","id":"sh/rq5w3i1k","slide":5,"text":"标注独立存储","textPreview":"标注独立存储","textChars":6,"textLines":1,"bbox":[756,454,440,38]}
+{"kind":"textbox","id":"sh/6pwfadkz","slide":5,"text":"分析候选留在本机标注层，不改原谱内容。","textPreview":"分析候选留在本机标注层，不改原谱内容。","textChars":19,"textLines":1,"bbox":[756,504,440,72]}
+{"kind":"shape","id":"sh/1g7e9sjm","slide":5,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/gfexgni1","slide":5,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/fe5w7i1g","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"image","id":"im/94nmtgvu","slide":5,"name":"","geometry":"roundRect","alt":"读谱模式真实截图","bbox":[84,202,536,414]}
+{"kind":"notes","id":"nt/d3y5v0","slide":5,"text":"[Sources]\n- 真实界面截图：05-review-mode.png\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/q4t9bn","slide":6,"title":"棋谱库把单局与大棋谱放在同一入口","textShapes":11}
+{"kind":"textbox","id":"sh/0vq1kj6p","slide":6,"name":"slide-title","text":"棋谱库把单局与大棋谱放在同一入口","textPreview":"棋谱库把单局与大棋谱放在同一入口","textChars":16,"textLines":1,"bbox":[72,52,1136,62]}
+{"kind":"textbox","id":"sh/fuhkbep4","slide":6,"text":"搜索、分类、导入、批量处理和图片识谱都围绕长期积累组织。","textPreview":"搜索、分类、导入、批量处理和图片识谱都围绕长期积累组织。","textChars":28,"textLines":1,"bbox":[72,124,1080,52]}
+{"kind":"shape","id":"sh/et8ji9oj","slide":6,"bbox":[72,188,760,442]}
+{"kind":"textbox","id":"sh/ojq1o36l","slide":6,"text":"一套库，容纳不同规模","textPreview":"一套库，容纳不同规模","textChars":10,"textLines":1,"bbox":[884,204,300,26]}
+{"kind":"textbox","id":"sh/nyhkfy50","slide":6,"text":"棋谱与大棋谱","textPreview":"棋谱与大棋谱","textChars":6,"textLines":1,"bbox":[884,252,316,38]}
+{"kind":"textbox","id":"sh/2x8jmtof","slide":6,"text":"单局研究与大型合集在同一套浏览体系中切换。","textPreview":"单局研究与大型合集在同一套浏览体系中切换。","textChars":21,"textLines":1,"bbox":[884,302,316,82]}
+{"kind":"textbox","id":"sh/5of25472","slide":6,"text":"搜索与分类","textPreview":"搜索与分类","textChars":5,"textLines":1,"bbox":[884,384,316,38]}
+{"kind":"textbox","id":"sh/4361cz6h","slide":6,"text":"按棋谱名、棋手、主题和文件夹快速定位。","textPreview":"按棋谱名、棋手、主题和文件夹快速定位。","textChars":19,"textLines":1,"bbox":[884,434,316,82]}
+{"kind":"textbox","id":"sh/upcn6hgb","slide":6,"text":"图片识谱","textPreview":"图片识谱","textChars":4,"textLines":1,"bbox":[884,516,316,38]}
+{"kind":"textbox","id":"sh/vqlof2xw","slide":6,"text":"图片也能成为棋谱整理的起点。","textPreview":"图片也能成为棋谱整理的起点。","textChars":14,"textLines":1,"bbox":[884,566,316,64]}
+{"kind":"shape","id":"sh/wru587yh","slide":6,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/hs36hcf2","slide":6,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/itc7ahgn","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"image","id":"im/w7yhwzi9","slide":6,"name":"","geometry":"roundRect","alt":"棋谱库真实截图","bbox":[84,200,736,418]}
+{"kind":"notes","id":"nt/q4t9bn","slide":6,"text":"[Sources]\n- 真实界面截图：04-library.png\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/ifpbd5","slide":7,"title":"做题把“看懂”变成主动判断","textShapes":7}
+{"kind":"textbox","id":"sh/svi9w7u1","slide":7,"name":"slide-title","text":"做题把“看懂”变成主动判断","textPreview":"做题把“看懂”变成主动判断","textChars":13,"textLines":1,"bbox":[72,52,1136,62]}
+{"kind":"textbox","id":"sh/rups32tg","slide":7,"text":"题目进入同一块棋盘，走子、反馈与复盘保持连贯。","textPreview":"题目进入同一块棋盘，走子、反馈与复盘保持连贯。","textChars":23,"textLines":1,"bbox":[72,124,1080,52]}
+{"kind":"textbox","id":"sh/qtgruxcv","slide":7,"text":"PUZZLE PRACTICE","textPreview":"PUZZLE PRACTICE","textChars":15,"textLines":1,"bbox":[72,202,260,26]}
+{"kind":"textbox","id":"sh/587q1cvq","slide":7,"text":"先判断，再落子。\n答案不是终点，棋形才是。","textPreview":"先判断，再落子。 | 答案不是终点，棋形才是。","textChars":21,"textLines":2,"bbox":[72,248,440,128]}
+{"kind":"textbox","id":"sh/47y9s7u5","slide":7,"text":"做题模式支持从题目进入棋盘，在真实局面里验证候选，并把结果带回复盘流程。","textPreview":"做题模式支持从题目进入棋盘，在真实局面里验证候选，并把结果带回复盘流程。","textChars":36,"textLines":1,"bbox":[72,414,430,100]}
+{"kind":"shape","id":"sh/36p8z2dk","slide":7,"bbox":[72,558,350,0]}
+{"kind":"shape","id":"sh/i5grqxcz","slide":7,"bbox":[548,186,660,444]}
+{"kind":"shape","id":"sh/o3294ru9","slide":7,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/e1gv2tk3","slide":7,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/z2pcby1o","slide":7,"text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"image","id":"im/87qd03ud","slide":7,"name":"","geometry":"roundRect","alt":"做题模式真实截图","bbox":[560,198,636,420]}
+{"kind":"notes","id":"nt/ifpbd5","slide":7,"text":"[Sources]\n- 真实界面截图：06-puzzles.png\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/n9gsdj","slide":8,"title":"AI 对战先选规则，再选强度与执子","textShapes":7}
+{"kind":"textbox","id":"sh/1srupwju","slide":8,"name":"slide-title","text":"AI 对战先选规则，再选强度与执子","textPreview":"AI 对战先选规则，再选强度与执子","textChars":17,"textLines":1,"bbox":[72,52,1136,62]}
+{"kind":"textbox","id":"sh/e5gve1k3","slide":8,"text":"八种预设集中在一个规则目录；有禁、无禁直接写在规则名称后。","textPreview":"八种预设集中在一个规则目录；有禁、无禁直接写在规则名称后。","textChars":29,"textLines":1,"bbox":[72,124,1080,52]}
+{"kind":"shape","id":"sh/fq9cn61o","slide":8,"bbox":[72,186,700,444]}
+{"kind":"textbox","id":"sh/pwretgjq","slide":8,"text":"规则目录","textPreview":"规则目录","textChars":4,"textLines":1,"bbox":[824,202,200,26]}
+{"kind":"textbox","id":"sh/2t0vi1kf","slide":8,"text":"无禁手 · 无禁\n无禁6不胜 · 无禁\n一手交换 · 无禁\n三手交换 · 无禁\n五手两打 · 有禁\n五手多打 · 有禁\n塔十 · 有禁\n塔拉 · 有禁","textPreview":"无禁手 · 无禁 | 无禁6不胜 · 无禁 | 一手交换 · 无禁 | 三手交换 · 无禁 | 五手两打 · 有禁 | 五手多打 · 有禁 | 塔十 · 有禁 | 塔拉 · 有禁","textChars":75,"textLines":8,"bbox":[824,246,352,286]}
+{"kind":"textbox","id":"sh/nu9wr610","slide":8,"text":"每项右侧的“？”可直接查看规则流程与胜负判定。","textPreview":"每项右侧的“？”可直接查看规则流程与胜负判定。","textChars":23,"textLines":1,"bbox":[824,552,350,62]}
+{"kind":"shape","id":"sh/4zyd8721","slide":8,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/507uhcjm","slide":8,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/t4n6hsvi","slide":8,"text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"image","id":"im/hcfm1cr2","slide":8,"name":"","geometry":"roundRect","alt":"AI 对战规则目录真实截图","bbox":[84,198,676,420]}
+{"kind":"notes","id":"nt/n9gsdj","slide":8,"text":"[Sources]\n- 真实界面截图：09-ai-rules.png；规则名称来自当前 AI 对战弹窗\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/mhavpa","slide":9,"title":"五手多打把打点决策放回对局现场","textShapes":16}
+{"kind":"textbox","id":"sh/9oz2pcve","slide":9,"name":"slide-title","text":"五手多打把打点决策放回对局现场","textPreview":"五手多打把打点决策放回对局现场","textChars":15,"textLines":1,"bbox":[72,52,1136,62]}
+{"kind":"textbox","id":"sh/m18juhw3","slide":9,"text":"白4完成后再选 3–10 个打点；黑方依次提供 A1、A2…候选。","textPreview":"白4完成后再选 3–10 个打点；黑方依次提供 A1、A2…候选。","textChars":33,"textLines":1,"bbox":[72,124,1080,52]}
+{"kind":"shape","id":"sh/72hkn2do","slide":9,"bbox":[72,188,706,440]}
+{"kind":"textbox","id":"sh/l0z2lcfi","slide":9,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[826,204,44,30]}
+{"kind":"textbox","id":"sh/yxojqxwr","slide":9,"text":"白4完成","textPreview":"白4完成","textChars":4,"textLines":1,"bbox":[888,204,286,34]}
+{"kind":"textbox","id":"sh/zyxkj2xc","slide":9,"text":"交换阶段已结束","textPreview":"交换阶段已结束","textChars":7,"textLines":1,"bbox":[888,242,286,42]}
+{"kind":"textbox","id":"sh/cv61one1","slide":9,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[826,302,44,30]}
+{"kind":"textbox","id":"sh/xwf2hsf6","slide":9,"text":"临场选数量","textPreview":"临场选数量","textChars":5,"textLines":1,"bbox":[888,302,286,34]}
+{"kind":"textbox","id":"sh/5gnadcjy","slide":9,"text":"由白方选择 3–10","textPreview":"由白方选择 3–10","textChars":10,"textLines":1,"bbox":[888,340,286,42]}
+{"kind":"textbox","id":"sh/4fet47id","slide":9,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[826,400,44,30]}
+{"kind":"textbox","id":"sh/je5sb21s","slide":9,"text":"依次给候选","textPreview":"依次给候选","textChars":5,"textLines":1,"bbox":[888,400,286,34]}
+{"kind":"textbox","id":"sh/idwb2x07","slide":9,"text":"棋子内显示 A1、A2…","textPreview":"棋子内显示 A1、A2…","textChars":12,"textLines":1,"bbox":[888,438,286,42]}
+{"kind":"textbox","id":"sh/hcna9sjm","slide":9,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[826,498,44,30]}
+{"kind":"textbox","id":"sh/wbut0nih","slide":9,"text":"白方选一点","textPreview":"白方选一点","textChars":5,"textLines":1,"bbox":[888,498,286,34]}
+{"kind":"textbox","id":"sh/vals7i1w","slide":9,"text":"其余候选撤下，继续对局","textPreview":"其余候选撤下，继续对局","textChars":11,"textLines":1,"bbox":[888,536,286,42]}
+{"kind":"shape","id":"sh/u9cbyd0b","slide":9,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/983a5sjq","slide":9,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/87utwni5","slide":9,"text":"09","textPreview":"09","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"image","id":"im/p4ju1k3a","slide":9,"name":"","geometry":"roundRect","alt":"五手多打规则详情真实截图","bbox":[84,200,682,416]}
+{"kind":"notes","id":"nt/mhavpa","slide":9,"text":"[Sources]\n- 真实界面截图：10-five-move-rule-detail.png；规则流程来自当前五手多打说明\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/o4n2u3","slide":10,"title":"规则说明把“有禁、无禁”与判定边界讲清楚","textShapes":11}
+{"kind":"textbox","id":"sh/3q10valg","slide":10,"name":"slide-title","text":"规则说明把“有禁、无禁”与判定边界讲清楚","textPreview":"规则说明把“有禁、无禁”与判定边界讲清楚","textChars":20,"textLines":1,"bbox":[72,52,1136,62]}
+{"kind":"textbox","id":"sh/orah4fm1","slide":10,"text":"不仅告诉你规则名，还解释流程、胜负、禁手优先级与实现边界。","textPreview":"不仅告诉你规则名，还解释流程、胜负、禁手优先级与实现边界。","textChars":29,"textLines":1,"bbox":[72,124,1080,52]}
+{"kind":"shape","id":"sh/psjix036","slide":10,"bbox":[72,186,742,444]}
+{"kind":"textbox","id":"sh/bu10zalc","slide":10,"text":"读得懂，才下得明白","textPreview":"读得懂，才下得明白","textChars":9,"textLines":1,"bbox":[860,204,320,26]}
+{"kind":"textbox","id":"sh/cfah8f2x","slide":10,"text":"规则预设","textPreview":"规则预设","textChars":4,"textLines":1,"bbox":[860,250,330,38]}
+{"kind":"textbox","id":"sh/dgji1k3i","slide":10,"text":"胜负方式与开局流程绑定，选中即可开始。","textPreview":"胜负方式与开局流程绑定，选中即可开始。","textChars":19,"textLines":1,"bbox":[860,300,330,74]}
+{"kind":"textbox","id":"sh/yhczapk3","slide":10,"text":"禁手判定","textPreview":"禁手判定","textChars":4,"textLines":1,"bbox":[860,374,330,38]}
+{"kind":"textbox","id":"sh/zil03ulo","slide":10,"text":"长连、四四、三三及优先级都有文字说明。","textPreview":"长连、四四、三三及优先级都有文字说明。","textChars":19,"textLines":1,"bbox":[860,424,330,74]}
+{"kind":"textbox","id":"sh/j6h0napk","slide":10,"text":"实现边界","textPreview":"实现边界","textChars":4,"textLines":1,"bbox":[860,498,330,38]}
+{"kind":"textbox","id":"sh/y58ju5oz","slide":10,"text":"明确实用辅助与正式裁判之间的边界。","textPreview":"明确实用辅助与正式裁判之间的边界。","textChars":17,"textLines":1,"bbox":[860,548,330,74]}
+{"kind":"shape","id":"sh/l8zip07q","slide":10,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/k7q1wf65","slide":10,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/bix0jqpo","slide":10,"text":"10","textPreview":"10","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"image","id":"im/ve9w325w","slide":10,"name":"","geometry":"roundRect","alt":"完整规则说明真实截图","bbox":[84,198,718,420]}
+{"kind":"notes","id":"nt/o4n2u3","slide":10,"text":"[Sources]\n- 真实界面截图：11-rule-guide.png；规则说明来自应用内规则说明页\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/1dcdqe","slide":11,"title":"分析与本机标注：结论留下，原谱不动","textShapes":16}
+{"kind":"textbox","id":"sh/elo7uxg3","slide":11,"name":"slide-title","text":"分析与本机标注：结论留下，原谱不动","textPreview":"分析与本机标注：结论留下，原谱不动","textChars":17,"textLines":1,"bbox":[72,52,1136,62]}
+{"kind":"textbox","id":"sh/1of6pcfu","slide":11,"text":"候选点服务于研究，不必成为棋谱正文的一部分。","textPreview":"候选点服务于研究，不必成为棋谱正文的一部分。","textChars":22,"textLines":1,"bbox":[72,124,1080,52]}
+{"kind":"textbox","id":"sh/gn6pw7y9","slide":11,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[72,222,58,34]}
+{"kind":"textbox","id":"sh/rixoj2hs","slide":11,"text":"候选标记","textPreview":"候选标记","textChars":4,"textLines":1,"bbox":[158,222,438,38]}
+{"kind":"textbox","id":"sh/6h4nqxg7","slide":11,"text":"标注激活后在棋盘记录候选；取消只退出标注状态。","textPreview":"标注激活后在棋盘记录候选；取消只退出标注状态。","textChars":23,"textLines":1,"bbox":[158,272,438,88]}
+{"kind":"shape","id":"sh/tkf6lcfy","slide":11,"bbox":[72,386,500,0]}
+{"kind":"textbox","id":"sh/sj6ps7yd","slide":11,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[656,222,58,34]}
+{"kind":"textbox","id":"sh/jedofihg","slide":11,"text":"A1、A2…","textPreview":"A1、A2…","textChars":6,"textLines":1,"bbox":[742,222,438,38]}
+{"kind":"textbox","id":"sh/id4nmdgb","slide":11,"text":"打点候选以半透明棋子与编号显示，位置更容易辨认。","textPreview":"打点候选以半透明棋子与编号显示，位置更容易辨认。","textChars":24,"textLines":1,"bbox":[742,272,438,88]}
+{"kind":"shape","id":"sh/snq90zyl","slide":11,"bbox":[656,386,500,0]}
+{"kind":"textbox","id":"sh/dozq94zq","slide":11,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[72,430,58,34]}
+{"kind":"textbox","id":"sh/ql8rypgf","slide":11,"text":"读谱隔离","textPreview":"读谱隔离","textChars":4,"textLines":1,"bbox":[158,430,438,38]}
+{"kind":"textbox","id":"sh/rmh87uh0","slide":11,"text":"读谱中的 reviewMarks 按文档与节点隔离。","textPreview":"读谱中的 reviewMarks 按文档与节点隔离。","textChars":26,"textLines":1,"bbox":[158,480,438,88]}
+{"kind":"shape","id":"sh/4jq9wfy9","slide":11,"bbox":[72,594,500,0]}
+{"kind":"textbox","id":"sh/5kzq5kzu","slide":11,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[656,430,58,34]}
+{"kind":"textbox","id":"sh/ihorupg3","slide":11,"text":"原谱保护","textPreview":"原谱保护","textChars":4,"textLines":1,"bbox":[742,430,438,38]}
+{"kind":"textbox","id":"sh/3ih83uho","slide":11,"text":"标注不写入 recordDraft，也不会把棋谱变脏。","textPreview":"标注不写入 recordDraft，也不会把棋谱变脏。","textChars":27,"textLines":1,"bbox":[742,480,438,88]}
+{"kind":"shape","id":"sh/ofa98jyt","slide":11,"bbox":[656,594,500,0]}
+{"kind":"shape","id":"sh/pgja1ozy","slide":11,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/xwzqlor2","slide":11,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/wv69sjqx","slide":11,"text":"11","textPreview":"11","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"notes","id":"nt/1dcdqe","slide":11,"text":"[Sources]\n- 半步五子棋打谱当前本机标注实现与读谱模式边界\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/7yxhht","slide":12,"title":"导入导出让棋谱在设备与工具间流动","textShapes":11}
+{"kind":"textbox","id":"sh/elkn210b","slide":12,"name":"slide-title","text":"导入导出让棋谱在设备与工具间流动","textPreview":"导入导出让棋谱在设备与工具间流动","textChars":16,"textLines":1,"bbox":[72,52,1136,62]}
+{"kind":"textbox","id":"sh/1ov6xgj2","slide":12,"text":"入口集中、动作明确：导入、导出、保存与恢复不会混在一起。","textPreview":"入口集中、动作明确：导入、导出、保存与恢复不会混在一起。","textChars":28,"textLines":1,"bbox":[72,124,1080,52]}
+{"kind":"shape","id":"sh/0n254bih","slide":12,"bbox":[72,188,720,440]}
+{"kind":"textbox","id":"sh/mp4n6l07","slide":12,"text":"文件流转，不打断研究","textPreview":"文件流转，不打断研究","textChars":10,"textLines":1,"bbox":[836,214,330,26]}
+{"kind":"textbox","id":"sh/9sv61gjy","slide":12,"text":"导入棋谱","textPreview":"导入棋谱","textChars":4,"textLines":1,"bbox":[836,264,350,38]}
+{"kind":"textbox","id":"sh/orm58bid","slide":12,"text":"把已有资料带入当前研究空间。","textPreview":"把已有资料带入当前研究空间。","textChars":14,"textLines":1,"bbox":[836,314,350,68]}
+{"kind":"textbox","id":"sh/3u94nm1o","slide":12,"text":"导出分享","textPreview":"导出分享","textChars":4,"textLines":1,"bbox":[836,382,350,38]}
+{"kind":"textbox","id":"sh/it0nuhk3","slide":12,"text":"将整理结果带到其他设备或工具。","textPreview":"将整理结果带到其他设备或工具。","textChars":15,"textLines":1,"bbox":[836,432,350,68]}
+{"kind":"textbox","id":"sh/cnux072h","slide":12,"text":"草稿可恢复","textPreview":"草稿可恢复","textChars":5,"textLines":1,"bbox":[836,500,350,38]}
+{"kind":"textbox","id":"sh/do3e9cj2","slide":12,"text":"未完成的研究有明确保存与恢复路径。","textPreview":"未完成的研究有明确保存与恢复路径。","textChars":17,"textLines":1,"bbox":[836,550,350,68]}
+{"kind":"shape","id":"sh/qlcvyxkb","slide":12,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/bmlw721w","slide":12,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/0bex472d","slide":12,"text":"12","textPreview":"12","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"image","id":"im/q18re18r","slide":12,"name":"","geometry":"roundRect","alt":"导入界面真实截图","bbox":[84,200,696,416]}
+{"kind":"notes","id":"nt/7yxhht","slide":12,"text":"[Sources]\n- 真实界面截图：07-import-export.png\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/qepyvi","slide":13,"title":"主题与可读性适配不同环境","textShapes":7}
+{"kind":"textbox","id":"sh/6tcnexgz","slide":13,"name":"slide-title","text":"主题与可读性适配不同环境","textPreview":"主题与可读性适配不同环境","textChars":12,"textLines":1,"bbox":[72,52,1136,62]}
+{"kind":"textbox","id":"sh/tgn6pcfq","slide":13,"text":"界面风格可以变化，但按钮文字、状态与操作层级必须始终清楚。","textPreview":"界面风格可以变化，但按钮文字、状态与操作层级必须始终清楚。","textChars":29,"textLines":1,"bbox":[72,124,1080,52]}
+{"kind":"textbox","id":"sh/sfe5g7y5","slide":13,"text":"APPEARANCE & ACCESSIBILITY","textPreview":"APPEARANCE & ACCESSIBILITY","textChars":26,"textLines":1,"bbox":[72,204,360,26]}
+{"kind":"textbox","id":"sh/fi5ormxg","slide":13,"text":"从明亮环境到深色场景，\n都保持清晰、紧凑、好操作","textPreview":"从明亮环境到深色场景， | 都保持清晰、紧凑、好操作","textChars":24,"textLines":2,"bbox":[72,252,440,124]}
+{"kind":"textbox","id":"sh/uhw7ihgv","slide":13,"text":"设置集中管理主题、显示与辅助选项；移动端仍维持紧凑首屏与足够的触控高度。","textPreview":"设置集中管理主题、显示与辅助选项；移动端仍维持紧凑首屏与足够的触控高度。","textChars":36,"textLines":1,"bbox":[72,416,430,110]}
+{"kind":"shape","id":"sh/hkn6twfm","slide":13,"bbox":[72,568,320,0]}
+{"kind":"shape","id":"sh/gjepkry1","slide":13,"bbox":[548,188,660,440]}
+{"kind":"shape","id":"sh/2lw7mhg7","slide":13,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/83exon2d","slide":13,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/94nex8jy","slide":13,"text":"13","textPreview":"13","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"image","id":"im/e1ofaxov","slide":13,"name":"","geometry":"roundRect","alt":"设置与主题界面真实截图","bbox":[560,200,636,416]}
+{"kind":"notes","id":"nt/qepyvi","slide":13,"text":"[Sources]\n- 真实界面截图：08-settings.png；主题与按钮可读性来自当前设置及样式实现\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/4sa0vn","slide":14,"title":"LOCAL-FIRST","textShapes":15}
+{"kind":"textbox","id":"sh/6donalor","slide":14,"text":"LOCAL-FIRST","textPreview":"LOCAL-FIRST","textChars":11,"textLines":1,"bbox":[72,56,240,26]}
+{"kind":"textbox","id":"sh/t0z6l0n2","slide":14,"text":"全本地工作流，\n让数据边界看得见。","textPreview":"全本地工作流， | 让数据边界看得见。","textChars":17,"textLines":2,"bbox":[72,118,620,144]}
+{"kind":"textbox","id":"sh/sz65cv6h","slide":14,"text":"棋谱、草稿与本机标注各有自己的职责。研究可以深入，原谱仍保持干净。","textPreview":"棋谱、草稿与本机标注各有自己的职责。研究可以深入，原谱仍保持干净。","textChars":33,"textLines":1,"bbox":[72,302,530,112]}
+{"kind":"shape","id":"sh/f2honq58","slide":14,"bbox":[716,170,140,300]}
+{"kind":"textbox","id":"sh/e18nelon","slide":14,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[734,192,60,30]}
+{"kind":"textbox","id":"sh/14z6p0ne","slide":14,"text":"棋谱","textPreview":"棋谱","textChars":2,"textLines":1,"bbox":[734,250,104,76]}
+{"kind":"textbox","id":"sh/g3q5gv6t","slide":14,"text":"保存正式记录","textPreview":"保存正式记录","textChars":6,"textLines":1,"bbox":[734,350,104,70]}
+{"kind":"shape","id":"sh/36hora54","slide":14,"bbox":[880,170,140,300]}
+{"kind":"textbox","id":"sh/258ni5oj","slide":14,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[898,192,60,30]}
+{"kind":"textbox","id":"sh/8bqpwbi9","slide":14,"text":"草稿","textPreview":"草稿","textChars":2,"textLines":1,"bbox":[898,250,104,76]}
+{"kind":"textbox","id":"sh/9cz65gju","slide":14,"text":"承接未完成编辑","textPreview":"承接未完成编辑","textChars":7,"textLines":1,"bbox":[898,350,104,70]}
+{"kind":"shape","id":"sh/m9o7u103","slide":14,"bbox":[1044,170,140,300]}
+{"kind":"textbox","id":"sh/naxo361o","slide":14,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1062,192,60,30]}
+{"kind":"textbox","id":"sh/wzqp0vi5","slide":14,"text":"本机标注","textPreview":"本机标注","textChars":4,"textLines":1,"bbox":[1062,250,104,76]}
+{"kind":"textbox","id":"sh/x0z690jq","slide":14,"text":"记录节点级研究结论","textPreview":"记录节点级研究结论","textChars":9,"textLines":1,"bbox":[1062,350,104,70]}
+{"kind":"textbox","id":"sh/ad87yl0f","slide":14,"text":"无需把研究过程上传到远端，数据安全提示也直接出现在棋谱库中。","textPreview":"无需把研究过程上传到远端，数据安全提示也直接出现在棋谱库中。","textChars":30,"textLines":1,"bbox":[716,516,468,72]}
+{"kind":"shape","id":"sh/veho7q10","slide":14,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/k3ap4vih","slide":14,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/54j6d0j2","slide":14,"text":"14","textPreview":"14","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"notes","id":"nt/4sa0vn","slide":14,"text":"[Sources]\n- 半步五子棋打谱本地存储架构与棋谱库中的“资料安全”提示\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/cpmnvp","slide":15,"title":"它适合想把棋下明白的人","textShapes":16}
+{"kind":"textbox","id":"sh/cjad4fi5","slide":15,"name":"slide-title","text":"它适合想把棋下明白的人","textPreview":"它适合想把棋下明白的人","textChars":11,"textLines":1,"bbox":[72,52,1136,62]}
+{"kind":"textbox","id":"sh/ri1cbahk","slide":15,"text":"无论你是自己训练、带学生，还是整理资料，都能从同一套工作流开始。","textPreview":"无论你是自己训练、带学生，还是整理资料，都能从同一套工作流开始。","textChars":32,"textLines":1,"bbox":[72,124,1080,52]}
+{"kind":"textbox","id":"sh/qhsv2p0z","slide":15,"text":"棋手","textPreview":"棋手","textChars":2,"textLines":1,"bbox":[72,228,340,46]}
+{"kind":"textbox","id":"sh/pgju9kze","slide":15,"text":"复盘实战、整理定式、对比候选，在 AI 规则局中检验理解。","textPreview":"复盘实战、整理定式、对比候选，在 AI 规则局中检验理解。","textChars":29,"textLines":1,"bbox":[72,292,340,156]}
+{"kind":"textbox","id":"sh/4fad0fi9","slide":15,"text":"教练","textPreview":"教练","textChars":2,"textLines":1,"bbox":[72,478,340,46]}
+{"kind":"textbox","id":"sh/3e1c7aho","slide":15,"text":"用分支树组织讲解，用做题把“知道”变成“会下”。","textPreview":"用分支树组织讲解，用做题把“知道”变成“会下”。","textChars":24,"textLines":1,"bbox":[72,536,340,82]}
+{"kind":"textbox","id":"sh/2dsvy503","slide":15,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[512,230,64,34]}
+{"kind":"textbox","id":"sh/9cnel4zy","slide":15,"text":"建立棋谱库","textPreview":"建立棋谱库","textChars":5,"textLines":1,"bbox":[610,228,560,48]}
+{"kind":"shape","id":"sh/obudczid","slide":15,"bbox":[512,292,660,0]}
+{"kind":"textbox","id":"sh/upgr2h0f","slide":15,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[512,326,64,34]}
+{"kind":"textbox","id":"sh/va9svmh0","slide":15,"text":"标注关键节点","textPreview":"标注关键节点","textChars":6,"textLines":1,"bbox":[610,324,560,48]}
+{"kind":"shape","id":"sh/gbi94ryl","slide":15,"bbox":[512,388,660,0]}
+{"kind":"textbox","id":"sh/hcraxwz6","slide":15,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[512,422,64,34]}
+{"kind":"textbox","id":"sh/6lgryx0j","slide":15,"text":"导入已有资料","textPreview":"导入已有资料","textChars":6,"textLines":1,"bbox":[610,420,560,48]}
+{"kind":"shape","id":"sh/7mp8r2h4","slide":15,"bbox":[512,484,660,0]}
+{"kind":"textbox","id":"sh/8ny907i9","slide":15,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[512,518,64,34]}
+{"kind":"textbox","id":"sh/to7atczu","slide":15,"text":"导出整理成果","textPreview":"导出整理成果","textChars":6,"textLines":1,"bbox":[610,516,560,48]}
+{"kind":"shape","id":"sh/qhkra1gn","slide":15,"bbox":[512,580,660,0]}
+{"kind":"shape","id":"sh/rits36h8","slide":15,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/nmlovyxk","slide":15,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/mlc72tgz","slide":15,"text":"15","textPreview":"15","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"notes","id":"nt/cpmnvp","slide":15,"text":"[Sources]\n- 半步五子棋打谱功能组合对应的典型使用场景\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}
+{"kind":"slide","id":"sl/0rozsx","slide":16,"title":"半步五子棋打谱","textShapes":6}
+{"kind":"textbox","id":"sh/mlcjulwz","slide":16,"text":"半步五子棋打谱","textPreview":"半步五子棋打谱","textChars":5,"textLines":1,"bbox":[72,58,220,26]}
+{"kind":"textbox","id":"sh/9o32p0fq","slide":16,"text":"下一盘棋，\n不只下完；还要留下。","textPreview":"下一盘棋， | 不只下完；还要留下。","textChars":16,"textLines":2,"bbox":[72,150,930,184]}
+{"kind":"textbox","id":"sh/8nu1wve5","slide":16,"text":"留下走法，留下变化，留下判断。\n从一块本地棋盘，开始自己的长期棋谱研究。","textPreview":"留下走法，留下变化，留下判断。 | 从一块本地棋盘，开始自己的长期棋谱研究。","textChars":36,"textLines":2,"bbox":[72,384,760,104]}
+{"kind":"shape","id":"sh/vqlkrqxw","slide":16,"bbox":[72,558,460,8]}
+{"kind":"textbox","id":"sh/apcjy5wb","slide":16,"text":"打谱 · 读谱 · 做题 · AI 对战 · 棋谱库","textPreview":"打谱 · 读谱 · 做题 · AI 对战 · 棋谱库","textChars":26,"textLines":1,"bbox":[72,592,760,38]}
+{"kind":"shape","id":"sh/xsn2t0fm","slide":16,"bbox":[1010,142,86,86]}
+{"kind":"shape","id":"sh/wre10ve1","slide":16,"bbox":[1108,238,70,70]}
+{"kind":"shape","id":"sh/bu10f6xc","slide":16,"bbox":[914,332,74,74]}
+{"kind":"shape","id":"sh/qtsjm1wr","slide":16,"bbox":[1054,438,58,58]}
+{"kind":"shape","id":"sh/k3ilczah","slide":16,"bbox":[72,662,1136,0]}
+{"kind":"textbox","id":"sh/54rm54r2","slide":16,"text":"半步五子棋打谱 · 本地棋谱研究工具","textPreview":"半步五子棋打谱 · 本地棋谱研究工具","textChars":16,"textLines":1,"bbox":[72,674,420,22]}
+{"kind":"textbox","id":"sh/i103apsr","slide":16,"text":"16","textPreview":"16","textChars":2,"textLines":1,"bbox":[1160,674,48,22]}
+{"kind":"notes","id":"nt/0rozsx","slide":16,"text":"[Sources]\n- 半步五子棋打谱产品定位与本演示所展示功能的总结\n- 半步五子棋打谱项目当前实现与可见界面，2026-09-01\n[/Sources]"}

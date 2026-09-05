@@ -12,7 +12,7 @@ const library = () => page.evaluate(() => JSON.parse(localStorage.getItem("renju
 
 try {
   await page.goto(baseUrl, { waitUntil: "commit" });
-  await page.getByText("半步五子棋", { exact: true }).waitFor();
+  await page.getByText("半步五子棋打谱", { exact: true }).waitFor();
   await page.evaluate(async () => {
     localStorage.clear();
     if (indexedDB.databases) {
@@ -24,7 +24,7 @@ try {
     }
   });
   await page.reload({ waitUntil: "commit" });
-  await page.getByText("半步五子棋", { exact: true }).waitFor();
+  await page.getByText("半步五子棋打谱", { exact: true }).waitFor();
 
   const collection = "(;GM[4]FF[4]SZ[15]GN[高级语义一]AB[hh][ii]AW[jj]PL[W];W[]C[白过手];AE[ii]PL[B];B[kk])(;GM[4]FF[4]SZ[15]GN[高级语义二];B[gg])";
   const input = page.locator('input[type="file"]').first();

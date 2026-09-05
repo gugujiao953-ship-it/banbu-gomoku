@@ -65,3 +65,4 @@ node qa/manual/lib-oracle-xieyue.mjs
 - 新增正式脚本必须可重复执行、失败返回非零退出码，并在本文件或统一运行器中登记依赖。
 
 当前保留的 `qa/tmp-ai-benchmark-*` 属于仍在并发执行的 AI 基准任务，本次目录治理不移动、不改写。
+

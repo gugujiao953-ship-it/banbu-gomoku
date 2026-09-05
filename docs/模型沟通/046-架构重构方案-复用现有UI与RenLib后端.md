@@ -39,7 +39,7 @@ UI 看到的仍然是当前页面，但它不再依赖“完整节点树已经�
 
 这条链路可以让部分大谱导入成功，但无法从根本上支持“文件大小不设应用级上限”。把 200MB 改成 500MB 或 1GB，只会把失败点向后移动。
 
-当前硬限制位于 [src/App.tsx](D:/Projects/经济学知识/15_半步五子棋/src/App.tsx:50)，大谱存储和恢复位于 [src/large-storage.ts](D:/Projects/经济学知识/15_半步五子棋/src/large-storage.ts:121)。
+当前硬限制位于 [src/App.tsx](D:/Projects/经济学知识/15_半步五子棋打谱/src/App.tsx:50)，大谱存储和恢复位于 [src/large-storage.ts](D:/Projects/经济学知识/15_半步五子棋打谱/src/large-storage.ts:121)。
 
 ## 三、目标后端架构
 

@@ -29,6 +29,7 @@ try {
       reducedMotion: item.reducedMotion ? "reduce" : "no-preference",
       serviceWorkers: "block",
     });
+    await context.addInitScript(() => localStorage.setItem("banbu-first-run-welcome-v1", "true"));
     const page = await context.newPage();
     const errors = [];
     const longTasks = [];

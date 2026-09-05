@@ -1,0 +1,375 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/reyzkz",
+    "id": "reyzkz",
+    "slide": 1,
+    "layoutId": "90f48de1-b6c8-418c-9e9a-b189b560f853",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "96a1e7b5-1d86-4d3f-8551-25617a2595b3",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#0A1512",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "90f48de1-b6c8-418c-9e9a-b189b560f853",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "96a1e7b5-1d86-4d3f-8551-25617a2595b3",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "96a1e7b5-1d86-4d3f-8551-25617a2595b3",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/md0ruhcr",
+      "id": "1",
+      "bbox": [
+        0,
+        0,
+        1280,
+        720
+      ],
+      "alt": "半步五子棋打谱完整打谱界面",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "asset": {
+        "assetId": "ca527ff1-ac45-46f9-baf4-31b28d127102",
+        "contentType": "image/png",
+        "byteLength": 802319
+      }
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0bypkbu1",
+      "id": "2",
+      "bbox": [
+        0,
+        0,
+        1280,
+        720
+      ],
+      "geometry": "rect",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1c7qdgbm",
+      "id": "3",
+      "bbox": [
+        0,
+        0,
+        650,
+        720
+      ],
+      "geometry": "rect",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2xgrmlc7",
+      "id": "4",
+      "bbox": [
+        72,
+        210,
+        540,
+        82
+      ],
+      "geometry": "rect",
+      "text": "半步五子棋打谱",
+      "textPreview": "半步五子棋打谱",
+      "resolvedFontSize": 62,
+      "resolvedTextStyle": {
+        "fontSize": 62,
+        "typeface": "+mn-lt",
+        "color": "#F5F0E2",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "半步五子棋打谱"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "半步五子棋打谱",
+          "resolvedTextStyle": {
+            "fontSize": 62,
+            "color": "#F5F0E2",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "半步五子棋打谱",
+              "fontSize": 62,
+              "color": "#F5F0E2",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nyp8f6ts",
+      "id": "5",
+      "bbox": [
+        74,
+        304,
+        110,
+        6
+      ],
+      "geometry": "rect",
+      "fillColor": "#D8B764",
+      "lineColor": "#D8B764",
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ozy9obud",
+      "id": "6",
+      "bbox": [
+        74,
+        332,
+        510,
+        90
+      ],
+      "geometry": "rect",
+      "text": "把一盘棋，变成可保存、可回看、可推演的研究资料。",
+      "textPreview": "把一盘棋，变成可保存、可回看、可推演的研究资料。",
+      "resolvedFontSize": 28,
+      "resolvedTextStyle": {
+        "fontSize": 28,
+        "typeface": "+mn-lt",
+        "color": "#E7DAC0",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "把一盘棋，变成可保存、可回看、可推"
+          },
+          {
+            "index": 2,
+            "text": "演的研究资料。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "把一盘棋，变成可保存、可回看、可推演的研究资料。",
+          "resolvedTextStyle": {
+            "fontSize": 28,
+            "color": "#E7DAC0",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "把一盘棋，变成可保存、可回看、可推演的研究资料。",
+              "fontSize": 28,
+              "color": "#E7DAC0",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/p07qhgby",
+      "id": "7",
+      "bbox": [
+        76,
+        458,
+        520,
+        34
+      ],
+      "geometry": "rect",
+      "text": "打谱 · 读谱 · 做题 · AI 对战 · 棋谱库",
+      "textPreview": "打谱 · 读谱 · 做题 · AI 对战 · 棋谱库",
+      "resolvedFontSize": 19,
+      "resolvedTextStyle": {
+        "fontSize": 19,
+        "typeface": "+mn-lt",
+        "color": "#79C4A6",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "打谱 · 读谱 · 做题 · AI 对战 · 棋谱库"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "打谱 · 读谱 · 做题 · AI 对战 · 棋谱库",
+          "resolvedTextStyle": {
+            "fontSize": 19,
+            "color": "#79C4A6"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "打谱 · 读谱 · 做题 · AI 对战 · 棋谱库",
+              "fontSize": 19,
+              "color": "#79C4A6"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/i1c7ahc3",
+      "id": "8",
+      "bbox": [
+        76,
+        602,
+        380,
+        28
+      ],
+      "geometry": "rect",
+      "text": "功能宣传与使用价值  V2",
+      "textPreview": "功能宣传与使用价值  V2",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "功能宣传与使用价值  V2"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "功能宣传与使用价值  V2",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#B6C2BA"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "功能宣传与使用价值  V2",
+              "fontSize": 16,
+              "color": "#B6C2BA"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

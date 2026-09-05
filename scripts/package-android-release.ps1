@@ -61,10 +61,10 @@ if (-not $SdkCandidates) {
 }
 $SdkHome = (Resolve-Path $SdkCandidates[0]).Path
 
-$CredentialPath = Join-Path $ProjectRoot "artifacts/signing/banbu-release-v1.credential.xml"
-$KeystorePath = Join-Path $ProjectRoot "artifacts/signing/banbu-release-v1.p12"
+$CredentialPath = Join-Path $ProjectRoot "artifacts/signing/banbu-release-v2.credential.xml"
+$KeystorePath = Join-Path $ProjectRoot "artifacts/signing/banbu-release-v2.p12"
 if (-not (Test-Path $CredentialPath) -or -not (Test-Path $KeystorePath)) {
-  throw "Existing release signing material is missing; stopped to avoid creating an incompatible new key."
+  throw "Release signing material is missing: banbu-release-v2.p12 and its credential file are required."
 }
 $Credential = Import-Clixml $CredentialPath
 $PasswordPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Credential.Password)
@@ -93,7 +93,7 @@ Write-Host "Banbu Gomoku Android Release packaging"
 Write-Host "Version: $Version (versionCode $VersionCode)"
 Write-Host "JDK: $JdkHome"
 Write-Host "SDK: $SdkHome"
-Write-Host "Signing: reusing banbu-release-v1.p12 (password is not printed)"
+Write-Host "Signing: reusing banbu-release-v2.p12 (password is not printed)"
 
 if (-not $SkipWebBuild) {
   Invoke-Checked "npm.cmd" @("run", "build") $ProjectRoot

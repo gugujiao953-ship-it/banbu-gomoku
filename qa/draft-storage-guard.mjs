@@ -3,24 +3,43 @@ import { chromium } from "playwright";
 const baseUrl = process.env.QA_BASE_URL || "http://127.0.0.1:5173/";
 const browser = await chromium.launch({ headless: true });
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
+const newCleanContext = async () => {
+  const context = await browser.newContext({ viewport: { width: 375, height: 812 }, serviceWorkers: "block" });
+  await context.addInitScript(() => {
+    if (localStorage.getItem("__banbu_qa_cleaned") !== "1") {
+      localStorage.clear();
+      localStorage.setItem("__banbu_qa_cleaned", "1");
+    }
+  });
+  return context;
+};
 
 try {
   const padding = "x".repeat(4 * 1024 * 1024 + 1024);
-  const context = await browser.newContext({ viewport: { width: 375, height: 812 }, serviceWorkers: "block" });
-  const page = await context.newPage();
+  const context = await newCleanContext();
+  let page = await context.newPage();
   await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  await page.locator(".workspace-current b").waitFor({ state: "visible" });
+  await page.waitForTimeout(550);
   const recordId = await page.evaluate(async () => {
-    localStorage.clear();
     const { createDocument } = await import("/src/game.ts");
     const { saveDraftToLocal, saveToLibrary } = await import("/src/storage.ts");
+    const { saveLastSession } = await import("/src/features/session/session-restore.ts");
     const document = createDocument("草稿删除门禁");
     saveToLibrary(document);
     saveDraftToLocal(document.id, { operations: [{ type: "set-metadata", metadata: { title: "尚未保存" } }], redo: [] });
+    saveLastSession({ documentId: document.id, nodeId: document.rootId, mode: "record" });
     return document.id;
   });
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.close();
+  const firstPage = await context.newPage();
+  await firstPage.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  page = firstPage;
   await page.getByRole("button", { name: "棋谱库" }).click();
-  await page.locator(".record-list article", { hasText: "草稿删除门禁" }).getByRole("button", { name: "删除棋谱“草稿删除门禁”" }).click();
+  const draftRecord = page.locator(".record-list article", { hasText: "草稿删除门禁" });
+  await draftRecord.waitFor({ state: "visible", timeout: 15_000 });
+  await draftRecord.locator("button.delete-record").click();
+  await page.getByRole("dialog", { name: "未保存草稿" }).waitFor({ state: "visible" });
   assert(await page.getByRole("dialog", { name: "未保存草稿" }).count() === 1, "删除带草稿棋谱时没有弹出草稿门禁");
   assert(await page.locator(".record-list article", { hasText: "草稿删除门禁" }).count() === 1, "确认处理草稿前棋谱已被删除");
   await page.getByRole("button", { name: "放弃草稿并切换" }).click();
@@ -35,18 +54,24 @@ try {
   assert(deletionState.draft === null, "删除当前棋谱后本地草稿没有清理");
   await context.close();
 
-  const deferredContext = await browser.newContext({ viewport: { width: 375, height: 812 }, serviceWorkers: "block" });
-  const deferredPage = await deferredContext.newPage();
+  const deferredContext = await newCleanContext();
+  let deferredPage = await deferredContext.newPage();
   await deferredPage.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  await deferredPage.locator(".workspace-current b").waitFor({ state: "visible" });
+  await deferredPage.waitForTimeout(550);
   await deferredPage.evaluate(async () => {
-    localStorage.clear();
     const { createDocument } = await import("/src/game.ts");
     const { saveDraftToLocal, saveToLibrary } = await import("/src/storage.ts");
+    const { saveLastSession } = await import("/src/features/session/session-restore.ts");
     const document = createDocument("保留当前草稿");
     saveToLibrary(document);
     saveDraftToLocal(document.id, { operations: [{ type: "update-node", nodeId: document.rootId, patch: { comment: "未保存" } }], redo: [] });
+    saveLastSession({ documentId: document.id, nodeId: document.rootId, mode: "record" });
   });
-  await deferredPage.reload({ waitUntil: "domcontentloaded" });
+  await deferredPage.close();
+  const deferredAppPage = await deferredContext.newPage();
+  await deferredAppPage.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  deferredPage = deferredAppPage;
   await deferredPage.locator('input[type="file"]').first().setInputFiles({
     name: "deferred-large.sgf",
     mimeType: "application/x-go-sgf",
@@ -61,11 +86,10 @@ try {
   assert(await deferredPage.evaluate(() => localStorage.getItem("banbu-active-large-record-v1")) === null, "取消切换后残留大型棋谱活动 ID");
   await deferredContext.close();
 
-  const failureContext = await browser.newContext({ viewport: { width: 375, height: 812 }, serviceWorkers: "block" });
-  const failurePage = await failureContext.newPage();
+  const failureContext = await newCleanContext();
+  let failurePage = await failureContext.newPage();
   await failurePage.goto(baseUrl, { waitUntil: "domcontentloaded" });
   await failurePage.evaluate(() => {
-    localStorage.clear();
     Object.defineProperty(indexedDB, "open", {
       configurable: true,
       value: () => { throw new DOMException("forced persistence failure", "QuotaExceededError"); },
@@ -95,3 +119,4 @@ try {
 } finally {
   await browser.close();
 }
+

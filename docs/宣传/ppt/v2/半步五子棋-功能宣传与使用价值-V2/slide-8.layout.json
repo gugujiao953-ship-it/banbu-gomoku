@@ -1,0 +1,927 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/k260cf",
+    "id": "k260cf",
+    "slide": 8,
+    "layoutId": "90f48de1-b6c8-418c-9e9a-b189b560f853",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "96a1e7b5-1d86-4d3f-8551-25617a2595b3",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#0A1512",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "90f48de1-b6c8-418c-9e9a-b189b560f853",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "96a1e7b5-1d86-4d3f-8551-25617a2595b3",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "96a1e7b5-1d86-4d3f-8551-25617a2595b3",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/czmdk7q9",
+      "id": "1",
+      "bbox": [
+        64,
+        24,
+        560,
+        24
+      ],
+      "geometry": "rect",
+      "text": "导入 · 格式兼容",
+      "textPreview": "导入 · 格式兼容",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#79C4A6",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "导入 · 格式兼容"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "导入 · 格式兼容",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#79C4A6",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "导入 · 格式兼容",
+              "fontSize": 14,
+              "color": "#79C4A6",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rydcr2po",
+      "id": "2",
+      "bbox": [
+        1180,
+        22,
+        40,
+        24
+      ],
+      "geometry": "rect",
+      "text": "08",
+      "textPreview": "08",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "bold": true,
+        "alignment": "right",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "08"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "08",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#B6C2BA",
+            "bold": true,
+            "alignment": "right"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "08",
+              "fontSize": 14,
+              "color": "#B6C2BA",
+              "bold": true,
+              "alignment": "right"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qx4vix83",
+      "id": "3",
+      "bbox": [
+        64,
+        58,
+        1152,
+        56
+      ],
+      "geometry": "rect",
+      "text": "棋谱文件、题库、备份与图片，都有明确入口",
+      "textPreview": "棋谱文件、题库、备份与图片，都有明确入口",
+      "resolvedFontSize": 40,
+      "resolvedTextStyle": {
+        "fontSize": 40,
+        "typeface": "+mn-lt",
+        "color": "#F5F0E2",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "棋谱文件、题库、备份与图片，都有明确入口"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "棋谱文件、题库、备份与图片，都有明确入口",
+          "resolvedTextStyle": {
+            "fontSize": 40,
+            "color": "#F5F0E2",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "棋谱文件、题库、备份与图片，都有明确入口",
+              "fontSize": 40,
+              "color": "#F5F0E2",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1ovexc7q",
+      "id": "4",
+      "bbox": [
+        66,
+        116,
+        1110,
+        34
+      ],
+      "geometry": "rect",
+      "text": "导入先进入可检查会话；保存前仍由用户确认。",
+      "textPreview": "导入先进入可检查会话；保存前仍由用户确认。",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "导入先进入可检查会话；保存前仍由用户确认。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "导入先进入可检查会话；保存前仍由用户确认。",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "color": "#B6C2BA"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "导入先进入可检查会话；保存前仍由用户确认。",
+              "fontSize": 18,
+              "color": "#B6C2BA"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0nmdo7q5",
+      "id": "5",
+      "bbox": [
+        64,
+        154,
+        72,
+        4
+      ],
+      "geometry": "rect",
+      "fillColor": "#D8B764",
+      "lineColor": "#D8B764",
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zmdwv2p0",
+      "id": "6",
+      "bbox": [
+        440,
+        182,
+        782,
+        445
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#173027",
+      "lineColor": "#335044",
+      "lineWidth": 1
+    },
+    {
+      "order": 7,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/n2t8f654",
+      "id": "7",
+      "bbox": [
+        446,
+        188,
+        770,
+        433
+      ],
+      "geometry": "roundRect",
+      "alt": "导入方式完整弹窗",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 1848"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "bb48d3a9-5443-4926-b01f-f1f7482e0b69",
+        "contentType": "image/png",
+        "byteLength": 316667
+      }
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9sfe1w72",
+      "id": "8",
+      "bbox": [
+        68,
+        220,
+        76,
+        40
+      ],
+      "geometry": "rect",
+      "text": "SGF",
+      "textPreview": "SGF",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "fontSize": 27,
+        "typeface": "+mn-lt",
+        "color": "#79C4A6",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "SGF"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "SGF",
+          "resolvedTextStyle": {
+            "fontSize": 27,
+            "color": "#79C4A6",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "SGF",
+              "fontSize": 27,
+              "color": "#79C4A6",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/or6dsrqh",
+      "id": "9",
+      "bbox": [
+        156,
+        221,
+        274,
+        31
+      ],
+      "geometry": "rect",
+      "text": "棋谱交换",
+      "textPreview": "棋谱交换",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "fontSize": 23,
+        "typeface": "+mn-lt",
+        "color": "#F5F0E2",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "棋谱交换"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "棋谱交换",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "color": "#F5F0E2",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "棋谱交换",
+              "fontSize": 23,
+              "color": "#F5F0E2",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/atcry9gb",
+      "id": "10",
+      "bbox": [
+        156,
+        257,
+        274,
+        60
+      ],
+      "geometry": "rect",
+      "text": "适合与其他棋谱软件交换主线与变化。",
+      "textPreview": "适合与其他棋谱软件交换主线与变化。",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "适合与其他棋谱软件交换主线与"
+          },
+          {
+            "index": 2,
+            "text": "变化。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "适合与其他棋谱软件交换主线与变化。",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#B6C2BA"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "适合与其他棋谱软件交换主线与变化。",
+              "fontSize": 17,
+              "color": "#B6C2BA"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bul87ehw",
+      "id": "11",
+      "bbox": [
+        68,
+        350,
+        76,
+        40
+      ],
+      "geometry": "rect",
+      "text": "LIB",
+      "textPreview": "LIB",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "fontSize": 27,
+        "typeface": "+mn-lt",
+        "color": "#D8B764",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "LIB"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "LIB",
+          "resolvedTextStyle": {
+            "fontSize": 27,
+            "color": "#D8B764",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "LIB",
+              "fontSize": 27,
+              "color": "#D8B764",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wvu90jy1",
+      "id": "12",
+      "bbox": [
+        156,
+        351,
+        274,
+        31
+      ],
+      "geometry": "rect",
+      "text": "大型资料",
+      "textPreview": "大型资料",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "fontSize": 23,
+        "typeface": "+mn-lt",
+        "color": "#F5F0E2",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "大型资料"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "大型资料",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "color": "#F5F0E2",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "大型资料",
+              "fontSize": 23,
+              "color": "#F5F0E2",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xwnq94zm",
+      "id": "13",
+      "bbox": [
+        156,
+        387,
+        274,
+        60
+      ],
+      "geometry": "rect",
+      "text": "支持 LIB、DP、DB 等研究资料读取。",
+      "textPreview": "支持 LIB、DP、DB 等研究资料读取。",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "支持 LIB、DP、DB"
+          },
+          {
+            "index": 2,
+            "text": "等研究资料读取。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "支持 LIB、DP、DB 等研究资料读取。",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#B6C2BA"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "支持 LIB、DP、DB 等研究资料读取。",
+              "fontSize": 17,
+              "color": "#B6C2BA"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/yxwr29g7",
+      "id": "14",
+      "bbox": [
+        68,
+        480,
+        76,
+        40
+      ],
+      "geometry": "rect",
+      "text": "IMG",
+      "textPreview": "IMG",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "fontSize": 27,
+        "typeface": "+mn-lt",
+        "color": "#FF806F",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "IMG"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "IMG",
+          "resolvedTextStyle": {
+            "fontSize": 27,
+            "color": "#FF806F",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "IMG",
+              "fontSize": 27,
+              "color": "#FF806F",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jy58behs",
+      "id": "15",
+      "bbox": [
+        156,
+        481,
+        274,
+        31
+      ],
+      "geometry": "rect",
+      "text": "图片识谱",
+      "textPreview": "图片识谱",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "fontSize": 23,
+        "typeface": "+mn-lt",
+        "color": "#F5F0E2",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "图片识谱"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "图片识谱",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "color": "#F5F0E2",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "图片识谱",
+              "fontSize": 23,
+              "color": "#F5F0E2",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kze94jyd",
+      "id": "16",
+      "bbox": [
+        156,
+        517,
+        274,
+        60
+      ],
+      "geometry": "rect",
+      "text": "从棋盘截图恢复可核对的局面。",
+      "textPreview": "从棋盘截图恢复可核对的局面。",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#B6C2BA",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "从棋盘截图恢复可核对的局面。"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "从棋盘截图恢复可核对的局面。",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#B6C2BA"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "从棋盘截图恢复可核对的局面。",
+              "fontSize": 17,
+              "color": "#B6C2BA"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

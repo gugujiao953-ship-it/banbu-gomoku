@@ -8,7 +8,7 @@ async function freshPage() {
   const context = await browser.newContext({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
   await page.goto(baseURL);
-  await page.evaluate(() => localStorage.clear());
+  await page.evaluate(() => { localStorage.clear(); localStorage.setItem("banbu-first-run-welcome-v1", "true"); });
   await page.reload();
   return { context, page };
 }
@@ -25,7 +25,7 @@ try {
     await page.getByLabel("AI 棋盘提示点").check();
     await page.getByRole("button", { name: "打谱" }).click();
     await page.getByRole("button", { name: "AI" }).click();
-    await page.getByRole("button", { name: /五手两打/ }).click();
+    await page.locator(".ai-rule-choice").filter({ hasText: "五手两打" }).click();
     await page.getByRole("button", { name: /开始人机对战/ }).click();
     await page.getByText("第 1 手").waitFor();
     await clickPoint(page, "H8");
@@ -45,7 +45,7 @@ try {
   {
     const { context, page } = await freshPage();
     await page.getByRole("button", { name: "AI" }).click();
-    await page.getByRole("button", { name: /塔十/ }).click();
+    await page.locator(".ai-rule-choice").filter({ hasText: "塔十" }).click();
     await page.getByRole("button", { name: /开始人机对战/ }).click();
     await clickPoint(page, "H8");
     await page.getByRole("button", { name: "不交换" }).waitFor({ timeout: 5000 });

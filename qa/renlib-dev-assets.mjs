@@ -29,3 +29,4 @@ if (javascript.cacheControl !== "no-store" || wasm.cacheControl !== "no-store") 
 if (missing.status !== 404) throw new Error(`未知 RenLib 资产应返回 404，实际为 ${missing.status}`);
 
 console.log(JSON.stringify({ passed: true, javascript, wasm, missing }, null, 2));
+

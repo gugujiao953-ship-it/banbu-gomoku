@@ -1,0 +1,16 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><link rel="stylesheet" href="./special.css"><title>多格式与分支树</title></head><body><main class="sheet">
+  <span class="kicker">LARGE RECORD SUPPORT</span>
+  <h1>LIB、DB、JSON<br>都能进入同一套研究流程</h1>
+  <p class="lead">不只是“能导入”：打开后继续查看局面、分支和注释，再通过可视化棋谱树理解复杂变化。</p>
+  <div class="format-chips"><span>LIB</span><span>DB / DP</span><span>JSON</span></div>
+  <section class="visual-pair">
+    <article class="shot-card format"><span class="shot-label">格式兼容入口</span><img src="./screenshots/01-format-support.png"></article>
+    <article class="shot-card tree"><span class="shot-label">分支树真实显示</span><img src="./screenshots/03-record-tree.png"></article>
+  </section>
+  <div class="flow"><span>导入文件</span><i>→</i><span>浏览分支</span><i>→</i><span>棋谱树</span><i>→</i><span>注释与导出</span></div>
+  <section class="format-notes">
+    <article class="note"><b>LIB</b><p>使用 RenLib 网页核心和 WASM 按当前路径读取，保留可见分支与原谱文字。</p><em>适合大型棋谱</em></article>
+    <article class="note"><b>DB / DP</b><p>兼容已经识别的 LZ4 数据库结构，提取记录并合并为可浏览的变化树。</p><em>失败不会静默误导入</em></article>
+    <article class="note"><b>JSON</b><p>支持完整 RENJU 棋谱、明确 moves 列表和题库对象，便于跨端交换与备份。</p><em>结构明确才读取</em></article>
+  </section>
+</main></body></html>

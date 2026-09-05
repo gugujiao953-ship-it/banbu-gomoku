@@ -2,7 +2,7 @@
 // report builder for bug reports. Kept dependency-free so the ErrorBoundary can
 // rely on it even when the rest of the app failed to boot.
 
-export const APP_VERSION = "1.1.6";
+export const APP_VERSION = "1.1.7";
 
 interface DiagnosticsEntry {
   time: string;

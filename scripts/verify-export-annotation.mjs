@@ -76,7 +76,7 @@ try {
   assert.equal(await copyPage.getByText(/支持开宝题集数组格式/).count(), 0, "题库导入说明不应再只写某个软件名称");
   await copyPage.getByRole("button", { name: "设置" }).click();
   await copyPage.getByText("关于", { exact: true }).click();
-  await copyPage.getByRole("button", { name: /关于半步五子棋/ }).click();
+  await copyPage.getByRole("button", { name: /关于半步五子棋打谱/ }).click();
   await copyPage.getByText("个人项目说明", { exact: true }).waitFor();
   await copyPage.getByText(/后续有时间会继续更新功能、改善使用体验并修复发现的 Bug/).waitFor();
   const projectLink = copyPage.getByRole("link", { name: /GitHub 项目主页与下载/ });

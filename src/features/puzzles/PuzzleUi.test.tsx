@@ -80,9 +80,9 @@ describe("doing-puzzle controls", () => {
     let speed = "slow";
     act(() => { root?.render(<PuzzleThinkSpeedSelector value={speed as "slow" | "fast"} onChange={(value) => { speed = value; }}/>); });
     const speedButtons = [...container.querySelectorAll("button")];
-    expect(speedButtons.map((button) => button.textContent)).toEqual(["慢", "快 · 1秒"]);
-    expect(speedButtons[0].getAttribute("aria-checked")).toBe("true");
-    act(() => speedButtons[1].click());
+    expect(speedButtons.map((button) => button.textContent)).toEqual(["快 · 1秒", "慢"]);
+    expect(speedButtons[1].getAttribute("aria-checked")).toBe("true");
+    act(() => speedButtons[0].click());
     expect(speed).toBe("fast");
   });
 });

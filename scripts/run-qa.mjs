@@ -3,6 +3,8 @@ import { formalBrowserRegressions } from "../qa/regression-manifest.mjs";
 
 const profile = process.argv[2] || "smoke";
 const baseURL = process.env.QA_BASE_URL || "http://127.0.0.1:5173/";
+const qaURL = new URL(baseURL);
+qaURL.searchParams.set("qa", "1");
 
 const browserScripts = formalBrowserRegressions.map(({ script }) => script);
 
@@ -40,7 +42,10 @@ if (profile === "smoke" || profile === "full") {
 
 if (profile === "browser" || profile === "full") {
   await assertPreview();
-  for (const script of browserScripts) run(script, process.execPath, [script], { QA_BASE_URL: baseURL });
+  // Product regressions skip the first-run overlay through the app's explicit
+  // QA query flag. The onboarding regression removes this flag itself so the
+  // real acknowledgement and persistence flow remains covered.
+  for (const script of browserScripts) run(script, process.execPath, [script], { QA_BASE_URL: qaURL.href });
 }
 
 if (profile === "full") {
