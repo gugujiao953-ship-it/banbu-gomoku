@@ -478,3 +478,19 @@ ul { list-style: none; }
   .ai-points li { grid-template-columns: 1fr; gap: 2px; }
   .nav-cta .btn-ghost { display: none; }
 }
+
+/* ============ RELEASE / 更新亮点 ============ */
+#release { position: relative; }
+.release-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 1080px; margin: 0 auto; }
+.release-card { position: relative; padding: 30px 26px 28px; border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.008)); overflow: hidden; }
+.release-card::before { content: ""; position: absolute; left: 0; top: 0; width: 100%; height: 2px; background: linear-gradient(90deg, var(--gold), transparent 60%); opacity: .7; }
+.release-tag { display: inline-block; font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; color: var(--gold); border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px; margin-bottom: 14px; }
+.release-card h3 { font-family: var(--font-display); font-weight: 700; font-size: 19px; color: var(--text); margin: 0 0 10px; letter-spacing: .01em; }
+.release-card p { color: var(--text-dim); font-size: 14.5px; line-height: 1.7; margin: 0; }
+.release-foot { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 44px; }
+@media (max-width: 860px) { .release-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .release-grid { grid-template-columns: 1fr; } }
+/* 下载区提示文字 */
+.paper-note { margin: 18px auto 0; max-width: 640px; text-align: center; font-size: 13.5px; color: #6b6357; line-height: 1.7; }
+.paper-note a { color: var(--pine-deep); text-decoration: underline; text-underline-offset: 2px; }
+.paper-note code { font-family: var(--font-mono); background: rgba(0,0,0,.06); color: #8a6d3b; padding: 1px 7px; border-radius: 6px; font-size: 12.5px; letter-spacing: .04em; }
