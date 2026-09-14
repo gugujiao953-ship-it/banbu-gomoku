@@ -1,0 +1,33 @@
+This directory contains the Rapfi engine loader and WebAssembly binary for the
+full-strength engine build. Since 2026-09-12 (v1.1.8 T49) this is the official
+wasm-multi-simd128 build configuration (USE_WASM_SIMD=ON, NO_MULTI_THREADING=ON,
+NO_COMMAND_MODULES=ON, single-threaded) compiled with Emscripten 4.0.8 from the
+upstream 250615 release — measurably faster than the previous stock web build
+(2.7-5.8x node throughput, +1-5 depth at equal budgets, equal playing strength
+in head-to-head) while consuming the exact same champion data package. The NNUE
+data package (mix9svq champion networks for freestyle, standard, and renju with
+separate black/white weights, plus engine config files) is NOT bundled here: it
+is downloaded in-app from the app's own hosting
+(engine-packs/rapfi-full-v3.data, about 40.3MB) and stored on the device. All
+engine analysis runs locally; nothing is downloaded until the user enables the
+pack in settings.
+
+Upstream source: https://github.com/dhbloo/rapfi (tag 250615)
+Browser integration reference: https://github.com/dhbloo/gomoku-calculator
+Build configuration: wasm-multi-simd128 with -DUSE_WASM_SIMD=ON
+                     -DNO_MULTI_THREADING=ON -DNO_COMMAND_MODULES=ON
+                     (Emscripten 4.0.8, built by GitHub Actions workflow
+                     .github/workflows/build-rapfi-simd.yml)
+Data package source: https://www.gomocalc.com/build/rapfi.data
+  (official package SHA-256
+   2fa58b1c9e005a7b39bbddb798097a8f1ff9ceaba4c9339d87ba7d324b9d846d).
+  As of v3 the distributed pack is the official package byte-for-byte (weights
+  stay lz4-compressed inside the mount and are decompressed by the engine).
+  Earlier v1/v2 packs repacked the networks uncompressed; that layout is not
+  accepted by the engine (verified against the official desktop binary: raw
+  .bin weights fail to load and the mix9svq evaluator silently disables
+  itself), so those versions must never be shipped again.
+  scripts/verify-rapfi-pack.mjs re-checks the pack identity and the loader
+  manifest layout.
+The upstream project is distributed under GPL-3.0. The corresponding source and
+license must remain available when this build is redistributed.

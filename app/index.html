@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <script type="module" crossorigin src="./assets/polyfills-Cta5BfY_.js"></script>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <!-- user-scalable 不关闭：WCAG 1.4.4 要求允许系统缩放；棋盘触摸交互由 touch-action:manipulation 单独处理 -->
+    <!-- CSP 兼容策略说明（2026-09-04）：
+         'unsafe-inline'：vite legacy 插件必须在 head 注入内联检测/回退脚本，Android WebView 83（Redmi K20 等兼容目标）
+         不支持 hash/nonce 的 <meta> 用法，无法逐条豁免。
+         'unsafe-eval'：Chromium 84 才引入 'wasm-unsafe-eval'；83 及以下只有带 'unsafe-eval' 的策略才允许 WebAssembly
+         编译，否则 RenLib.wasm 与 Rapfi WASM 在目标旧 WebView 上直接抛 CSP 错误。两者同时保留是「旧设备可用」的下限。
+         即便如此，本策略仍挡住了：外部脚本注入、外部资源加载（data: 仅图片）、跨源网络行为（connect 仅本机+GitHub）、
+         object/base/form/manifest 全部收紧。未来若放弃 WebView 83 兼容，可去掉 'unsafe-inline'/'unsafe-eval' 收紧一档。 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' data: blob: https://api.github.com https://gugujiao953-ship-it.github.io https://cdn.jsdelivr.net https://github.com https://release-assets.githubusercontent.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <meta name="theme-color" content="#365e4b" />
+    <meta name="description" content="半步五子棋打谱：移动优先的五子棋打谱与做题工具" />
+    <!-- iOS「添加到主屏幕」：Capacitor 侧本来就有 mobile-web-app-capable，这里补 Safari 专属写法。
+         status-bar-style 取 default（状态栏文字由系统深浅色自适应）：应用同时存在浅色与
+         dark 主题（App.tsx 的 resolveTheme 会跟随 prefers-color-scheme），black-translucent
+         会强制白色状态栏文字，在默认浅色顶栏上不可读。 -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="半步五子棋打谱" />
+    <!-- iOS 不支持 SVG 图标，apple-touch-icon 必须是 PNG。
+         public/apple-touch-icon*.png 由 android mipmap-xxxhdpi/ic_launcher.png（192×192，RGBA）
+         缩放并压平到图标自带底色 #f7f3e8 生成——iOS 会把透明像素当黑底，且会自己再做圆角遮罩。 -->
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="./apple-touch-icon-167x167.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="./apple-touch-icon-152x152.png" />
+    <link rel="icon" href="./icon.svg" />
+    <title>半步五子棋打谱</title>
+    <script type="module" crossorigin src="./assets/index-CqE3B4oR.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B-CII9FP.css">
+    <script type="module">import'data:text/javascript,if(!import.meta.resolve)throw Error("import.meta.resolve not supported")';import.meta.url;import("_").catch(()=>1);(async function*(){})().next();window.__vite_is_modern_browser=true</script>
+    <script type="module">!function(){if(window.__vite_is_modern_browser)return;console.warn("vite: loading legacy chunks, syntax error above and the same error below should be ignored");var e=document.getElementById("vite-legacy-polyfill"),n=document.createElement("script");n.src=e.src,n.onload=function(){System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))},document.body.appendChild(n)}();</script>
+  <link rel="manifest" href="./manifest.webmanifest"></head>
+  <body>
+    <div id="root"></div>
+    <script nomodule>!function(){var e=document,t=e.createElement("script");if(!("noModule"in t)&&"onbeforeload"in t){var n=!1;e.addEventListener("beforeload",(function(e){if(e.target===t)n=!0;else if(!e.target.hasAttribute("nomodule")||!n)return;e.preventDefault()}),!0),t.type="module",t.src=".",e.head.appendChild(t),t.remove()}}();</script>
+    <script nomodule crossorigin id="vite-legacy-polyfill" src="./assets/polyfills-legacy-B7JHEGCs.js"></script>
+    <script nomodule crossorigin id="vite-legacy-entry" data-src="./assets/index-legacy-BzsWQ8bG.js">System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))</script>
+  </body>
+</html>

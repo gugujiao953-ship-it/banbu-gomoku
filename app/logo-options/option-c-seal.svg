@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title>方案 C：棋印</title>
+  <rect width="512" height="512" rx="116" fill="#f7f3e8"/>
+  <rect x="66" y="66" width="380" height="380" rx="86" fill="#365e4b"/>
+  <path d="M150 150h212v212H150zM256 150v212M150 256h212" fill="none" stroke="#d8ad69" stroke-width="13" opacity=".88"/>
+  <circle cx="206" cy="206" r="48" fill="#20221f"/>
+  <circle cx="306" cy="306" r="48" fill="#f7f3e8" stroke="#20221f" stroke-width="6"/>
+  <path d="M256 224v64M224 256h64" stroke="#b94b3f" stroke-width="10" stroke-linecap="round"/>
+</svg>

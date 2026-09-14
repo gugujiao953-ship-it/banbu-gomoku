@@ -1,426 +1,1096 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>半步五子棋打谱 — 移动优先的五子棋 / 连珠打谱工具</title>
-<meta name="description" content="半步五子棋打谱：移动优先的五子棋 / 连珠打谱、做题与人机对战工具。导入 SGF / LIB / DP 棋谱，本地运行，永久免费，开源。">
-<meta property="og:title" content="半步五子棋打谱 — 把每一手，看进半步之内">
-<meta property="og:description" content="移动优先的五子棋 / 连珠打谱、做题与人机对战工具。本地运行，永久免费，开源。">
-<meta property="og:type" content="website">
-<link rel="icon" type="image/svg+xml" href="assets/icon.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>半步五子棋打谱 · v1.1.8 · 手机端五子棋打谱软件</title>
+<meta name="description" content="半步五子棋打谱 v1.1.8：移动优先的五子棋 / 连珠打谱与研究工具。打谱、导入、图片识谱、本地 AI 分析、人机对战、分支树与题库训练，全程可离线。" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23080a0e'/%3E%3Cpath d='M10 10h12M10 10v12M54 54H42M54 54V42' stroke='%23e0c184' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='10' fill='%23e0c184'/%3E%3C/svg%3E" />
+<style>
+/* ==========================================================
+   莱茵生命风 × 半步五子棋（黑金） v2
+   硬边 / 切角 / 角标 / 等宽编号 / 细线网格 / 不对称双栏
+   v2：帧序列动效 · 扫描识谱 · 石雨画布 · 逐字揭示 · 磁吸按钮
+   ========================================================== */
+:root{
+  --bg:#07090d; --bg-2:#0a0d12; --panel:#0c1016; --panel-2:#0e1319;
+  --line:rgba(255,255,255,.10); --line-2:rgba(255,255,255,.18);
+  --ink:#eef0f2; --muted:rgba(238,240,242,.55); --dim:rgba(238,240,242,.30);
+  --gold:#e0c184; --gold-2:#b99a5e; --jade:#4fd8b0; --teal:#1f5c51;
+  --mono:ui-monospace,"Cascadia Mono","JetBrains Mono",Consolas,"Courier New",monospace;
+  --maxw:1360px; --rail:96px;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--ink);overflow-x:hidden;
+  font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC","Source Han Sans SC",sans-serif;
+  -webkit-font-smoothing:antialiased;line-height:1.65;}
+.serif{font-family:"Source Han Serif SC","Noto Serif SC","Songti SC",serif;}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;}
+a{color:inherit;text-decoration:none;}
+img{display:block;max-width:100%;}
+::selection{background:rgba(224,193,132,.3);}
+::-webkit-scrollbar{width:9px;}
+::-webkit-scrollbar-track{background:#07090d;}
+::-webkit-scrollbar-thumb{background:#20262f;}
+::-webkit-scrollbar-thumb:hover{background:#333c48;}
+
+/* ---------- 背景 ---------- */
+.bg{position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden;}
+.bg-grid{position:absolute;inset:-2px;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(224,193,132,.045) 0 1px, transparent 1px 96px),
+    repeating-linear-gradient(90deg, rgba(224,193,132,.045) 0 1px, transparent 1px 96px);}
+.bg-glow{position:absolute;inset:0;background:
+  radial-gradient(70% 50% at 12% 0%, rgba(31,92,81,.30), transparent 62%),
+  radial-gradient(60% 50% at 96% 22%, rgba(224,193,132,.09), transparent 60%),
+  radial-gradient(80% 60% at 50% 108%, rgba(79,216,176,.07), transparent 60%);}
+.bg-scan{position:absolute;inset:0;opacity:.5;
+  background:repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 4px);}
+.bg-noise{position:absolute;inset:0;opacity:.035;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2'/></filter><rect width='180' height='180' filter='url(%23n)'/></svg>");}
+.bg-vig{position:absolute;inset:0;background:radial-gradient(78% 78% at 50% 42%, transparent 42%, rgba(0,0,0,.62) 100%);}
+#stoneRain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;}
+.watermark{position:fixed;right:-4vw;top:12vh;z-index:-1;pointer-events:none;
+  font-family:var(--mono);font-style:italic;font-weight:700;font-size:clamp(110px,16vw,280px);
+  letter-spacing:-.04em;line-height:.82;color:transparent;-webkit-text-stroke:1px rgba(224,193,132,.075);user-select:none;}
+
+/* ---------- 十字光标 ---------- */
+.crosshair{position:fixed;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;z-index:300;pointer-events:none;opacity:0;transition:opacity .35s;}
+.crosshair::before,.crosshair::after{content:"";position:absolute;background:var(--gold);opacity:.85;}
+.crosshair::before{left:50%;top:0;width:1px;height:100%;transform:translateX(-50%);}
+.crosshair::after{top:50%;left:0;height:1px;width:100%;transform:translateY(-50%);}
+.crosshair b{position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;border:1px solid var(--gold);border-radius:50%;}
+.spot{position:fixed;width:420px;height:420px;border-radius:50%;pointer-events:none;z-index:0;opacity:0;transition:opacity .5s;
+  background:radial-gradient(circle, rgba(224,193,132,.075), transparent 64%);transform:translate(-50%,-50%);}
+
+/* ---------- 顶部 ---------- */
+.hdr{position:fixed;top:0;left:0;right:0;z-index:200;transition:background .4s var(--ease);}
+.hdr::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--line);}
+.hdr.solid{background:rgba(7,9,13,.88);backdrop-filter:blur(14px);}
+.hdr-in{max-width:var(--maxw);margin:0 auto;padding:0 34px;height:66px;display:flex;align-items:center;justify-content:space-between;gap:26px;}
+.hdr-mark{display:flex;align-items:center;gap:13px;}
+.hdr-mark img{width:30px;height:30px;flex:none;border-radius:8px;box-shadow:0 0 0 1px var(--line-2);}
+.hdr-txt{font-size:14px;letter-spacing:.2em;font-weight:600;white-space:nowrap;}
+.hdr-txt i{font-style:normal;color:var(--gold);}
+.hdr-meta{font-family:var(--mono);font-size:10.5px;letter-spacing:.24em;color:var(--dim);border-left:1px solid var(--line);padding-left:13px;}
+.hdr-nav{display:flex;align-items:center;gap:2px;}
+.hdr-nav a{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--muted);padding:9px 14px;position:relative;transition:color .3s;white-space:nowrap;}
+.hdr-nav a:hover{color:var(--gold);}
+.hdr-nav a::before{content:"";position:absolute;left:14px;right:14px;bottom:4px;height:1px;background:var(--gold);transform:scaleX(0);transform-origin:left;transition:transform .4s var(--ease);}
+.hdr-nav a:hover::before{transform:scaleX(1);}
+.hdr-cta{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:#0a0d12;background:var(--gold);padding:11px 18px;
+  clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,9px 100%,0 calc(100% - 9px));transition:background .35s;}
+.hdr-cta:hover{background:#f0d39a;}
+.progress{position:fixed;top:66px;left:0;height:2px;width:0;z-index:201;background:var(--gold);box-shadow:0 0 14px rgba(224,193,132,.6);}
+
+.rail{position:fixed;left:0;top:0;bottom:0;width:var(--rail);z-index:150;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;pointer-events:none;}
+.rail::after{content:"";position:absolute;right:0;top:0;bottom:0;width:1px;background:var(--line);}
+.rail-i{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--dim);writing-mode:vertical-rl;transition:color .4s,transform .4s var(--ease);}
+.rail-i.on{color:var(--gold);transform:translateX(-4px);}
+@media(max-width:1180px){.rail{display:none;} :root{--rail:0px;}}
+
+/* ---------- 通用 ---------- */
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 34px;position:relative;z-index:1;}
+section{position:relative;z-index:1;}
+.micro{font-family:var(--mono);font-size:10.5px;letter-spacing:.3em;color:var(--gold);display:inline-flex;align-items:center;gap:11px;}
+.micro::before{content:"";width:22px;height:1px;background:var(--gold);}
+.micro .n{color:var(--dim);}
+h1,h2,h3,h4{font-weight:600;line-height:1.16;}
+.sec-h{display:flex;align-items:flex-end;justify-content:space-between;gap:30px;padding-bottom:22px;border-bottom:1px solid var(--line);margin-bottom:52px;}
+.sec-h h2{font-size:clamp(26px,3.2vw,44px);}
+.sec-h .en{font-family:var(--mono);font-size:11px;letter-spacing:.3em;color:var(--dim);text-align:right;line-height:1.9;}
+.sec-h .en b{display:block;color:var(--muted);}
+.gold{color:var(--gold);}
+/* 逐字揭示 */
+.js [data-split] .ch{display:inline-block;transform:translateY(.72em) rotate(4deg);opacity:0;transition:transform .7s var(--ease),opacity .7s var(--ease);}
+.js [data-split].in .ch{transform:none;opacity:1;}
+.js [data-rv]{opacity:0;transform:translateY(26px);transition:opacity .85s var(--ease),transform .85s var(--ease);}
+.js [data-rv].in{opacity:1;transform:none;}
+.corners{position:relative;}
+.corners::before,.corners::after{content:"";position:absolute;width:13px;height:13px;pointer-events:none;transition:border-color .45s;}
+.corners::before{left:0;top:0;border-left:1px solid var(--gold);border-top:1px solid var(--gold);}
+.corners::after{right:0;bottom:0;border-right:1px solid var(--gold);border-bottom:1px solid var(--gold);}
+.corners:hover::before,.corners:hover::after{border-color:var(--jade);}
+
+/* ---------- HERO ---------- */
+.hero{padding:150px 0 70px;min-height:100svh;display:flex;align-items:center;}
+.hero-in{max-width:var(--maxw);margin:0 auto;padding:0 34px;width:100%;display:grid;grid-template-columns:1.06fr .94fr;gap:56px;align-items:center;}
+.tag-row{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:28px;}
+.tag{font-family:var(--mono);font-size:10px;letter-spacing:.22em;color:var(--muted);border:1px solid var(--line-2);padding:6px 11px;}
+.tag.g{color:#0a0d12;background:var(--gold);border-color:transparent;font-weight:700;}
+.tag.j{color:var(--jade);border-color:rgba(79,216,176,.42);}
+.hero h1{font-size:clamp(40px,6vw,84px);line-height:1.04;}
+.hero h1 .ln{display:block;overflow:hidden;}
+.hero h1 .ln .ch{display:inline-block;}
+/* 版本号：标题一半大小，右贴标题 */
+.hero h1 .ver{font-family:var(--mono);font-style:normal;font-size:.5em;font-weight:400;
+  color:var(--jade);letter-spacing:.06em;margin-left:.26em;padding-left:.3em;
+  border-left:2px solid rgba(79,216,176,.45);vertical-align:baseline;}
+.hero-en{font-family:var(--mono);font-size:11px;letter-spacing:.34em;color:var(--dim);margin-top:20px;}
+.hero-claim{margin-top:22px;padding:12px 0 12px 15px;border-left:2px solid var(--gold);color:var(--muted);font-size:16.5px;max-width:560px;}
+.hero-claim b{color:var(--gold);}
+.hero-p{margin-top:16px;color:var(--muted);font-size:15.5px;max-width:560px;}
+.hero-p em{font-style:normal;color:var(--jade);}
+.hero-p b{color:var(--ink);}
+.btns{display:flex;gap:13px;margin-top:32px;flex-wrap:wrap;}
+.btn{font-family:var(--mono);font-size:12px;letter-spacing:.14em;padding:15px 26px;display:inline-block;position:relative;
+  clip-path:polygon(0 0,calc(100% - 11px) 0,100% 11px,100% 100%,11px 100%,0 calc(100% - 11px));
+  transition:transform .25s var(--ease),background .3s,color .3s;will-change:transform;}
+.btn.p{color:#0a0d12;background:var(--gold);font-weight:700;}
+.btn.p:hover{background:#f2d69c;}
+.btn.g{color:var(--ink);border:1px solid var(--line-2);}
+.btn.g:hover{border-color:var(--gold);color:var(--gold);}
+.readout{margin-top:44px;border-top:1px solid var(--line);max-width:560px;}
+.ro{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid var(--line);}
+.ro .k{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--dim);min-width:128px;}
+.ro .d{flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--line) 0 5px,transparent 5px 11px);}
+.ro .v{font-family:var(--mono);font-size:24px;color:var(--gold);font-weight:700;}
+.ro .u{font-size:12px;color:var(--muted);}
+.hero-stage{position:relative;padding:34px;}
+.stage-frame{position:absolute;inset:0;border:1px solid var(--line);}
+.stage-frame::before{content:"";position:absolute;inset:6px;border:1px solid rgba(224,193,132,.14);}
+.stage-hline{position:absolute;left:-6%;right:-6%;top:50%;height:1px;background:linear-gradient(90deg,transparent,rgba(224,193,132,.28),transparent);}
+.stage-vline{position:absolute;top:-6%;bottom:-6%;left:50%;width:1px;background:linear-gradient(180deg,transparent,rgba(224,193,132,.2),transparent);}
+.tick{position:absolute;font-family:var(--mono);font-size:9px;letter-spacing:.22em;color:var(--dim);background:var(--bg);padding:3px 7px;}
+.tick.tl{left:0;top:0;transform:translate(-30%,-50%);}
+.tick.tr{right:0;top:0;transform:translate(30%,-50%);}
+.tick.bl{left:0;bottom:0;transform:translate(-30%,50%);}
+.tick.br{right:0;bottom:0;transform:translate(30%,50%);}
+.ph{position:relative;margin:0 auto;width:min(320px,78vw);perspective:1100px;}
+.ph-f{border-radius:40px;border:1px solid var(--line-2);background:#05070a;padding:11px;position:relative;
+  box-shadow:0 40px 90px rgba(0,0,0,.66), 0 0 0 1px rgba(0,0,0,.6), 0 0 70px rgba(224,193,132,.08);
+  transform-style:preserve-3d;transition:transform .5s var(--ease);}
+.ph-s{position:relative;border-radius:30px;overflow:hidden;aspect-ratio:390/844;background:#0a0e14;}
+.ph-s img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.045);transition:opacity .8s var(--ease),transform 1.4s var(--ease);}
+.ph-s img.on{opacity:1;transform:scale(1);}
+.ph-glare{position:absolute;inset:0;pointer-events:none;z-index:3;
+  background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.075) 47%,rgba(255,255,255,.11) 50%,rgba(255,255,255,.075) 53%,transparent 58%);}
+.ph-scan{position:absolute;left:0;right:0;top:-20%;height:26%;z-index:2;pointer-events:none;opacity:0;
+  background:linear-gradient(180deg,transparent,rgba(79,216,176,.16) 62%,rgba(79,216,176,.34) 88%,rgba(224,193,132,.5));
+  border-bottom:1px solid rgba(224,193,132,.7);}
+.ph-scan.run{animation:scanRun 2.4s var(--ease) infinite;}
+@keyframes scanRun{0%{top:-26%;opacity:0;}14%{opacity:1;}70%{opacity:1;}100%{top:104%;opacity:0;}}
+.ph-island{position:absolute;left:50%;top:16px;transform:translateX(-50%);width:88px;height:22px;border-radius:12px;background:#04060a;z-index:4;box-shadow:0 0 0 1px rgba(255,255,255,.06);}
+.hero-cap{margin-top:18px;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.3em;color:var(--dim);}
+.hero-cap b{color:var(--gold);font-weight:400;}
+
+/* ---------- 跑马灯 ---------- */
+.ticker{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:13px 0;overflow:hidden;position:relative;z-index:1;background:rgba(10,13,18,.6);}
+.ticker-t{display:flex;width:max-content;animation:tick 30s linear infinite;}
+.ticker:hover .ticker-t{animation-play-state:paused;}
+.ticker-t span{font-family:var(--mono);font-size:10.5px;letter-spacing:.24em;color:var(--dim);padding:0 22px;position:relative;white-space:nowrap;}
+.ticker-t span::after{content:"";position:absolute;right:-2px;top:50%;width:4px;height:4px;background:var(--gold);transform:translateY(-50%) rotate(45deg);opacity:.6;}
+@keyframes tick{to{transform:translateX(-50%);}}
+
+/* ---------- SEC01 核心功能 ---------- */
+.show{padding:110px 0 90px;}
+.show-grid{display:grid;grid-template-columns:minmax(330px,430px) 1fr;gap:72px;align-items:start;max-width:var(--maxw);margin:0 auto;padding:0 34px;}
+.show-sticky{position:sticky;top:110px;}
+.idx-dots{display:flex;justify-content:center;gap:8px;margin-top:20px;}
+.idx-dot{width:22px;height:2px;background:var(--line-2);transition:background .4s,box-shadow .4s;}
+.idx-dot.on{background:var(--gold);box-shadow:0 0 10px rgba(224,193,132,.7);}
+.steps{display:flex;flex-direction:column;gap:26px;}
+.step{border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));padding:30px 32px;position:relative;overflow:hidden;
+  transition:border-color .4s,transform .5s var(--ease);}
+.step::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--gold);transform:scaleY(0);transform-origin:top;transition:transform .5s var(--ease);}
+.step:hover{transform:translateX(6px);}
+.step:hover::before,.step.cur::before{transform:scaleY(1);}
+.step.cur{border-color:rgba(224,193,132,.4);}
+.step-no{font-family:var(--mono);font-size:44px;font-weight:700;color:transparent;-webkit-text-stroke:1px rgba(224,193,132,.34);line-height:1;transition:color .5s,-webkit-text-stroke-color .5s;}
+.step.cur .step-no{color:rgba(224,193,132,.9);-webkit-text-stroke-color:transparent;}
+.step h3{font-size:22px;margin-top:14px;}
+.step p{color:var(--muted);font-size:14.5px;margin-top:10px;max-width:640px;}
+.step-rows{margin-top:16px;display:flex;flex-direction:column;gap:7px;}
+.step-rows .r{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--muted);display:flex;gap:12px;border-top:1px dashed var(--line);padding-top:7px;}
+.step-rows .r b{color:var(--gold);min-width:64px;font-weight:600;letter-spacing:.14em;}
+.step-rows .r i{font-style:normal;color:var(--jade);}
+.pl{position:absolute;inset:0;opacity:0;transition:opacity .55s var(--ease);}
+.pl.on{opacity:1;}
+.pl img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .34s linear;}
+.pl img.on{opacity:1;}
+/* 翻页帧序列：硬切（淡入跟不上 7fps 会导致全程半透明） */
+.pl[data-p="seq"] img{transition:none;}
+.pl.kb img.on{animation:kb 7s ease-in-out infinite alternate;}
+@keyframes kb{from{transform:scale(1) translateY(0);}to{transform:scale(1.07) translateY(-9px);}}
+/* 识谱扫描播放器 */
+.pl.scan .ph-scanline{position:absolute;left:-4%;right:-4%;top:0;height:16%;z-index:2;opacity:0;
+  background:linear-gradient(180deg,transparent,rgba(79,216,176,.2) 60%,rgba(224,193,132,.44));
+  border-bottom:1px solid rgba(224,193,132,.85);}
+.pl.scan.sweep .ph-scanline{animation:scanStep .95s linear forwards;}
+@keyframes scanStep{0%{top:-14%;opacity:0;}18%{opacity:1;}100%{top:102%;opacity:0;}}
+
+/* ---------- SEC02 主题 ---------- */
+.themes{padding:100px 0;}
+.th-grid{display:grid;grid-template-columns:1fr minmax(300px,400px);gap:72px;align-items:center;}
+.th-list{border-top:1px solid var(--line);}
+.th-item{display:flex;align-items:center;gap:16px;padding:17px 6px;border-bottom:1px solid var(--line);cursor:pointer;position:relative;outline:none;
+  transition:background .35s,padding-left .35s var(--ease);}
+.th-item:hover,.th-item:focus-visible{background:rgba(224,193,132,.045);padding-left:14px;}
+.th-item.on{background:rgba(224,193,132,.07);}
+.th-item .id{font-size:10px;letter-spacing:.18em;color:var(--dim);min-width:44px;}
+.th-item .nm{font-size:16.5px;font-weight:600;flex:1;transition:color .3s;}
+.th-item.on .nm{color:var(--gold);}
+.th-item .sw{width:46px;height:15px;border:1px solid rgba(255,255,255,.2);flex:none;}
+.th-item .ar{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--dim);opacity:0;transform:translateX(-7px);transition:opacity .3s,transform .3s var(--ease);}
+.th-item.on .ar,.th-item:hover .ar{opacity:1;transform:none;}
+.th-item .bar{position:absolute;left:0;bottom:-1px;height:1px;width:0;background:var(--gold);}
+.th-item.on .bar.run{animation:thBar 2.9s linear forwards;}
+@keyframes thBar{to{width:100%;}}
+.th-cap{margin-top:14px;display:flex;align-items:baseline;justify-content:space-between;}
+.th-cap span{font-size:15px;color:var(--gold);letter-spacing:.1em;}
+.th-cap small{font-family:var(--mono);font-size:9px;letter-spacing:.24em;color:var(--dim);}
+
+/* ---------- SEC03 更新日志 ---------- */
+.logs{padding:100px 0;}
+.log-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:30px;}
+.ltab{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--muted);background:none;border:1px solid var(--line-2);padding:10px 16px;cursor:pointer;transition:all .3s;}
+.ltab:hover{color:var(--gold);border-color:rgba(224,193,132,.5);}
+.ltab.on{color:#0a0d12;background:var(--gold);border-color:var(--gold);font-weight:700;}
+.log-list{display:flex;flex-direction:column;}
+.log-row{display:grid;grid-template-columns:130px 1fr;gap:26px;padding:26px 4px;border-bottom:1px solid var(--line);position:relative;
+  opacity:0;transform:translateY(18px);transition:opacity .6s var(--ease),transform .6s var(--ease),background .3s;}
+.log-row.in{opacity:1;transform:none;}
+.log-row:hover{background:rgba(224,193,132,.028);}
+.log-row::before{content:"";position:absolute;left:-14px;top:26px;bottom:26px;width:2px;background:var(--gold);transform:scaleY(0);transition:transform .4s var(--ease);transform-origin:top;}
+.log-row:hover::before{transform:scaleY(1);}
+.lid{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;color:var(--dim);line-height:2;}
+.lid b{display:block;font-size:30px;color:transparent;-webkit-text-stroke:1px rgba(224,193,132,.4);letter-spacing:0;line-height:1.15;transition:color .4s,-webkit-text-stroke-color .4s;}
+.log-row:hover .lid b{color:var(--gold);-webkit-text-stroke-color:transparent;}
+.log-row h4{font-size:17.5px;}
+.log-row p{color:var(--muted);font-size:13.8px;margin-top:7px;max-width:880px;}
+.tg{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px;}
+.tg span{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:var(--jade);border:1px solid rgba(79,216,176,.32);padding:4px 9px;}
+
+/* ---------- SEC04 规格 ---------- */
+.specs{padding:100px 0;}
+.sp-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px;}
+.sp{border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),var(--panel-2));padding:30px 30px 26px;position:relative;overflow:hidden;transition:border-color .4s,transform .5s var(--ease);}
+.sp:hover{transform:translateY(-5px);border-color:rgba(224,193,132,.36);}
+.sp::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .4s;
+  background:radial-gradient(340px circle at var(--mx,50%) var(--my,50%), rgba(224,193,132,.09), transparent 65%);}
+.sp:hover::before{opacity:1;}
+.sp-h{display:flex;align-items:center;gap:11px;padding-bottom:14px;border-bottom:1px solid var(--line);}
+.sp-h .dot{width:8px;height:8px;background:var(--gold);transform:rotate(45deg);flex:none;box-shadow:0 0 10px rgba(224,193,132,.55);}
+.sp-h h4{font-size:17px;flex:1;}
+.sp-h .en{font-family:var(--mono);font-size:9.5px;letter-spacing:.24em;color:var(--dim);}
+.fmts{display:flex;gap:7px;flex-wrap:wrap;margin-top:16px;}
+.fmts span{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--gold);border:1px solid rgba(224,193,132,.34);padding:6px 11px;}
+.sp-rows{display:flex;flex-direction:column;gap:9px;}
+.sp-rows .r{font-size:13.8px;color:var(--muted);display:flex;gap:10px;}
+.sp-rows .r::before{content:"›";color:var(--gold);flex:none;}
+.sp-rows .r em{font-style:normal;color:var(--ink);border-bottom:1px dashed rgba(224,193,132,.45);}
+
+/* ---------- CTA ---------- */
+.cta{padding:110px 0 90px;}
+.cta-box{border:1px solid var(--line);background:
+  radial-gradient(60% 90% at 50% 0%, rgba(224,193,132,.07), transparent 65%),
+  linear-gradient(180deg,var(--panel),var(--panel-2));
+  text-align:center;padding:72px 30px 66px;position:relative;overflow:hidden;}
+.cta-icon{width:96px;height:96px;margin:0 auto 30px;position:relative;}
+.cta-icon img{width:100%;height:100%;border-radius:26%;position:relative;z-index:2;box-shadow:0 18px 50px rgba(0,0,0,.6), 0 0 46px rgba(224,193,132,.18);}
+.cta-icon::before,.cta-icon::after{content:"";position:absolute;inset:-11px;border-radius:50%;border:1px dashed rgba(224,193,132,.4);}
+.cta-icon::before{animation:spin 14s linear infinite;}
+.cta-icon::after{inset:-22px;border-color:rgba(79,216,176,.22);animation:spin 26s linear infinite reverse;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.cta-box h2{font-size:clamp(30px,4.4vw,56px);}
+.cta-box .en{font-family:var(--mono);font-size:11px;letter-spacing:.32em;color:var(--dim);margin-top:18px;}
+.btns.center{justify-content:center;}
+.btn.glow{animation:btnPulse 2.6s ease-in-out infinite;}
+@keyframes btnPulse{0%,100%{box-shadow:0 0 0 0 rgba(224,193,132,.4);}55%{box-shadow:0 0 0 13px rgba(224,193,132,0);}}
+/* 下载区 */
+.dl{margin-top:46px;padding-top:32px;border-top:1px solid var(--line);}
+.dl-h{font-family:var(--mono);font-size:10.5px;letter-spacing:.3em;color:var(--dim);display:flex;align-items:center;justify-content:center;gap:12px;}
+.dl-h::before,.dl-h::after{content:"";width:34px;height:1px;background:var(--line-2);}
+.dl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:780px;margin:22px auto 0;text-align:left;}
+.dl-card{position:relative;border:1px solid var(--line);background:rgba(224,193,132,.028);padding:20px 22px;
+  transition:border-color .35s,transform .45s var(--ease),background .35s;}
+.dl-card:hover{border-color:rgba(224,193,132,.5);background:rgba(224,193,132,.06);transform:translateY(-4px);}
+.dl-k{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--gold);}
+.dl-t{display:block;font-size:14.5px;margin-top:9px;color:var(--ink);word-break:break-all;}
+.dl-m{display:flex;align-items:center;gap:9px;margin-top:12px;flex-wrap:wrap;}
+.dl-m>span:first-child{font-size:12px;color:var(--dim);}
+.dl-code{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12.5px;letter-spacing:.14em;
+  color:var(--jade);border:1px dashed rgba(79,216,176,.42);padding:5px 10px;}
+.dl-code button{font-family:inherit;font-size:10px;letter-spacing:.14em;color:var(--gold);background:none;border:none;cursor:pointer;padding:0 1px;}
+.dl-code button:hover{color:#f0d39a;}
+.dl-go{position:absolute;right:18px;top:18px;font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;
+  color:var(--dim);transition:color .3s,transform .3s var(--ease);}
+.dl-card:hover .dl-go{color:var(--gold);transform:translateX(3px);}
+.dl-note{margin-top:18px;font-size:12px;color:var(--dim);}
+
+/* ---------- footer ---------- */
+.ft{border-top:1px solid var(--line);padding:30px 0;}
+.ft-in{max-width:var(--maxw);margin:0 auto;padding:0 34px;display:flex;align-items:center;justify-content:space-between;gap:20px;}
+.ft p{font-family:var(--mono);font-size:10px;letter-spacing:.22em;color:var(--dim);}
+.ft-links{display:flex;gap:20px;}
+.ft-links a{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--muted);transition:color .3s;}
+.ft-links a:hover{color:var(--gold);}
+
+/* ---------- 响应式 ---------- */
+@media(max-width:1080px){
+  .show-grid{grid-template-columns:1fr;gap:44px;}
+  .show-sticky{position:static;}
+  .th-grid{grid-template-columns:1fr;gap:44px;}
+}
+@media(max-width:760px){
+  .wrap,.hero-in{padding:0 20px;}
+  .hdr-in{padding:0 16px;gap:12px;}
+  .hdr-meta{display:none;}
+  .hdr-txt{font-size:12px;letter-spacing:.12em;}
+  .hdr-nav{margin-left:auto;}
+  .hdr-nav a{padding:8px 8px;font-size:10px;letter-spacing:.08em;}
+  .hero{padding:112px 0 56px;min-height:auto;}
+  .hero-in{grid-template-columns:1fr;gap:40px;}
+  .hero h1{font-size:clamp(34px,10vw,52px);}
+  .hero-claim{font-size:15px;}
+  .tag-row{gap:7px;margin-bottom:22px;}
+  .tag{font-size:9px;padding:5px 9px;letter-spacing:.16em;}
+  .btns{gap:9px;margin-top:26px;}
+  .btn{padding:13px 18px;font-size:11px;letter-spacing:.1em;}
+  .readout{margin-top:30px;}
+  .ro{gap:9px;padding:10px 0;}
+  .ro .k{min-width:84px;font-size:9px;letter-spacing:.14em;}
+  .ro .v{font-size:19px;}
+  .hero-stage{padding:20px;}
+  .sec-h{flex-direction:column;align-items:flex-start;gap:14px;padding-bottom:18px;margin-bottom:36px;}
+  .sec-h .en{text-align:left;}
+  .sec-h h2{font-size:clamp(24px,7.4vw,34px);}
+  .micro{font-size:9px;letter-spacing:.22em;}
+  .ticker{padding:12px 0;}
+  .ticker-t span{font-size:10px;padding:0 16px;letter-spacing:.2em;}
+  .show{padding:80px 0;}
+  .show-grid{padding:0 20px;}
+  .step{padding:24px 20px;}
+  .step h3{font-size:20px;}
+  .step p{font-size:14px;}
+  .step-no{font-size:34px;}
+  .step-rows .r{font-size:10px;flex-direction:column;gap:3px;}
+  .step-rows .r b{min-width:0;}
+  .themes,.logs,.specs{padding:76px 0;}
+  .cta{padding:70px 0 80px;}
+  .cta-box{padding:52px 22px 48px;}
+  .cta-box h2{font-size:clamp(25px,7.6vw,34px);}
+  .log-tabs{gap:6px;}
+  .ltab{font-size:10px;padding:8px 11px;letter-spacing:.1em;}
+  .log-row{grid-template-columns:1fr;gap:8px;padding:20px 2px;}
+  .log-row .lid b{font-size:20px;display:inline;margin:0 8px 0 0;}
+  .log-row h4{font-size:16.5px;}
+  .log-row p{font-size:13.5px;}
+  .sp-grid{grid-template-columns:1fr;}
+  .sp{padding:24px 20px;}
+  .sp-rows .r{font-size:13.5px;}
+  .fmts span{font-size:10px;padding:5px 9px;}
+  .dl-grid{grid-template-columns:1fr;}
+  .th-grid{padding:0 20px;}
+  .ft-in{padding:22px 20px;flex-direction:column;text-align:center;gap:14px;}
+  .ft-links{gap:14px;flex-wrap:wrap;justify-content:center;}
+  .crosshair{display:none;}
+}
+@media(max-width:640px){
+  .hdr-nav a:not(.hdr-cta){display:none;}
+}
+@media(max-width:420px){
+  .hero h1{font-size:32px;}
+  .readout .ro .k{min-width:70px;font-size:8.5px;}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001s!important;transition-duration:.001s!important;}
+  html{scroll-behavior:auto;}
+  #stoneRain{display:none;}
+}
+</style>
 </head>
 <body>
 
-<!-- ============ NAV ============ -->
-<header class="nav" id="nav">
-  <a class="nav-brand" href="#top" aria-label="返回顶部">
-    <img src="assets/icon.svg" alt="" class="nav-logo">
-    <span class="nav-name">半步五子棋打谱</span>
-  </a>
-  <nav class="nav-links" aria-label="页面导航">
-    <a href="#pillars">功能</a>
-    <a href="#engine">引擎</a>
-    <a href="#ai">AI</a>
-    <a href="#themes">主题</a>
-    <a href="#formats">格式</a>
-    <a href="#release">更新</a>
-  </nav>
-  <div class="nav-cta">
-    <a class="btn btn-ghost" href="https://github.com/gugujiao953-ship-it/banbu-gomoku" target="_blank" rel="noopener">GitHub</a>
-    <a class="btn btn-solid" href="#download">下载</a>
+<div class="progress" id="progress"></div>
+<div class="crosshair" id="crosshair"><b></b></div>
+<div class="spot" id="spot"></div>
+
+<div class="bg">
+  <div class="bg-grid" id="bgGrid"></div>
+  <div class="bg-glow"></div><div class="bg-scan"></div><div class="bg-noise"></div><div class="bg-vig"></div>
+</div>
+<canvas id="stoneRain"></canvas>
+<div class="watermark" aria-hidden="true">GOMOKU<br>RENJU</div>
+
+<header class="hdr" id="hdr">
+  <div class="hdr-in">
+    <div class="hdr-mark">
+      <img src="assets/app-icon.png" alt="半步五子棋图标">
+      <div class="hdr-txt">半步五子棋<i>打谱</i></div>
+      <div class="hdr-meta">SPEC / v1.1.8</div>
+    </div>
+    <nav class="hdr-nav">
+      <a href="#sec01">01 核心功能</a>
+      <a href="#sec02">02 外观主题</a>
+      <a href="#sec03">03 本版更新</a>
+      <a href="#sec04">04 规格</a>
+      <a class="hdr-cta" href="#download">获取 v1.1.8</a>
+    </nav>
   </div>
 </header>
 
-<main id="top">
+<aside class="rail" id="rail">
+  <div class="rail-i on" data-s="hero">00 · INDEX</div>
+  <div class="rail-i" data-s="sec01">01 · CORE</div>
+  <div class="rail-i" data-s="sec02">02 · THEME</div>
+  <div class="rail-i" data-s="sec03">03 · LOG</div>
+  <div class="rail-i" data-s="sec04">04 · SPEC</div>
+</aside>
 
-<!-- ============ HERO ============ -->
-<section class="hero">
-  <div class="hero-bg" aria-hidden="true">
-    <img src="assets/generated/hero-wide.png" alt="" class="hero-bg-img">
-    <div class="hero-bg-veil"></div>
-    <div class="hero-grid-lines"></div>
-  </div>
-  <div class="hero-inner">
-    <div class="hero-copy">
-      <p class="eyebrow reveal"><span class="eyebrow-line"></span>移动优先 · 本地运行 · 永久免费开源</p>
-      <h1 class="hero-title reveal">
-        <span class="hero-title-line">半步五子棋</span>
-        <span class="hero-title-line accent">打谱</span>
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-in">
+    <div>
+      <div class="tag-row" data-rv>
+        <span class="tag g">开源免费</span>
+        <span class="tag">v1.1.8</span>
+        <span class="tag">MOBILE-FIRST</span>
+        <span class="tag j">OFFLINE ENGINE</span>
+        <span class="tag">WEB / ANDROID</span>
+      </div>
+      <h1 class="serif" data-split aria-label="半步五子棋打谱与研究 1.1.8">
+        <span class="ln"><span>半步五子棋</span></span>
+        <span class="ln"><span class="gold shine" data-shine>打谱与研究</span><em class="ver">1.1.8</em></span>
       </h1>
-      <p class="hero-tagline reveal">把每一手，看进半步之内。</p>
-      <p class="hero-sub reveal">一款为手机而生的五子棋 / 连珠研究工具。导入棋谱、读谱标注、做题训练、人机对战——全部在设备本地完成，无需账号，无需联网。1.2GB 的大型棋谱，也能装进口袋。</p>
-      <div class="hero-actions reveal">
-        <a class="btn btn-solid btn-lg" href="#download">下载 Android</a>
-        <a class="btn btn-outline btn-lg" href="https://github.com/gugujiao953-ship-it/banbu-gomoku" target="_blank" rel="noopener">查看源码</a>
+      <div class="hero-en" data-rv data-d="300">GOMOKU &amp; RENJU STUDY TOOLKIT</div>
+      <p class="hero-claim" data-rv data-d="380"><b>开源免费</b>的手机端五子棋打谱软件 —— 把专业打谱装进手机</p>
+      <p class="hero-p" data-rv data-d="460">打谱、导入、图片识谱、<em>本地 AI 分析</em>、人机对战、分支树与题库训练 —— 一张棋盘全做完，<b>全程可离线</b>。</p>
+      <div class="btns" data-rv data-d="540">
+        <a class="btn p mag" href="#sec01">查看功能清单 →</a>
+        <a class="btn g mag" href="#sec03">本版更新</a>
       </div>
-      <dl class="hero-stats reveal">
-        <div class="stat"><dt>大型谱解析</dt><dd><span class="count" data-count="22078100">0</span><small>节点</small></dd></div>
-        <div class="stat"><dt>内置题库</dt><dd><span class="count" data-count="436">0</span><small>题</small></dd></div>
-        <div class="stat"><dt>棋盘皮肤</dt><dd><span class="count" data-count="14">0</span><small>套</small></dd></div>
-        <div class="stat"><dt>开局规则</dt><dd><span class="count" data-count="8">0</span><small>种</small></dd></div>
-      </dl>
-    </div>
-    <div class="hero-phone reveal">
-      <div class="phone">
-        <div class="phone-island"></div>
-        <img src="assets/shots/01-hero-board.png" alt="半步五子棋打谱：2018 祁观 vs 弈心人机大战第 2 局，第 40 手局面" class="phone-screen">
+      <div class="readout" data-rv data-d="620">
+        <div class="ro"><span class="k">BOARD MATS</span><span class="d"></span><span class="v" data-count="14">00</span><span class="u">种棋盘</span></div>
+        <div class="ro"><span class="k">STONE MATS</span><span class="d"></span><span class="v" data-count="16">00</span><span class="u">种棋子</span></div>
+        <div class="ro"><span class="k">TOTAL THEMES</span><span class="d"></span><span class="v" data-count="22">00</span><span class="u">套外观</span></div>
+        <div class="ro"><span class="k">IMPORT FAMILY</span><span class="d"></span><span class="v" data-count="6">00</span><span class="u">个格式族</span></div>
       </div>
-      <p class="phone-caption">2018 成都棋院 · 祁观 vs 弈心 人机大战第 2 局（真实棋谱导入）</p>
     </div>
-  </div>
-  <a class="hero-scroll" href="#pillars" aria-label="向下滚动"><span></span></a>
-</section>
-
-<!-- ============ PILLARS ============ -->
-<section class="section" id="pillars">
-  <div class="section-head">
-    <p class="eyebrow reveal">三个主场</p>
-    <h2 class="section-title reveal">一块棋盘，<em>三种用法</em></h2>
-    <p class="section-sub reveal">打谱、做题、对战共享同一块棋盘与同一套棋谱模型——切换模式，会话完整保留。</p>
-  </div>
-  <div class="pillars">
-    <article class="pillar reveal">
-      <div class="pillar-phone">
-        <div class="phone phone-sm">
-          <img src="assets/shots/01-hero-board.png" alt="打谱界面：真实比赛棋谱的完整局面与手数" class="phone-screen">
-        </div>
+    <div class="hero-stage" data-rv data-d="200">
+      <div class="stage-frame"></div>
+      <div class="stage-hline"></div><div class="stage-vline"></div>
+      <span class="tick tl">FIG. 01 / WORKSPACE</span>
+      <span class="tick tr">390 × 844</span>
+      <span class="tick bl">SCALE 1:1</span>
+      <span class="tick br">BANBU / v1.1.8</span>
+      <div class="ph" id="heroPh">
+        <div class="ph-f" id="heroTilt"><div class="ph-s" id="heroScreen">
+          <img src="assets/01-home.png" class="on" alt="半步五子棋打谱 工作区">
+          <img src="assets/02-board-played.png" alt="打谱棋盘" loading="lazy">
+          <img src="assets/10-analysis.png" alt="本地 AI 分析" loading="lazy">
+          <img src="assets/16-theme-cyber.png" alt="霓虹赛博主题" loading="lazy">
+          <div class="ph-glare"></div><div class="ph-scan"></div>
+        </div></div>
       </div>
-      <div class="pillar-body">
-        <span class="pillar-no">01</span>
-        <h3>打谱</h3>
-        <p>完整变化树、改着、候选点 A–E、节点注释与着法评价、谱内查找。从 2018 人机大战到 12,097 局 Gomocup，真实对局随手可研。</p>
-        <ul class="pillar-points">
-          <li>变化树：创建分支 / 设主线 / 删除后续</li>
-          <li>节点注释 · 局面文字 · 好手坏手评价</li>
-          <li>谱内查找坐标、手数、注释，一键跳转</li>
-        </ul>
-      </div>
-    </article>
-    <article class="pillar pillar-reverse reveal">
-      <div class="pillar-phone">
-        <div class="phone phone-sm">
-          <img src="assets/shots/10-puzzle.png" alt="做题界面：开宝兼容题集与 AI 陪练" class="phone-screen">
-        </div>
-      </div>
-      <div class="pillar-body">
-        <span class="pillar-no">02</span>
-        <h3>做题</h3>
-        <p>兼容开宝二维 JSON 题库，内置 8 套共 436 题。落子后由独立 Worker 陪练应对，错题自动进错题本，进度跨设备备份。</p>
-        <ul class="pillar-points">
-          <li>三手胜 / 发阳论 / 坂田吾朗追诘胜等经典题集</li>
-          <li>AI 陪练：独立 Worker 应对，可强制停止</li>
-          <li>题集文件夹 · 完成进度 · 错题本</li>
-        </ul>
-      </div>
-    </article>
-    <article class="pillar reveal">
-      <div class="pillar-phone">
-        <div class="phone phone-sm">
-          <img src="assets/shots/07-ai-game-2.png" alt="人机对战界面：本地 AI 对局进行中" class="phone-screen">
-        </div>
-      </div>
-      <div class="pillar-body">
-        <span class="pillar-no">03</span>
-        <h3>人机对战</h3>
-        <p>本地 Rapfi 引擎全程离线对弈：连珠 / 标准规则、禁手裁判、执黑执白，以及从五手两打到塔拉的完整开局规则。</p>
-        <ul class="pillar-points">
-          <li>初级 / 中级 / 高级 / 大师四档强度</li>
-          <li>五手两打 · 多打（3–10 打）· 塔十 · 塔拉</li>
-          <li>禁手辅助提示，研究模式不阻止落子</li>
-        </ul>
-      </div>
-    </article>
-  </div>
-</section>
-
-<!-- ============ QUOTE BAND ============ -->
-<section class="quote-band" aria-label="引言">
-  <div class="quote-bg" aria-hidden="true"><img src="assets/generated/hand-stone.png" alt=""></div>
-  <div class="quote-veil" aria-hidden="true"></div>
-  <blockquote class="quote-inner reveal">
-    <p>「棋不在多，在每一步都看得清。」</p>
-    <footer>打谱的意义，是把别人的胜负，走成自己的理解。</footer>
-  </blockquote>
-</section>
-
-<!-- ============ ENGINE ============ -->
-<section class="section section-dark" id="engine">
-  <div class="section-head">
-    <p class="eyebrow reveal">大型棋谱引擎</p>
-    <h2 class="section-title reveal">1.2GB 的棋谱，<em>装进口袋</em></h2>
-    <p class="section-sub reveal">网页版 RenLib WASM 核心在独立 Worker 中解析，软件层不设文件大小上限；分支与原生注释按当前局面实时查询，不再把整谱搬进内存。</p>
-  </div>
-  <div class="engine-grid">
-    <div class="engine-copy reveal">
-      <ul class="engine-list">
-        <li>
-          <b>22,078,100 节点</b>
-          <span>松月.lib（131MB）完整解析成功；1,709 万节点标注谱浏览器导入后导航 P95 约 32ms。</span>
-        </li>
-        <li>
-          <b>约 1.5 秒首屏</b>
-          <span>1.18GB 的斜月.lib 分页后端：标题与首批 25 万节点先行呈现，页面立即可操作。</span>
-        </li>
-        <li>
-          <b>分支树可视化</b>
-          <span>当前路径附近节点成树展开，30%–10× 缩放，定位、书签、复制、重命名、删除一气呵成。</span>
-        </li>
-        <li>
-          <b>原生注释保真</b>
-          <span>RenLib 节点文字（boardText）与 DP 局面标注按局面实时读取，69 万处标注不丢失。</span>
-        </li>
-      </ul>
-    </div>
-    <div class="engine-shots">
-      <figure class="shot-card reveal">
-        <div class="phone phone-sm"><img src="assets/shots/04-branch-tree.png" alt="分支树面板：23 个后续分支的树状视图" class="phone-screen"></div>
-        <figcaption>分支树 · 九天指南 DP 库 23 个后续</figcaption>
-      </figure>
-      <figure class="shot-card reveal">
-        <div class="phone phone-sm"><img src="assets/shots/03-annotations.png" alt="导入棋谱后的原生标注点：每个分支点显示变化名称" class="phone-screen"></div>
-        <figcaption>原生标注点 · 分支名首字落位</figcaption>
-      </figure>
-      <figure class="shot-card reveal">
-        <div class="phone phone-sm"><img src="assets/shots/05-win-line.png" alt="Gomocup 2025 真实对局：导航到终局，五连胜线高亮" class="phone-screen"></div>
-        <figcaption>Gomocup 2019 终局 · 胜线高亮</figcaption>
-      </figure>
+      <div class="hero-cap">FIG.01 —— <b id="heroCap">工作区总览</b></div>
     </div>
   </div>
 </section>
 
-<!-- ============ AI ============ -->
-<section class="section section-ai" id="ai">
-  <div class="ai-bg" aria-hidden="true"><img src="assets/generated/ai-circuit.png" alt=""></div>
-  <div class="ai-veil" aria-hidden="true"></div>
-  <div class="section-head">
-    <p class="eyebrow reveal">AI 与分析</p>
-    <h2 class="section-title reveal">AI 在你的手机里<em>思考</em></h2>
-    <p class="section-sub reveal">本地 Rapfi 分析推荐落点、胜率与主变化；VCF 强制胜搜索带独立证明校验；候选点按成五、活四、冲四、活三与防守点给出可解释排序。引擎不可用时明确回退标注，不伪造胜率。</p>
-  </div>
-  <div class="ai-grid">
-    <figure class="shot-card shot-card-lg reveal">
-      <div class="phone"><img src="assets/shots/07-ai-setup.png" alt="人机对战设置：8 种开局规则、4 档强度、执子选择" class="phone-screen"></div>
-      <figcaption>开局规则：无禁手 → 塔拉，8 种可选</figcaption>
-    </figure>
-    <div class="ai-copy reveal">
-      <h3>可解释的每一步</h3>
-      <p>AI 思考面板给出推荐点、胜率估计与 Top-3 候选；局面分析把「为什么走这里」拆成成五、活四、冲四、活三、防守点五项证据，而不是一句「AI 觉得好」。</p>
-      <ul class="ai-points">
-        <li><b>VCF 强制胜搜索</b><span>连续冲四推演，独立证明校验</span></li>
-        <li><b>连珠禁手裁判</b><span>长连 / 四四 / 三三，落子即判</span></li>
-        <li><b>开局规则引擎</b><span>五手两打、多打、塔十、塔拉交换</span></li>
-      </ul>
-    </div>
-    <figure class="shot-card reveal">
-      <div class="phone phone-sm"><img src="assets/shots/07-ai-game-1.png" alt="人机对战进行中：黑方落子 H8，AI 应手" class="phone-screen"></div>
-      <figcaption>对局中 · 黑先 H8</figcaption>
-    </figure>
-    <figure class="shot-card reveal">
-      <div class="phone phone-sm"><img src="assets/shots/07-ai-game-2.png" alt="人机对战进行到第 4 手：双方着法与局面" class="phone-screen"></div>
-      <figcaption>对局中 · 第 4 手</figcaption>
-    </figure>
-  </div>
-</section>
+<div class="ticker"><div class="ticker-t" id="ticker"></div></div>
 
-<!-- ============ IMAGE RECOGNITION ============ -->
-<section class="section" id="recognize">
-  <div class="section-head">
-    <p class="eyebrow reveal">图片识谱</p>
-    <h2 class="section-title reveal">截图一张棋，<em>变成一份谱</em></h2>
-    <p class="section-sub reveal">自动定位网格、识别棋子颜色与手数。带完整序号的截图可恢复落子顺序——识别后直接读谱、复盘、建分支。</p>
-  </div>
-  <div class="recog-grid">
-    <figure class="recog-card reveal">
-      <img src="assets/shots/recog-source.jpg" alt="棋盘截图：2018 人机大战第 1 局第 17 手局面，带手数" class="recog-img">
-      <figcaption><span class="recog-tag">输入</span>一张带手数的棋盘截图</figcaption>
-    </figure>
-    <div class="recog-arrow reveal" aria-hidden="true">
-      <svg viewBox="0 0 120 24" fill="none"><path d="M2 12h108m0 0-10-9m10 9-10 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </div>
-    <figure class="shot-card reveal">
-      <div class="phone phone-sm"><img src="assets/shots/08-image-recognition.png" alt="识谱结果：15 路棋盘，识别 17 子，置信度 80%" class="phone-screen"></div>
-      <figcaption><span class="recog-tag recog-tag-out">输出</span>识别 17 子 · 置信度 80% · 进入棋谱库</figcaption>
-    </figure>
-  </div>
-</section>
-
-<!-- ============ THEMES ============ -->
-<section class="section section-dark" id="themes">
-  <div class="section-head">
-    <p class="eyebrow reveal">主题</p>
-    <h2 class="section-title reveal">二十多种氛围，<em>同一块棋</em></h2>
-    <p class="section-sub reveal">雨幕、水墨、雪落、青花瓷、像素、赛博……二十余套主题，主题动效、棋盘透明度、棋子透明度均可单独调节，夜间打谱友好。以下为其中六例。</p>
-  </div>
-  <div class="theme-grid">
-    <figure class="theme-card reveal"><div class="phone phone-sm"><img src="assets/shots/theme-rain.png" alt="雨幕主题" class="phone-screen" loading="lazy"></div><figcaption>雨幕<small>缓慢雨丝，适合夜间复盘</small></figcaption></figure>
-    <figure class="theme-card reveal"><div class="phone phone-sm"><img src="assets/shots/theme-bamboo.png" alt="水墨竹林主题" class="phone-screen" loading="lazy"></div><figcaption>水墨竹林<small>青绿竹影与竹叶飘落</small></figcaption></figure>
-    <figure class="theme-card reveal"><div class="phone phone-sm"><img src="assets/shots/theme-snow.png" alt="雪落主题" class="phone-screen" loading="lazy"></div><figcaption>雪落<small>冷色雪花安静飘落</small></figcaption></figure>
-    <figure class="theme-card reveal"><div class="phone phone-sm"><img src="assets/shots/theme-porcelain.png" alt="青花瓷影主题" class="phone-screen" loading="lazy"></div><figcaption>青花瓷影<small>瓷白、钴蓝纹样与藏青</small></figcaption></figure>
-    <figure class="theme-card reveal"><div class="phone phone-sm"><img src="assets/shots/theme-pixel.png" alt="像素街机主题" class="phone-screen" loading="lazy"></div><figcaption>像素街机<small>低分辨率像素与复古色块</small></figcaption></figure>
-    <figure class="theme-card reveal"><div class="phone phone-sm"><img src="assets/shots/theme-cyber.png" alt="霓虹赛博主题" class="phone-screen" loading="lazy"></div><figcaption>霓虹赛博<small>蓝紫霓虹与电路光</small></figcaption></figure>
-  </div>
-</section>
-
-<!-- ============ BOARDS & STONES ============ -->
-<section class="section" id="skins">
-  <div class="section-head">
-    <p class="eyebrow reveal">棋盘与棋子</p>
-    <h2 class="section-title reveal">14 种棋盘 × 16 种棋子</h2>
-    <p class="section-sub reveal">从原木到青花瓷，从云子到钻石——棋盘材质、棋子质感、透明度各自独立，组合出属于你的棋桌。</p>
-  </div>
-  <div class="skin-grid">
-    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-wood-classic.png" alt="原木棋盘与经典棋子" class="phone-screen" loading="lazy"></div><figcaption>原木 · 经典</figcaption></figure>
-    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-porcelain-porcelain.png" alt="青花瓷棋盘与青花瓷棋子" class="phone-screen" loading="lazy"></div><figcaption>青花瓷</figcaption></figure>
-    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-circuit-terminal.png" alt="电路棋盘与终端字符棋子" class="phone-screen" loading="lazy"></div><figcaption>电路 · 终端</figcaption></figure>
-    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-blackgold-blackgold.png" alt="尊贵黑金棋盘与黑金棋子" class="phone-screen" loading="lazy"></div><figcaption>尊贵黑金</figcaption></figure>
-    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-notebook-notebook.png" alt="练习本棋盘与勾叉棋子" class="phone-screen" loading="lazy"></div><figcaption>练习本 · 勾叉</figcaption></figure>
-    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-kawaii-kawaii.png" alt="卡哇伊棋盘与卡哇伊棋子" class="phone-screen" loading="lazy"></div><figcaption>卡哇伊</figcaption></figure>
-    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-aurora-aurora.png" alt="极光棋盘与极光棋子" class="phone-screen" loading="lazy"></div><figcaption>极光</figcaption></figure>
-    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-jade-jade.png" alt="玉石棋盘与玉石棋子" class="phone-screen" loading="lazy"></div><figcaption>玉石</figcaption></figure>
-    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-emerald-gold-diamond.png" alt="翡翠棋盘与黑钻白金棋子" class="phone-screen" loading="lazy"></div><figcaption>翡翠 · 黑钻白金</figcaption></figure>
-    <figure class="skin-card reveal"><div class="phone phone-sm"><img src="assets/shots/board-frosted-diamond.png" alt="磨砂玻璃棋盘与钻石棋子" class="phone-screen" loading="lazy"></div><figcaption>磨砂 · 钻石</figcaption></figure>
-  </div>
-</section>
-
-<!-- ============ LIBRARY & FORMATS ============ -->
-<section class="section section-dark" id="formats">
-  <div class="section-head">
-    <p class="eyebrow reveal">棋谱库与格式</p>
-    <h2 class="section-title reveal">几乎所有格式，<em>都认得</em></h2>
-    <p class="section-sub reveal">本地棋谱库按名称、棋手、赛事即时检索，文件夹自由分组；导入导出覆盖 SGF 生态与 RenLib 二进制世界。</p>
-  </div>
-  <div class="lib-grid">
-    <div class="lib-left">
-      <figure class="shot-card shot-card-lg reveal">
-        <div class="phone"><img src="assets/shots/06-library.png" alt="棋谱库：2018 人机大战五局、Gomocup 2024/2025 等真实棋谱" class="phone-screen"></div>
-        <figcaption>棋谱库 · 真实导入的 2018 人机大战与 Gomocup 对局</figcaption>
-      </figure>
-      <ul class="lib-features reveal">
-        <li>按棋谱名、棋手、赛事即时检索</li>
-        <li>文件夹自由分组，支持嵌套子文件夹</li>
-        <li>批量处理：移动、删除、重命名</li>
-        <li>回收站：删除的棋谱可恢复</li>
-      </ul>
-    </div>
-    <div class="formats reveal">
-      <h3 class="formats-h">导入</h3>
-      <ul class="format-list">
-        <li><div class="fmt-chips"><code>.sgf</code><code>.fgf</code></div><div><b>SGF FF[4] 游戏树</b><span>UTF-8 / UTF-16 · 设置局面（AB/AW/AE/PL）· 过手 · 多顶层棋谱集合 · 注释、节点名、常用标记与着法评价 · 5–25 路方形棋盘</span></div></li>
-        <li><div class="fmt-chips"><code>.lib</code></div><div><b>RenLib 二进制变化树</b><span>网页版 ReadLib / RenLib WASM 核心，独立 Worker 解析；软件层不设文件大小上限，分支与原生注释按局面实时查询</span></div></li>
-        <li><div class="fmt-chips"><code>.db</code><code>.dp</code></div><div><b>DP / DB 局面数据库</b><span>LZ4 压缩库：提取坐标记录、合并为变化树、保留节点文字，支持实时局面查询（已用九天指南真实验收）</span></div></li>
-        <li><div class="fmt-chips"><code>.pos</code><code>.txt</code></div><div><b>坐标序列</b><span>h8i8h9 / H8 I8 H9 形式的纯文本着法串，必须是完整坐标序列才接受</span></div></li>
-        <li><div class="fmt-chips"><code>.ren</code><code>.renjs</code><code>.wzq</code></div><div><b>SGF 语法变体</b><span>内容为 SGF 语法时直接读取</span></div></li>
-        <li><div class="fmt-chips"><code>.renju</code><code>.json</code></div><div><b>跨端数据格式</b><span>本软件完整变化树（注释 / 标记 / 元数据）；也兼容带明确 moves 字段的落子列表对象</span></div></li>
-        <li><div class="fmt-chips"><code>图片</code></div><div><b>图片识谱</b><span>PNG / JPG / WEBP 棋盘截图：自动定位网格，识别棋子颜色与手数，完整序号可恢复落子顺序</span></div></li>
-        <li><div class="fmt-chips"><code>题库</code></div><div><b>开宝兼容题集</b><span>二维 JSON 题库：星级、空占位、A–O / 1–15 坐标与黑白尾码；内置 8 套 436 题</span></div></li>
-      </ul>
-      <h3 class="formats-h">导出与备份</h3>
-      <ul class="format-list">
-        <li><div class="fmt-chips"><code>.sgf</code></div><div><b>SGF 导出</b><span>与 RenLib 及其他棋谱工具交换</span></div></li>
-        <li><div class="fmt-chips"><code>.renju</code></div><div><b>完整格式导出</b><span>变化树、注释、标记与元数据全量保存，供三端互通</span></div></li>
-        <li><div class="fmt-chips"><code>备份</code></div><div><b>一键备份 / 恢复</b><span>棋谱库、题库、进度、草稿、设置与大型索引清单整包导出导入，恢复前完整校验</span></div></li>
-      </ul>
-    </div>
-  </div>
-</section>
-
-<!-- ============ RELEASE / 更新亮点 ============ -->
-<section class="section section-dark" id="release">
-  <div class="section-head">
-    <p class="eyebrow reveal"><span class="eyebrow-line"></span>更新日志</p>
-    <h2 class="section-title reveal">v1.1.7 的<em>新变化</em></h2>
-    <p class="section-sub reveal">本版聚焦移动端的顺手与专业度的沉淀：返回键不再误退、读谱也能整理分支、手册补全并配真实截图。完整说明见 GitHub Release。</p>
-  </div>
-  <div class="release-grid">
-    <article class="release-card reveal">
-      <span class="release-tag">体验</span>
-      <h3>返回键按层级工作</h3>
-      <p>系统返回先关弹层与工具坞，不在首页先回首页，根页面二次确认才退出——不再误触丢失正在编辑的棋谱。</p>
-    </article>
-    <article class="release-card reveal">
-      <span class="release-tag">研究</span>
-      <h3>分支树 · 读谱重命名</h3>
-      <p>重命名输入框适配全部主题；读谱模式可给分支加本机名称，不改原谱，整理大型定式谱更顺手。</p>
-    </article>
-    <article class="release-card reveal">
-      <span class="release-tag">上手</span>
-      <h3>新手引导更清晰</h3>
-      <p>精简首屏弹窗避免按钮被挤走，修复注释按钮激活态与内置局面数据库入口的可见性。</p>
-    </article>
-    <article class="release-card reveal">
-      <span class="release-tag">手册</span>
-      <h3>使用手册全面同步</h3>
-      <p>扩充到 19 节并配约 30 张真实界面截图、支持点击放大：VCF 出题、山口与索索夫-8、AI 胜率 / Top-3 / 主变化、跨谱查找等尽数补齐。</p>
-    </article>
-    <article class="release-card reveal">
-      <span class="release-tag">能力</span>
-      <h3>本地 AI 与训练</h3>
-      <p>内置 Rapfi 引擎的思考、人机对战、做题陪练与 VCF 出题生成，全程离线；十项开局规则覆盖索索夫-8、山口、塔拉等正式赛制。</p>
-    </article>
-    <article class="release-card reveal">
-      <span class="release-tag">工程</span>
-      <h3>可核验的发布</h3>
-      <p>CI 直接产出经 apksigner 校验的签名 APK 与 SHA-256；同签名可从旧版覆盖升级，版本一致性由自动化测试守护。</p>
-    </article>
-  </div>
-  <div class="release-foot reveal">
-    <a class="btn btn-solid" href="https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/tag/v1.1.7" target="_blank" rel="noopener">查看 v1.1.7 完整 Release</a>
-    <a class="btn btn-outline" href="https://github.com/gugujiao953-ship-it/banbu-gomoku/releases" target="_blank" rel="noopener">全部历史版本</a>
-  </div>
-</section>
-
-<!-- ============ OPEN SOURCE ============ -->
-<section class="section section-paper" id="download">
-  <div class="paper-bg" aria-hidden="true"><img src="assets/generated/mist-mountain.png" alt=""></div>
-  <div class="paper-veil" aria-hidden="true"></div>
-  <div class="paper-inner">
-    <p class="eyebrow eyebrow-ink reveal">开源与致谢</p>
-    <h2 class="section-title section-title-ink reveal">永久免费，<em>开放源码</em></h2>
-    <p class="paper-copy reveal">这是一个 Vibecoding 的产物，以 MIT License 开放。网页版可安装为 PWA 离线使用；Android 应用通过 Capacitor 打包，Android 8 以上均可安装。如内容涉及侵权，请通过 GitHub Issue 联系，会及时处理或删除。</p>
-    <div class="paper-actions reveal">
-      <a class="btn btn-ink btn-lg" href="https://github.com/gugujiao953-ship-it/banbu-gomoku" target="_blank" rel="noopener">GitHub 仓库</a>
-      <a class="btn btn-ink-outline btn-lg" href="https://github.com/gugujiao953-ship-it/banbu-gomoku/releases" target="_blank" rel="noopener">Releases 下载</a>
-      <a class="btn btn-ink-outline btn-lg" href="https://pan.baidu.com/s/16uu4wDu1FKPEn5COgX5yOg?pwd=f7x2" target="_blank" rel="noopener">百度网盘下载</a>
-      <a class="btn btn-ink-outline btn-lg" href="https://wwbwc.lanzouq.com/i7hM946sujpi" target="_blank" rel="noopener">蓝奏云下载</a>
-    </div>
-    <p class="paper-note reveal">GitHub 访问不便时，可从网盘获取 APK：<a href="https://pan.baidu.com/s/16uu4wDu1FKPEn5COgX5yOg?pwd=f7x2" target="_blank" rel="noopener">百度网盘</a> 提取码 <code>f7x2</code>，或 <a href="https://wwbwc.lanzouq.com/i7hM946sujpi" target="_blank" rel="noopener">蓝奏云</a> 密码 <code>66jr</code>。</p>
-    <div class="paper-cards reveal">
-      <div class="paper-card"><b>打谱</b><span>参考爱五子棋打谱软件与 RenLib / SGF 生态</span></div>
-      <div class="paper-card"><b>做题</b><span>交互与题集格式参考开宝五子棋</span></div>
-      <div class="paper-card"><b>AI</b><span>搜索思路参考 SlowRenju 等公开项目</span></div>
-    </div>
-  </div>
-</section>
-
-</main>
-
-<!-- ============ FOOTER ============ -->
-<footer class="footer">
-  <div class="footer-inner">
-    <div class="footer-brand">
-      <img src="assets/icon.svg" alt="" class="footer-logo">
+<!-- 01 核心功能 -->
+<section class="show" id="sec01">
+  <div class="wrap">
+    <div class="sec-h" data-rv>
       <div>
-        <b>半步五子棋打谱</b>
-        <small>v1.1.7 · MIT License · 本地棋谱研究工具</small>
+        <div class="micro"><span class="n">SEC.01</span> CORE CAPABILITIES</div>
+        <h2 style="margin-top:18px" data-split>一张棋盘，<span class="gold">八件事</span>全做完</h2>
+      </div>
+      <div class="en"><b>MODULES 08</b>打谱 · 导入 · 识谱 · 分析<br>对战 · 主题 · 分支 · 题库</div>
+    </div>
+  </div>
+  <div class="show-grid">
+    <div class="show-sticky" data-rv>
+      <div style="position:relative">
+        <div class="idx-dots" id="idxDots"></div>
+        <div class="ph" style="margin-top:18px">
+          <div class="ph-f"><div class="ph-s" id="showScreen"><div class="pl" data-p="seq" data-fps="7"><img src="assets/seq/play/00.jpg" class="on" alt="打谱演示" loading="lazy"><img src="assets/seq/play/01.jpg" alt="" loading="lazy"><img src="assets/seq/play/02.jpg" alt="" loading="lazy"><img src="assets/seq/play/03.jpg" alt="" loading="lazy"><img src="assets/seq/play/04.jpg" alt="" loading="lazy"><img src="assets/seq/play/05.jpg" alt="" loading="lazy"><img src="assets/seq/play/06.jpg" alt="" loading="lazy"><img src="assets/seq/play/07.jpg" alt="" loading="lazy"><img src="assets/seq/play/08.jpg" alt="" loading="lazy"><img src="assets/seq/play/09.jpg" alt="" loading="lazy"><img src="assets/seq/play/10.jpg" alt="" loading="lazy"><img src="assets/seq/play/11.jpg" alt="" loading="lazy"><img src="assets/seq/play/12.jpg" alt="" loading="lazy"></div><div class="pl kb"><img src="assets/06-import-sheet.png" class="on" alt="导入格式" loading="lazy"></div><div class="pl" data-p="seq" data-fps="2.2"><img src="assets/seq/jiutian/00.jpg" class="on" alt="九天指南" loading="lazy"><img src="assets/seq/jiutian/01.jpg" alt="" loading="lazy"><img src="assets/seq/jiutian/02.jpg" alt="" loading="lazy"><img src="assets/seq/jiutian/03.jpg" alt="" loading="lazy"><img src="assets/seq/jiutian/04.jpg" alt="" loading="lazy"><img src="assets/seq/jiutian/05.jpg" alt="" loading="lazy"><img src="assets/seq/jiutian/06.jpg" alt="" loading="lazy"><img src="assets/seq/jiutian/07.jpg" alt="" loading="lazy"><img src="assets/seq/jiutian/08.jpg" alt="" loading="lazy"><img src="assets/seq/jiutian/09.jpg" alt="" loading="lazy"></div><div class="pl" data-p="seq" data-fps="2.6"><img src="assets/seq/analysis/00.jpg" class="on" alt="本地 AI 分析" loading="lazy"><img src="assets/seq/analysis/01.jpg" alt="" loading="lazy"><img src="assets/seq/analysis/02.jpg" alt="" loading="lazy"><img src="assets/seq/analysis/03.jpg" alt="" loading="lazy"><img src="assets/seq/analysis/04.jpg" alt="" loading="lazy"><img src="assets/seq/analysis/05.jpg" alt="" loading="lazy"></div><div class="pl kb"><img src="assets/13-ai-playing.png" class="on" alt="人机对战" loading="lazy"></div><div class="pl scan"><img src="assets/21b-image-recognizing.png" class="on" alt="图片识谱 对齐" loading="lazy"><img src="assets/21c-image-recognized.png" alt="图片识谱 结果" loading="lazy"><div class="ph-scanline"></div></div><div class="pl" data-p="seq" data-fps="1.4"><img src="assets/seq/tree/00.jpg" class="on" alt="分支树" loading="lazy"><img src="assets/seq/tree/01.jpg" alt="" loading="lazy"><img src="assets/seq/tree/02.jpg" alt="" loading="lazy"><img src="assets/seq/tree/03.jpg" alt="" loading="lazy"></div><div class="pl" data-p="seq" data-fps="0.85"><img src="assets/seq/pair/00.jpg" class="on" alt="题库训练" loading="lazy"><img src="assets/seq/pair/01.jpg" alt="" loading="lazy"></div><div class="ph-glare"></div>
+          </div></div>
+        </div>
+        <div class="hero-cap" style="margin-top:16px">FIG.02 —— <b id="plCap">打谱与变化</b></div>
       </div>
     </div>
-    <nav class="footer-links" aria-label="页脚导航">
-      <a href="#pillars">功能</a>
-      <a href="#engine">引擎</a>
-      <a href="#ai">AI</a>
-      <a href="#themes">主题</a>
-      <a href="#formats">格式</a>
-      <a href="https://github.com/gugujiao953-ship-it/banbu-gomoku" target="_blank" rel="noopener">GitHub</a>
-    </nav>
-    <p class="footer-note">感谢 RenLib / SGF 生态、开宝五子棋与 SlowRenju 等开源项目。<br>© 2026 半步五子棋打谱</p>
+    <div class="steps" id="steps">
+      <article class="step" data-i="0">
+        <div class="step-no">01</div>
+        <h3>打谱与变化</h3>
+        <p>点空位落子，点棋子跳手；上/下一手、到首尾、旋转与镜像。走棋导航常驻棋盘下方，单手就能推完整盘棋。</p>
+        <div class="step-rows">
+          <div class="r"><b>NAV</b>逐手前进 / 回退 · 跳转指定手数</div>
+          <div class="r"><b>VIEW</b>手数显示 · 坐标 · 90° 旋转 · 左右镜像</div>
+          <div class="r"><b>RULE</b>无禁手 / 有禁手，禁手点<i>实时提示</i></div>
+        </div>
+      </article>
+      <article class="step" data-i="1">
+        <div class="step-no">02</div>
+        <h3>多格式导入</h3>
+        <p>SGF、RenLib 的 LIB 大型开局库、DP 分页谱、DB 索引、JSON、POS，以及 SGF 同族扩展名 —— 识别原始格式直接导出，或转为完整 SGF / JSON。</p>
+        <div class="step-rows">
+          <div class="r"><b>INPUT</b>SGF · LIB · DP · DB · JSON · POS · ZIP</div>
+          <div class="r"><b>OUTPUT</b>原格式导出，或转完整 SGF / JSON</div>
+          <div class="r"><b>SCALE</b>十万级分支的 RenLib 开局库也能打开</div>
+        </div>
+      </article>
+      <article class="step" data-i="2">
+        <div class="step-no">03</div>
+        <h3>打开即读，原谱标注原样呈现</h3>
+        <p>内置《九天指南》局面库，原谱自带的文字标注直接显示在棋盘上；手数逐手推进，分叉点一望即知。</p>
+        <div class="step-rows">
+          <div class="r"><b>NATIVE</b>内置《九天指南v5-1》<i>DP / DB 局面库</i></div>
+          <div class="r"><b>MARKS</b><i>原谱自带文字标注</i>，直接渲染在棋盘上</div>
+          <div class="r"><b>NAV</b>逐手前进 / 回退 · 跳转指定手数</div>
+        </div>
+      </article>
+      <article class="step" data-i="3">
+        <div class="step-no">04</div>
+        <h3>本地 AI 分析</h3>
+        <p>离线 Rapfi 引擎：候选点高亮、实时胜率与评估分、搜索深度与计算量。VCF 必胜搜索能在几秒内给出强制胜的完整证明。</p>
+        <div class="step-rows">
+          <div class="r"><b>ENGINE</b>轻量随包 / 冠军网络应用内下载</div>
+          <div class="r"><b>READOUT</b>候选点 · 胜率 · 评估分 · 深度 · 节点</div>
+          <div class="r"><b>PROOF</b><i>VCF 必胜搜索</i>，给出强制胜的完整线路</div>
+        </div>
+      </article>
+      <article class="step" data-i="4">
+        <div class="step-no">05</div>
+        <h3>人机对战</h3>
+        <p>初级 0.6 秒一步到大师 10 秒一步，四档强度；也可自由设定思考时间与搜索深度。开局库命中时毫秒落子，随时悔棋重来。</p>
+        <div class="step-rows">
+          <div class="r"><b>LEVEL</b>初级 0.6s / 中级 2s / 高级 5s / 大师 10s / 自由</div>
+          <div class="r"><b>BOOK</b>索索夫-8 与山口五手两打，<i>命中毫秒落子</i></div>
+          <div class="r"><b>RULE</b>无禁手 / 有禁手，随时悔棋重来</div>
+        </div>
+      </article>
+      <article class="step" data-i="5">
+        <div class="step-no">06</div>
+        <h3>图片识谱</h3>
+        <p>15 路棋盘照片直接定位网格、识别棋子与颜色，输出置信度并生成可编辑、可继续推演的棋谱。</p>
+        <div class="step-rows">
+          <div class="r"><b>INPUT</b>手机拍摄或截图的 15 路棋盘照片</div>
+          <div class="r"><b>OUTPUT</b>可编辑棋谱 + 识别置信度</div>
+          <div class="r"><b>SPEED</b><i>识别速度提升 80%</i></div>
+          <div class="r"><b>EXTRA</b>「复原手序」按棋子序号重建落子顺序</div>
+        </div>
+      </article>
+      <article class="step" data-i="6">
+        <div class="step-no">07</div>
+        <h3>分支树与书签</h3>
+        <p>树形图展开主线与全部兄弟分支，可缩放定位；关键局面一键存成书签，随时回到那个分叉点继续研究。</p>
+        <div class="step-rows">
+          <div class="r"><b>TREE</b>主线 / 兄弟分支 · 缩放定位 · 新建与复制分支</div>
+          <div class="r"><b>BOOKMARK</b><i>一键加书签</i>，书签页按谱展开跳转</div>
+          <div class="r"><b>EDIT</b>设为默认主线 · 改着保留后续 · 删除变化</div>
+        </div>
+      </article>
+      <article class="step" data-i="7">
+        <div class="step-no">08</div>
+        <h3>题库训练</h3>
+        <p>VCF 出题生成器（变形 / 原创两种模式）；做题时点分析就是「帮你想一手」并直接落子，杀棋即落，一键换边重解。</p>
+        <div class="step-rows">
+          <div class="r"><b>GEN</b><i>VCF 出题</i>：变形 / 原创 · 档位 · 数量</div>
+          <div class="r"><b>HINT</b>点分析即落子（提示模式），杀棋即落</div>
+          <div class="r"><b>RESET</b>黑白换边重解 · 重启清场无残子</div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 02 外观主题 -->
+<section class="themes" id="sec02">
+  <div class="wrap">
+    <div class="sec-h" data-rv>
+      <div>
+        <div class="micro"><span class="n">SEC.02</span> APPEARANCE SYSTEM</div>
+        <h2 style="margin-top:18px" data-split>换一套皮，<span class="gold">换个心情</span></h2>
+      </div>
+      <div class="en"><b>MATRIX 14 × 16</b>22 套整体外观<br>关键热区 ≥ 44px</div>
+    </div>
+    <div class="th-grid">
+      <div data-rv>
+        <div class="th-list" id="thList"></div>
+        <p style="margin-top:26px;font-size:14px;color:var(--dim);max-width:520px">全部主题都做过对比度与选中态校验：深色主题下下拉菜单、书签行、面板文字均可读；控件触摸热区不小于 44px。</p>
+      </div>
+      <div class="th-side" data-rv data-d="160">
+        <div class="ph">
+          <div class="ph-f"><div class="ph-s" id="thScreen">
+            <img src="assets/14-theme-blackgold.png" class="on" alt="尊贵黑金" loading="lazy">
+            <img src="assets/15-theme-porcelain.png" alt="青花瓷" loading="lazy">
+            <img src="assets/16-theme-cyber.png" alt="霓虹赛博" loading="lazy">
+            <img src="assets/17-theme-aurora.png" alt="极光" loading="lazy">
+            <img src="assets/18-theme-whitejade.png" alt="白玉 · 黑钻白金" loading="lazy">
+            <img src="assets/19-theme-classic.png" alt="原木 · 云子" loading="lazy">
+            <div class="ph-glare"></div>
+          </div></div>
+        </div>
+        <div class="th-cap"><span id="thCap">尊贵黑金</span><small>BOARD + STONES + UI THEME</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 本版更新 -->
+<section class="logs" id="sec03">
+  <div class="wrap">
+    <div class="sec-h" data-rv>
+      <div>
+        <div class="micro"><span class="n">SEC.03</span> CHANGELOG / v1.1.8</div>
+        <h2 style="margin-top:18px" data-split>这一版，<span class="gold">改了什么</span></h2>
+      </div>
+      <div class="en"><b>ENTRIES 14</b>相对 v1.1.7<br>AI 棋力 · 分析体验 · 交互修复</div>
+    </div>
+    <div class="log-tabs" id="logTabs"></div>
+    <div class="log-list" id="logList"></div>
+  </div>
+</section>
+
+<!-- 04 规格 -->
+<section class="specs" id="sec04">
+  <div class="wrap">
+    <div class="sec-h" data-rv>
+      <div>
+        <div class="micro"><span class="n">SEC.04</span> SPECIFICATION</div>
+        <h2 style="margin-top:18px" data-split>装在哪，<span class="gold">都能用</span></h2>
+      </div>
+      <div class="en"><b>WEB / ANDROID</b>PWA 可离线<br>cn.renjunote.mobile</div>
+    </div>
+    <div class="sp-grid">
+      <div class="sp corners glowcard" data-rv>
+        <div class="sp-h"><span class="dot"></span><h4>导入格式</h4><span class="en">FORMAT</span></div>
+        <div class="fmts"><span>SGF</span><span>LIB</span><span>DP</span><span>DB</span><span>JSON</span><span>POS</span><span>ZIP</span></div>
+        <div class="sp-rows" style="margin-top:20px">
+          <div class="r"><span>另支持 SFG / FGF / PSQ / REN 等 <em>SGF 同族扩展名</em>与纯文本坐标谱</span></div>
+          <div class="r"><span>识别<em>原始格式直接导出</em>，或转换为完整 SGF / JSON</span></div>
+          <div class="r"><span>各格式的可写能力与保真范围在设置里写明，不含糊</span></div>
+        </div>
+      </div>
+      <div class="sp corners glowcard" data-rv data-d="90">
+        <div class="sp-h"><span class="dot"></span><h4>平台与运行</h4><span class="en">RUNTIME</span></div>
+        <div class="sp-rows">
+          <div class="r"><span>网页版为 PWA，可<em>离线运行</em>，也可安装到桌面</span></div>
+          <div class="r"><span>Android 包名 <em>cn.renjunote.mobile</em>，versionCode 14，可覆盖安装升级</span></div>
+          <div class="r"><span>引擎两档：随包轻量引擎 + 官方 NNUE 冠军网络（应用内一键下载）</span></div>
+          <div class="r"><span>向下兼容较旧 WebView，旧机型也能跑</span></div>
+        </div>
+      </div>
+      <div class="sp corners glowcard" data-rv data-d="180">
+        <div class="sp-h"><span class="dot"></span><h4>研究工具</h4><span class="en">RESEARCH</span></div>
+        <div class="sp-rows">
+          <div class="r"><span>变化树编辑：新增 / 删除 / 改着 / 设为默认主线，<em>改着不丢失后续</em></span></div>
+          <div class="r"><span>节点评注、局面文字与着法评价，全部随谱保存</span></div>
+          <div class="r"><span>棋谱树可视化 + 分支书签，关键局面随时回跳</span></div>
+          <div class="r"><span>棋谱库支持文件夹、收藏、手动排序与本地资料安全备份</span></div>
+        </div>
+      </div>
+      <div class="sp corners glowcard" data-rv data-d="270">
+        <div class="sp-h"><span class="dot"></span><h4>AI 与规则</h4><span class="en">ENGINE</span></div>
+        <div class="sp-rows">
+          <div class="r"><span>十项开局规则；五手 N 打与索索夫打点<em>按开局库好点自适应宣布</em></span></div>
+          <div class="r"><span>内置索索夫-8 与山口五手两打两本打点簿，按规则自动选书</span></div>
+          <div class="r"><span>分析模式：持续分析 / 提示 / 自对弈三种，互斥不打架</span></div>
+          <div class="r"><span>无禁手 / 有禁手切换，禁手点实时提示</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta" id="download">
+  <div class="wrap">
+    <div class="cta-box corners" data-rv>
+      <div class="cta-icon"><img src="assets/app-icon.png" alt="半步五子棋图标"></div>
+      <div class="micro" style="justify-content:center"><span class="n">END OF DOCUMENT</span> 半步五子棋打谱</div>
+      <h2 class="serif" style="margin-top:22px" data-split>手机端五子棋打谱软件</h2>
+      <div class="en">BANBU GOMOKU · v1.1.8 · WEB &amp; ANDROID</div>
+      <div class="btns center">
+        <a class="btn p mag glow" href="#hero">回到顶部</a>
+        <a class="btn g mag" href="#sec01">再看一遍功能</a>
+      </div>
+      <div class="dl">
+        <div class="dl-h">DOWNLOAD · ANDROID APK</div>
+        <div class="dl-grid">
+          <div class="dl-card">
+            <span class="dl-k">百度云</span>
+            <a class="dl-go" href="https://pan.baidu.com/s/1N5TW5BlXPQgNVFGKap3VhQ?pwd=v6tn" target="_blank" rel="noopener">打开网盘 →</a>
+            <span class="dl-t">通过网盘分享的文件：半步五子棋1.1.8.apk</span>
+            <div class="dl-m">
+              <span>提取码</span>
+              <span class="dl-code" data-code="v6tn">v6tn<button type="button" aria-label="复制提取码">复制</button></span>
+            </div>
+          </div>
+          <div class="dl-card">
+            <span class="dl-k">蓝奏云</span>
+            <a class="dl-go" href="https://wwbwc.lanzouq.com/iJJgS48ghxji" target="_blank" rel="noopener">打开链接 →</a>
+            <span class="dl-t">半步五子棋1.1.8.apk</span>
+            <div class="dl-m">
+              <span>密码</span>
+              <span class="dl-code" data-code="1i8s">1i8s<button type="button" aria-label="复制密码">复制</button></span>
+            </div>
+          </div>
+          <div class="dl-card">
+            <span class="dl-k">GitHub</span>
+            <a class="dl-go" href="https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/tag/v1.1.8" target="_blank" rel="noopener">打开 Releases →</a>
+            <span class="dl-t">banbu-gomoku-1.1.8-android-release.apk（44.6 MB，含冠军网络引擎包）</span>
+            <div class="dl-m">
+              <span>SHA-256</span>
+              <span class="dl-code" data-code="FEC46EFFA0B143828DEDEF3745F9078BD5BC2FC1010DF0CD8B1C7FE5D3486EC1">FEC46EFF…486EC1<button type="button" aria-label="复制 SHA-256">复制</button></span>
+            </div>
+          </div>
+          <div class="dl-card">
+            <span class="dl-k">网页版 · iOS</span>
+            <a class="dl-go" href="./app/" rel="noopener">打开网页版 →</a>
+            <span class="dl-t">iPhone / iPad：Safari 打开后「分享 → 添加到主屏幕」，可离线当本地应用用</span>
+            <div class="dl-m">
+              <span>iOS</span>
+              <span class="dl-code" data-code="添加到主屏幕">免安装<button type="button" aria-label="复制说明">复制</button></span>
+            </div>
+          </div>
+        </div>
+        <p class="dl-note">Android 包名 cn.renjunote.mobile · versionCode 27 · 可直接覆盖安装升级；iPhone / iPad 无需安装，用 Safari 打开网页版后「分享 → 添加到主屏幕」即可离线使用（网页版不含引擎包，首次需要强力 AI 时在应用内下载）。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="ft">
+  <div class="ft-in">
+    <p>© 2026 BANBU GOMOKU · SPEC v1.1.8</p>
+    <div class="ft-links">
+      <a href="#sec01">01 核心功能</a><a href="#sec02">02 外观主题</a>
+      <a href="#sec03">03 本版更新</a><a href="#sec04">04 规格</a>
+    </div>
   </div>
 </footer>
 
-<script src="js/main.js"></script>
+<script>
+document.documentElement.classList.add('js');
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* 跑马灯 */
+const TICK=["SGF","RENLIB .LIB","DP","DB","JSON","POS","ZIP","IMAGE RECOGNITION","RAPFI ENGINE","VCF PROOF","BRANCH TREE","OPENING BOOK","SUOFU-8","YAMAGUCHI 5TH-MOVE-2","RENJU RULES","PWA OFFLINE","ANDROID CAPACITOR","44px TOUCH TARGET"];
+$('#ticker').innerHTML=[...TICK,...TICK].map(t=>`<span>${t}</span>`).join('');
+
+/* 光标 */
+const ch=$('#crosshair'),spot=$('#spot');
+if(!RM&&matchMedia('(pointer:fine)').matches){
+  let mx=innerWidth/2,my=innerHeight/2,cx=mx,cy=my,sx=mx,sy=my;
+  addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;ch.style.opacity=1;spot.style.opacity=1;});
+  addEventListener('mouseleave',()=>{ch.style.opacity=0;spot.style.opacity=0;});
+  (function loop(){
+    cx+=(mx-cx)*.24; cy+=(my-cy)*.24; sx+=(mx-sx)*.08; sy+=(my-sy)*.08;
+    ch.style.transform=`translate(${cx}px,${cy}px)`;
+    spot.style.left=sx+'px'; spot.style.top=sy+'px';
+    requestAnimationFrame(loop);
+  })();
+}
+
+/* 背景视差 + 水印漂移 */
+const bgGrid=$('#bgGrid'),wm=$('.watermark');
+addEventListener('scroll',()=>{
+  bgGrid.style.transform=`translate3d(0,${-scrollY*0.03}px,0)`;
+  if(wm) wm.style.transform=`translate3d(0,${-scrollY*0.08}px,0) rotate(${scrollY*0.004}deg)`;
+},{passive:true});
+
+/* 进度 + 顶栏 */
+const hdr=$('#hdr'),bar=$('#progress');
+function onScroll(){
+  const h=document.documentElement.scrollHeight-innerHeight;
+  bar.style.width=(h>0?scrollY/h*100:0)+'%';
+  hdr.classList.toggle('solid',scrollY>40);
+}
+addEventListener('scroll',onScroll,{passive:true}); onScroll();
+
+/* 逐字揭示 */
+function splitChars(el){
+  const walk=node=>{
+    [...node.childNodes].forEach(n=>{
+      if(n.nodeType===3){
+        const frag=document.createDocumentFragment();
+        for(const c of n.textContent){
+          if(c.trim()===''){ frag.appendChild(document.createTextNode(c)); continue; }
+          const i=document.createElement('i'); i.className='ch'; i.textContent=c; frag.appendChild(i);
+        }
+        n.replaceWith(frag);
+      } else if(n.nodeType===1 && !n.classList.contains('ch')) walk(n);
+    });
+  };
+  walk(el);
+}
+$$('[data-split]').forEach(splitChars);
+
+/* 入场 */
+const io=new IntersectionObserver(es=>es.forEach(e=>{
+  if(!e.isIntersecting)return;
+  const el=e.target;
+  const d=Number(el.dataset.d||0);
+  const chs=el.matches('[data-split]')?$$('.ch',el):[];
+  chs.forEach((c,i)=>c.style.transitionDelay=(d+i*38)+'ms');
+  if(!chs.length) el.style.transitionDelay=d+'ms';
+  el.classList.add('in');
+  io.unobserve(el);
+}),{threshold:.12,rootMargin:'0px 0px -6% 0px'});
+$$('[data-rv],[data-split]').forEach(e=>io.observe(e));
+
+/* 数字 */
+const cio=new IntersectionObserver(es=>es.forEach(e=>{
+  if(!e.isIntersecting)return;
+  const el=e.target,t=Number(el.dataset.count),d=1200,s=performance.now();
+  (function tick(n){const p=clamp((n-s)/d,0,1);el.textContent=String(Math.round(t*(1-Math.pow(1-p,3)))).padStart(2,'0');if(p<1)requestAnimationFrame(tick);else el.textContent=String(t).padStart(2,'0');})(s);
+  cio.unobserve(el);
+}),{threshold:.7});
+$$('[data-count]').forEach(e=>cio.observe(e));
+
+/* 左侧导轨 */
+const railItems=$$('.rail-i');
+const sio=new IntersectionObserver(es=>es.forEach(e=>{
+  if(e.isIntersecting){const id=e.target.id;railItems.forEach(r=>r.classList.toggle('on',r.dataset.s===id));}
+}),{threshold:.25,rootMargin:'-32% 0px -52% 0px'});
+['hero','sec01','sec02','sec03','sec04'].forEach(id=>{const el=document.getElementById(id);if(el)sio.observe(el);});
+
+/* HERO 轮播 + 3D 视差 + 扫描线 */
+const heroImgs=$$('#heroScreen img');
+const heroCaps=['工作区总览','打谱棋盘','本地 AI 分析','霓虹赛博主题'];
+const heroCap=$('#heroCap');
+let hi=0;
+setInterval(()=>{
+  heroImgs[hi].classList.remove('on'); hi=(hi+1)%heroImgs.length; heroImgs[hi].classList.add('on');
+  if(heroCap) heroCap.textContent=heroCaps[hi];
+},3000);
+if(!RM && matchMedia('(pointer:fine)').matches){
+  const heroPh=$('#heroPh'),tilt=$('#heroTilt');
+  addEventListener('mousemove',e=>{
+    const rx=e.clientY/innerHeight-.5, ry=e.clientX/innerWidth-.5;
+    tilt.style.transform=`rotateX(${-rx*5}deg) rotateY(${ry*7}deg)`;
+  });
+  addEventListener('mouseleave',()=>{tilt.style.transform='none';});
+  const scan=$('#heroScreen .ph-scan');
+  setInterval(()=>{scan.classList.add('run');setTimeout(()=>scan.classList.remove('run'),2500);},5200);
+}
+
+/* 核心功能：粘性联动 + 每步独立动效播放器 */
+const pls=$$('#showScreen .pl'), steps=$$('#steps .step'), dots=$('#idxDots');
+const PLCAP=['打谱与变化','多格式导入','原谱标注 · 九天指南','本地 AI 分析','人机对战','图片识谱','分支树与书签','题库训练'];
+const plCap=$('#plCap');
+steps.forEach((_,i)=>{const d=document.createElement('span');d.className='idx-dot'+(i===0?' on':'');dots.appendChild(d);});
+const dotEls=$$('.idx-dot');
+
+/* 播放器：全帧堆叠，激活的才轮播 */
+const players=pls.map(pl=>{
+  const imgs=$$('img',pl);
+  const type=pl.classList.contains('scan')?'scan':(pl.dataset.p==='seq'?'seq':'static');
+  let idx=0,timer=null;
+  return {
+    start(){
+      this.stop();
+      if(RM){imgs.forEach((im,k)=>im.classList.toggle('on',k===0));return;}
+      if(type==='scan'){
+        let phase=0;
+        timer=setInterval(()=>{
+          phase++;
+          if(phase===1)pl.classList.add('sweep');
+          if(phase===2){imgs[0].classList.remove('on');imgs[1].classList.add('on');pl.classList.remove('sweep');}
+          if(phase===6){imgs[1].classList.remove('on');imgs[0].classList.add('on');phase=0;}
+        },950);
+      }else if(type==='seq'){
+        const fps=Number(pl.dataset.fps||3);
+        imgs.forEach(im=>{im.loading='eager';});
+        timer=setInterval(()=>{
+          idx=(idx+1)%imgs.length;
+          imgs.forEach((im,k)=>im.classList.toggle('on',k===idx));
+        },1000/fps);
+      }
+    },
+    stop(){if(timer){clearInterval(timer);timer=null;}if(type==='scan')pl.classList.remove('sweep');}
+  };
+});
+let curI=-1;
+const stepIo=new IntersectionObserver(es=>es.forEach(e=>{
+  if(!e.isIntersecting)return;
+  const i=Number(e.target.dataset.i); if(i===curI)return; curI=i;
+  pls.forEach((pl,k)=>pl.classList.toggle('on',k===i));
+  players.forEach((p,k)=>{ if(k===i)p.start(); else p.stop(); });
+  dotEls.forEach((d,k)=>d.classList.toggle('on',k===i));
+  steps.forEach((st,k)=>st.classList.toggle('cur',k===i));
+  if(plCap) plCap.textContent=PLCAP[i];
+}),{threshold:.5,rootMargin:'-24% 0px -24% 0px'});
+steps.forEach(st=>stepIo.observe(st));
+players[0]&&players[0].start();
+
+/* 主题：交互 + 自动轮播（进度条） */
+const THEMES=[
+  {n:'尊贵黑金',img:'assets/14-theme-blackgold.png',sw:'linear-gradient(90deg,#e0c184,#1a1a1a)'},
+  {n:'青花瓷',  img:'assets/15-theme-porcelain.png',sw:'linear-gradient(90deg,#1f4fa0,#f2f5f8)'},
+  {n:'霓虹赛博',img:'assets/16-theme-cyber.png',    sw:'linear-gradient(90deg,#7b5cff,#22d3ee)'},
+  {n:'极光',    img:'assets/17-theme-aurora.png',   sw:'linear-gradient(90deg,#1b8f7a,#8fe3c9)'},
+  {n:'白玉 · 黑钻白金',img:'assets/18-theme-whitejade.png',sw:'linear-gradient(90deg,#e9ecef,#111)'},
+  {n:'原木 · 云子',  img:'assets/19-theme-classic.png',  sw:'linear-gradient(90deg,#c99a55,#2b2118)'},
+];
+const thList=$('#thList'),thImgs=$$('#thScreen img');
+let thIdx=0,thTimer=null,thPauseUntil=0;
+function thPick(i,user){
+  thIdx=i;
+  $$('.th-item',thList).forEach((r,k)=>r.classList.toggle('on',k===i));
+  thImgs.forEach((im,k)=>im.classList.toggle('on',k===i));
+  $('#thCap').textContent=THEMES[i].n;
+  if(user) thPauseUntil=Date.now()+9000;
+  const bar=$$('.th-item .bar',thList)[i];
+  $$('.th-item .bar',thList).forEach(b=>b.classList.remove('run'));
+  if(bar&&!RM&&!user){ void bar.offsetWidth; bar.classList.add('run'); }
+}
+THEMES.forEach((t,i)=>{
+  const row=document.createElement('div');
+  row.className='th-item'+(i===0?' on':''); row.tabIndex=0;
+  row.innerHTML=`<span class="bar"></span><span class="id mono">TH-${String(i+1).padStart(2,'0')}</span><span class="nm">${t.n}</span><span class="sw" style="background:${t.sw}"></span><span class="ar">SELECT →</span>`;
+  const pick=()=>thPick(i,true);
+  row.onclick=pick;
+  row.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}};
+  row.onmouseenter=()=>thPick(i,true);
+  thList.appendChild(row);
+});
+function thAuto(){
+  clearInterval(thTimer);
+  thTimer=setInterval(()=>{
+    if(Date.now()<thPauseUntil) return;
+    thPick((thIdx+1)%THEMES.length,false);
+  },2900);
+}
+thAuto();
+
+/* 更新日志 */
+const CATS=[{k:'all',n:'全部'},{k:'ui',n:'界面交互'},{k:'engine',n:'AI 引擎'},{k:'data',n:'标注识谱'},{k:'lib',n:'棋库外观'}];
+const LOGS=[
+  {c:'engine',no:'01',t:'强力引擎真正生效',d:'修正历史包格式问题后，官方 NNUE 冠军网络第一次真正参与评估。默认随包轻量引擎，冠军网络在设置里一键下载，可随时删除恢复轻量。',g:['两档引擎','应用内下载','热置换表']},
+  {c:'engine',no:'02',t:'开局库双书',d:'内置索索夫-8 与山口五手两打两本打点簿，按开局规则自动选书。命中开局线时 AI 按最强打点毫秒落子，未命中照常思考。',g:['毫秒落子','自动选书','默认关闭']},
+  {c:'engine',no:'03',t:'常驻引擎与滚动续算',d:'分析与对局不再每步冷启动。持续分析滚动续算，越算越深，数字持续更新不闪回。',g:['常驻 worker','越算越深']},
+  {c:'ui',no:'04',t:'做题分析＝提示模式',d:'做题时点「分析」不再是弹面板，而是直接帮你想一手并落子，杀棋即落。按钮文案与行为完全对齐，不再有「点了没反应」的错觉。',g:['点即落子','杀棋即落']},
+  {c:'ui',no:'05',t:'做题布局两行钦定',d:'做题界面收敛为两行：首行功能区（分析 / 摆棋 / VCF / 禁手 / 更多）+ 常驻走棋区（上一题 / 选题 / 下一题 / 悔棋 / 重启）。',g:['两行布局','常驻走棋']},
+  {c:'ui',no:'06',t:'黑白切换上移与换边重解',d:'黑白切换移到状态条右侧，应战时可直接换边重解；重启或换题自动回到题目默认色，重启清场不再残留旧棋子痕迹。',g:['一键换边','重启清场']},
+  {c:'ui',no:'07',t:'人机弹窗选完即关',d:'难度与时长点选后弹窗立即关闭，不再多点一次。难度时长重定为 0.6 / 2 / 5 / 10 秒，自由档仍可自定义。',g:['选完即关','0.6~10s']},
+  {c:'ui',no:'08',t:'持续分析去掉时长调度',d:'切换模式不再弹「每轮思考时长」窗，快捷中心与设置页的时限行一并移除，只保留自对弈的每步时限滑杆。少一层设置，少一次打断。',g:['去掉弹窗','只留自对弈时限']},
+  {c:'ui',no:'09',t:'紧凑顶栏与简略模式布局',d:'品牌文字与导入按钮下架，打谱 / 读谱 / 做题开关上移到顶栏；简略模式下打谱、读谱不再占首行，做题的走棋栏左置摆棋。棋盘更大，干扰更少。',g:['紧凑顶栏','棋盘更大']},
+  {c:'data',no:'10',t:'标注交互重做',d:'点已有标注一步取消；研读模式点棋谱原生标注就地切编辑删除；新增「去标注」擦除模式与「把本机标注写入棋谱」一键合入草稿。DP / 分页谱的原生标注也能正确识别删除。',g:['一步取消','擦除模式','写入棋谱']},
+  {c:'data',no:'11',t:'识谱与 SGF 静态局面修复',d:'修复静态局面导入后「分析看的是空盘」的问题；缺行棋方标记的 SGF 按黑白子数自动推定。识谱「复原手序」渲染式重做，他机截图的序号复原能力大幅提升。',g:['行棋方推定','复原手序']},
+  {c:'lib',no:'12',t:'棋谱库收藏与分支书签',d:'棋谱库新增收藏体系、文件夹置顶、批量收藏与资料安全大按钮；分支书签可重命名、删除、行内编辑，并按谱展开查看后一键跳转。',g:['收藏体系','书签管理','安全备份']},
+  {c:'lib',no:'13',t:'快捷中心与新手引导',d:'快捷中心自定义扩展到全部设置项（34 项 8 目录，支持目录级一键开关）；首次进入新增 spotlight 式互动引导，9 步走完全部核心功能。',g:['34 项自定义','9 步引导']},
+  {c:'lib',no:'14',t:'主题可读性与触摸热区',d:'分析下拉菜单在全部 22 个主题下的配色与选中态可读性修复，一批控件的触摸热区提升到 44px，小字号下限统一整理。',g:['22 主题校验','44px 热区']},
+];
+const logTabs=$('#logTabs'),logList=$('#logList'); let curCat='all';
+CATS.forEach((c,i)=>{
+  const b=document.createElement('button');
+  b.className='ltab'+(i===0?' on':''); b.type='button'; b.textContent=c.n;
+  b.onclick=()=>{curCat=c.k;$$('.ltab',logTabs).forEach(x=>x.classList.toggle('on',x===b));drawLogs();};
+  logTabs.appendChild(b);
+});
+const lio=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');lio.unobserve(e.target);}}),{threshold:.1});
+function drawLogs(){
+  logList.innerHTML='';
+  LOGS.filter(l=>curCat==='all'||l.c===curCat).forEach((l,i)=>{
+    const r=document.createElement('article');
+    r.className='log-row';
+    r.style.transitionDelay=Math.min(i*55,440)+'ms';
+    r.innerHTML=`<div class="lid mono"><b>${l.no}</b>LOG-${l.no}</div>
+      <div><h4>${l.t}</h4><p>${l.d}</p><div class="tg">${l.g.map(x=>`<span>${x}</span>`).join('')}</div></div>`;
+    logList.appendChild(r);
+    lio.observe(r);
+  });
+}
+drawLogs();
+
+/* 规格卡：光标追随辉光 */
+$$('.glowcard').forEach(card=>{
+  card.addEventListener('mousemove',e=>{
+    const r=card.getBoundingClientRect();
+    card.style.setProperty('--mx',(e.clientX-r.left)+'px');
+    card.style.setProperty('--my',(e.clientY-r.top)+'px');
+  });
+});
+
+/* 磁吸按钮 */
+if(!RM&&matchMedia('(pointer:fine)').matches){
+  $$('.mag').forEach(b=>{
+    b.addEventListener('mousemove',e=>{
+      const r=b.getBoundingClientRect();
+      const x=(e.clientX-r.left-r.width/2)/r.width, y=(e.clientY-r.top-r.height/2)/r.height;
+      b.style.transform=`translate(${x*9}px,${y*7}px)`;
+    });
+    b.addEventListener('mouseleave',()=>{b.style.transform='';});
+  });
+}
+
+/* 石雨画布：金色/玉色棋子缓缓落进网格 */
+(function stoneRain(){
+  if(RM) return;
+  const cv=$('#stoneRain'),ctx=cv.getContext('2d');
+  let W,H,dpr;
+  function size(){
+    dpr=Math.min(devicePixelRatio||1,2);
+    W=cv.width=innerWidth*dpr; H=cv.height=innerHeight*dpr;
+    cv.style.width=innerWidth+'px'; cv.style.height=innerHeight+'px';
+  }
+  size(); addEventListener('resize',size);
+  const G=52*dpr;
+  const stones=[];
+  const COLORS=['rgba(224,193,132,', 'rgba(79,216,176,', 'rgba(238,240,242,'];
+  let visible=true;
+  new IntersectionObserver(es=>{visible=es[0].isIntersecting;}).observe(document.getElementById('hero'));
+  function spawn(){
+    const cx=Math.floor(Math.random()*(W/G)), cy=Math.floor(Math.random()*(H/G));
+    if(stones.some(s=>s.x===cx&&s.y===cy)) return;
+    stones.push({x:cx,y:cy,t:0,life:520+Math.random()*400,c:COLORS[Math.random()<.62?0:(Math.random()<.75?1:2)],r:(5+Math.random()*4)*dpr});
+    if(stones.length>46) stones.shift();
+  }
+  let last=0, acc=0;
+  (function loop(ts){
+    requestAnimationFrame(loop);
+    if(!visible){ ctx.clearRect(0,0,W,H); return; }
+    const dt=ts-last; last=ts; acc+=dt;
+    if(acc>560){ acc=0; spawn(); }
+    ctx.clearRect(0,0,W,H);
+    for(const s of stones){
+      s.t+=dt;
+      const p=clamp(s.t/260,0,1), e=1-Math.pow(1-p,3);
+      const a=clamp(1-(s.t-s.life*0.62)/(s.life*0.38),0,1)*0.5;
+      const px=(s.x+0.5)*G, py=(s.y+0.5)*G;
+      const r=s.r*(0.3+0.7*e);
+      ctx.beginPath(); ctx.arc(px,py,r,0,7);
+      ctx.fillStyle=s.c+(0.34*a)+')'; ctx.fill();
+      ctx.beginPath(); ctx.arc(px-r*0.3,py-r*0.3,r*0.3,0,7);
+      ctx.fillStyle='rgba(255,255,255,'+(0.10*a)+')'; ctx.fill();
+    }
+  })(0);
+})();
+
+/* 提取码 / 密码 一键复制 */
+$$('.dl-code').forEach(box=>{
+  const btn=box.querySelector('button'); if(!btn) return;
+  btn.addEventListener('click',()=>{
+    const code=box.dataset.code||'';
+    const done=()=>{ btn.textContent='已复制'; setTimeout(()=>{btn.textContent='复制';},1600); };
+    const fallback=()=>{
+      const ta=document.createElement('textarea');
+      ta.value=code; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      try{document.execCommand('copy');done();}catch(e){}
+      ta.remove();
+    };
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(code).then(done).catch(fallback);
+    } else fallback();
+  });
+});
+
+/* 平滑锚点 */
+$$('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{
+  const id=a.getAttribute('href'); if(id==='#')return;
+  const t=document.querySelector(id); if(!t)return;
+  e.preventDefault(); scrollTo({top:t.getBoundingClientRect().top+scrollY-70,behavior:'smooth'});
+}));
+</script>
 </body>
 </html>

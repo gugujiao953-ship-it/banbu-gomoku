@@ -1,0 +1,11 @@
+This directory contains the single-threaded fallback WebAssembly build of Rapfi
+with the small legacy networks (rapfi.data, ~95KB). It serves only very old or
+low-memory WebViews; the sibling ../full directory contains the full-strength
+engine build, which is preferred whenever the device can carry it. The
+full-strength NNUE data package is not bundled with the app: it is downloaded
+in-app (engine-packs/rapfi-full-v3.data, about 40.3MB) and stored on the device.
+
+Upstream source: https://github.com/dhbloo/rapfi
+Browser integration reference: https://github.com/dhbloo/gomoku-calculator
+The upstream project is distributed under GPL-3.0. The corresponding source and
+license must remain available when this build is redistributed.

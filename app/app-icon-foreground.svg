@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <clipPath id="board-circle"><circle cx="256" cy="256" r="194"/></clipPath>
+  </defs>
+  <g clip-path="url(#board-circle)">
+    <rect x="62" y="62" width="388" height="388" fill="#d8ad69"/>
+    <path d="M94 62v388M148 62v388M202 62v388M256 62v388M310 62v388M364 62v388M418 62v388M62 94h388M62 148h388M62 202h388M62 256h388M62 310h388M62 364h388M62 418h388" stroke="#5b4934" stroke-width="6" opacity=".68"/>
+  </g>
+  <circle cx="207" cy="259" r="68" fill="#20221f"/>
+  <circle cx="309" cy="253" r="68" fill="#f7f3e8" stroke="#8e8578" stroke-width="6"/>
+  <text x="207" y="288" text-anchor="middle" font-size="91" font-family="serif" fill="#f7f3e8">半</text>
+  <text x="309" y="282" text-anchor="middle" font-size="91" font-family="serif" fill="#20221f">步</text>
+</svg>
