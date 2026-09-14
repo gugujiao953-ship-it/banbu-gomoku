@@ -186,11 +186,12 @@
 }
 
 /* Primary labels on neutral controls. Accent/selected/danger styles keep
- * their own semantic colors below. */
+ * their own semantic colors below. .mark-studio-commit is an emphasized
+ * write-back action with its own jade/green design (styles.css) — exempt. */
 .app-shell .dock-tabs button:not(.active),
-.app-shell .dock-panel button:not(.accent):not(.selected),
+.app-shell .dock-panel button:not(.accent):not(.selected):not(.mark-studio-commit),
 .app-shell .transport button:not(.primary-step),
-.app-shell .record-command-bar > button:not(.command-save.pending):not(.command-think.running):not(.command-delete):not(.command-comment.active):not(.command-comment.has-comment):not(.command-annotation.active),
+.app-shell .record-command-bar > button:not(.command-save.pending):not(.command-delete):not(.command-comment.active):not(.command-comment.has-comment):not(.command-annotation.active),
 .app-shell .secondary-button,
 .app-shell .timeline-top > button,
 .app-shell .settings-link,
@@ -214,9 +215,9 @@
  * Apply the semantic surface to the same neutral controls so dark/pixel/cyber
  * themes never pair pale text with a white island (or dark text with a dark
  * island). */
-.app-shell .dock-panel button:not(.accent):not(.selected),
+.app-shell .dock-panel button:not(.accent):not(.selected):not(.mark-studio-commit),
 .app-shell .transport button:not(.primary-step),
-.app-shell .record-command-bar > button:not(.command-save.pending):not(.command-think.running):not(.command-delete):not(.command-comment.active):not(.command-comment.has-comment):not(.command-annotation.active),
+.app-shell .record-command-bar > button:not(.command-save.pending):not(.command-delete):not(.command-comment.active):not(.command-comment.has-comment):not(.command-annotation.active),
 .app-shell .secondary-button,
 .app-shell .timeline-top > button,
 .app-shell .settings-link,
@@ -234,21 +235,18 @@
   border-color: var(--surface-border, var(--line));
 }
 
-/* Puzzle rule and thinking-speed switches need two visible states even when
- * the generic neutral-control contract is applied to every unselected button. */
-.app-shell .puzzle-rule-selector,
-.app-shell .puzzle-think-speed-selector {
+/* Puzzle rule switch needs two visible states even when the generic
+ * neutral-control contract is applied to every unselected button. */
+.app-shell .puzzle-rule-selector {
   background: var(--surface-3, #e1ebef);
   border-color: var(--surface-border, var(--line));
 }
-.app-shell .puzzle-rule-selector button:not(.selected),
-.app-shell .puzzle-think-speed-selector button:not(.selected) {
+.app-shell .puzzle-rule-selector button:not(.selected) {
   background: var(--surface-2, #f1f4f2);
   border: 1px solid var(--surface-border, var(--line));
   color: var(--button-muted-text);
 }
-.app-shell .puzzle-rule-selector button.selected,
-.app-shell .puzzle-think-speed-selector button.selected {
+.app-shell .puzzle-rule-selector button.selected {
   background: var(--green);
   border: 1px solid var(--green-2, var(--green));
   color: #fff;
@@ -311,18 +309,18 @@
 
 /* Disabled controls: preserve a visible disabled surface instead of fading
  * text to near-invisibility. */
-.app-shell button:disabled:not(.primary-button):not(.danger-button):not(.quick-think-action) {
+.app-shell button:disabled:not(.primary-button):not(.danger-button) {
   opacity: 1;
   color: var(--button-disabled-text) !important;
   background: var(--button-disabled-bg);
   border-color: var(--button-disabled-border);
 }
-.app-shell button:disabled:not(.primary-button):not(.danger-button):not(.quick-think-action) svg {
+.app-shell button:disabled:not(.primary-button):not(.danger-button) svg {
   color: var(--button-disabled-text) !important;
 }
 .app-shell button.primary-button:disabled,
 .app-shell button.danger-button:disabled,
-.app-shell button.quick-think-action:disabled {
+.app-shell button.danger-button:disabled {
   opacity: .86;
 }
 

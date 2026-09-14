@@ -13,6 +13,12 @@ export interface AiAnalysisCandidate {
   move: Position;
   score?: number;
   winRate?: number;
+  nodes?: number;
+  depth?: number;
+  /** PV index from the engine stdout stream (0 = principal variation / 当前最强点). */
+  pvIndex?: number;
+  /** Opening-book strength rank (source === "book"; 越小越强). */
+  rank?: number;
   principalVariation?: Array<Position & { player: Player }>;
 }
 
@@ -24,7 +30,9 @@ export interface AiMoveResult {
   elapsedMs: number;
   illegalRejected: number;
   reason: string;
-  source: "alpha-beta" | "verified-vcf" | "rapfi";
+  source: "alpha-beta" | "verified-vcf" | "rapfi" | "book";
+  /** 打点簿标签（如 "4*"），仅 source==="book" 时携带。 */
+  bookLabel?: string;
   principalVariation?: Array<Position & { player: Player }>;
   /** Win rate is normalized to 0..1 and is only present when the engine emits it. */
   winRate?: number;

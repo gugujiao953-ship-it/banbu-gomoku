@@ -7,7 +7,6 @@ import type { GameDocument } from "../../types";
 import { RecordSelectorSheet } from "../workspace/RecordSelectorSheet";
 import { PuzzleRuleSelector } from "./PuzzleRuleSelector";
 import { PuzzleSelectorSheet } from "./PuzzleSelectorSheet";
-import { PuzzleThinkSpeedSelector } from "./PuzzleThinkSpeedSelector";
 
 describe("doing-puzzle controls", () => {
   let root: Root | null = null;
@@ -59,7 +58,7 @@ describe("doing-puzzle controls", () => {
     expect(closed).toBe(0);
   });
 
-  it("shows the current record folder and supports fast puzzle coaching", async () => {
+  it("shows the current record folder", async () => {
     container = document.createElement("div"); document.body.appendChild(container);
     const record: GameDocument = {
       id: "record-1", version: 1, rootId: "root", nodes: { root: { id: "root", parentId: null, children: [], move: null, comment: "", marks: [] } },
@@ -76,13 +75,5 @@ describe("doing-puzzle controls", () => {
     expect(container.querySelector('.record-selector-folder-body > button.current')).toBeNull();
     await act(async () => { (container.querySelector('.record-selector-current') as HTMLButtonElement).click(); await new Promise((resolve) => setTimeout(resolve, 0)); });
     expect(container.querySelector('.record-selector-folder-body > button.current')).not.toBeNull();
-
-    let speed = "slow";
-    act(() => { root?.render(<PuzzleThinkSpeedSelector value={speed as "slow" | "fast"} onChange={(value) => { speed = value; }}/>); });
-    const speedButtons = [...container.querySelectorAll("button")];
-    expect(speedButtons.map((button) => button.textContent)).toEqual(["快 · 1秒", "慢"]);
-    expect(speedButtons[1].getAttribute("aria-checked")).toBe("true");
-    act(() => speedButtons[0].click());
-    expect(speed).toBe("fast");
   });
 });

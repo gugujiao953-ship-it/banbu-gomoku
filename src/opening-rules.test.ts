@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyBoard } from "./game";
-import { addFifthCandidate, chooseFifthCount, completeFifthChoice, completeOpeningPlacement, createOpeningSession, decideOpeningSwap, openingInstruction, openingPositionAllowed, suggestFifthCandidates } from "./opening-rules";
+import { addFifthCandidate, chooseFifthCount, completeFifthChoice, completeOpeningPlacement, createOpeningSession, decideOpeningSwap, isDistinctFifthCandidate, openingInstruction, openingPositionAllowed, suggestFifthCandidates } from "./opening-rules";
 
 describe("opening rule state machine", () => {
   it("runs one-hand exchange through a single swap point", () => {
@@ -74,8 +74,24 @@ describe("opening rule state machine", () => {
     expect(session.stage).toMatchObject({ kind: "choose-fifth-count", actor: "human" });
     expect(session.n).toBe(0);
     session = chooseFifthCount(session, 7);
-    expect(session.stage).toMatchObject({ kind: "offer-fifths", count: 7 });
+    // count 由白方（此处 human）宣布，但打点必须交还黑方（ai）——T30：
+    // 旧实现把 count 选择方的 actor 继承给了 offer，白=AI 时 AI 代放代选。
+    expect(session.stage).toMatchObject({ kind: "offer-fifths", count: 7, actor: "ai" });
     expect(session.n).toBe(7);
+  });
+
+  it("five-n: human black offers the dots; AI white counts and strikes (T30)", () => {
+    let session = createOpeningSession("five-n", 5, "black");
+    for (let step = 0; step < 3; step += 1) session = completeOpeningPlacement(session); // 人类先手摆 1-3
+    session = decideOpeningSwap(session, false); // AI（对方）决定不交换
+    session = completeOpeningPlacement(session); // 白4 落定
+    expect(session.stage).toMatchObject({ kind: "choose-fifth-count", actor: "ai" }); // 白方宣布数量
+    session = chooseFifthCount(session, 3);
+    expect(session.stage).toMatchObject({ kind: "offer-fifths", actor: "human", count: 3 }); // 黑方放点（曾被 AI 代劳）
+    session = addFifthCandidate(session, { row: 6, col: 6 });
+    session = addFifthCandidate(session, { row: 8, col: 8 });
+    session = addFifthCandidate(session, { row: 5, col: 9 });
+    expect(session.stage).toMatchObject({ kind: "choose-fifth", chooser: "ai" }); // 白方打点
   });
 
   it("runs Yamaguchi: declare before swap, white 4, black offers, white chooses", () => {
@@ -154,5 +170,34 @@ describe("opening rule state machine", () => {
     const soosyrv = createOpeningSession("soosyrv-8", 8, "black");
     expect(openingPositionAllowed(15, { row: 7, col: 7 }, soosyrv.stage)).toBe(true);
     expect(openingPositionAllowed(15, { row: 7, col: 8 }, soosyrv.stage)).toBe(false);
+  });
+});
+
+describe("fifth-candidate symmetry dedup", () => {
+  const boardOf = (black: [number, number][], white: [number, number][]) => {
+    const board = emptyBoard(15);
+    black.forEach(([row, col]) => { board[row][col] = "black"; });
+    white.forEach(([row, col]) => { board[row][col] = "white"; });
+    return board;
+  };
+
+  it("rejects a mirrored candidate that is the same shape", () => {
+    const board = boardOf([[7, 7], [8, 7]], [[6, 7], [5, 7]]); // all on column 7 → mirror-symmetric board
+    expect(isDistinctFifthCandidate(board, [], { row: 6, col: 6 })).toBe(true);
+    // (6,8) is the column-7 mirror of (6,6) → same shape after reflection
+    expect(isDistinctFifthCandidate(board, [{ row: 6, col: 6 }], { row: 6, col: 8 })).toBe(false);
+    // a genuinely different shape is still accepted
+    expect(isDistinctFifthCandidate(board, [{ row: 6, col: 6 }], { row: 10, col: 10 })).toBe(true);
+  });
+
+  it("rejects 90-degree rotational and diagonal mirrors of one another", () => {
+    const board = boardOf([[7, 7]], [[6, 7], [8, 7], [7, 6], [7, 8]]); // 4-fold symmetric cross
+    expect(isDistinctFifthCandidate(board, [], { row: 5, col: 7 })).toBe(true);
+    // (7,5),(9,7),(7,9) are 90° rotations of (5,7); (7,5) also its reflection → same shape
+    expect(isDistinctFifthCandidate(board, [{ row: 5, col: 7 }], { row: 7, col: 5 })).toBe(false);
+    expect(isDistinctFifthCandidate(board, [{ row: 5, col: 7 }], { row: 9, col: 7 })).toBe(false);
+    expect(isDistinctFifthCandidate(board, [{ row: 5, col: 7 }], { row: 7, col: 9 })).toBe(false);
+    // (6,6) is on the diagonal orbit, not equivalent to the vertical (5,7)
+    expect(isDistinctFifthCandidate(board, [{ row: 5, col: 7 }], { row: 6, col: 6 })).toBe(true);
   });
 });

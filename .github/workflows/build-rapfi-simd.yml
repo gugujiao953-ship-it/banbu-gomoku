@@ -1,0 +1,149 @@
+name: Build Rapfi SIMD (experiment)
+
+# 源码级搜索参数实验（R4）：官方 wasm-multi-simd128 配置 + ab/parameter.h
+# 单常量 patch 的三变体并行构建。产物以 artifact 下载，放入 public/rapfi/full/
+# （覆盖 js/wasm）即可本地 A/B；config 层调优（engine-pack.ts）照常叠加。
+on:
+  workflow_dispatch:
+    inputs:
+      variants:
+        description: "Variants to build (space separated)"
+        default: "fut85 nmr35 iid10"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [fut85, nmr35, iid10, multi]
+        include:
+          # multi：多线程 Lazy SMP 构建（火力全开实验）——NO_MULTI_THREADING=OFF
+          - variant: multi
+            mt: "OFF"
+    steps:
+      - name: Checkout Rapfi source
+        uses: actions/checkout@v4
+        with:
+          repository: dhbloo/rapfi
+          ref: "250615" # 官方 web 构建同代 release；master 新代码与 mix9svq 权重架构不匹配（实战 4:0 惨败实测）
+          fetch-depth: 1
+      - name: Patch single-thread compile (upstream 9f2d3f74, waitForIdle guard)
+        run: |
+          python3 << 'PYEOF'
+          p = 'Rapfi/search/searchthread.cpp'
+          s = open(p).read()
+          old = "\n".join([
+              "void ThreadPool::waitForIdle()",
+              "{",
+              "    // Iterate all other threads and wait for them to finish",
+              "    for (auto &th : *this)",
+              "        if (th->thread.get_id() != std::this_thread::get_id())",
+              "            th->waitForIdle();",
+              "}",
+          ])
+          new = "\n".join([
+              "void ThreadPool::waitForIdle()",
+              "{",
+              "#ifdef MULTI_THREADING",
+              "    // Iterate all other threads and wait for them to finish",
+              "    for (auto &th : *this)",
+              "        if (th->thread.get_id() != std::this_thread::get_id())",
+              "            th->waitForIdle();",
+              "#endif",
+              "}",
+          ])
+          assert old in s, "waitForIdle pattern not found (upstream changed?)"
+          open(p, "w").write(s.replace(old, new))
+          print("patched waitForIdle with MULTI_THREADING guard")
+          PYEOF
+      - name: Patch search constant (${{ matrix.variant }})
+        run: |
+          case "${{ matrix.variant }}" in
+            fut85)
+              # futility 剪枝增强：renju 档 80 → 85（剪得更狠，更快）
+              sed -i 's/constexpr int FutilityScale\[RULE_NB\] = {63, 61, 80};/constexpr int FutilityScale[RULE_NB] = {63, 61, 85};/' Rapfi/search/ab/parameter.h
+              grep -q "{63, 61, 85}" Rapfi/search/ab/parameter.h
+              ;;
+            nmr35)
+              # null move 更激进：renju NMRBias 4.29 → 3.50（五子棋无 zugzwang，剪枝安全）
+              sed -i 's/constexpr float NMRBias\[RULE_NB\]  = {3.67f, 4.07f, 4.29f};/constexpr float NMRBias[RULE_NB]  = {3.67f, 4.07f, 3.50f};/' Rapfi/search/ab/parameter.h
+              grep -q "{3.67f, 4.07f, 3.50f}" Rapfi/search/ab/parameter.h
+              ;;
+            iid10)
+              # internal iterative deepening 提前启动：14.7 → 10.0（TT 命中更早）
+              sed -i 's/constexpr Depth IID_DEPTH        = 14.7f;/constexpr Depth IID_DEPTH        = 10.0f;/' Rapfi/search/ab/parameter.h
+              grep -q "IID_DEPTH        = 10.0f;" Rapfi/search/ab/parameter.h
+              ;;
+            multi)
+              # 多线程构建：不打单线程宏保护也无害（MULTI_THREADING 已定义，代码保留）。
+              # 保留 PROXY_TO_PTHREAD（main 必须在 pthread，否则同步 main 卡死主
+              # worker），并预建 pthread 池（PTHREAD_POOL_SIZE=4）：池在主 worker
+              # 加载时创建（一层嵌套），搜索线程直接从池取——实测从嵌套 worker
+              # 动态创建 pthread 会死锁。
+              sed -i 's/-s STACK_SIZE=2MB /-s STACK_SIZE=2MB -s PTHREAD_POOL_SIZE=4 /' Rapfi/CMakeLists.txt
+              grep -q "PTHREAD_POOL_SIZE=4" Rapfi/CMakeLists.txt
+              ;;
+            *) echo "unknown variant"; exit 1 ;;
+          esac
+          echo "patched ${{ matrix.variant }}"
+      - name: Align Networks submodule to the official v3 pack snapshot
+        run: |
+          git submodule update --init --depth 1 Networks
+          cd Networks
+          git fetch --unshallow || git fetch --deepen=200 origin || true
+          # 目标：manifest 权重文件字节总和与官方 v3 数据包(40306406)一致，
+          # 这样实验 wasm 可直接消费现有 v3 冠军包（索引逐字节对齐，NNUE 不
+          # 会静默禁用——HEAD 快照缺 freestyle 权重且 model 是新版，喂 v3 会
+          # 全部错位）。
+          FOUND=""
+          echo "--- wasm_preloads.txt (HEAD, cat -A) ---"
+          cat -A wasm_preloads.txt | head -5
+          # wasm_preloads.txt 行格式为 emscripten 的 src@dst（src 可为文件或目录）。
+          for c in $(git rev-list HEAD --max-count=300); do
+            git checkout -q "$c"
+            SUM=0
+            while IFS= read -r line || [ -n "$line" ]; do
+              line="${line%$'\r'}"
+              [ -z "$line" ] && continue
+              src="${line%%@*}"
+              if [ -d "$src" ]; then
+                while IFS= read -r -d '' f; do SZ=$(stat -c%s "$f"); SUM=$((SUM+SZ)); done < <(find "$src" -type f -print0 | sort -z)
+              elif [ -f "$src" ]; then
+                SZ=$(stat -c%s "$src")
+                SUM=$((SUM+SZ))
+              fi
+            done < wasm_preloads.txt
+            echo "commit $c preload-sum=$SUM"
+            if [ "$SUM" = "40306406" ]; then FOUND=$c; break; fi
+          done
+          if [ -z "$FOUND" ]; then
+            echo "::error::No Networks commit whose preload sum matches the official v3 pack (40306406)"
+            exit 1
+          fi
+          echo "Aligned Networks at $FOUND"
+          git checkout -q "$FOUND"
+      - name: Setup emsdk
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 4.0.8
+      - name: Configure (SIMD on, no command modules, MT per variant)
+        run: |
+          cd Rapfi
+          emcmake cmake -B build -DCMAKE_BUILD_TYPE=Release -DNO_COMMAND_MODULES=ON -DNO_MULTI_THREADING=${{ matrix.mt || 'ON' }} -DUSE_WASM_SIMD=ON
+      - name: Build
+        run: cmake --build Rapfi/build -j2
+      - name: Upload artifacts (${{ matrix.variant }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapfi-${{ matrix.variant }}
+          path: |
+            Rapfi/build/rapfi-single-simd128.js
+            Rapfi/build/rapfi-single-simd128.wasm
+            Rapfi/build/rapfi-multi-simd128.js
+            Rapfi/build/rapfi-multi-simd128.wasm
+            Rapfi/build/rapfi-multi-simd128.worker.js

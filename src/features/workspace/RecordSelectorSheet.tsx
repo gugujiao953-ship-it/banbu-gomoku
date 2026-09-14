@@ -5,6 +5,7 @@ import type { LargeDocumentSummary } from "../../large-storage";
 import type { GameDocument } from "../../types";
 import { BottomSheet } from "../../ui/overlays/BottomSheet";
 import { recordRuleDisplayName } from "../rules/rule-guide-data";
+import { NATIVE_RECORD_FOLDER } from "../../native-records";
 import "./record-selector.css";
 
 interface RecordSelectorSheetProps {
@@ -89,8 +90,10 @@ export function RecordSelectorSheet({ records, largeRecords, currentId, folders,
     const folderRecords = visibleRecords.filter((record) => recordFolder(record, assignments) === folder);
     const folderLargeRecords = visibleLargeRecords.filter((record) => recordFolder(record, assignments) === folder);
     const children = folderChildren(availableFolders, folder);
-    const count = folderRecords.length + folderLargeRecords.length;
-    const subtreeMatches = count > 0 || children.some((child) => [...visibleRecords, ...visibleLargeRecords].some((record) => recordFolder(record, assignments) === child || recordFolder(record, assignments).startsWith(`${child}/`)));
+    // 「内置棋谱」文件夹：九天指南数据库作为其中一条（用户 09-12：不应独立在文件夹外）
+    const nativeVisible = folder === NATIVE_RECORD_FOLDER && Boolean(nativeDatabase) && (!normalizedQuery || nativeDatabase!.title.toLowerCase().includes(normalizedQuery) || "内置".includes(normalizedQuery) || "九天".includes(normalizedQuery));
+    const count = folderRecords.length + folderLargeRecords.length + (nativeVisible ? 1 : 0);
+    const subtreeMatches = count > 0 || children.some((child) => [...visibleRecords, ...visibleLargeRecords].some((record) => recordFolder(record, assignments) === child || recordFolder(record, assignments).startsWith(`${child}/`))) || nativeVisible;
     if (normalizedQuery && !subtreeMatches) return null;
     const expanded = normalizedQuery.length > 0 || expandedFolders.has(folder);
     return <section className="record-selector-folder" key={folder}>
@@ -98,6 +101,7 @@ export function RecordSelectorSheet({ records, largeRecords, currentId, folders,
         <span><Folder aria-hidden="true"/></span><b>{folderLabel(folder)}</b><small>{count} 份{children.length ? ` · ${children.length} 子目录` : ""}</small><ChevronDown aria-hidden="true"/>
       </button>
       {expanded && <div id={`record-folder-${folder}`} className="record-selector-folder-body">
+        {nativeVisible && nativeDatabase && <button type="button" className="record-selector-native" onClick={nativeDatabase.onOpen}><span className="record-selector-native-badge"><Database aria-hidden="true"/></span><div><b>{nativeDatabase.title}</b><small>{nativeDatabase.hint || "内置局面数据库 · 分支按局面实时查询"}</small></div><ChevronRight aria-hidden="true"/></button>}
         {children.length > 0 && <div className="record-selector-nested-list">{children.map(renderFolder)}</div>}
         {folderRecords.map((record) => { const active = record.id === currentId; return <button ref={active ? currentRecordRef : undefined} key={record.id} type="button" role="option" aria-selected={active} className={active ? "current" : ""} onClick={() => onSelectRecord(record)}><span className="record-selector-count">{mainLineLength(record)}</span><div><b>{record.metadata.title}</b><small>{record.metadata.black || "黑方"} vs {record.metadata.white || "白方"} · {recordRuleDisplayName(record.metadata)}</small></div>{active ? <Check size={18}/> : <ChevronRight size={18}/>}</button>; })}
         {folderLargeRecords.map((record) => { const active = record.id === currentId; return <button ref={active ? currentRecordRef : undefined} key={record.id} type="button" role="option" aria-selected={active} className={active ? "current" : ""} onClick={() => onSelectLargeRecord(record)}><span className="record-selector-count large"><Database aria-hidden="true"/></span><div><b>{record.metadata.title}</b><small>{record.metadata.black || "黑方"} vs {record.metadata.white || "白方"} · {record.mainLineLength} 手大型棋谱</small></div>{active ? <Check size={18}/> : <ChevronRight size={18}/>}</button>; })}
@@ -115,7 +119,6 @@ export function RecordSelectorSheet({ records, largeRecords, currentId, folders,
       </button>
       <label className="record-selector-search"><Search size={17}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索棋谱、棋手或赛事"/></label>
       <div className="record-selector-list" role="listbox" aria-label="棋谱文件夹与列表">
-        {nativeDatabase && (!normalizedQuery || nativeDatabase.title.toLowerCase().includes(normalizedQuery) || "内置".includes(normalizedQuery) || "九天".includes(normalizedQuery)) && <button type="button" className="record-selector-native" onClick={nativeDatabase.onOpen}><span className="record-selector-native-badge"><Database aria-hidden="true"/></span><div><b>{nativeDatabase.title}</b><small>{nativeDatabase.hint || "内置局面数据库 · 分支按局面实时查询"}</small></div><ChevronRight aria-hidden="true"/></button>}
         {folderChildren(availableFolders, "").map(renderFolder)}
         {!visibleRecords.length && !visibleLargeRecords.length && !nativeDatabase && <div className="record-selector-empty"><Search/><b>没有匹配棋谱</b><span>换一个棋谱名、棋手或赛事关键词。</span></div>}
       </div>

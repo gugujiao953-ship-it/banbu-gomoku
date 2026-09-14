@@ -2,7 +2,7 @@ import { defineConfig, type ViteDevServer, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import legacy from "@vitejs/plugin-legacy";
 import { VitePWA } from "vite-plugin-pwa";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, createReadStream, statSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { scaleUiFontDeclarations } from "./src/ui-font-css.ts";
 
@@ -31,6 +31,44 @@ const renLibFiles = () => {
 
 const renLibContentType = (name: string) => (name.endsWith(".wasm") ? "application/wasm" : "application/javascript; charset=utf-8");
 
+// The full-strength engine pack lives in gitignored engine-packs/ and is served
+// by the dev server only; production downloads it in-app from the app's own
+// Pages hosting. Keeping it out of dist/ keeps the APK at the lightweight size.
+const enginePackDevServer = (): Plugin => ({
+  name: "engine-pack-dev-server",
+  configureServer(server: ViteDevServer) {
+    server.middlewares.use((req, res, next) => {
+      const url = (req.url || "").split("?")[0];
+      if (!url.startsWith("/engine-packs/")) {
+        next();
+        return;
+      }
+      const requested = url.slice("/engine-packs/".length);
+      if (!/^rapfi-full-v\d+\.data$/.test(requested) || requested.includes("..")) {
+        res.statusCode = 404;
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.end("Engine pack not found");
+        return;
+      }
+      const file = resolve(process.cwd(), "engine-packs", requested);
+      if (!existsSync(file)) {
+        res.statusCode = 404;
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.end(`Engine pack missing on this machine: build it with scripts/repack-rapfi-data.py`);
+        return;
+      }
+      res.setHeader("Content-Type", "application/octet-stream");
+      // Same as /renlib/: pre-header middleware responses must carry COOP/COEP
+      // themselves or the COEP page rejects the cross-island resource.
+      res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+      res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
+      res.setHeader("Content-Length", String(statSync(file).size));
+      res.setHeader("Cache-Control", "no-store");
+      createReadStream(file).pipe(res);
+    });
+  },
+});
+
 const renLibWebAssets = (): Plugin => ({
   name: "renlib-web-assets",
   enforce: "pre",
@@ -48,6 +86,12 @@ const renLibWebAssets = (): Plugin => ({
       }
       const requested = url.slice("/renlib/".length);
       const file = renLibFiles().find((item) => item.name === requested);
+      // This middleware runs before Vite's server.headers middleware, so the
+      // global COOP/COEP headers never reach these responses. Without them the
+      // browser refuses to spin up the RenLib classic worker from this COEP
+      // page (ERR_BLOCKED_BY_RESPONSE) and .lib files cannot be opened at all.
+      res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+      res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
       if (!file) {
         res.statusCode = 404;
         res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -109,6 +153,26 @@ self.addEventListener("activate", (event) => {
 });
 
 export default defineConfig({
+  // 版本号单一来源（用户 09-13：快捷中心图标下要显示版本）：构建时从
+  // package.json 注入 __APP_VERSION__，代码侧只读该常量——避免再出现
+  // diagnostics.ts 里手写 "1.1.7.5" 与实际版本漂移（曾导致门禁与关于页不一致）。
+  define: {
+    __APP_VERSION__: JSON.stringify(JSON.parse(readFileSync(resolve(process.cwd(), "package.json"), "utf8")).version),
+  },
+  server: {
+    // WASM 多线程（pthread/SharedArrayBuffer）要求 crossOriginIsolated：
+    // COOP same-origin + COEP credentialless（Chromium 96+，免子资源 CORP 头）。
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "credentialless",
+    },
+  },
+  preview: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "credentialless",
+    },
+  },
   build: {
     // Keep generated CSS parseable by the oldest supported Android WebView.
     // Runtime fallbacks in legacy-webview.css cover features that cannot be
@@ -118,6 +182,7 @@ export default defineConfig({
   plugins: [
     devServiceWorkerReset(),
     renLibWebAssets(),
+    enginePackDevServer(),
     legacyRapfiSyntax(),
     scalableUiFonts(),
     react(),
@@ -147,8 +212,16 @@ export default defineConfig({
           { src: "icon-maskable.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
         ],
       },
-      workbox: { globPatterns: ["**/*.{js,css,html,svg,json,wasm,data,sgf,db,wav}"] },
+      // engine-packs/** 是 40MB 级引擎档位包：随 APK 分发（见下方 closeBundle 说明），
+      // 但绝不能进 Workbox 预缓存——超过 2MiB 上限会让 SW 生成直接报错挂构建，
+      // 且 40MB 预缓存对首启是灾难。运行时从同源 /engine-packs/ 直接取用。
+      workbox: { globPatterns: ["**/*.{js,css,html,svg,json,gz,wasm,data,sgf,db,wav}"], globIgnores: ["**/engine-packs/**"] },
     }),
+    // 引擎包随 APK 分发（用户 09-13：装完即用，不再依赖应用内下载）。
+    // 40MB 的 v3 数据包留在 dist/ 里由 Capacitor 拷进 APK 的 assets，运行时
+    // 通过同源 /engine-packs/ 路径读取（engine-pack.ts 的 DEV 分支已覆盖同源
+    // 候选，生产侧见 enginePackUrls 的同源优先改造）。
+    // 注意：Web 部署（GitHub Pages）不含该目录，走远端下载兜底。
   ],
   base: "./",
 });

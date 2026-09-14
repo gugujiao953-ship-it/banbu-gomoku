@@ -260,6 +260,152 @@ describe("renju golden positions", () => {
   });
 });
 
+// ── 裁判级禁手陷阱矩阵（2026-09-06）─────────────────────────────
+// 依据：《中国五子棋竞赛规则（2013）》禁手章节与 RIF 规则第 9 条。
+// 活三=再走一着能形成活四的三（延伸着法本身须合法）；眠三/假三不计入
+// 三三；恰五优先于一切禁手；四四中死四不计。这些用例覆盖社区判题平台
+// 的常见争议局面。
+describe("renju referee-level forbidden traps", () => {
+  const refereeCases: GoldenCase[] = [
+    {
+      // 横四 + 竖活三 → 四三合法（三三只数活三，四三不构成禁手）
+      name: "四三复合合法（横四+竖活三）",
+      black: [...positions(7, [3, 4, 5]), ...vertical(6, [5, 6])],
+      move: { row: 7, col: 6 },
+      expected: { legal: true, forbidden: null, fourCount: 1, openThreeCount: 1 },
+    },
+    {
+      // 横四（右端被白封=冲四）+ 竖四（下端被白封=冲四）→ 双四禁手
+      name: "两条冲四交叉仍是四四禁手",
+      black: [...positions(7, [3, 4, 5]), ...vertical(6, [4, 5, 6])],
+      white: [{ row: 7, col: 7 }, { row: 8, col: 6 }],
+      move: { row: 7, col: 6 },
+      expected: { legal: false, forbidden: "double-four" },
+    },
+    {
+      // 同一四的两端各是一个胜点 → 活四只算一个四（不得双算）
+      name: "活四两个胜点只算一个四",
+      black: positions(7, [3, 4, 5]),
+      move: { row: 7, col: 6 },
+      expected: { legal: true, fourCount: 1, openThreeCount: 0 },
+    },
+    {
+      // 两端被封的死四（无胜点）不计入四四 → 合法
+      name: "死四不计入四四",
+      black: positions(7, [3, 4, 5]),
+      white: [{ row: 7, col: 2 }, { row: 7, col: 7 }],
+      move: { row: 7, col: 6 },
+      expected: { legal: true, fourCount: 0 },
+    },
+    {
+      // 跳三（O_O 形，隔位）：缺口延伸成活四 → 活三
+      name: "跳三缺口延伸成活四为活三",
+      black: [...positions(7, [7, 9])],
+      move: { row: 7, col: 6 },
+      expected: { legal: true, openThreeCount: 1 },
+    },
+    {
+      // 跳三的缺口被白子占据 → 假活三
+      name: "跳三缺口被占为假活三",
+      black: [...positions(7, [7, 9])],
+      white: [{ row: 7, col: 8 }],
+      move: { row: 7, col: 6 },
+      expected: { legal: true, openThreeCount: 0 },
+    },
+    {
+      // 两个直三异向交叉（横三+竖三都过落点）→ 双三禁手
+      name: "异向双直三交叉双三禁手",
+      black: [...positions(7, [3, 5]), ...vertical(4, [5, 6])],
+      move: { row: 7, col: 4 },
+      expected: { legal: false, forbidden: "double-three" },
+    },
+    {
+      // 冲四 + 活三 → 四三合法
+      name: "冲四加活三合法（四三）",
+      black: [...positions(7, [3, 4, 5]), ...vertical(6, [5, 6])],
+      white: [{ row: 7, col: 7 }],
+      move: { row: 7, col: 6 },
+      expected: { legal: true, fourCount: 1, openThreeCount: 1 },
+    },
+    {
+      // 同手恰五 + 另一向成双三 → 五连优先合法胜
+      name: "恰五优先于同手双三",
+      black: [...positions(7, [3, 4, 5, 6]), ...vertical(5, [5, 6])],
+      move: { row: 7, col: 7 },
+      expected: { legal: true, exactFive: true, forbidden: null },
+    },
+    {
+      // 同手恰五 + 另一向成六（长连）→ 五连优先
+      name: "恰五优先于异向长连",
+      black: [...positions(7, [3, 4, 5, 6]), ...vertical(3, [4, 5, 6, 7, 8])],
+      move: { row: 7, col: 7 },
+      expected: { legal: true, exactFive: true, forbidden: null },
+    },
+    {
+      // 同手恰五 + 另一向双四 → 五连优先
+      name: "恰五优先于异向双四",
+      black: [...positions(7, [3, 4, 5, 6]), ...vertical(6, [5, 8])],
+      move: { row: 7, col: 7 },
+      expected: { legal: true, exactFive: true, forbidden: null },
+    },
+    {
+      // 三的唯一活四延伸点是长连点（已被黑占 6 连串）→ 假三 → 合法
+      name: "延伸点成六连的三是假三",
+      black: [...positions(7, [3, 4, 7, 8, 9])],
+      white: [{ row: 7, col: 2 }],
+      move: { row: 7, col: 5 },
+      expected: { legal: true, openThreeCount: 0 },
+    },
+    {
+      // 三的唯一活四延伸点构成双四（另一线已有四串）→ 假三
+      name: "延伸点成四四的三是假三",
+      black: [...positions(7, [3, 4]), ...vertical(6, [4, 5, 6])],
+      white: [{ row: 7, col: 2 }],
+      move: { row: 7, col: 5 },
+      expected: { legal: true, openThreeCount: 0 },
+    },
+    {
+      // 一手同时成两活三 + 一活四（四三三）→ 双三仍禁
+      name: "四三三：双三加四仍为三三禁手",
+      black: [...positions(7, [3, 4]), ...vertical(5, [5, 6]), ...diagonal(4, 2, [0, 1, 2])],
+      move: { row: 7, col: 5 },
+      expected: { legal: false, forbidden: "double-three", fourCount: 1 },
+    },
+    {
+      // 深度假三：三的唯一延伸点 X 本身构成双三（X 上有另外两个活三串）
+      // → 该三为假三，落点合法。覆盖递归合法性验证。
+      name: "延伸点成双三的三是假三（两层递归）",
+      black: [...positions(7, [3, 4]), ...vertical(5, [5, 6]), ...positions(8, [3, 4, 6, 7])],
+      white: [{ row: 4, col: 5 }],
+      move: { row: 7, col: 5 },
+      expected: { legal: true, openThreeCount: 1 },
+    },
+    {
+      // 2008 renju blog 经典谜题（Chien Yung-Hsuan）："It looks H6 is 3*3, or not 3*3?"
+      // 黑落 H6：竖线 H6H7H8 是真活三；横线 G6H6I6 的左右延伸点 F6/J6 落下都是斜五连
+      // （C9D8E7F6G5 / I5J6K7L8M9）——延伸即直接成五获胜，不是"成活四"，故横线不算活三。
+      // 只有一个活三 → 非三三禁手。（用户 09-11 实测指出）
+      name: "延伸点为五连胜点的三不算活三（H6 谜题）",
+      black: [
+        { row: 7, col: 7 }, { row: 6, col: 7 }, { row: 6, col: 10 }, { row: 7, col: 11 }, { row: 8, col: 12 },
+        { row: 4, col: 8 }, { row: 5, col: 8 }, { row: 5, col: 6 }, { row: 4, col: 6 }, { row: 6, col: 4 },
+        { row: 7, col: 3 }, { row: 8, col: 2 },
+      ],
+      white: [
+        { row: 7, col: 8 }, { row: 6, col: 9 }, { row: 7, col: 10 }, { row: 8, col: 11 }, { row: 4, col: 9 },
+        { row: 7, col: 6 }, { row: 6, col: 5 }, { row: 4, col: 5 }, { row: 7, col: 4 }, { row: 8, col: 3 },
+        { row: 13, col: 7 },
+      ],
+      move: { row: 5, col: 7 },
+      expected: { legal: true, forbidden: null, openThreeCount: 1 },
+    },
+  ];
+
+  it.each(refereeCases)("$name", ({ move, expected, ...setup }) => {
+    expect(evaluateRenjuMove(makeBoard(setup), move)).toMatchObject(expected);
+  });
+});
+
 describe("renju rule API stability", () => {
   it("invalidates cached evaluations when a reused board is mutated", () => {
     const board = makeBoard({ black: positions(7, [6, 8]) });

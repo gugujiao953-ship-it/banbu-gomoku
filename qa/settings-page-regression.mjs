@@ -42,18 +42,20 @@ try {
     const layout = await page.evaluate(() => {
       const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect();
       const name = rect(".unified-status-name");
-      const subtitle = rect(".unified-status-subtitle");
+      const lines = rect(".unified-status-lines");
       const kind = rect(".unified-status-kind");
       const copy = rect(".unified-status-copy");
       const chevron = rect(".unified-status-title > svg");
       const shell = document.querySelector(".app-shell");
       return {
-        name, subtitle, kind, copy, chevron,
+        name, lines, kind, copy, chevron,
         overflow: shell ? shell.scrollWidth - shell.clientWidth : 999,
       };
     });
-    assert(layout.name && layout.subtitle && layout.kind && layout.copy && layout.chevron, `${width}px 顶部状态区元素缺失`);
-    assert(layout.name.bottom <= layout.subtitle.top + 0.5, `${width}px 棋谱名与副标题重叠`);
+    assert(layout.name && layout.lines && layout.kind && layout.copy && layout.chevron, `${width}px 顶部状态区元素缺失`);
+    // On phones the title sits on the left and the two status lines on the
+    // right; an over-long title must truncate rather than overlap the status.
+    assert(layout.name.right <= layout.lines.left + 0.5, `${width}px 棋谱名与状态栏重叠`);
     assert(layout.copy.left >= layout.kind.right - 0.5, `${width}px 棋谱名向左侵入图标`);
     assert(layout.copy.right <= layout.chevron.left + 0.5, `${width}px 棋谱名侵入展开箭头`);
     assert(layout.overflow <= 1, `${width}px 页面横向溢出 ${layout.overflow}px`);

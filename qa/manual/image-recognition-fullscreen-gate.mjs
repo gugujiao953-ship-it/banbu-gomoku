@@ -351,7 +351,8 @@ const runCase = async (testCase) => {
     result.originalPath = originalPath;
     result.originalSha256 = await sha256(originalPath);
 
-    await page.getByRole("button", { name: "打开导入方式" }).click();
+    // 顶栏改版（T40）：打谱页不再有「打开导入方式」按钮，导入走底部导航中央按钮。
+    await page.locator(".bottom-nav .nav-center").click();
     const importDialog = page.getByRole("dialog", { name: "选择导入方式" });
     await importDialog.getByRole("button", { name: "图片识谱" }).click();
     const recognitionStarted = Date.now();

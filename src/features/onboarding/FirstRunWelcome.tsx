@@ -1,9 +1,9 @@
-import { BookOpen, Check, FileInput, MessageCircle, Palette, ScanLine, Smartphone, Sparkles } from "lucide-react";
+import { BookOpen, Check, Compass, FileInput, MessageCircle, Palette, ScanLine, Smartphone, Sparkles } from "lucide-react";
 import { GITHUB_RELEASES_URL } from "../../update-check";
 
 const GITHUB_PROJECT_URL = GITHUB_RELEASES_URL.replace(/\/releases$/, "");
 
-export function FirstRunWelcome({ onDismiss, onOpenManual }: { onDismiss: () => void; onOpenManual: () => void }) {
+export function FirstRunWelcome({ onDismiss, onOpenManual, onStartTour }: { onDismiss: () => void; onOpenManual: () => void; onStartTour: () => void }) {
   return <div className="first-run-backdrop" role="presentation">
     <section className="first-run-dialog" role="dialog" aria-modal="true" aria-labelledby="first-run-title" aria-describedby="first-run-description">
       <div className="first-run-icon"><Sparkles/></div>
@@ -17,9 +17,10 @@ export function FirstRunWelcome({ onDismiss, onOpenManual }: { onDismiss: () => 
         <div><Palette/><span><b>丰富外观</b><small>多种主题、棋盘、棋子、透明度与标注高亮</small></span></div>
         <div><MessageCircle/><span><b>交流与帮助</b><small>加入 QQ 群 1091866163，交流使用心得、反馈问题；也可访问 <a className="first-run-github-link" href={GITHUB_PROJECT_URL} target="_blank" rel="noreferrer">GitHub 项目仓库</a></small></span></div>
       </div>
-      <p className="first-run-reassurance">第一次使用不用急着全部学会。点击“使用手册”，跟着步骤做一遍就能上手；以后也可以随时从设置里重新打开。</p>
+      <p className="first-run-reassurance">第一次使用不用急着全部学会。先来一遍「新手引导」——高亮带你认全每个按钮；想随时重看，设置里“使用手册与反馈”区都留着入口。</p>
       <div className="first-run-actions">
-        <button className="primary-button" onClick={onOpenManual}><BookOpen/>带我看看怎么用</button>
+        <button className="primary-button" onClick={onStartTour}><Compass/>新手引导 · 1 分钟认全功能</button>
+        <button className="secondary-button" onClick={onOpenManual}><BookOpen/>阅读使用手册</button>
         <button className="secondary-button" onClick={onDismiss}><Check/>先自己试试</button>
       </div>
     </section>

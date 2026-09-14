@@ -72,8 +72,26 @@ try {
   assert(await puzzleModeButton.count() === 1 && (await puzzleModeButton.getAttribute("class"))?.includes("selected"), "最近棋题没有打开做题模式");
   await puzzleContext.close();
 
+  // 版本更新后首运行页重新出现（用户 09-14）。存档里存的是「上次看过的版本号」：
+  // 旧版本号（含 v1.1.7 及更早写的字面量 "true"）对当前版本都算没看过。
+  for (const [label, stored] of [["旧版本号", "1.1.7"], ["旧版字面量 true", "true"]]) {
+    const upgradeContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await upgradeContext.addInitScript((value) => localStorage.setItem("banbu-first-run-welcome-v1", value), stored);
+    const upgradePage = await upgradeContext.newPage();
+    await upgradePage.goto(onboardingUrl.href, { waitUntil: "commit" });
+    await upgradePage.getByRole("dialog").waitFor();
+    assert(await upgradePage.getByRole("dialog").isVisible(), `存档里是${label}时，升级后首运行页没有重新出现`);
+    await upgradePage.getByRole("button", { name: DISMISS_RE }).click();
+    const stamped = await upgradePage.evaluate(() => localStorage.getItem("banbu-first-run-welcome-v1"));
+    assert(stamped !== stored && stamped !== "true", `关闭首运行页后没有写入当前版本号（实际 ${stamped}）`);
+    await upgradePage.reload({ waitUntil: "commit" });
+    assert(await upgradePage.getByRole("dialog").count() === 0, `同一个版本内首运行页重复出现（${label}）`);
+    await upgradeContext.close();
+  }
+  console.log("[onboarding] 升级后首运行页重现（旧版本号 / 旧版 true 两种存档）已验证");
+
   assert(errors.length === 0, "页面运行错误：" + errors.join("\n"));
-  console.log(JSON.stringify({ pass: true, welcomeAcknowledgement: true, welcomeManual: true, restoreOnOff: true, recentPuzzleOpen: true }, null, 2));
+  console.log(JSON.stringify({ pass: true, welcomeAcknowledgement: true, welcomeManual: true, restoreOnOff: true, recentPuzzleOpen: true, welcomeRearmOnUpgrade: true }, null, 2));
 } finally {
   await browser.close();
 }

@@ -22,7 +22,7 @@ export function RuleGuide({ onOpenManual }: { onOpenManual: () => void }) {
     <div className="rule-compare-list">{AI_RULE_PRESET_GUIDES.map((entry) => <details key={entry.key} className="rule-card" open={entry.key === "freestyle"}><summary><span>{entry.name} · {entry.badge}</span><small>{entry.summary}</small></summary><dl><div><dt>详细</dt><dd>{entry.detail}</dd></div><div><dt>流程</dt><dd>{entry.steps}</dd></div><div><dt>胜负</dt><dd>{entry.winning}</dd></div></dl></details>)}</div>
 
     <details className="rule-detail-card" open><summary>禁手怎么判断</summary><div className="rule-detail-body">
-      <p><b>只看黑方、只在连珠规则生效。</b>应用在候选点显示红色 X，并写出“长连禁手 / 四四禁手 / 三三禁手”；落子时也会阻止该点。</p>
+      <p><b>只看黑方、只在连珠规则生效。</b>应用在候选点画红圈并标出“三 / 四 / 长”；落子时会阻止该点，并用红叉和“长连禁手 / 四四禁手 / 三三禁手”说明原因。</p>
       <div className="rule-shape-grid"><figure><ShapeDiagram kind="overline"/><figcaption><b>长连</b><span>一条不断开的黑棋行达到六子或以上。</span></figcaption></figure><figure><ShapeDiagram kind="double-four"/><figcaption><b>四四</b><span>同一落点同时产生两个独立的“四”。活四有两个成五点，冲四通常只有一个。</span></figcaption></figure><figure><ShapeDiagram kind="double-three"/><figcaption><b>三三</b><span>同一落点同时产生两个可合法发展成活四的“真三”。</span></figcaption></figure></div>
       <h3>真三、假三与重复计算</h3>
       <p>“活三”不是看起来有三个黑子就算。它必须还能通过一个<b>合法黑棋着点</b>形成两端均可成五的直四。若延伸点贴边、被白棋封住，或延伸本身会造成长连、四四、禁三三，这个方向可能是假三。</p>

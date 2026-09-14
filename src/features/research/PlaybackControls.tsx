@@ -12,16 +12,18 @@ export function PlaybackButton({
   disabled,
   stopReason,
   onToggle,
+  className = "",
 }: {
   isPlaying: boolean;
   disabled: boolean;
   stopReason: PlaybackStopReason;
   onToggle: () => void;
+  className?: string;
 }) {
   const label = isPlaying ? "暂停" : "播放";
   return <button
     type="button"
-    className={isPlaying ? "accent playback-command" : "playback-command"}
+    className={`${isPlaying ? "accent playback-command" : "playback-command"} ${className}`.trim()}
     onClick={onToggle}
     disabled={disabled && !isPlaying}
     aria-label={isPlaying ? "暂停自动演示" : "播放自动演示"}
@@ -29,6 +31,6 @@ export function PlaybackButton({
     title={isPlaying ? "暂停自动演示" : playbackStatusText(stopReason)}
   >
     {isPlaying ? <Pause/> : <Play/>}
-    <span>{label}</span>
+    <span className="action-label">{label}</span>
   </button>;
 }

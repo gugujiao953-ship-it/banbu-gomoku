@@ -43,6 +43,12 @@ android/.idea/
 /temp-apk-compare/
 *.dex
 
+# 识谱测试语料（4MB 级真机样本，本机专用；正式门禁用入库的 qa/fixtures/recognition/）
+public/.tmp-bench/
+# 根目录的一次性补丁与探针（不随版本走）
+/*.patch
+/probe2.cjs
+
 # 根目录调试产物（设备截图/转储/APK，均为可再生文件）
 /artifacts-*.png
 /artifacts-*.xml
@@ -52,3 +58,10 @@ android/.idea/
 /diag-*.png
 /tmp-*.png
 *.apk
+
+# 强力 AI 引擎包：应用内下载，不随包不入库
+engine-packs/
+public/rapfi/full/rapfi.data
+
+# 第三方工具（dsh）修复前的备份目录，不入库
+/.dsh-fix-backup-*/

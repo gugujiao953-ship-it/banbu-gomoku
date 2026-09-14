@@ -1,4 +1,5 @@
-import { ArchiveRestore, ChevronRight, Clock3, DatabaseBackup, FileClock, Play, ShieldCheck } from "lucide-react";
+import { ArchiveRestore, ChevronDown, ChevronRight, Clock3, DatabaseBackup, FileClock, Play } from "lucide-react";
+import { useState } from "react";
 import type { LargeDocumentSummary } from "../../large-storage";
 import type { GameDocument } from "../../types";
 import { recentResearchItems, type RecordLibraryFilter } from "./library-research";
@@ -43,6 +44,7 @@ export function ResearchLibraryOverview({
   onOpenDataSafety: () => void;
   recycleCount: number;
 }) {
+  const [recentExpanded, setRecentExpanded] = useState(false);
   const recent = recentResearchItems(records, largeRecords, regularDraftIds, largeDraftIds, activeId);
   const draftCount = regularDraftIds.size + largeDraftIds.size + (activeHasDraft && !regularDraftIds.has(activeId) && !largeDraftIds.has(activeId) ? 1 : 0);
   return <section className="research-library-overview" aria-label="继续研究与资料状态">
@@ -51,8 +53,8 @@ export function ResearchLibraryOverview({
       <span><small>继续上次研究</small><b>{activeTitle}</b><em>第 {activeDepth} 手 · {activeHasDraft ? "有未保存草稿" : "已保存"} · {formatDate(activeUpdatedAt)} 更新</em></span>
       <ChevronRight/>
     </button>
-    <div className="research-overview-heading"><span><Clock3/><b>最近棋谱</b></span><button onClick={onOpenDataSafety}><ShieldCheck/>资料安全<small>{recycleCount ? `${recycleCount} 项可恢复` : "备份与恢复"}</small></button></div>
-    {recent.length ? <div className="recent-research-list">{recent.map((item) => <button key={`${item.kind}-${item.id}`} onClick={() => item.kind === "record" ? onOpenRecord(item.document) : onOpenLargeRecord(item.summary)}><span className={item.kind === "large" ? "large" : "record"}>{item.kind === "large" ? <DatabaseBackup/> : <FileClock/>}</span><span><b>{item.title}</b><small>{item.kind === "large" ? "大型棋谱" : "本地棋谱"} · {item.hasDraft ? "有草稿 · " : ""}{formatDate(item.updatedAt)} 更新</small></span><ChevronRight/></button>)}</div> : <p className="research-overview-empty">保存或导入棋谱后，最近研究会显示在这里。</p>}
+    <div className="research-overview-heading"><span><Clock3/><b>最近棋谱</b>{recent.length ? <small className="research-recent-count">{recent.length}</small> : null}</span><button className="research-recent-toggle" onClick={() => setRecentExpanded((expanded) => !expanded)} aria-expanded={recentExpanded} aria-label={recentExpanded ? "收起最近棋谱" : "展开最近棋谱"} title={recentExpanded ? "收起最近棋谱" : "展开最近棋谱"}>{recentExpanded ? <ChevronDown size={15}/> : <ChevronRight size={15}/>}<span>{recentExpanded ? "收起" : "展开"}</span></button></div>
+    {recentExpanded && (recent.length ? <div className="recent-research-list">{recent.map((item) => <button key={`${item.kind}-${item.id}`} onClick={() => item.kind === "record" ? onOpenRecord(item.document) : onOpenLargeRecord(item.summary)}><span className={item.kind === "large" ? "large" : "record"}>{item.kind === "large" ? <DatabaseBackup/> : <FileClock/>}</span><span><b>{item.title}</b><small>{item.kind === "large" ? "大型棋谱" : "本地棋谱"} · {item.hasDraft ? "有草稿 · " : ""}{formatDate(item.updatedAt)} 更新</small></span><ChevronRight/></button>)}</div> : <p className="research-overview-empty">保存或导入棋谱后，最近研究会显示在这里。</p>)}
     <div className="record-filter-bar" role="group" aria-label="棋谱状态筛选">
       {([
         ["all", "全部", records.length + largeRecords.length],

@@ -1,27 +1,98 @@
 .quick-drawer-layer{position:fixed;inset:0;z-index:75;pointer-events:none}
-.brand-trigger{width:44px;height:44px;margin:-2px;border:0;border-radius:14px;background:transparent;display:grid;place-items:center;padding:2px;cursor:pointer}.brand-trigger:active{background:var(--jade)}.brand-trigger:focus-visible{outline:3px solid #88a798;outline-offset:1px}
+.brand-trigger{position:relative;width:44px;height:44px;margin:-2px;border:0;border-radius:14px;background:transparent;display:grid;place-items:center;padding:2px;cursor:pointer}.brand-trigger:active{background:var(--jade)}.brand-trigger:focus-visible{outline:3px solid #88a798;outline-offset:1px}
+.brand-trigger .update-dot{top:4px;right:4px;animation:update-dot-pulse 2.2s ease-in-out infinite}
+.update-dot{position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:#e0483c;border:2px solid var(--paper,#f8f6f1)}
+@keyframes update-dot-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
+@media(prefers-reduced-motion:reduce){.brand-trigger .update-dot{animation:none}}
 .quick-drawer-scrim{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;background:#171a1770;backdrop-filter:blur(2px);pointer-events:auto;animation:quick-drawer-fade .38s ease-out}
 .quick-drawer-panel{position:absolute;top:0;bottom:0;left:max(0px,calc((100vw - 520px)/2));width:min(72vw,320px);overflow:auto;overscroll-behavior:contain;padding:calc(14px + env(safe-area-inset-top)) 12px calc(18px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--paper) 97%,#fff);border-right:1px solid color-mix(in srgb,var(--line) 84%,transparent);box-shadow:18px 0 48px #1f362b2e;pointer-events:auto;animation:quick-drawer-in .42s cubic-bezier(.22,.8,.22,1)}
-.quick-drawer-head{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:10px;padding:2px 2px 14px}
+.quick-drawer-head{display:grid;grid-template-columns:44px minmax(0,1fr) auto 44px 44px;align-items:center;gap:10px;padding:2px 2px 14px}
 .quick-drawer-head>img{width:44px;height:44px;border-radius:14px;box-shadow:0 5px 14px #365e4b25}
+/* 图标 + 版本号（用户 09-13：版本号放在快捷中心图标下面） */
+.quick-drawer-logo{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:44px}
+.quick-drawer-logo img{width:44px;height:44px;border-radius:14px;box-shadow:0 5px 14px #365e4b25}
+.quick-drawer-logo small{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.02em;line-height:1}
 .quick-drawer-head>div{min-width:0}.quick-drawer-head b{display:block;font:700 17px serif;letter-spacing:.04em}.quick-drawer-head small{display:block;margin-top:3px;color:var(--muted);font-size:11px}
 .quick-drawer-head>button{width:44px;height:44px;border:0;border-radius:14px;background:transparent;color:var(--muted);display:grid;place-items:center}
 .quick-drawer-head>button:active{background:var(--jade)}
+.quick-drawer-head>button.quick-drawer-customize.on{background:var(--jade);color:var(--green)}
+.quick-drawer-customize-list{margin-bottom:12px;padding:2px 2px 0}
+.quick-drawer-customize-note{margin:0 0 12px;padding:10px 12px;border-radius:14px;background:color-mix(in srgb,var(--jade) 58%,var(--paper));color:var(--muted);font-size:11px;line-height:1.5}
+.quick-drawer-customize-group{margin-top:14px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--line) 86%,transparent);border-radius:18px;background:color-mix(in srgb,var(--paper) 94%,#fff);box-shadow:0 8px 22px #4e5d510b}
+.quick-drawer-customize-group-head{display:flex;align-items:center;gap:6px;padding:0 2px 8px;border-radius:10px}
+.quick-drawer-customize-group-head.drop-target{background:color-mix(in srgb, var(--green) 10%, transparent);box-shadow:inset 0 2px 0 var(--green)}
+.quick-drawer-customize-group-head h3{margin:0;flex:1;min-width:0}
+/* 分组内：把手 + 展开收起 + 标题 + 全部显示/隐藏（用户 09-13） */
+.quick-drawer-customize-group-head .section-grip{min-height:32px;height:32px}
+.quick-drawer-group-collapse{width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}
+.quick-drawer-group-collapse:hover{background:color-mix(in srgb, var(--green) 12%, transparent);color:var(--green)}
+.quick-drawer-group-collapse svg{width:15px;height:15px}
+.quick-drawer-customize-group-head h3{margin:0;font:700 11px serif;letter-spacing:.12em;color:var(--muted)}
+.quick-drawer-customize-section-toggle{min-height:26px;padding:0 9px;border:1px solid color-mix(in srgb,var(--line) 92%,transparent);border-radius:999px;background:transparent;color:var(--muted);font-size:10px;font-weight:700;white-space:nowrap}
+.quick-drawer-customize-section-toggle:active{background:var(--jade)}
+.quick-drawer-customize-section-toggle[aria-pressed="true"]{border-color:color-mix(in srgb,var(--green) 45%,transparent);background:var(--jade);color:var(--green)}
+.quick-drawer-customize-group.all-hidden{opacity:.72}
+.quick-drawer-customize-group.all-hidden .quick-drawer-customize-section-toggle{border-color:color-mix(in srgb,var(--line) 92%,transparent);background:transparent;color:var(--muted)}
+.quick-drawer-customize-group .quick-drawer-toggle:first-of-type{border-top:0}
+.quick-drawer-customize-actions{margin:0 0 12px;display:flex;gap:6px}
+.quick-drawer-customize-actions button{flex:1;min-width:0;min-height:42px;padding:0 4px;border:1px solid color-mix(in srgb,var(--line) 90%,transparent);border-radius:12px;background:color-mix(in srgb,var(--paper) 92%,#fff);color:var(--ink);font-size:11px;font-weight:700;white-space:nowrap}
+.quick-drawer-customize-actions button:active{background:var(--jade)}
+.quick-drawer-empty{margin:14px 2px;padding:14px 12px;border:1px dashed color-mix(in srgb,var(--line) 92%,transparent);border-radius:16px;color:var(--muted);font-size:11px;line-height:1.5;text-align:center}
+/* 底部「检查更新」（用户 09-13）：常驻在最下面，发现新版本时按钮右上角冒红点。 */
+.quick-drawer-update-row{margin-top:14px;padding-top:12px;border-top:1px solid color-mix(in srgb,var(--line) 72%,transparent)}
+.quick-update-button{position:relative;width:100%;min-height:56px;display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid color-mix(in srgb,var(--line) 88%,transparent);border-radius:16px;background:color-mix(in srgb,var(--surface-2,var(--paper)) 70%,transparent);color:var(--ink);text-align:left;font:inherit;cursor:pointer;transition:border-color .18s,background .18s}
+.quick-update-button:hover{border-color:color-mix(in srgb,var(--green) 55%,transparent)}
+.quick-update-button:disabled{cursor:default;opacity:.72}
+.quick-update-button>svg{flex:0 0 auto;width:17px;height:17px;color:var(--green)}
+.quick-update-button>span{min-width:0;flex:1}
+.quick-update-button b{display:block;font-size:12px;font-weight:700}
+.quick-update-button small{display:block;margin-top:3px;color:var(--muted);font-size:11px;line-height:1.4}
+.quick-update-button.has-update{border-color:color-mix(in srgb,var(--green) 62%,transparent);background:color-mix(in srgb,var(--jade) 55%,var(--paper))}
+.quick-update-button .update-dot{top:6px;right:8px}
+.quick-update-spin{animation:quick-update-spin 1s linear infinite}
+@keyframes quick-update-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.quick-update-spin{animation:none}}
 .quick-drawer-current{margin-bottom:12px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--line) 78%,transparent);border-radius:16px;background:color-mix(in srgb,var(--jade) 62%,var(--paper));overflow:hidden}
 .quick-drawer-current span{display:block;color:var(--green);font-size:11px;font-weight:700;letter-spacing:.16em}.quick-drawer-current b,.quick-drawer-current small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.quick-drawer-current b{margin-top:5px;font:700 14px serif}.quick-drawer-current small{margin-top:4px;color:var(--muted);font-size:11px}
 .quick-drawer-section{margin-top:12px;padding:12px;border:1px solid color-mix(in srgb,var(--line) 86%,transparent);border-radius:18px;background:color-mix(in srgb,var(--paper) 94%,#fff);box-shadow:0 8px 22px #4e5d510b}
 .quick-drawer-section-title{display:flex;align-items:center;gap:9px;margin-bottom:11px}.quick-drawer-section-title>span{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:var(--jade);color:var(--green)}.quick-drawer-section-title>div{min-width:0}.quick-drawer-section-title b,.quick-drawer-section-title small{display:block}.quick-drawer-section-title b{font-size:11px}.quick-drawer-section-title small{margin-top:3px;color:var(--muted);font-size:11px}
 .quick-playback-card{background:linear-gradient(150deg,color-mix(in srgb,var(--jade) 56%,var(--paper)),var(--paper) 72%)}
-.quick-think-card{background:linear-gradient(150deg,color-mix(in srgb,var(--jade) 78%,var(--paper)),var(--paper) 60%)}
-.quick-think-action,.quick-think-result{width:100%;min-height:58px;border:0;border-radius:14px;display:flex;align-items:center;gap:10px;padding:9px 10px;text-align:left}.quick-think-action{background:var(--green);color:#fff;box-shadow:0 8px 19px #365e4b2b}.quick-think-action:disabled{opacity:.74}.quick-think-action>span{width:34px;height:34px;border-radius:11px;background:#ffffff18;display:grid;place-items:center;flex:0 0 34px}.quick-think-action>span i{width:15px;height:15px;border:2px solid #ffffff66;border-top-color:#fff;border-radius:50%;animation:quick-drawer-spin .8s linear infinite}.quick-think-action>div,.quick-think-result>div{min-width:0;flex:1}.quick-think-action b,.quick-think-action small,.quick-think-result b,.quick-think-result small{display:block}.quick-think-action b{font-size:11px}.quick-think-action small{margin-top:4px;font-size:11px;line-height:1.4;opacity:.75}
-.quick-think-result{margin-top:8px;background:color-mix(in srgb,var(--paper) 88%,#fff);border:1px solid var(--line);color:var(--ink)}.quick-think-result>span{width:34px;height:34px;border-radius:50%;background:#20221f;color:#f7f3e8;display:grid;place-items:center;font:700 13px serif}.quick-think-result b{font-size:12px}.quick-think-result small{margin-top:3px;color:var(--muted);font-size:11px}
-.quick-drawer-toggle{min-height:58px;display:grid;grid-template-columns:1fr 42px;align-items:center;gap:8px;border-top:1px solid color-mix(in srgb,var(--line) 72%,transparent);cursor:pointer}.quick-think-card>.quick-drawer-toggle{margin-top:7px}.quick-think-card>.quick-drawer-toggle+.quick-drawer-toggle{margin-top:0}.quick-drawer-toggle.disabled{cursor:default;opacity:.5}.quick-drawer-toggle>span{min-width:0}.quick-drawer-toggle b,.quick-drawer-toggle small{display:block}.quick-drawer-toggle b{font-size:12px}.quick-drawer-toggle small{margin-top:3px;color:var(--muted);font-size:11px;line-height:1.35}.quick-drawer-toggle input{position:absolute;opacity:0;pointer-events:none}.quick-drawer-toggle>i{position:relative;width:42px;height:24px;border-radius:999px;background:#d6d2ca;transition:.2s}.quick-drawer-toggle>i:after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 2px 5px #0002;transition:.2s}.quick-drawer-toggle input:checked+i{background:var(--green)}.quick-drawer-toggle input:checked+i:after{transform:translateX(18px)}.quick-drawer-toggle input:focus-visible+i{outline:3px solid #88a798;outline-offset:2px}
+.quick-drawer-toggle{min-height:58px;display:grid;grid-template-columns:1fr 42px;align-items:center;gap:8px;border-top:1px solid color-mix(in srgb,var(--line) 72%,transparent);cursor:pointer}.quick-drawer-toggle.disabled{cursor:default;opacity:.5}.quick-drawer-toggle>span{min-width:0}.quick-drawer-toggle b,.quick-drawer-toggle small{display:block}.quick-drawer-toggle b{font-size:12px}.quick-drawer-toggle small{margin-top:3px;color:var(--muted);font-size:11px;line-height:1.35}.quick-drawer-toggle input{position:absolute;opacity:0;pointer-events:none}.quick-drawer-toggle>i{position:relative;width:42px;height:24px;border-radius:999px;background:#d6d2ca;transition:.2s}.quick-drawer-toggle>i:after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 2px 5px #0002;transition:.2s}.quick-drawer-toggle input:checked+i{background:var(--green)}.quick-drawer-toggle input:checked+i:after{transform:translateX(18px)}.quick-drawer-toggle input:focus-visible+i{outline:3px solid #88a798;outline-offset:2px}
 .quick-choice-list{display:flex;flex-direction:column}.quick-choice-row{min-height:64px;display:grid;grid-template-columns:minmax(0,1fr) minmax(104px,43%);align-items:center;gap:10px;border-top:1px solid color-mix(in srgb,var(--line) 72%,transparent)}.quick-choice-row:first-child{border-top:0}.quick-choice-row>span{min-width:0}.quick-choice-row b,.quick-choice-row small{display:block}.quick-choice-row b{font-size:12px}.quick-choice-row small{margin-top:3px;color:var(--muted);font-size:11px;line-height:1.35}.quick-choice-row select{width:100%;height:44px;padding:0 28px 0 9px;border:1px solid color-mix(in srgb,var(--line) 90%,transparent);border-radius:12px;background:color-mix(in srgb,var(--paper) 92%,#fff);color:var(--ink);font-size:11px;font-weight:700}
+/* 数据 / 手册等入口型条目：行内图标 + 标题 + 说明 + 箭头，与设置页链接一致。 */
+.quick-link-list{display:flex;flex-direction:column}
+.quick-link-row{min-height:58px;display:flex;align-items:center;gap:10px;padding:8px 4px;border:0;border-top:1px solid color-mix(in srgb,var(--line) 72%,transparent);background:transparent;text-align:left;color:var(--ink);font:inherit}
+.quick-link-row:first-child{border-top:0}
+.quick-link-row>svg{flex:0 0 auto;width:18px;height:18px;color:var(--green)}
+.quick-link-row>span{min-width:0;flex:1}
+.quick-link-row b,.quick-link-row small{display:block}
+.quick-link-row b{font-size:12px}
+.quick-link-row small{margin-top:3px;color:var(--muted);font-size:11px;line-height:1.35}
+.quick-link-row>svg:last-child{width:16px;height:16px;color:var(--muted)}
 @keyframes quick-drawer-in{from{transform:translateX(-104%);opacity:.8}to{transform:translateX(0);opacity:1}}
+/* 左滑关闭（用户 09-14）：拖动中实时跟手（内联 transform，见 QuickDrawer.tsx），
+   松手后要么回弹（transition 收尾）要么滑出关闭。拖动期间禁掉文字选中与内部
+   滚动链，避免手势被当成滚动手势打断。 */
+.quick-drawer-panel.swiping{transition:transform .16s ease-out;will-change:transform}
+.quick-drawer-panel.swiping,.quick-drawer-panel.swiping *{user-select:none;-webkit-user-select:none}
+.quick-drawer-panel.swipe-closing{transition:transform .18s cubic-bezier(.4,0,.6,1);pointer-events:none}
+@media(prefers-reduced-motion:reduce){.quick-drawer-panel.swiping,.quick-drawer-panel.swipe-closing{transition-duration:.01ms}}
 @keyframes quick-drawer-fade{from{opacity:0}to{opacity:1}}
-@keyframes quick-drawer-spin{to{transform:rotate(360deg)}}
+
 @media(max-width:360px){.quick-drawer-panel{width:76vw;padding-left:10px;padding-right:10px}.quick-drawer-section{padding:10px}.quick-choice-row{grid-template-columns:minmax(0,1fr) minmax(96px,46%)}}
-@media(prefers-reduced-motion:reduce){.quick-drawer-panel,.quick-drawer-scrim{animation-duration:.01ms}.quick-think-action>span i{animation-duration:1.5s}}
+@media(prefers-reduced-motion:reduce){.quick-drawer-panel,.quick-drawer-scrim{animation-duration:.01ms}}
 .quick-drawer-panel{width:min(50vw,520px);max-width:520px}
 .quick-drawer-section-toggle{width:100%;border:0;background:transparent;text-align:left;padding:0;cursor:pointer}.quick-section-chevron{margin-left:auto;flex:0 0 auto;transition:transform .2s}.quick-drawer-section.expanded .quick-section-chevron{transform:rotate(90deg)}.quick-drawer-section.collapsed{padding-bottom:10px}.quick-drawer-section.collapsed .quick-drawer-section-title{margin-bottom:0}
 @media(max-width:600px){.quick-drawer-panel{width:min(88vw,420px)}}
+.quick-drawer-update{position:relative;grid-column:3;justify-self:end;display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border:0;border-radius:12px;background:var(--green);color:#fff;font-weight:700;font-size:11px;line-height:1;text-decoration:none;box-shadow:0 4px 12px #365e4b38;cursor:pointer}
+.quick-drawer-update:active{background:var(--green-2,var(--green))}
+
+
+/* 自定义面板条目排序（用户 09-13）：左侧把手拖动换序，落点高亮。 */
+.quick-drawer-sortable{display:grid;grid-template-columns:26px minmax(0,1fr);align-items:center;gap:2px;border-radius:10px;transition:background .15s ease,box-shadow .15s ease}
+.quick-drawer-sortable.dragging{opacity:.5}
+.quick-drawer-sortable.drop-target{background:color-mix(in srgb, var(--green) 10%, transparent);box-shadow:inset 0 2px 0 var(--green)}
+.quick-drawer-sort-grip{display:grid;place-items:center;width:26px;height:100%;min-height:44px;color:var(--muted);opacity:.7;cursor:grab;touch-action:none}
+.quick-drawer-sort-grip:active{cursor:grabbing;opacity:1}
+.quick-drawer-sort-grip svg{width:15px;height:15px}
+.quick-drawer-sortable .quick-drawer-toggle{border-top:0}

@@ -2,7 +2,10 @@
 // report builder for bug reports. Kept dependency-free so the ErrorBoundary can
 // rely on it even when the rest of the app failed to boot.
 
-export const APP_VERSION = "1.1.7";
+// 构建期由 vite define 注入（vite.config.ts 从 package.json 读取），单一来源
+// 避免手写版本漂移；vitest/node 环境无注入时回退到占位串。
+declare const __APP_VERSION__: string | undefined;
+export const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "0.0.0-dev";
 
 interface DiagnosticsEntry {
   time: string;

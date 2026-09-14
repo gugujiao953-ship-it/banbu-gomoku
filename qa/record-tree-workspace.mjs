@@ -115,7 +115,7 @@ try {
       const status = document.querySelector(".unified-status")?.getBoundingClientRect();
       const sheet = document.querySelector(".bottom-sheet")?.getBoundingClientRect();
       const actionButtons = [...document.querySelectorAll(".tree-node-action-grid button")].map((button) => button.getBoundingClientRect());
-      const modeButtons = [...document.querySelectorAll(".unified-status-mode .workspace-mode-toggle button")].map((button) => ({ rect: button.getBoundingClientRect(), fontSize: Number.parseFloat(getComputedStyle(button).fontSize) }));
+      const modeButtons = [...document.querySelectorAll(".topbar .topbar-mode-toggle button")].map((button) => ({ rect: button.getBoundingClientRect(), fontSize: Number.parseFloat(getComputedStyle(button).fontSize) }));
       return { scrollWidth: document.documentElement.scrollWidth, viewport: innerWidth, viewportHeight: innerHeight, status: status && { left: status.left, right: status.right, top: status.top, bottom: status.bottom }, sheet: sheet && { top: sheet.top, bottom: sheet.bottom }, minAction: actionButtons.length ? Math.min(...actionButtons.map((rect) => Math.min(rect.width, rect.height))) : 0, minModeHeight: modeButtons.length ? Math.min(...modeButtons.map((item) => item.rect.height)) : 0, minModeFont: modeButtons.length ? Math.min(...modeButtons.map((item) => item.fontSize)) : 0, reduced: matchMedia("(prefers-reduced-motion: reduce)").matches };
     });
     assert(metrics.scrollWidth <= item.width + 1, `${item.name} 出现横向溢出`);

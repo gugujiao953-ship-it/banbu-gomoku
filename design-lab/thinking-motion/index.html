@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>思考中动效方案 · 双棋子互换</title>
+<style>
+/* ============================================================
+   「思考中」指示器动效备选：软件图标去掉棋盘，只留两个棋子左右互换
+   独立预览页，不参与软件构建。选定后把对应 CSS 接入 styles.css。
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --page:#0f1114; --card:#191c21; --edge:#282d35; --ink:#f2efe8; --muted:#98a1ab;
+  --accent:#7fb08c; --accent-soft:#25392c;
+  /* 棋子色（取自软件图标：黑子 #20221f / 白子 #f7f3e8 + 描边 #8e8578） */
+  --stone-black:#20221f; --stone-black-hi:#4f5148;
+  --stone-white:#f7f3e8; --stone-white-edge:#8e8578;
+  /* 指示器实际的 pill 配色（浅色） */
+  --pill-bg:#edf6f5e8; --pill-edge:#8fb8dc; --pill-ink:#24699f;
+  --font-ui:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --font-display:Georgia,"Songti SC","Noto Serif SC",serif;
+}
+html[data-surface="light"]{--page:#f5f3ee;--card:#fff;--edge:#ded8cc;--ink:#232019;--muted:#6e685c;--accent:#3f6b50;--accent-soft:#dce9df}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:var(--font-ui);-webkit-font-smoothing:antialiased;min-height:100vh}
+.wrap{max-width:1320px;margin:0 auto;padding:36px 24px 90px}
+h1{font:400 clamp(26px,3.6vw,40px)/1.1 var(--font-display);margin:0 0 12px}
+h1 em{font-style:normal;color:var(--accent)}
+.lead{color:var(--muted);font-size:13.5px;line-height:1.75;max-width:78ch;margin:0 0 22px}
+.lead code{background:var(--accent-soft);color:var(--accent);padding:1px 5px;border-radius:5px;font-size:12px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 26px;padding:12px 14px;
+  border:1px solid var(--edge);border-radius:16px;background:color-mix(in srgb,var(--card) 88%,transparent);
+  position:sticky;top:0;z-index:10;backdrop-filter:blur(12px)}
+.toolbar b{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.seg{display:flex;border:1px solid var(--edge);border-radius:999px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--muted);font:600 11.5px/1 var(--font-ui);padding:8px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.grow{flex:1}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(292px,1fr));gap:18px}
+@media(max-width:640px){.grid{grid-template-columns:1fr}.wrap{padding:22px 14px 70px}}
+
+.card{border:1px solid var(--edge);border-radius:18px;background:var(--card);overflow:hidden;display:flex;flex-direction:column}
+.card .stage{position:relative;display:grid;place-items:center;min-height:176px;gap:16px;
+  background:
+    radial-gradient(120% 90% at 20% 0%, #2b3a3f66, transparent 60%),
+    linear-gradient(160deg,#12151a,#1b2027);}
+html[data-surface="light"] .card .stage{background:linear-gradient(160deg,#eef1ee,#e3e8e5)}
+.stage .onboard{position:relative;border-radius:14px;background:#d8ad69;box-shadow:inset 0 0 0 1px #00000022,0 8px 20px #00000033;
+  background-image:linear-gradient(#5b493426 1px,transparent 1px),linear-gradient(90deg,#5b493426 1px,transparent 1px);
+  background-size:14px 14px;display:grid;place-items:center;padding:10px}
+.stage .pill{display:flex;align-items:center;gap:4px;min-height:30px;padding:0 10px;border:1px solid var(--pill-edge);
+  border-radius:999px;background:var(--pill-bg);color:var(--pill-ink);font-size:11px;font-weight:700;
+  box-shadow:0 5px 14px #174b7422}
+.stage .pill span{margin-left:2px}
+.card .meta{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px}
+.card .no{font:700 10px/1 var(--font-ui);letter-spacing:.2em;color:var(--muted)}
+.card .meta b{font:400 16px/1.25 var(--font-display)}
+.card .meta small{color:var(--muted);font-size:11.5px;line-height:1.6}
+.card .cls{margin-top:2px;font:600 10px/1 var(--font-ui);color:var(--accent);background:var(--accent-soft);align-self:flex-start;padding:4px 7px;border-radius:6px}
+
+/* ============================================================
+   棋子本体（软件图标同款配色）
+   ============================================================ */
+.tm{position:relative;display:block;--w:26px;--s:calc(var(--w) * .46);width:var(--w);height:var(--w);flex:0 0 auto}
+.tm .g{position:absolute;top:50%;width:var(--s);height:var(--s);border-radius:50%;transform:translateY(-50%);
+  display:grid;place-items:center;font:700 calc(var(--s) * .52)/1 var(--font-display)}
+.tm .b{left:0;background:radial-gradient(circle at 34% 28%,var(--stone-black-hi),var(--stone-black) 62%);
+  box-shadow:inset 0 -1px 1px #ffffff1f,0 1px 2px #0006;color:#f7f3e8}
+.tm .w{right:0;background:radial-gradient(circle at 34% 28%,#fff,var(--stone-white) 66%);
+  box-shadow:inset 0 0 0 calc(var(--s) * .05) var(--stone-white-edge),0 1px 2px #00000030;color:var(--stone-black)}
+.tm.letters .g{font-size:calc(var(--s) * .58)}
+/* travel distance = container width - stone width */
+.tm{--travel:calc(var(--w) - var(--s));--r:calc(var(--travel) * .5)}
+
+/* ---------- 1 交错互换：水平对调，让位时轻微错开 ---------- */
+.tm-1 .b{animation:tm1b 2.1s cubic-bezier(.55,0,.35,1) infinite}
+.tm-1 .w{animation:tm1w 2.1s cubic-bezier(.55,0,.35,1) infinite}
+@keyframes tm1b{
+  0%,16%{transform:translateY(-50%)}
+  36%{transform:translate(calc(var(--travel) * .5),calc(-50% - var(--s) * .42))}
+  54%,70%{transform:translate(var(--travel),-50%)}
+  86%{transform:translate(calc(var(--travel) * .5),calc(-50% - var(--s) * .42))}
+  100%{transform:translateY(-50%)}
+}
+@keyframes tm1w{
+  0%,16%{transform:translateY(-50%)}
+  36%{transform:translate(calc(var(--travel) * -.5),calc(-50% + var(--s) * .42))}
+  54%,70%{transform:translate(calc(var(--travel) * -1),-50%)}
+  86%{transform:translate(calc(var(--travel) * -.5),calc(-50% + var(--s) * .42))}
+  100%{transform:translateY(-50%)}
+}
+
+/* ---------- 2 弧线飞越：一颗从上方越顶交换 ---------- */
+.tm-2 .b{animation:tm2b 2.2s ease-in-out infinite}
+.tm-2 .w{animation:tm2w 2.2s ease-in-out infinite}
+@keyframes tm2b{
+  0%,18%{transform:translateY(-50%)}
+  50%,64%{transform:translate(var(--travel),calc(-50% - var(--s) * .95))}
+  100%{transform:translateY(-50%)}
+}
+@keyframes tm2w{
+  0%,18%{transform:translateY(-50%)}
+  38%,46%{transform:translate(calc(var(--travel) * -.55),-50%)}
+  58%,74%{transform:translate(calc(var(--travel) * -1),-50%)}
+  100%{transform:translateY(-50%)}
+}
+
+/* ---------- 3 原位换色：位置不动，两子原地黑白互换 ---------- */
+.tm-3 .g{background:transparent!important}
+.tm-3 .g::before,.tm-3 .g::after{content:"";position:absolute;inset:0;border-radius:50%}
+.tm-3 .g::before{background:radial-gradient(circle at 34% 28%,var(--stone-black-hi),var(--stone-black) 62%);
+  box-shadow:inset 0 0 0 calc(var(--s) * .05) #ffffff14;animation:tm3a 2.4s ease-in-out infinite}
+.tm-3 .g::after{background:radial-gradient(circle at 34% 28%,#fff,var(--stone-white) 66%);
+  box-shadow:inset 0 0 0 calc(var(--s) * .05) var(--stone-white-edge);animation:tm3b 2.4s ease-in-out infinite}
+.tm-3 .w::before{background:radial-gradient(circle at 34% 28%,#fff,var(--stone-white) 66%);
+  box-shadow:inset 0 0 0 calc(var(--s) * .05) var(--stone-white-edge)}
+.tm-3 .w::after{background:radial-gradient(circle at 34% 28%,var(--stone-black-hi),var(--stone-black) 62%);
+  box-shadow:inset 0 0 0 calc(var(--s) * .05) #ffffff14}
+@keyframes tm3a{0%,26%{opacity:1}44%,100%{opacity:0}}
+@keyframes tm3b{0%,26%{opacity:0}44%,74%{opacity:1}100%{opacity:0}}
+
+/* ---------- 4 翻面：沿竖直轴 3D 翻转，背面就是对方颜色 ---------- */
+.tm-4{perspective:120px}
+.tm-4 .g{transform-style:preserve-3d;animation:tm4 2.6s ease-in-out infinite;background:transparent!important}
+.tm-4 .g::before,.tm-4 .g::after{content:"";position:absolute;inset:0;border-radius:50%;backface-visibility:hidden}
+.tm-4 .g::after{transform:rotateY(180deg)}
+.tm-4 .b::before{background:radial-gradient(circle at 34% 28%,var(--stone-black-hi),var(--stone-black) 62%);
+  box-shadow:inset 0 0 0 calc(var(--s) * .05) #ffffff14}
+.tm-4 .b::after{background:radial-gradient(circle at 34% 28%,#fff,var(--stone-white) 66%);
+  box-shadow:inset 0 0 0 calc(var(--s) * .05) var(--stone-white-edge)}
+.tm-4 .w::before{background:radial-gradient(circle at 34% 28%,#fff,var(--stone-white) 66%);
+  box-shadow:inset 0 0 0 calc(var(--s) * .05) var(--stone-white-edge)}
+.tm-4 .w::after{background:radial-gradient(circle at 34% 28%,var(--stone-black-hi),var(--stone-black) 62%);
+  box-shadow:inset 0 0 0 calc(var(--s) * .05) #ffffff14}
+@keyframes tm4{
+  0%,12%{transform:translateY(-50%) rotateY(0deg)}
+  50%,62%{transform:translateY(-50%) rotateY(180deg)}
+  100%{transform:translateY(-50%) rotateY(360deg)}
+}
+
+/* ---------- 5 流畅轨道：两子绕中心连续对调，两端仍保留速度 → 无停顿 ---------- */
+.tm-5 .g{animation:tm5 2s linear infinite}
+.tm-5 .b{transform-origin:calc(var(--r) + 50%) 50%}
+.tm-5 .w{transform-origin:calc(-1 * var(--r) + 50%) 50%}
+@keyframes tm5{
+  0%{transform:translateY(-50%) rotate(0deg);animation-timing-function:cubic-bezier(.42,.18,.58,.82)}
+  50%{transform:translateY(-50%) rotate(180deg);animation-timing-function:cubic-bezier(.42,.18,.58,.82)}
+  100%{transform:translateY(-50%) rotate(360deg)}
+}
+/* 5b 匀速轨道：绝对恒定速度，最“无缝”，略机械 */
+.tm-5b .g{animation:tm5b 1.9s linear infinite}
+.tm-5b .b{transform-origin:calc(var(--r) + 50%) 50%}
+.tm-5b .w{transform-origin:calc(-1 * var(--r) + 50%) 50%}
+@keyframes tm5b{
+  0%{transform:translateY(-50%) rotate(0deg)}
+  100%{transform:translateY(-50%) rotate(360deg)}
+}
+/* 5c 呼吸轨道：整圈一次呼吸，对调瞬间速度最快 */
+.tm-5c .g{animation:tm5c 2.2s cubic-bezier(.45,.05,.55,.95) infinite}
+.tm-5c .b{transform-origin:calc(var(--r) + 50%) 50%}
+.tm-5c .w{transform-origin:calc(-1 * var(--r) + 50%) 50%}
+@keyframes tm5c{
+  0%{transform:translateY(-50%) rotate(0deg)}
+  100%{transform:translateY(-50%) rotate(360deg)}
+}
+
+/* ---------- 6 落子弹起：一颗沉落、另一颗弹起让位（落子节奏） ---------- */
+.tm-6 .b{animation:tm6b 1.9s cubic-bezier(.3,1.4,.4,1) infinite}
+.tm-6 .w{animation:tm6w 1.9s cubic-bezier(.3,1.4,.4,1) infinite}
+@keyframes tm6b{
+  0%,20%{transform:translateY(-50%)}
+  34%,50%{transform:translate(var(--travel),calc(-50% - var(--s) * .18)) scale(.9)}
+  58%,84%{transform:translate(var(--travel),-50%) scale(1)}
+  100%{transform:translateY(-50%)}
+}
+@keyframes tm6w{
+  0%,20%{transform:translateY(-50%)}
+  34%,50%{transform:translate(calc(var(--travel) * -.62),-50%)}
+  64%,86%{transform:translate(calc(var(--travel) * -1),-50%)}
+  100%{transform:translateY(-50%)}
+}
+
+/* ---------- 7 呼吸交融：缩到最小处交换 ---------- */
+.tm-7 .b{animation:tm7b 2.2s ease-in-out infinite}
+.tm-7 .w{animation:tm7w 2.2s ease-in-out infinite}
+@keyframes tm7b{
+  0%,18%{transform:translateY(-50%) scale(1)}
+  40%{transform:translate(calc(var(--travel) * .5),-50%) scale(.42)}
+  52%,66%{transform:translate(var(--travel),-50%) scale(1)}
+  100%{transform:translateY(-50%) scale(1)}
+}
+@keyframes tm7w{
+  0%,18%{transform:translateY(-50%) scale(1)}
+  40%{transform:translate(calc(var(--travel) * -.5),-50%) scale(.42)}
+  52%,66%{transform:translate(calc(var(--travel) * -1),-50%) scale(1)}
+  100%{transform:translateY(-50%) scale(1)}
+}
+
+/* ---------- 8 钟摆：两子以上端为轴摆动互换 ---------- */
+.tm-8{padding-top:calc(var(--s) * .5)}
+.tm-8 .g{top:calc(50% + var(--s) * .1);transform-origin:50% calc(-1 * var(--s) * .6)}
+.tm-8 .b{animation:tm8b 2.4s ease-in-out infinite}
+.tm-8 .w{animation:tm8w 2.4s ease-in-out infinite}
+@keyframes tm8b{
+  0%,16%{transform:translateY(-50%) rotate(0)}
+  50%,64%{transform:translateY(-50%) rotate(168deg)}
+  100%{transform:translateY(-50%) rotate(336deg)}
+}
+@keyframes tm8w{
+  0%,16%{transform:translateY(-50%) rotate(0)}
+  50%,64%{transform:translateY(-50%) rotate(-168deg)}
+  100%{transform:translateY(-50%) rotate(-336deg)}
+}
+
+/* ---------- 9 涟漪穿越：一子带光圈穿过中心到对面 ---------- */
+.tm-9 .g{animation:tm9 2.3s ease-in-out infinite}
+.tm-9 .b::after{content:"";position:absolute;inset:0;border-radius:50%;border:1.5px solid currentColor;
+  color:var(--stone-black);animation:tm9ring 2.3s ease-out infinite}
+@keyframes tm9{
+  0%,20%{transform:translateY(-50%)}
+  52%,66%{transform:translate(calc(var(--travel) * (var(--i,1))),-50%)}
+  100%{transform:translateY(-50%)}
+}
+.tm-9 .b{--i:1}.tm-9 .w{--i:-1}
+@keyframes tm9ring{
+  0%,20%{transform:scale(1);opacity:.55}
+  46%{transform:scale(2.1);opacity:0}
+  100%{transform:scale(1);opacity:0}
+}
+
+/* ---------- 10 极简淡换：淡出→换位→淡入（最克制） ---------- */
+.tm-10 .g{animation:tm10 2.6s ease-in-out infinite}
+.tm-10 .b{--i:1}.tm-10 .w{--i:-1}
+@keyframes tm10{
+  0%,14%{transform:translate(0,-50%);opacity:1}
+  30%{transform:translate(calc(var(--travel) * var(--i) * .45),-50%);opacity:0}
+  32%{transform:translate(calc(var(--travel) * var(--i) * .55),-50%);opacity:0}
+  46%,70%{transform:translate(calc(var(--travel) * var(--i)),-50%);opacity:1}
+  84%{transform:translate(calc(var(--travel) * var(--i)),-50%);opacity:0}
+  86%{transform:translate(0,-50%);opacity:0}
+  100%{transform:translate(0,-50%);opacity:1}
+}
+
+/* ---------- 11 带字交替（半 / 步 两字边转边换位） ---------- */
+.tm-11 .b,.tm-11 .w{animation:tm11 2.6s ease-in-out infinite}
+.tm-11 .b{--i:1}.tm-11 .w{--i:-1}
+@keyframes tm11{
+  0%,16%{transform:translate(0,-50%) rotate(0deg)}
+  50%,64%{transform:translate(calc(var(--travel) * var(--i)),-50%) rotate(360deg)}
+  100%{transform:translate(0,-50%) rotate(720deg)}
+}
+
+/* ---------- 12 双轨螺旋：一子走上弧、一子走下弧 ---------- */
+.tm-12 .b{animation:tm12b 2.4s ease-in-out infinite}
+.tm-12 .w{animation:tm12w 2.4s ease-in-out infinite}
+@keyframes tm12b{
+  0%,16%{transform:translateY(-50%)}
+  38%{transform:translate(calc(var(--travel) * .34),calc(-50% - var(--s) * 1.15))}
+  56%,70%{transform:translate(var(--travel),-50%)}
+  100%{transform:translateY(-50%)}
+}
+@keyframes tm12w{
+  0%,16%{transform:translateY(-50%)}
+  30%{transform:translate(calc(var(--travel) * -.2),calc(-50% + var(--s) * 1.1))}
+  56%,70%{transform:translate(calc(var(--travel) * -1),-50%)}
+  100%{transform:translateY(-50%)}
+}
+
+@media (prefers-reduced-motion:reduce){.tm *{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>「思考中」指示器动效 · <em>双棋子互换</em></h1>
+  <p class="lead">
+    取自软件图标：<b>去掉棋盘，只留两个棋子</b>（左黑右白，图标里的「半 / 步」两字可选）。下面是 12 种左右互换的实现方式，
+    每个都给出<b>实际尺寸（26px）</b>、<b>小尺寸（18px）</b>和<b>真实指示器里</b>的三种呈现，便于直接选型。
+    选中的方案把对应 <code>.tm-N</code> 规则接进 <code>styles.css</code>，替换现在「图标旋转 + 三个呼吸点」的
+    <code>.board-thinking-indicator</code>。
+  </p>
+
+  <div class="toolbar">
+    <b>预览尺寸</b>
+    <div class="seg" id="sizeSeg">
+      <button data-size="18" aria-pressed="false">18px 小</button>
+      <button data-size="26" aria-pressed="true">26px 标准</button>
+      <button data-size="44" aria-pressed="false">44px 放大</button>
+    </div>
+    <b>速度</b>
+    <div class="seg" id="speedSeg">
+      <button data-speed="0.5" aria-pressed="false">0.5×</button>
+      <button data-speed="1" aria-pressed="true">1×</button>
+      <button data-speed="1.6" aria-pressed="false">1.6×</button>
+    </div>
+    <span class="grow"></span>
+    <div class="seg" id="motionSeg">
+      <button data-motion="on" aria-pressed="true">动效开</button>
+      <button data-motion="off" aria-pressed="false">暂停</button>
+    </div>
+    <div class="seg" id="surfaceSeg">
+      <button data-surface="dark" aria-pressed="true">深色</button>
+      <button data-surface="light" aria-pressed="false">浅色</button>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+const VERSIONS = [
+  { n: 1, name: "交错互换", cls: ".tm-1",
+    note: "两子水平对调，交换途中一上一下轻微错开让位，最有「互换」的实感。" },
+  { n: 2, name: "弧线飞越", cls: ".tm-2",
+    note: "白子先横移让开，黑子自上方划弧越顶落位，像真实的提子换手。" },
+  { n: 3, name: "原位换色", cls: ".tm-3",
+    note: "位置完全不动，两子原地黑白互换（缩一下再变色），最安静、最省空间。" },
+  { n: 4, name: "翻面", cls: ".tm-4",
+    note: "沿竖直轴 3D 翻面，转到背面时颜色自然变成对方，有硬币翻面的质感。" },
+  { n: 5, name: "流畅轨道", cls: ".tm-5",
+    note: "两子绕中心连续对调，每半圈一次互换、全程无静止段，节奏均匀不打断。" },
+  { n: "5b", name: "匀速轨道", cls: ".tm-5b",
+    note: "恒定角速度一直转，绝对「无缝」，代价是略机械。" },
+  { n: "5c", name: "呼吸轨道", cls: ".tm-5c",
+    note: "整圈一次呼吸：起步与收尾稍慢，对调瞬间最快，有轻重缓急。" },
+  { n: 6, name: "落子弹起", cls: ".tm-6",
+    note: "一颗沉落定住，另一颗被弹起让位——带落子重心的版本，节奏感最强。" },
+  { n: 7, name: "呼吸交融", cls: ".tm-7",
+    note: "两子向中间收缩变小，在最小时完成交换再放大，像呼吸一次。" },
+  { n: 8, name: "钟摆", cls: ".tm-8",
+    note: "以上端为轴左右摆动，摆到端点即完成互换，机械钟摆感。" },
+  { n: 9, name: "涟漪穿越", cls: ".tm-9",
+    note: "穿越时扩散一圈同色涟漪，适合想强调「正在运算」的场景。" },
+  { n: 10, name: "极简淡换", cls: ".tm-10",
+    note: "淡出 → 换位 → 淡入，最克制，小尺寸下也绝不糊。" },
+  { n: 11, name: "带字旋转", cls: ".tm-11 letters",
+    note: "两子带图标里的「半 / 步」两字边转边换位，信息量最足（小尺寸慎用）。" },
+  { n: 12, name: "双轨螺旋", cls: ".tm-12",
+    note: "一子走上弧、一子走下弧，同时到达对面，层次感最强。" }
+];
+
+const grid = document.getElementById("grid");
+VERSIONS.forEach((v) => {
+  const card = document.createElement("article");
+  card.className = "card";
+  card.innerHTML = `
+    <div class="stage">
+      <span class="tm ${v.cls.replace(".tm-", "tm-")} ${v.cls.includes("letters") ? "letters" : ""}" data-tm>
+        <i class="g b">${v.cls.includes("letters") ? "半" : ""}</i>
+        <i class="g w">${v.cls.includes("letters") ? "步" : ""}</i>
+      </span>
+      <span class="onboard"><span class="tm tm-probe ${v.cls.replace(".tm-", "tm-")} ${v.cls.includes("letters") ? "letters" : ""}" data-tm>
+        <i class="g b">${v.cls.includes("letters") ? "半" : ""}</i>
+        <i class="g w">${v.cls.includes("letters") ? "步" : ""}</i>
+      </span></span>
+      <span class="pill"><span class="tm ${v.cls.replace(".tm-", "tm-")} ${v.cls.includes("letters") ? "letters" : ""}" data-tm>
+        <i class="g b">${v.cls.includes("letters") ? "半" : ""}</i>
+        <i class="g w">${v.cls.includes("letters") ? "步" : ""}</i>
+      </span><span>思考中</span></span>
+    </div>
+    <div class="meta">
+      <span class="no">${String(v.n).padStart(2, "0")}</span>
+      <b>${v.name}</b>
+      <small>${v.note}</small>
+      <span class="cls">${v.cls}</span>
+    </div>`;
+  grid.appendChild(card);
+});
+
+/* controls */
+function setPressed(seg, attr, value) {
+  seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset[attr] === String(value))));
+}
+document.getElementById("sizeSeg").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  setPressed(e.currentTarget, "size", b.dataset.size);
+  document.querySelectorAll("[data-tm]").forEach((el) => {
+    const big = el.classList.contains("tm-probe");
+    el.style.setProperty("--w", (Number(b.dataset.size) * (big ? 0.76 : 1)) + "px");
+  });
+});
+document.getElementById("speedSeg").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  setPressed(e.currentTarget, "speed", b.dataset.speed);
+  document.querySelectorAll("[data-tm] *").forEach((el) => {
+    const dur = getComputedStyle(el).animationDuration;
+    if (dur && dur !== "0s") el.style.animationDuration = (parseFloat(dur) / Number(b.dataset.speed)) + "s";
+  });
+});
+document.getElementById("motionSeg").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  setPressed(e.currentTarget, "motion", b.dataset.motion);
+  let style = document.getElementById("killmotion");
+  if (!style) { style = document.createElement("style"); style.id = "killmotion"; document.head.appendChild(style); }
+  style.textContent = b.dataset.motion === "off" ? ".tm *{animation:none!important}" : "";
+});
+document.getElementById("surfaceSeg").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  setPressed(e.currentTarget, "surface", b.dataset.surface);
+  document.documentElement.dataset.surface = b.dataset.surface;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+        <div className="quick-choice-list">
+          {/* order:visual.theme */}
+          {itemVisible("visual.theme") && <ChoiceRow title="应用主题" text="页面颜色与氛围" value={themePreference} options={THEME_OPTIONS} onChange={onThemePreferenceChange}/>}
+          {/* order:visual.board */}
+          {itemVisible("visual.board") && <ChoiceRow title="棋盘" text="棋盘材质与网格" value={boardTheme} options={BOARD_OPTIONS} onChange={onBoardThemeChange}/>}
+          {/* order:visual.stone */}
+          {itemVisible("visual.stone") && <ChoiceRow title="棋子" text="黑白棋子的视觉样式" value={stoneTheme} options={STONE_OPTIONS} onChange={onStoneThemeChange}/>}
+          {/* order:visual.boardSize */}
+          {itemVisible("visual.boardSize") && <ChoiceRow title="默认棋盘大小" text="新建棋谱时使用的路数（默认15路）" value={String(defaultBoardSize)} options={boardSizeOptions} onChange={(value) => onDefaultBoardSizeChange(Number(value))}/>}
+          {/* order:visual.sound */}
+          {itemVisible("visual.sound") && <>
+            <ToggleRow title="声音与音效" text="关闭后不创建或唤醒音频上下文；与设置页同一开关" checked={soundSettings.enabled} onChange={(enabled) => onSoundSettingsChange({ ...soundSettings, enabled })}/>
+            {soundSettings.enabled && <label className="quick-think-slider"><span><b>音量</b><small>只调整半步五子棋打谱的提示音与落子声，不改系统媒体音量</small></span><output>{Math.round(soundSettings.volume * 100)}%</output><input aria-label="快捷中心音量" type="range" min="0" max="100" step="1" value={Math.round(soundSettings.volume * 100)} onChange={(event) => onSoundSettingsChange({ ...soundSettings, volume: Number(event.target.value) / 100 })}/></label>}
+            {soundSettings.enabled && <div className="sound-preview"><button type="button" onClick={() => onPreviewSound("move-black")}>试听落子</button><button type="button" onClick={() => onPreviewSound("success")}>试听胜利</button></div>}
+          </>}
+        </div>

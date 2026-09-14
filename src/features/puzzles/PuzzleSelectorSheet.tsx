@@ -116,7 +116,7 @@ export function PuzzleSelectorSheet({ collections, progress, currentCollectionIn
           const currentFolderCollection = collection.id === currentCollection?.id;
           return <section ref={currentFolderCollection ? currentCollectionRef : undefined} className={`puzzle-selector-collection${currentFolderCollection ? " current-folder" : ""}`} key={collection.id}>
             <button type="button" className="puzzle-selector-collection-head" onClick={() => toggleCollection(collection.id)} aria-expanded={collectionExpanded} aria-controls={`puzzle-collection-${collection.id}`}>
-              <span className="puzzle-folder-icon">题</span><div><b>{collection.title}</b><small>{solved} / {collection.puzzles.length} 已完成 · {collection.source}{normalizedQuery && puzzles.length !== collection.puzzles.length ? ` · 匹配 ${puzzles.length} 题` : ""}</small></div>{collectionExpanded ? <ChevronDown size={17}/> : <ChevronRight size={17}/>} 
+              <span className="puzzle-folder-icon">题</span><div><b>{collection.title}</b><small>{solved} / {collection.puzzles.length} 已完成{normalizedQuery && puzzles.length !== collection.puzzles.length ? ` · 匹配 ${puzzles.length} 题` : ""}</small></div>{collectionExpanded ? <ChevronDown size={17}/> : <ChevronRight size={17}/>} 
             </button>
             {collectionExpanded && <div id={`puzzle-collection-${collection.id}`} className="puzzle-selector-puzzle-list" role="listbox" aria-label={`${collection.title}题目列表`}>
               {puzzles.map((puzzle) => {

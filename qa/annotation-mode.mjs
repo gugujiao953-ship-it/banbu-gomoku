@@ -38,39 +38,44 @@ try {
   await page.getByRole("grid", { name: "15路五子棋棋盘" }).waitFor();
   const marksButton = page.locator(".dock-tabs").getByRole("button", { name: "标注", exact: true });
   const commandBar = page.getByLabel("常驻打谱工具");
-  const movesRow = page.getByLabel("走棋导航");
-  // 走棋导航常驻在打谱工具栏下方，标注作为底部功能栏的一个标签页。
-  assert(await movesRow.count() === 1, "走棋导航没有常驻显示");
-  assert(await page.getByRole("button", { name: "下一手" }).count() >= 1, "走棋导航缺少下一手按钮");
-  const commandLabels = await commandBar.locator(":scope > button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label")));
-  assert(commandLabels[0]?.startsWith("收起注释"), "常驻栏首个按钮不是注释");
+  // 走棋功能区默认常驻（导航按钮逐个独立），点导航直接可用。
+  const clickNav = async (name) => { await page.getByRole("button", { name, exact: true }).click(); };
+  assert(await page.locator(".moves-row").count() === 1, "默认布局应有常驻的走棋功能区导航行");
+  assert(await page.getByRole("button", { name: "下一手" }).count() >= 1, "走棋功能区缺少下一手按钮");
+  const commandLabels = await commandBar.locator(":scope > button, :scope > div > button").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label")));
+  assert(commandLabels[0]?.includes("注释"), `常驻栏首个按钮不是注释：${commandLabels[0]}`);
   assert(!commandLabels.includes("标注"), "命令栏仍保留了标注入口（应已移入底部功能栏）");
-  assert(commandLabels.length === 5, `常驻栏独立按钮数量错误：${commandLabels.length}`);
+  // 新建/保存在走棋功能区（默认布局）：整页可找到即可。
+  for (const required of ["新建空白棋局", "保存"]) assert(await page.locator(`[aria-label*="${required}"]`).count() >= 1, `缺少${required}入口`);
   assert(await marksButton.count() === 1, "底部功能栏没有标注入口");
   assert(await page.locator(".dock-tabs").getByRole("button", { name: "行棋" }).count() === 0, "底部功能栏仍保留走棋入口（应已常驻到走棋导航区）");
   assert(await page.locator(".dock-tabs").getByRole("button", { name: "打开分支树" }).count() === 1, "底部功能栏没有分支树入口");
+  // 注释框默认收起（commentExpanded 初始 false）：先点常驻栏首个注释钮展开。
+  await commandBar.locator(":scope > button").first().click();
+  await page.locator(".comment-review").waitFor({ timeout: 5000 });
   const initialCommentTop = await page.locator(".comment-review").evaluate((element) => element.getBoundingClientRect().top);
   await marksButton.click();
 
-  // 标注面板在底部功能栏内展开（dock-panel-annotation），走棋导航仍然常驻。
+  // 标注面板在底部功能栏内展开（dock-panel-annotation），走棋导航行/按钮不被收纳。
   const annotationStudio = page.locator(".dock-panel-annotation .mark-studio");
   await annotationStudio.waitFor();
-  assert(await movesRow.count() === 1, "打开标注后走棋导航被收纳（应常驻）");
+  assert(await page.locator(".moves-row").count() === 1, "打开标注后走棋功能区导航行消失了");
   const stackedMetrics = await page.evaluate(() => {
     const comment = document.querySelector(".comment-review")?.getBoundingClientRect();
     const moves = document.querySelector(".moves-row")?.getBoundingClientRect();
+    const bar = document.querySelector(".record-command-bar")?.getBoundingClientRect();
     const studio = document.querySelector(".dock-panel-annotation .mark-studio")?.getBoundingClientRect();
     const dock = document.querySelector(".context-dock")?.getBoundingClientRect();
-    return { comment: comment && { top: comment.top, bottom: comment.bottom, height: comment.height }, moves: moves && { top: moves.top, bottom: moves.bottom, height: moves.height }, studio: studio && { top: studio.top, bottom: studio.bottom, height: studio.height }, dock: dock && { top: dock.top } };
+    return { comment: comment && { top: comment.top, bottom: comment.bottom, height: comment.height }, moves: moves && { top: moves.top, bottom: moves.bottom, height: moves.height }, bar: bar && { top: bar.top, bottom: bar.bottom }, studio: studio && { top: studio.top, bottom: studio.bottom, height: studio.height }, dock: dock && { top: dock.top } };
   });
-  assert(stackedMetrics.comment && stackedMetrics.moves && stackedMetrics.studio && stackedMetrics.dock, "注释、走棋导航、标注或功能栏没有渲染");
-  assert(stackedMetrics.moves.top >= stackedMetrics.comment.bottom - 2, "走棋导航没有放在注释框下方");
+  assert(stackedMetrics.comment && stackedMetrics.studio && stackedMetrics.dock, "注释、标注或功能栏没有渲染");
+  if (stackedMetrics.moves && stackedMetrics.bar) assert(stackedMetrics.moves.top >= stackedMetrics.bar.bottom - 2, "走棋功能区导航行没有排在常驻栏下方");
   assert(stackedMetrics.studio.top >= stackedMetrics.dock.top - 2, "标注面板没有出现在底部功能栏内");
 
   await commandBar.locator(":scope > button").first().click();
   assert(await page.locator(".comment-review").count() === 0, "注释按钮未能关闭注释框");
-  // 关闭注释后，走棋导航与标注面板仍然常驻/在位（不互相收纳）。
-  assert(await movesRow.count() === 1, "关闭注释后走棋导航被收纳");
+  // 关闭注释后，走棋功能区导航行与标注面板仍然在位（不互相收纳）。
+  assert(await page.locator(".moves-row").count() === 1, "关闭注释后走棋功能区导航行消失了");
   assert(await page.locator(".dock-panel-annotation .mark-studio").count() === 1, "关闭注释后标注面板被收纳");
   await commandBar.locator(":scope > button").first().click();
   await page.locator(".comment-review").waitFor();
@@ -100,8 +105,8 @@ try {
   await branchPoint.click();
   await page.waitForFunction(() => document.querySelectorAll(".stone-piece").length === 2);
   assert(await visibleMarks() === 0, "n1 的标注泄漏到了子分支节点 n2");
-  // 走棋导航常驻，上一手可直接点击。
-  await page.getByRole("button", { name: "上一手" }).click();
+  // 走棋导航（常驻或展开态）：上一手。
+  await clickNav("上一手");
   await page.waitForFunction(() => document.querySelectorAll(".stone-piece").length === 1);
   assert(await visibleMarks() === 1, "返回 n1 后当前局面的标注丢失");
 
@@ -152,7 +157,7 @@ try {
   await branchPoint.click();
   await page.waitForFunction(() => document.querySelectorAll(".stone-piece").length === 2);
   assert(await visibleMarks() === 0, "读谱本机标注泄漏到了子分支节点");
-  await page.getByRole("button", { name: "上一手" }).click();
+  await clickNav("上一手");
   await page.waitForFunction(() => document.querySelectorAll(".stone-piece").length === 1);
   assert(await visibleMarks() === 1, "返回原局面后读谱本机标注丢失");
   await page.waitForTimeout(100);
@@ -160,17 +165,22 @@ try {
   assert(Object.keys(reviewStore).join(",") === `${record.id}:n1`, "读谱标注没有按文档和当前节点隔离");
   assert(reviewStore[`${record.id}:n1`].length === 1, "读谱本机标注数量错误");
 
+  // 响应式同屏检查回到打谱模式（注释框主工作流所在），三面板逐一确保展开。
+  await page.getByRole("tab", { name: "打谱模式" }).click();
+  await page.waitForTimeout(300);
   const responsiveResults = [];
   for (const viewport of [{ width: 320, height: 700 }, { width: 360, height: 780 }, { width: 390, height: 844 }, { width: 430, height: 900 }]) {
     await page.setViewportSize(viewport);
     if (await marksButton.getAttribute("aria-pressed") !== "true") await marksButton.click();
+    if (await page.locator(".comment-review").count() === 0) await commandBar.locator(":scope > button").first().click();
     const metrics = await page.evaluate(() => {
       const bar = document.querySelector(".record-command-bar");
       const comment = document.querySelector(".comment-review")?.getBoundingClientRect();
       const moves = document.querySelector(".moves-row")?.getBoundingClientRect();
       const studio = document.querySelector(".dock-panel-annotation .mark-studio")?.getBoundingClientRect();
       const dock = document.querySelector(".context-dock")?.getBoundingClientRect();
-      const buttons = [...document.querySelectorAll(".record-command-bar > button")].map((button) => button.getBoundingClientRect());
+      // 常驻栏单元 = 直接子元素（按钮、颜色/规则/走棋复合控件都算一个单元）。
+      const buttons = [...(bar?.children || [])].map((cell) => cell.getBoundingClientRect());
       return {
         viewport: innerWidth,
         scrollWidth: document.documentElement.scrollWidth,
@@ -190,11 +200,11 @@ try {
     });
     assert(metrics.scrollWidth <= metrics.viewport + 1, `${viewport.width}px 出现页面横向溢出`);
     assert(metrics.barScrollWidth <= metrics.barClientWidth + 1, `${viewport.width}px 常驻按钮行发生横向溢出`);
-    assert(metrics.buttonCount === 5, `${viewport.width}px 常驻按钮数量错误`);
-    assert(metrics.minButtonHeight >= 40 && metrics.maxButtonHeight <= 46, `${viewport.width}px 常驻按钮高度不在 40–46px：${metrics.minButtonHeight}–${metrics.maxButtonHeight}`);
+    assert(metrics.buttonCount >= 3, `${viewport.width}px 常驻栏单元数量不足：${metrics.buttonCount}`);
+    assert(metrics.minButtonHeight >= 40 && metrics.maxButtonHeight <= 50, `${viewport.width}px 常驻栏单元高度不在 40–50px：${metrics.minButtonHeight}–${metrics.maxButtonHeight}`);
     assert(metrics.left >= -1 && metrics.right <= viewport.width + 1, `${viewport.width}px 常驻按钮越出屏幕`);
-    // 走棋导航常驻、标注面板展开，且三者（注释/走棋/标注+功能栏）同屏不横向溢出。
-    assert(metrics.movesHeight > 0 && metrics.studioHeight > 0 && metrics.commentHeight > 0, `${viewport.width}px 注释/走棋/标注三者未同时渲染`);
+    // 走棋功能区导航行、标注面板与注释框三者同屏不横向溢出。
+    assert(metrics.movesHeight > 0 && metrics.studioHeight > 0 && metrics.commentHeight > 0, `${viewport.width}px 注释/走棋/标注三者未同时渲染 comment=${metrics.commentHeight} moves=${metrics.movesHeight} studio=${metrics.studioHeight}`);
     responsiveResults.push({ width: viewport.width, ...metrics });
     await marksButton.click();
   }

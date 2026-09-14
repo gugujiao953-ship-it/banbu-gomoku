@@ -445,11 +445,15 @@ const setupFromSgf = (props: Record<string, string[]>, size = 15) => {
     return points;
   });
   if (props.PL?.[0] !== undefined && props.PL[0] !== "B" && props.PL[0] !== "W") throw new Error(`SGF PL 含有无效行棋方：${props.PL[0]}`);
+  const black = readPoints("AB");
+  const white = readPoints("AW");
+  // 缺 PL 时按黑白子数奇偶推定行棋方（很多工具导出局面不带 PL；与截图导入通道同一口径：黑多→白行棋，相等→黑行棋）
+  const inferred = black.length || white.length ? (black.length > white.length ? "white" as const : "black" as const) : undefined;
   const setup = {
-    black: readPoints("AB"),
-    white: readPoints("AW"),
+    black,
+    white,
     empty: readPoints("AE"),
-    nextPlayer: props.PL?.[0] === "W" ? "white" as const : props.PL?.[0] === "B" ? "black" as const : undefined,
+    nextPlayer: props.PL?.[0] === "W" ? "white" as const : props.PL?.[0] === "B" ? "black" as const : inferred,
   };
   const occupied = new Map<string, string>();
   for (const [kind, points] of [["AB", setup.black], ["AW", setup.white], ["AE", setup.empty]] as const) {

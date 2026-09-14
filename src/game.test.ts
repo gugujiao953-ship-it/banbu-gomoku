@@ -235,6 +235,19 @@ describe("record formats", () => {
     expect(matches.find((match) => match.nodeId === final.id)?.depth).toBe(2);
   });
 
+  it("infers nextPlayer from stone parity when SGF setup omits PL", async () => {
+    const whiteToPlay = await importRecordFile(new File(["(;SZ[15]GN[缺PL黑多]AB[hh][ii]AW[jj])"], "infer-white.sgf"));
+    const root1 = Object.values(whiteToPlay.document.nodes).find((node) => node.setup)!;
+    expect(root1.setup?.nextPlayer).toBe("white");
+    expect(nextPlayerAt(whiteToPlay.document, root1.id)).toBe("white");
+    const blackToPlay = await importRecordFile(new File(["(;SZ[15]GN[缺PL相等]AB[hh]AW[ii])"], "infer-black.sgf"));
+    const root2 = Object.values(blackToPlay.document.nodes).find((node) => node.setup)!;
+    expect(root2.setup?.nextPlayer).toBe("black");
+    expect(nextPlayerAt(blackToPlay.document, root2.id)).toBe("black");
+    const explicitPl = await importRecordFile(new File(["(;SZ[15]AB[hh][ii]AW[jj]PL[B])"], "explicit-pl.sgf"));
+    expect(Object.values(explicitPl.document.nodes).find((node) => node.setup)!.setup?.nextPlayer).toBe("black");
+  });
+
   it("rejects invalid setup points instead of silently changing the position", async () => {
     await expect(importRecordFile(new File(["(;SZ[15]AB[pp];B[hh])"], "invalid-setup.sgf"))).rejects.toThrow("设置坐标");
     await expect(importRecordFile(new File(["(;SZ[15]PL[X];B[hh])"], "invalid-player.sgf"))).rejects.toThrow("无效行棋方");
@@ -654,7 +667,11 @@ describe("proof search and position index", () => {
     const board = emptyBoard();
     for (const [row, col] of [[7, 4], [7, 5], [7, 6], [5, 5], [6, 6]]) board[row][col] = "black";
     board[7][3] = "white";
-    const result = searchVcf(board, "black", { rule: "renju", maxAttackMoves: 3, timeBudgetMs: 4000, nodeBudget: 200000 });
+    // 时限给足：这条证明单独跑约 1.8s，但全量并行（78 个测试文件同时抢 CPU）
+    // 时 4s 挂钟只够约 1/3 的真实算力，会以 status="budget" 假失败。断言本身
+    // 不放宽（仍必须真的证明出来），只是把「多久算超时」调开争抢范围；用例自身
+    // 的超时（第三个参数）也要跟着放宽，否则会改撞 vitest 默认的 5s 上限。
+    const result = searchVcf(board, "black", { rule: "renju", maxAttackMoves: 3, timeBudgetMs: 20000, nodeBudget: 200000 });
     expect(result.status).toBe("win");
     expect(result.principalVariation.slice(0, 3)).toEqual([
       expect.objectContaining({ row: 7, col: 7, player: "black" }),
@@ -665,7 +682,7 @@ describe("proof search and position index", () => {
     const tampered = structuredClone(result.proof)!;
     tampered.children = [];
     expect(verifyVcfProof(board, tampered, "black", "renju").valid).toBe(false);
-  });
+  }, 40000);
 
   it("reports budget exhaustion without claiming a proof", () => {
     const board = emptyBoard(); board[7][7] = "black";

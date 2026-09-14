@@ -257,7 +257,13 @@ const openThreePatternsThrough = (board: Cell[][], origin: Position, validateExt
         illegalExtension = openThreePatternsThrough(board, extension, false).length >= 2;
       }
       board[extension.row][extension.col] = null;
-      if (illegalExtension) continue;
+      // A winning extension — the extension point itself completes a five — ends
+      // the game instead of creating a straight-four threat, so it cannot turn
+      // this three into an "open three". An open three must be able to become a
+      // live four that the opponent still has to answer; a direct five is a win,
+      // not a four-threat. (Classic puzzle: a horizontal three whose only
+      // extensions are diagonal five-in-a-row points is not live.) User 09-11.
+      if (illegalExtension || extensionWins) continue;
       for (const four of qualifyingFours) {
         const three = four.stones.filter((point) => !samePoint(point, extension));
         if (three.length === 3 && three.some((point) => samePoint(point, origin))) patterns.add(`${direction}:${three.map(pointKey).sort().join("|")}`);
@@ -329,10 +335,11 @@ export const winningLinesAt = (board: Cell[][], position: Position, rule: RuleSe
 };
 
 export const toggleMark = (marks: BoardMark[], position: Position): BoardMark[] => {
+  // 点已有标注 = 一步整点移除（不论文字还是形状），点空位 = 放圆圈。
+  // 用户 09-10 反馈：长按已有标注期望「先去掉，再点才放新的」，原实现的
+  // 形状循环（圆圈→三角→叉号→移除）让用户看到「点一下盖一层/变一个」。
   const current = marks.find((mark) => mark.row === position.row && mark.col === position.col);
   if (!current) return [...marks, { ...position, kind: "circle" }];
-  if (current.kind === "circle") return marks.map((mark) => mark === current ? { ...mark, kind: "triangle" } : mark);
-  if (current.kind === "triangle") return marks.map((mark) => mark === current ? { ...mark, kind: "cross" } : mark);
   return marks.filter((mark) => mark !== current);
 };
 

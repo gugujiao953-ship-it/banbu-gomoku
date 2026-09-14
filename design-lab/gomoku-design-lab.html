@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>半步五子棋打谱 · 设计沙盒</title>
+<style>
+/* ==================================================================
+   区块 A —— 主题令牌（禁止修改）
+   这 20 套主题是真实软件里逐字导出的，软件靠切换 html 的 data-theme
+   换肤。任何配色都必须引用这些变量，写死色值 = 换主题必坏。
+   ================================================================== */
+:root {
+font-family:Inter,"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:#292620;background:#e9e6df;font-synthesis:none;--ink:#292620;--muted:#68635b;--paper:#f8f6f1;--line:#dfdad0;--green:#365e4b;--green-2:#22483a;--jade:#e5eee8;--gold:#c79c4a;--red:#b94b3f
+}
+
+:root[data-theme="rain"] {
+color-scheme: dark; --ink:#e8f0ef; --muted:#b0c0bf; --paper:#1d2c2e; --line:#405456; --green:#78b6a2; --green-2:#a9d6c4; --jade:#29453f; --gold:#d1b46a; --red:#eb8173;
+}
+
+:root[data-theme="bamboo"] {
+color-scheme: light; --ink:#243a2e; --muted:#516359; --paper:#e7eadf; --line:#c4cec2; --green:#326448; --green-2:#244d37; --jade:#d8e8dc; --gold:#9e7d3d; --red:#a94e45;
+}
+
+:root[data-theme="snow"] {
+color-scheme: light; --ink:#2c3b49; --muted:#576674; --paper:#edf2f5; --line:#cbd6de; --green:#42687a; --green-2:#2f5365; --jade:#dce9ef; --gold:#9a7d52; --red:#b25352;
+}
+
+:root[data-theme="eye"] {
+color-scheme: light; --ink:#29382f; --muted:#456a51; --paper:#f1f0e7; --line:#d4d5c9; --green:#426a58; --green-2:#315444; --jade:#dfe9de; --gold:#a77e37; --red:#a94b43;
+}
+
+:root[data-theme="mono"] {
+color-scheme: light; --ink:#242424; --muted:#676767; --paper:#f6f6f6; --line:#d8d8d8; --green:#333; --green-2:#1f1f1f; --jade:#e9e9e9; --gold:#696969; --red:#555;
+}
+
+:root[data-theme="porcelain"] {
+color-scheme: light; --ink:#102b4a; --muted:#4f667a; --paper:#f8f5ed; --line:#93afc1; --green:#1d5688; --green-2:#123f73; --jade:#d8e7ee; --gold:#936e2f; --red:#a43e4b;
+}
+
+:root[data-theme="plum"] {
+color-scheme: light; --ink:#4a353d; --muted:#725d64; --paper:#f4edf0; --line:#e0ccd3; --green:#7d4f5e; --green-2:#633c4a; --jade:#f1dfe5; --gold:#aa824d; --red:#b4474f;
+}
+
+:root[data-theme="jiangnan"] {
+color-scheme: dark; --ink:#e4efec; --muted:#a7bfbb; --paper:#1c3033; --line:#3f5e61; --green:#7fb9ae; --green-2:#b4ddd2; --jade:#294947; --gold:#dfb96d; --red:#ee847d;
+}
+
+:root[data-theme="firefly"] {
+color-scheme: dark; --ink:#e9f0df; --muted:#a5b59e; --paper:#182c27; --line:#3a5b4b; --green:#8fbe88; --green-2:#b9db9d; --jade:#29463a; --gold:#e5c05d; --red:#e47b6f;
+}
+
+:root[data-theme="rice"] {
+color-scheme: light; --ink:#35433a; --muted:#5b675f; --paper:#f4f1e7; --line:#ddd9c9; --green:#55705a; --green-2:#3e5945; --jade:#e4eadf; --gold:#a1824c; --red:#a9564d;
+}
+
+:root[data-theme="pixel"] {
+color-scheme: dark; --ink:#ecf2ff; --muted:#aab9dc; --paper:#171f3c; --line:#344777; --green:#5bd4c4; --green-2:#b1fff0; --jade:#26385d; --gold:#f2c65e; --red:#ff718a;
+}
+
+:root[data-theme="cyber"] {
+color-scheme: dark; --ink:#f2eaff; --muted:#b9a9d4; --paper:#17152d; --line:#4c3e83; --green:#4fe4df; --green-2:#b5fff7; --jade:#2a2350; --gold:#f4c868; --red:#ff6bd6;
+}
+
+:root[data-theme="blackgold"] {
+color-scheme:dark; --ink:#f4eddc; --muted:#b9ad95; --paper:#090909; --line:#4a3c24; --green:#d4b365; --green-2:#f2d68b; --jade:#282116; --gold:#e3c273; --red:#ef8d7e;
+}
+
+:root[data-theme="pale"] {
+color-scheme:light; --ink:#28292b; --muted:#5f6064; --paper:#ececed; --line:#c5c6c8; --green:#55595f; --green-2:#303338; --jade:#dedfe1; --gold:#8a7c64; --red:#a44f55;
+}
+
+:root[data-theme="kawaii"] {
+color-scheme:light; --ink:#4d2940; --muted:#7f5d73; --paper:#fff4f8; --line:#e8cbdc; --green:#a44979; --green-2:#743359; --jade:#f6dce9; --gold:#c89555; --red:#cb5876;
+}
+
+:root[data-theme="aurora"] {
+color-scheme:dark; --ink:#eafffb; --muted:#a6c6c6; --paper:#071722; --line:#294b59; --green:#6de0c4; --green-2:#b7fff0; --jade:#12383e; --gold:#d6c785; --red:#ff8c9f;
+}
+
+:root[data-theme="deepsea"] {
+color-scheme:dark; --ink:#e2eeee; --muted:#a1b7b9; --paper:#0b1d25; --line:#29434b; --green:#73b6ad; --green-2:#b8ded8; --jade:#18343a; --gold:#c5b780; --red:#e6837e;
+}
+
+:root[data-theme="baroque"] {
+color-scheme:light; --ink:#3f2e19; --muted:#6f5b3c; --paper:#f5e7bf; --line:#c7a45e; --green:#8a641b; --green-2:#5f4213; --jade:#ead29a; --gold:#ad7819; --red:#a84d36;
+}
+
+:root {
+--surface:#fff; --surface-2:#fbfaf7; --surface-3:#f0eee8; --surface-border:#e6e1d7; --surface-hover:#f4f3ee; --surface-shadow:#675d4a12;
+}
+
+:root[data-theme="dark"],:root[data-theme="rain"],:root[data-theme="jiangnan"],:root[data-theme="firefly"],:root[data-theme="pixel"],:root[data-theme="cyber"] {
+--surface:#26312d; --surface-2:#202a26; --surface-3:#303a35; --surface-border:#3b4842; --surface-hover:#33433d; --surface-shadow:#0005;
+}
+
+:root[data-theme="pixel"] {
+--surface:#1d2a4d; --surface-2:#18203b; --surface-3:#2a3b65; --surface-border:#3c5790; --surface-hover:#304b7b;
+}
+
+:root[data-theme="cyber"] {
+--surface:#211b41; --surface-2:#18152e; --surface-3:#30265b; --surface-border:#55448f; --surface-hover:#3b2d6e;
+}
+
+:root[data-theme="blackgold"] {
+--surface:#171510e8; --surface-2:#0e0d0be5; --surface-3:#211c13e8; --surface-border:#4c3c22; --surface-hover:#2b2417ed; --surface-shadow:#0008;
+}
+
+:root[data-theme="aurora"] {
+--surface:#0d2630e8; --surface-2:#081c26e5; --surface-3:#15333de8; --surface-border:#2d5863; --surface-hover:#17434bed; --surface-shadow:#0007;
+}
+
+:root[data-theme="deepsea"] {
+--surface:#142a31e8; --surface-2:#0c2028e5; --surface-3:#1b363de8; --surface-border:#31505a; --surface-hover:#21434aed; --surface-shadow:#0007;
+}
+
+:root[data-theme="pale"] {
+--surface:#f8f8f8e8; --surface-2:#e7e8e9e5; --surface-3:#dedfe1e8; --surface-border:#c6c8ca; --surface-hover:#ececeeed; --surface-shadow:#44474b18;
+}
+
+:root[data-theme="kawaii"] {
+--surface:#fffafde8; --surface-2:#fbedf5e5; --surface-3:#f5dfeae8; --surface-border:#e8cbdc; --surface-hover:#f9e6f1ed; --surface-shadow:#8d4b7620;
+}
+
+:root[data-theme="baroque"] {
+--surface:#fff3cfe8; --surface-2:#eddaa7e5; --surface-3:#e5cc8ce8; --surface-border:#c8a35c; --surface-hover:#f3dfaaed; --surface-shadow:#77501522;
+}
+
+:root[data-theme="porcelain"],:root[data-theme="plum"],:root[data-theme="rice"],:root[data-theme="eye"],:root[data-theme="mono"],:root[data-theme="bamboo"],:root[data-theme="snow"] {
+--surface:#f8faf8; --surface-2:#f3f5f1; --surface-3:#edf0ea; --surface-border:#d8e0d8; --surface-hover:#eef4ee; --surface-shadow:#596b5a16;
+}
+
+:root[data-theme="eye"] {
+--ink:#214b31; --muted:#456a51; --paper:#e5f0e4; --line:#b9d0b9; --green:#2f704a; --green-2:#245a3a; --jade:#d2e8d2; --gold:#927335; --red:#a34743; --surface:#edf7ed; --surface-2:#e4f1e4; --surface-3:#d9ead9; --surface-border:#bdd6be; --surface-hover:#e0efe0; --surface-shadow:#315b391c;
+}
+
+:root[data-theme="dark"] {
+color-scheme: dark; --ink:#eee9df; --muted:#b9b2a7; --paper:#1c2421; --line:#3a4540; --green:#77b497; --green-2:#a7d0b8; --jade:#243c33; --gold:#d4ac63; --red:#e17468;
+}
+
+/* ==================================================================
+   区块 B —— 沙盒骨架（禁止修改）
+   ================================================================== */
+* { box-sizing: border-box; margin: 0; }
+body { font-family: Inter, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; background: var(--color-bg); color: var(--ink); }
+.lab-bar { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px; background: var(--surface, var(--paper)); border-bottom: 1px solid var(--line); }
+.lab-bar label { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+.lab-bar select { height: 28px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-3, var(--paper)); color: var(--ink); font-size: 11px; padding: 0 6px; }
+.lab-note { font-size: 10px; color: var(--muted); margin-left: auto; }
+.lab-stage { max-width: 420px; margin: 18px auto; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: var(--paper); box-shadow: 0 18px 48px #0002; }
+html[data-size="large"] .lab-stage { font-size: 1.15em; }
+html[data-size="xlarge"] .lab-stage { font-size: 1.3em; }
+.lab-tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); background: var(--paper); }
+.lab-tabs button { min-height: 54px; border: 0; background: transparent; color: var(--muted); font-size: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+.lab-tabs button.on { color: var(--green-2, var(--green)); font-weight: 800; }
+
+/* ==================================================================
+   区块 C —— 现有组件外观（★ 设计区：欢迎在这里重新设计 ★）
+   下面这些就是软件当前的样子；DOM 结构和类名是真实软件里的，
+   重设计时请保留类名与结构，只改视觉（可增删此区块内的规则）。
+   ================================================================== */
+.topbar { height: 58px; display: flex; align-items: center; gap: 10px; padding: 0 14px; background: var(--surface, var(--paper)); border-bottom: 1px solid var(--line); }
+.brand-mark { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 11px; color: #f7f3e7; background: linear-gradient(145deg, var(--green), var(--green-2, var(--green))); font: 700 16px serif; }
+.brand b { display: block; font-family: Georgia, "Songti SC", serif; font-size: 15px; letter-spacing: .08em; }
+.brand small { display: block; font-size: 9px; color: var(--muted); }
+.library-segment { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 12px 12px 6px; }
+.library-segment button { min-height: 42px; border: 1px solid var(--surface-border, var(--line)); border-radius: 12px; background: var(--surface, var(--paper)); color: var(--muted); font-size: 11px; font-weight: 700; }
+.library-segment button.on { background: var(--jade); border-color: var(--green); color: var(--green-2, var(--green)); }
+.section-title { margin: 14px 14px 6px; font-size: 10px; letter-spacing: .12em; color: var(--muted); }
+
+/* 棋谱库：文件夹 + 棋谱卡 */
+.folder-section { border: 1px solid var(--surface-border, var(--line)); border-radius: 14px; background: var(--surface, var(--paper)); overflow: hidden; margin: 6px 10px 12px; }
+.folder-head { width: 100%; min-height: 56px; display: flex; align-items: center; gap: 9px; padding: 8px 10px; border: 0; background: var(--surface, var(--paper)); color: var(--gold); text-align: left; }
+.folder-head > span { flex: 1; min-width: 0; }
+.folder-head b { display: block; font-size: 12px; color: var(--ink); }
+.folder-head small { display: block; margin-top: 3px; font-size: 9px; color: var(--muted); }
+.row-actions { display: flex; gap: 5px; }
+.icon-btn { width: 32px; height: 32px; flex: 0 0 32px; border: 1px solid var(--surface-border, var(--line)); border-radius: 9px; background: var(--surface, var(--paper)); color: var(--muted); display: grid; place-items: center; font-size: 13px; }
+.record-list { display: flex; flex-direction: column; }
+.record { min-height: 76px; display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-top: 1px solid var(--surface-border, var(--line)); }
+.grip { flex: 0 0 14px; width: 14px; align-self: stretch; display: grid; place-items: center; color: var(--muted); }
+.mini-board { width: 56px; height: 56px; border-radius: 11px; background-color: #d3aa6b; background-image: linear-gradient(#5a483322 1px, transparent 1px), linear-gradient(90deg, #5a483322 1px, transparent 1px); background-size: 10px 10px; display: grid; grid-template-columns: 1fr 1fr; place-items: center; position: relative; flex-shrink: 0; }
+.mini-board .dot-b, .mini-board .dot-w { width: 15px; height: 15px; border-radius: 50%; }
+.mini-board .dot-b { background: #24231f; }
+.mini-board .dot-w { background: #f8f6ee; border: 1px solid #777; }
+.mini-board b { position: absolute; right: 3px; bottom: 3px; font-size: 8px; background: #ffffffdd; color: #3a3731; padding: 2px 4px; border-radius: 5px; }
+.record-info { flex: 1; min-width: 0; }
+.record-info h3 { font: 700 13px Georgia, "Songti SC", serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.record-info p { font-size: 9px; color: var(--muted); margin-top: 3px; }
+.folder-empty { padding: 16px; text-align: center; font-size: 9px; color: var(--muted); }
+
+/* 题库：题集卡 + 管理面板 */
+.puzzle-card { border: 1px solid var(--surface-border, var(--line)); border-radius: 13px; background: var(--surface, var(--paper)); margin: 6px 10px; overflow: hidden; }
+.puzzle-main { display: flex; align-items: center; gap: 9px; padding: 9px; }
+.chip { width: 40px; height: 40px; flex-shrink: 0; border-radius: 11px; background: var(--gold); color: var(--paper); display: grid; place-items: center; font-size: 16px; font-weight: 900; font-family: Georgia, serif; }
+.puzzle-main .titles { flex: 1; min-width: 0; }
+.puzzle-main .titles b { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.puzzle-main .titles small { display: block; margin-top: 3px; font-size: 9px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.puzzle-tools { display: flex; align-items: center; gap: 6px; padding: 0 9px 9px 58px; }
+.puzzle-tools select { flex: 1; min-width: 0; height: 29px; border: 1px solid var(--surface-border, var(--line)); border-radius: 8px; background: var(--surface-3, var(--paper)); color: var(--muted); font-size: 9px; }
+.puzzle-tools button { min-height: 29px; padding: 0 9px; border: 1px solid var(--surface-border, var(--line)); border-radius: 8px; background: var(--surface-3, var(--paper)); color: var(--green-2, var(--green)); font-size: 9px; font-weight: 800; white-space: nowrap; }
+.manager { border-top: 1px solid var(--surface-border, var(--line)); background: var(--surface-3, var(--paper)); }
+.manager-row { min-height: 46px; display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-top: 1px solid var(--surface-border, var(--line)); }
+.manager-row:first-child { border-top: 0; }
+.num { width: 26px; height: 26px; flex: 0 0 26px; border-radius: 8px; background: var(--jade); color: var(--green-2, var(--green)); display: grid; place-items: center; font-size: 9px; font-weight: 800; }
+.manager-row b { flex: 1; min-width: 0; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 设置页 */
+.settings-page { padding: 14px; background: var(--paper); }
+.settings-group { border: 1px solid var(--surface-border, var(--line)); border-radius: 14px; background: var(--surface, var(--paper)); overflow: hidden; }
+.setting-row { min-height: 60px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--surface-border, var(--line)); }
+.setting-row:first-child { border-top: 0; }
+.setting-row > span { flex: 1; }
+.setting-row b { display: block; font-size: 12px; }
+.setting-row small { display: block; margin-top: 4px; font-size: 9px; color: var(--muted); }
+.switch { width: 43px; height: 25px; flex: 0 0 43px; border-radius: 20px; background: var(--line); position: relative; }
+.switch i { position: absolute; left: 3px; top: 3px; width: 19px; height: 19px; border-radius: 50%; background: var(--paper); box-shadow: 0 1px 4px #0003; transition: .2s; }
+.switch.on { background: var(--green); }
+.switch.on i { left: 21px; }
+.choice-pills { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 14px; }
+.choice-pills button { min-height: 50px; border: 1px solid var(--surface-border, var(--line)); border-radius: 11px; background: var(--surface, var(--paper)); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+.choice-pills button b { font-size: 11px; }
+.choice-pills button small { font-size: 8px; color: var(--muted); }
+.choice-pills button.sel { border-color: var(--green); background: var(--jade); color: var(--green-2, var(--green)); }
+/* ==================================================================
+   区块 D —— 在这里追加你的重设计（推荐把新增/修改规则写在这里，
+   方便回传时一眼看出改了哪些）
+   ================================================================== */
+</style>
+</head>
+<body>
+<div class="lab-bar">
+  <label>主题 <select id="theme"><option value="rain">rain</option><option value="bamboo">bamboo</option><option value="snow">snow</option><option value="eye">eye</option><option value="mono">mono</option><option value="porcelain">porcelain</option><option value="plum">plum</option><option value="jiangnan">jiangnan</option><option value="firefly">firefly</option><option value="rice">rice</option><option value="pixel">pixel</option><option value="cyber">cyber</option><option value="blackgold">blackgold</option><option value="pale">pale</option><option value="kawaii">kawaii</option><option value="aurora">aurora</option><option value="deepsea">deepsea</option><option value="baroque">baroque</option><option value="dark">dark</option></select></label>
+  <label>字号 <select id="size"><option value="normal">正常</option><option value="large">大字</option><option value="xlarge">特大字</option></select></label>
+  <span class="lab-note">切换即预览；令牌区与骨架区勿改</span>
+</div>
+<div class="lab-stage">
+  <div class="topbar"><span class="brand-mark">半</span><div class="brand"><b>半步五子棋打谱</b><small>本地棋谱研究工具</small></div></div>
+  <div class="library-segment"><button class="on">棋谱 7</button><button>题库 17</button></div>
+  <div class="section-title">棋谱库</div>
+  <div class="folder-section">
+    <button class="folder-head"><span>📁</span><span><b>未分类</b><small>3 份棋谱 · 1 个子文件夹</small></span><span class="row-actions"><span class="icon-btn">⇅</span><span class="icon-btn"></span></span></button>
+    <div class="record-list">
+      <div class="folder-section" style="margin:6px 8px">
+        <button class="folder-head"><span>📁</span><span><b>对局笔记</b><small>1 份棋谱</small></span><span class="row-actions"><span class="icon-btn">⇅</span></span></button>
+        <div class="folder-empty">这个文件夹还是空的</div>
+      </div>
+      <div class="record"><span class="grip">⠿</span><span class="mini-board"><span class="dot-b"></span><span class="dot-w"></span><b>18</b></span><span class="record-info"><h3>祁观 vs 弈心 · 人机大战第 3 局</h3><p>祁观 vs 弈心 · 2018 人类-vs-AI</p></span><span class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">🗑</span></span></div>
+      <div class="record"><span class="grip">⠿</span><span class="mini-board"><span class="dot-b"></span><span class="dot-w"></span><b>52</b></span><span class="record-info"><h3>中盘屠龙实战练习</h3><p>黑方 vs 白方</p></span><span class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">🗑</span></span></div>
+      <div class="record"><span class="grip">⠿</span><span class="mini-board"><span class="dot-b"></span><span class="dot-w"></span><b>9</b></span><span class="record-info"><h3>瑞斯谱开局速查</h3><p>研究库 · 大型棋谱 · 12,097 节点</p></span><span class="row-actions"><span class="icon-btn">✎</span><span class="icon-btn">🗑</span></span></div>
+    </div>
+  </div>
+  <div class="section-title">题库</div>
+  <div class="puzzle-card">
+    <div class="puzzle-main"><span class="grip">⠿</span><span class="chip">題</span><span class="titles"><b>三手胜 2-初级题</b><small>8 / 30 已完成 · 开宝五子棋 1.5.1</small></span><span class="row-actions"><span class="icon-btn">›</span><span class="icon-btn">✎</span></span></div>
+    <div class="puzzle-tools"><select><option>内置题库</option></select><button>管理 30 道题</button><button>⇅ 排序</button></div>
+    <div class="manager">
+      <div class="manager-row"><span class="grip">⠿</span><span class="num">1</span><b>第 1 题 · 黑先</b><span class="icon-btn">✎</span></div>
+      <div class="manager-row"><span class="grip">⠿</span><span class="num">2</span><b>第 2 题 · 白先</b><span class="icon-btn">✎</span></div>
+      <div class="manager-row"><span class="grip">⠿</span><span class="num">3</span><b>第 3 题 · 黑先</b><span class="icon-btn">✎</span></div>
+    </div>
+  </div>
+  <div class="section-title">设置 · 外观与音效</div>
+  <div class="settings-page" style="padding:0 10px 12px">
+    <div class="settings-group">
+      <div class="setting-row"><span><b>启用音效</b><small>关闭后不会创建或唤醒音频上下文</small></span><span class="switch on"><i></i></span></div>
+      <div class="setting-row"><span><b>摆棋时音效</b><small>下一手、上一手等摆棋操作播放轻提示，落子声跟随总开关</small></span><span class="switch"><i></i></span></div>
+      <div class="setting-row" style="flex-direction:column;align-items:stretch"><b style="font-size:11px">落子音色</b><small style="font-size:8px;color:var(--muted);margin-top:2px">只改变黑白落子的质感，导航与提示音保持清晰</small>
+        <div class="choice-pills"><button class="sel"><b>经典</b><small>均衡、熟悉</small></button><button><b>木石</b><small>低沉、短促</small></button><button><b>清响</b><small>明亮、轻柔</small></button><button><b>实录</b><small>真实棋子敲击录音，随机微变</small></button></div>
+      </div>
+    </div>
+  </div>
+  <nav class="lab-tabs"><button class="on">🏠<span>打谱</span></button><button>📚<span>棋谱库</span></button><button>🤖<span>AI</span></button><button>⚙️<span>设置</span></button></nav>
+</div>
+<script>
+const theme = document.getElementById("theme"), size = document.getElementById("size");
+theme.value = "dark"; size.onchange = () => document.documentElement.dataset.size = size.value;
+theme.onchange = () => document.documentElement.setAttribute("data-theme", theme.value);
+document.documentElement.setAttribute("data-theme", theme.value);
+</script>
+</body>
+</html>

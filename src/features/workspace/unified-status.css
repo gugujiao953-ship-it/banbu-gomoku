@@ -1,6 +1,7 @@
 .unified-status {
   display: grid;
-  grid-template-areas: "title" "facts" "mode";
+  grid-template-areas: "title mode";
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 7px;
   min-width: 0;
   margin: 0 0 9px;
@@ -54,92 +55,21 @@
   position: relative;
 }
 .unified-status-name,
-.unified-status-subtitle { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.unified-status-lines { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .unified-status-copy > .unified-status-name { width: 100%; margin: 0; font-size: 13px; font-weight: 700; line-height: 1.25; }
-.unified-status-subtitle { width: 100%; margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.3; }
+.unified-status-lines { width: 100%; margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.3; }
+/* Desktop keeps the two status lines flowing inline (one wrapped row). Phones
+ * switch them to a right-side stack beside the title (see max-width:699px). */
+.unified-status-line + .unified-status-line::before { content: " · "; }
 .workspace-current-compat { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 .unified-status-title > svg { grid-column: 3; width: 17px; justify-self: end; color: var(--muted); transition: transform .18s; }
 .unified-status-title.open > svg { transform: rotate(180deg); }
 
-.unified-status-facts {
-  grid-area: facts;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
-  min-width: 0;
-}
-
-.unified-status-facts > span {
-  min-width: 0;
-  min-height: 34px;
-  padding: 4px 8px;
-  border-radius: 10px;
-  display: grid;
-  grid-template-rows: 11px 15px;
-  align-content: center;
-  background: color-mix(in srgb, var(--jade) 62%, var(--paper));
-}
-
-.unified-status-facts small,
-.unified-status-facts b { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.unified-status-facts small { color: var(--muted); font-size: 11px; }
-.unified-status-facts b { font-size: 12px; }
-.unified-status-facts .status-state { position: relative; padding-left: 27px; }
-.unified-status-facts .status-state > svg { position: absolute; left: 8px; top: 10px; width: 14px; height: 14px; color: var(--green); }
-.unified-status-facts .status-state.analysis > svg,
-.unified-status-facts .status-state.playing > svg { color: #397db3; }
-.unified-status-facts .status-state.draft > svg { color: #9b6c2d; }
-
-.unified-status-mode { grid-area: mode; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
-.unified-status-mode .workspace-mode-toggle {
-  width: 100%;
-  min-width: 0;
-  height: auto;
-  min-height: 48px;
-  padding: 4px;
-  border: 1px solid color-mix(in srgb, var(--line) 86%, transparent);
-  border-radius: 14px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  background: color-mix(in srgb, var(--line) 42%, var(--paper));
-}
-
-.unified-status-mode .workspace-mode-toggle button {
-  min-width: 0;
-  min-height: 44px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight:700;
-}
-
-.unified-status-mode .workspace-mode-toggle button > svg { width: 16px; height: 16px; flex: 0 0 auto; }
-.unified-status-mode .workspace-mode-toggle button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.unified-status-mode .workspace-mode-toggle button.selected {
-  background: var(--green);
-  color: #fff;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--green) 30%, transparent), inset 0 1px #ffffff38;
-}
-.unified-status-mode .exit-ai-game { min-height: 40px; }
-.unified-status-mode .stop-ai-thinking {
-  border-color: #b95b50;
-  background: #a94439;
-  color: #fff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  box-shadow: 0 3px 9px color-mix(in srgb, #a94439 24%, transparent);
-}
-.unified-status-mode .stop-ai-thinking > svg { width: 14px; height: 14px; }
+/* 用户规格 09-10：模式切换（打谱/读谱/做题）已上移顶栏；状态栏右侧只放
+ * 「退出」类按钮（如退出对弈），与可选择棋谱的那一行同一行、靠右。 */
+.unified-status-mode { grid-area: mode; min-width: 0; display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: 4px; }
+.unified-status-mode .exit-ai-game { width: 60px; min-height: 44px; flex: 0 0 60px; margin: 0; }
+.unified-status-mode .exit-annotation-erase { min-height: 34px; padding: 0 10px; border: 1px solid #dcc49b; border-radius: 9px; background: #fdf4e2; color: #9b6c2d; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .unified-status.ai-thinking .unified-status-kind {
   background: #e8f3ff;
   color: #2872b8;
@@ -148,37 +78,23 @@
 .record-page > .unified-status { grid-column: 1 / -1; }
 
 html[data-theme="dark"] .unified-status { background: #26312d; border-color: #3b4842; }
-html[data-theme="dark"] .unified-status-facts > span { background: #202925; }
-html[data-theme="dark"] .unified-status-mode .workspace-mode-toggle { background: #202925; border-color: #45524c; }
 html[data-theme="dark"] .unified-status.ai-thinking .unified-status-kind { background: #263d50; color: #8ec0ec; }
 
 @media (max-width: 412px) {
   .unified-status { padding: 8px; gap: 6px; }
   .unified-status .workspace-current.unified-status-title { grid-template-columns: 31px minmax(0, 1fr) 17px; gap: 6px; }
   .unified-status-kind { width: 31px; height: 31px; }
-  .unified-status-facts > span { padding-inline: 6px; }
-  .unified-status-facts .status-state { padding-left: 24px; }
-  .unified-status-facts .status-state > svg { left: 6px; }
 }
 
-/* On phones the three primary work modes stay large, but the status card only
- * occupies two compact rows. Detailed facts remain available to assistive
- * technology and are repeated in the selector subtitle. */
+/* On phones the status card stays compact: the selector title occupies the
+ * row, the exit action sits at its right; detailed facts are repeated in the
+ * selector subtitle. */
 @media (max-width: 699px) {
   .unified-status {
-    grid-template-areas: "mode" "title";
     gap: 4px;
     margin-bottom: 6px;
     padding: 4px;
     border-radius: 14px;
-  }
-  .unified-status-facts {
-    position: absolute !important;
-    width: 1px !important;
-    height: 1px !important;
-    margin: -1px !important;
-    overflow: hidden !important;
-    clip: rect(0, 0, 0, 0) !important;
   }
   .unified-status .workspace-current.unified-status-title {
     min-height: 44px;
@@ -187,53 +103,48 @@ html[data-theme="dark"] .unified-status.ai-thinking .unified-status-kind { backg
     gap: 7px;
   }
   .unified-status-kind { width: 31px; height: 31px; border-radius: 9px; }
-  .unified-status-subtitle { margin-top: 2px; font-size: 11px; }
-  .unified-status-mode { flex-direction: row; gap: 4px; }
-  .unified-status-mode .workspace-mode-toggle {
-    min-height: 48px;
-    flex: 1 1 auto;
-    padding: 2px;
-    border-radius: 11px;
-    gap: 2px;
+  /* Phones run out of width for one long status line: put the title on the
+   * left and stack the two status groups to its right. Each status line is
+   * roughly half the title height so the pair brackets the title text.
+   * Child-combinator keeps specificity above the base block-display rule. */
+  .unified-status-title > .unified-status-copy {
+    display: grid;
+    grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
+    align-items: center;
+    justify-items: stretch; /* inherited center would let nowrap items inflate past their tracks */
+    column-gap: 8px;
   }
-  .unified-status-mode .workspace-mode-toggle button {
-    min-height: 44px;
-    padding-inline: 5px;
-    border-radius: 9px;
-    font-size: 12px;
+  /* Grid items keep min-width:auto by default, which lets a nowrap title
+   * inflate past its track; pin it to 0 so ellipsis can do its job. */
+  .unified-status-title > .unified-status-copy > * { min-width: 0; }
+  .unified-status-copy > .unified-status-name { width: auto; font-size: 15px; }
+  .unified-status-lines {
+    display: flex; flex-direction: column; align-items: stretch; gap: 1px;
+    width: auto; margin-top: 0; overflow: visible; white-space: normal;
   }
+  .unified-status-line {
+    display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 10px; line-height: 1.3;
+  }
+  .unified-status-line + .unified-status-line::before { content: none; }
   .unified-status-mode .exit-ai-game {
-    width: 60px;
-    min-height: 48px;
-    flex: 0 0 60px;
+    min-height: 44px;
     margin: 0;
   }
 }
 
-@media (max-width: 370px) {
-  .unified-status-copy > .unified-status-name { font-size: 12px; }
-  .unified-status-facts b { font-size: 11px; }
-  .unified-status-facts > span { padding-inline: 5px; }
-  .unified-status-mode .workspace-mode-toggle button { gap: 5px; padding-inline: 5px; font-size: 11px; }
-  .unified-status-mode .workspace-mode-toggle button > svg { width: 15px; height: 15px; }
-}
-
 @media (orientation: landscape) and (max-height: 480px) {
-  .unified-status { grid-template-columns: minmax(0, 1fr) minmax(245px, .9fr); grid-template-areas: "title mode" "facts mode"; align-items: center; }
-  .unified-status-mode .workspace-mode-toggle { min-height: 46px; }
+  .unified-status { align-items: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .unified-status-title > svg { transition: none; }
-  .unified-status-mode .workspace-mode-toggle button { transition: none; }
 }
 
-/* Mobile chrome stays compact while mode tabs remain comfortably tappable. */
+/* Mobile chrome stays compact while the exit action remains tappable. */
 @media (max-width: 600px) {
   .unified-status { gap: 2px; margin-bottom: 2px; padding: 2px; border-radius: 11px; box-shadow: 0 3px 10px #675d4a08; }
   .unified-status .workspace-current.unified-status-title { min-height: 40px; }
-  .unified-status-mode .workspace-mode-toggle { min-height: 46px; padding: 1px; gap: 1px; border-radius: 10px; }
-  .unified-status-mode .workspace-mode-toggle button { min-height: 44px; padding-inline: 3px; border-radius: 8px; gap: 3px; }
 }
 
 @media (max-width: 370px) {

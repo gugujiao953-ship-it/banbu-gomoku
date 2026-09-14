@@ -60,7 +60,7 @@ try {
     if (viewport.width === 412) await page.screenshot({ path: resolve(output, "record-picker-sheet-412x915.png"), fullPage: false });
     await recordSelector.getByRole("button", { name: "关闭" }).click();
 
-    const modeMetrics = await page.locator(".unified-status-mode .workspace-mode-toggle button").evaluateAll((buttons) => buttons.map((button) => {
+    const modeMetrics = await page.locator(".topbar .topbar-mode-toggle button").evaluateAll((buttons) => buttons.map((button) => {
       const rect = button.getBoundingClientRect();
       return { height: rect.height, fontSize: Number.parseFloat(getComputedStyle(button).fontSize) };
     }));

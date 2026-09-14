@@ -37,20 +37,30 @@ const closeRasterImage = (image: RasterImage, revoke?: string) => {
 
 const luminance = (r: number, g: number, b: number) => (r * 299 + g * 587 + b * 114) / 1000;
 
-interface SampledImage {
+export interface SampledImage {
   data: Uint8ClampedArray;
   width: number;
   height: number;
   gray: Float32Array;
 }
 
-const sampleImage = (ctx: CanvasRenderingContext2D, side: number): SampledImage => {
-  const { data } = ctx.getImageData(0, 0, side, side);
-  const gray = new Float32Array(side * side);
-  for (let pixel = 0; pixel < gray.length; pixel += 1) {
+/** 灰度图构造的唯一实现。主线程与识别 worker 都调用它，所以并行分片读到的
+ * gray 与串行路径逐位相同——这是「多核识谱结果必须与单线程完全一致」的前提，
+ * 也让 worker 只需回传 RGBA（灰度在 worker 内按同一份代码重建，省一半拷贝）。 */
+export const buildGray = (data: Uint8ClampedArray, pixelCount: number): Float32Array => {
+  const gray = new Float32Array(pixelCount);
+  for (let pixel = 0; pixel < pixelCount; pixel += 1) {
     gray[pixel] = luminance(data[pixel * 4], data[pixel * 4 + 1], data[pixel * 4 + 2]);
   }
-  return { data, width: side, height: side, gray };
+  return gray;
+};
+
+export const createSampledImage = (data: Uint8ClampedArray, width: number, height: number): SampledImage =>
+  ({ data, width, height, gray: buildGray(data, width * height) });
+
+const sampleImage = (ctx: CanvasRenderingContext2D, side: number): SampledImage => {
+  const { data } = ctx.getImageData(0, 0, side, side);
+  return createSampledImage(data, side, side);
 };
 
 interface GridEstimate {
@@ -67,7 +77,7 @@ interface GridEstimate {
  * dark board fall through to the inaccurate fixed-inset fallback. A relative
  * second-difference keeps the detector exposure-independent while accepting
  * both line polarities. */
-const collectLineScores = (
+export const collectLineScores = (
   gray: Float32Array,
   width: number,
   height: number,
@@ -96,14 +106,35 @@ const collectLineScores = (
       // Antialiased SVG lines can be split across two pixels. The neighbour
       // guard rejects broad lighting gradients while retaining either a dark
       // or a bright one-pixel line core.
-      if (contrast > 10 && neighbourDelta < 55 && contrast > neighbourDelta * 0.22) score += 1;
+      if (contrast > 10 && neighbourDelta < 55 && contrast > neighbourDelta * 0.22) {
+        score += 1;
+        continue;
+      }
+      // A core that spills onto a second pixel — a rescaled screenshot
+      // (WeChat re-encodes and resizes), or a diagram drawn with 2px rules —
+      // leaves one neighbour brighter than the other, so the guard above
+      // rejects the line outright: this cost a board 10 of 15 rows and 11 of
+      // 15 columns, and with the column comb under the retention bar in
+      // fitCombSeries the grid was never found at all. Comparing two pixels
+      // out restores the peak without loosening the gradient guard, since a
+      // gradient keeps both outer neighbours far apart too.
+      if (fixed < 2 || fixed >= span - 2) continue;
+      const above2 = alongX
+        ? gray[(fixed - 2) * width + index]
+        : gray[index * width + fixed - 2];
+      const below2 = alongX
+        ? gray[(fixed + 2) * width + index]
+        : gray[index * width + fixed + 2];
+      const wideContrast = Math.abs(center - (above2 + below2) / 2);
+      const wideNeighbourDelta = Math.abs(above2 - below2);
+      if (wideContrast > 10 && wideNeighbourDelta < 55 && wideContrast > wideNeighbourDelta * 0.22) score += 1;
     }
     scores[fixed] = score;
   }
   return scores;
 };
 
-interface CombFit {
+export interface CombFit {
   origin: number;
   spacing: number;
   score: number;
@@ -123,7 +154,7 @@ const scoreQuantile = (scores: Float32Array, quantile: number) => {
  * the score. Support immediately before/after the proposed board is also
  * penalised, because it is usually the omitted border line of that shifted
  * candidate. */
-const fitCombSeries = (
+export const fitCombSeries = (
   scores: Float32Array,
   boardSize: number,
   limits: { pool: number; seeds: number; output: number } = { pool: 180, seeds: 80, output: 80 },
@@ -144,48 +175,63 @@ const fitCombSeries = (
   );
   if (maxSpacing < minSpacing) return [];
 
+  // supportAt and the two scratch buffers live outside evaluate: evaluate runs
+  // tens of thousands of times per image (coarse sweep over spacing × origin),
+  // and allocating a closure plus two arrays per call was pure overhead. The
+  // arithmetic and its order are unchanged, so results are bit-identical.
+  const supportAt = (position: number, radius: number): number => {
+    const center = Math.round(position);
+    let peak = 0;
+    let peakDistance = Number.POSITIVE_INFINITY;
+    for (let offset = -radius; offset <= radius; offset += 1) {
+      const index = center + offset;
+      if (index < 0 || index >= span) continue;
+      if (scores[index] > peak) {
+        peak = scores[index];
+        peakDistance = Math.abs(offset + center - position);
+      }
+    }
+    const contrast = Math.max(0, (peak - baseline) / scale);
+    const sigma = Math.max(1, radius * 0.45);
+    const proximity = Math.exp(-(peakDistance * peakDistance) / (2 * sigma * sigma));
+    return Math.min(1.5, contrast) * (0.25 + proximity * 0.75);
+  };
+  const supportsScratch = new Float64Array(boardSize);
+  const orderedScratch = new Float64Array(boardSize);
+  const outsideWeights = [1, 0.72, 0.45];
+
   const evaluate = (origin: number, spacing: number): CombFit | null => {
     const end = origin + (boardSize - 1) * spacing;
     if (origin < 0 || end > span - 1) return null;
     const radius = Math.min(5, Math.max(1, Math.round(spacing * 0.09)));
-    const supportAt = (position: number) => {
-      const center = Math.round(position);
-      let peak = 0;
-      let peakDistance = Number.POSITIVE_INFINITY;
-      for (let offset = -radius; offset <= radius; offset += 1) {
-        const index = center + offset;
-        if (index < 0 || index >= span) continue;
-        if (scores[index] > peak) {
-          peak = scores[index];
-          peakDistance = Math.abs(offset + center - position);
-        }
-      }
-      const contrast = Math.max(0, (peak - baseline) / scale);
-      const sigma = Math.max(1, radius * 0.45);
-      const proximity = Math.exp(-(peakDistance * peakDistance) / (2 * sigma * sigma));
-      return Math.min(1.5, contrast) * (0.25 + proximity * 0.75);
-    };
 
-    const supports = Array.from({ length: boardSize }, (_, index) => supportAt(origin + index * spacing));
-    const ordered = [...supports].sort((left, right) => left - right);
+    const supports = supportsScratch;
+    for (let index = 0; index < boardSize; index += 1) supports[index] = supportAt(origin + index * spacing, radius);
+    const ordered = orderedScratch;
+    ordered.set(supports);
+    ordered.sort();
     const weakCount = Math.min(4, boardSize);
-    const weakSupport = ordered.slice(0, weakCount).reduce((sum, value) => sum + value, 0);
-    const insideSupport = supports.reduce((sum, value) => sum + value, 0);
-    const edgeSupport = supports[0] + supports[supports.length - 1];
+    let weakSupport = 0;
+    for (let index = 0; index < weakCount; index += 1) weakSupport += ordered[index];
+    let insideSupport = 0;
+    for (let index = 0; index < boardSize; index += 1) insideSupport += supports[index];
+    const edgeSupport = supports[0] + supports[boardSize - 1];
     // Check several teeth beyond both proposed edges. In a full-screen image a
     // shifted candidate can take 12-13 genuine board lines and borrow one or
     // two UI separators to appear complete. Looking only one tooth outside did
     // not detect a two-cell phase error. A real complete board should not have
     // another strong same-period comb continuing past either edge.
     let outsideSupport = 0;
-    [1, 0.72, 0.45].forEach((weight, index) => {
+    for (let index = 0; index < 3; index += 1) {
       const distance = index + 1;
       const beforePosition = origin - spacing * distance;
       const afterPosition = end + spacing * distance;
-      if (beforePosition >= 0) outsideSupport += supportAt(beforePosition) * weight;
-      if (afterPosition <= span - 1) outsideSupport += supportAt(afterPosition) * weight;
-    });
-    const coverage = supports.filter((value) => value >= 0.28).length / boardSize;
+      if (beforePosition >= 0) outsideSupport += supportAt(beforePosition, radius) * outsideWeights[index];
+      if (afterPosition <= span - 1) outsideSupport += supportAt(afterPosition, radius) * outsideWeights[index];
+    }
+    let covered = 0;
+    for (let index = 0; index < boardSize; index += 1) if (supports[index] >= 0.28) covered += 1;
+    const coverage = covered / boardSize;
     // Low-tooth support differentiates 15/15 from 14/15; outside support
     // rejects the phase-shifted 14-line window. Edge weighting helps when
     // stones obscure central line pixels but the board border remains visible.
@@ -212,10 +258,14 @@ const fitCombSeries = (
     if (candidates.length > limit) candidates.length = limit;
   };
 
-  const spacingStep = Math.max(0.2, span / 1800);
+  // Coarse global search: the subpixel refinement below re-fits the top
+  // seeds at 0.1px/0.05px resolution, so the global pass only needs to land
+  // near the true comb — wider steps keep mobile import latency bounded
+  // (fitCombSeries was a top-3 hotspot, 2026-09-11).
+  const spacingStep = Math.max(0.2, span / 1400);
   for (let spacing = minSpacing; spacing <= maxSpacing + 0.001; spacing += spacingStep) {
     const latestOrigin = span - 1 - (boardSize - 1) * spacing;
-    for (let origin = 0; origin <= latestOrigin + 0.001; origin += 0.75) {
+    for (let origin = 0; origin <= latestOrigin + 0.001; origin += 1) {
       const candidate = evaluate(origin, spacing);
       // Full-screen screenshots can contain stronger one-off UI separators
       // than the board lines. Keep a wider pool here; detectGrid will later
@@ -298,21 +348,49 @@ const lineThroughEvidence = (
 ) => {
   const fixedBase = Math.round(alongX ? x : y);
   const alongBase = Math.round(alongX ? y : x);
+  // Hoisted out of the closure: this used to allocate the literal on every
+  // call, and contrastAt is a profiling hotspot (~6% of recognition time).
+  // Splitting by direction also removes a per-sample branch.
+  const distances = [2, 3, 4];
   const contrastAt = (px: number, py: number) => {
-    if (px < 2 || py < 2 || px >= width - 2 || py >= height - 2) return 0;
+    if (px < 5 || py < 5 || px >= width - 5 || py >= height - 5) return 0;
     const index = py * width + px;
     const center = gray[index];
     // Two pixels out on BOTH axes: one pixel can still sit on a 1-2px line's
     // antialiasing, which made every horizontal-line probe fail its
     // neighbour guard while the vertical probes worked.
-    const sideA = alongX ? gray[index - 2] : gray[index - 2 * width];
-    const sideB = alongX ? gray[index + 2] : gray[index + 2 * width];
-    const contrast = Math.abs(center - (sideA + sideB) / 2);
-    const neighbourDelta = Math.abs(sideA - sideB);
-    if (contrast > 7 && neighbourDelta < 65 && contrast > neighbourDelta * 0.18) {
-      return Math.min(1, contrast / 16);
+    // The sample distance is then varied: a board that draws its own border
+    // 3-4px thick (printed and notation-paper diagrams) hides every outermost
+    // line from a fixed two-pixel probe, because one side sample lands inside
+    // the run — all four border intersections measured 0.000 evidence and the
+    // whole window was rejected as one row/column short of a valid grid.
+    let best = 0;
+    if (alongX) {
+      for (let d = 0; d < 3; d += 1) {
+        const distance = distances[d];
+        const sideA = gray[index - distance];
+        const sideB = gray[index + distance];
+        const contrast = Math.abs(center - (sideA + sideB) / 2);
+        const neighbourDelta = Math.abs(sideA - sideB);
+        if (contrast > 7 && neighbourDelta < 65 && contrast > neighbourDelta * 0.18) {
+          const evidence = Math.min(1, contrast / 16);
+          if (evidence > best) best = evidence;
+        }
+      }
+      return best;
     }
-    return 0;
+    for (let d = 0; d < 3; d += 1) {
+      const distance = distances[d];
+      const sideA = gray[index - distance * width];
+      const sideB = gray[index + distance * width];
+      const contrast = Math.abs(center - (sideA + sideB) / 2);
+      const neighbourDelta = Math.abs(sideA - sideB);
+      if (contrast > 7 && neighbourDelta < 65 && contrast > neighbourDelta * 0.18) {
+        const evidence = Math.min(1, contrast / 16);
+        if (evidence > best) best = evidence;
+      }
+    }
+    return best;
   };
   let best = 0;
   for (let phase = -2; phase <= 2; phase += 1) {
@@ -340,7 +418,7 @@ const lineThroughEvidence = (
  * points are occupied, while texture and one-direction table lines stay near
  * zero — and a window that only PARTIALLY overlaps the board loses whole
  * border rows at once, which the per-axis fractions expose. */
-const intersectionMesh = (
+export const intersectionMesh = (
   image: { gray: Float32Array; width: number; height: number; data: Uint8ClampedArray },
   originX: number,
   originY: number,
@@ -478,7 +556,7 @@ const intersectionMesh = (
   };
 };
 
-interface GridWindowQuality {
+export interface GridWindowQuality {
   score: number;
   lineCoverage: number;
   continuity: number;
@@ -510,7 +588,7 @@ interface GridWindowQuality {
  * UI lines and still look like a valid 15x15 comb. A real board has all of its
  * horizontal and vertical lines in the same square window, with a consistent
  * cell interior and visible outer edges. */
-const scoreGridWindow = (
+export const scoreGridWindow = (
   image: SampledImage,
   originX: number,
   originY: number,
@@ -532,30 +610,72 @@ const scoreGridWindow = (
     let samples = 0;
     const segmentHits = new Uint16Array(Math.max(1, boardSize - 1));
     const segmentSamples = new Uint16Array(segmentHits.length);
-    for (let index = from; index <= to; index += 1) {
+    // fixed is constant for the whole call: hoist Math.round and the three
+    // row/column base offsets out of the sample loop (bit-identical indexes,
+    // lineProfile was ~20% of recognition time, 2026-09-11 profile).
+    // The two directions are now expressed as strides — a horizontal line
+    // advances by 1 and steps across by width, a vertical line the reverse —
+    // which removes the per-sample `alongX` branch and the per-sample offset
+    // validity test from the innermost loop while indexing exactly the pixels
+    // the previous two-branch body read (lineProfile is the single biggest
+    // hotspot, ~22% of recognition time). The ±1 offsets are filtered once per
+    // call, in the same order, so the sample set is unchanged.
+    const alongStride = alongX ? 1 : width;
+    const crossStride = alongX ? width : 1;
+    const fixedCenter = Math.round(fixed);
+    const crossLimit = (alongX ? height : width) - 1;
+    const bases: number[] = [];
+    const wideOk: boolean[] = [];
+    for (let offset = -1; offset <= 1; offset += 1) {
+      const rounded = fixedCenter + offset;
+      if (rounded <= 0 || rounded >= crossLimit) continue;
+      bases.push(alongX ? rounded * width : rounded);
+      wideOk.push(rounded - 2 > 0 && rounded + 2 < crossLimit);
+    }
+    const baseCount = bases.length;
+    const segmentCount = segmentHits.length;
+    const segmentSpan = Math.max(1, to - from + 1);
+    for (let index = from; index <= to; index += 2) {
       let evidence = 0;
       // Permit a small subpixel/antialiasing offset, but require evidence at
       // this longitudinal position. Circle rims only light up a few cells;
       // genuine grid lines continue through most cells of the board.
-      for (let offset = -2; offset <= 2; offset += 1) {
-        const rounded = Math.round(fixed) + offset;
-        if (rounded <= 0 || rounded >= (alongX ? height : width) - 1) continue;
-        const center = alongX ? gray[rounded * width + index] : gray[index * width + rounded];
-        const above = alongX
-          ? gray[(rounded - 1) * width + index]
-          : gray[index * width + rounded - 1];
-        const below = alongX
-          ? gray[(rounded + 1) * width + index]
-          : gray[index * width + rounded + 1];
+      // Stride 2 along the line + offsets ±1: grid lines are continuous and
+      // the phase-polish pass below realigns subpixel drift, so the cheaper
+      // probe keeps the same statistics (lineProfile was ~35% of total
+      // recognition time, 2026-09-11).
+      const indexBase = index * alongStride;
+      for (let b = 0; b < baseCount; b += 1) {
+        const base = bases[b];
+        const center = gray[base + indexBase];
+        const above = gray[base + indexBase - crossStride];
+        const below = gray[base + indexBase + crossStride];
         const contrast = Math.abs(center - (above + below) / 2);
         const neighbourDelta = Math.abs(above - below);
         if (contrast > 7 && neighbourDelta < 65 && contrast > neighbourDelta * 0.18) {
-          evidence = Math.max(evidence, Math.min(1.5, contrast / 22));
+          const value = Math.min(1.5, contrast / 22);
+          if (value > evidence) evidence = value;
+        } else if (wideOk[b]) {
+          // Same defence as collectLineScores: when a line's dark core covers
+          // two pixels, one of the ±1 neighbours sits ON the line and this
+          // probe reads nothing. That contradiction is measurable — a window
+          // whose intersections are all valid (mesh 1.0, rows and columns
+          // 15/15) still reported rowContinuity 0 and was rejected — so sample
+          // two pixels out as well. A lighting gradient keeps the outer pair
+          // far apart, so the guard still holds.
+          const wideAbove = gray[base + indexBase - 2 * crossStride];
+          const wideBelow = gray[base + indexBase + 2 * crossStride];
+          const wideContrast = Math.abs(center - (wideAbove + wideBelow) / 2);
+          const wideNeighbourDelta = Math.abs(wideAbove - wideBelow);
+          if (wideContrast > 7 && wideNeighbourDelta < 65 && wideContrast > wideNeighbourDelta * 0.18) {
+            const value = Math.min(1.5, wideContrast / 22);
+            if (value > evidence) evidence = value;
+          }
         }
       }
       const segment = Math.min(
-        segmentHits.length - 1,
-        Math.max(0, Math.floor((index - from) * segmentHits.length / Math.max(1, to - from + 1))),
+        segmentCount - 1,
+        Math.max(0, Math.floor((index - from) * segmentCount / segmentSpan)),
       );
       segmentSamples[segment] += 1;
       if (evidence > 0) segmentHits[segment] += 1;
@@ -931,15 +1051,51 @@ const scoreGridWindow = (
 /** Locate the grid directly from complete row/column combs. Pairing the two
  * axes is part of the fit so a decorative repeated pattern on one axis cannot
  * win unless its spacing agrees with the actual square grid on the other. */
-const detectGrid = (image: SampledImage, boardSize: number): GridEstimate | null => {
-  const { gray, width: side, height } = image;
+/** 归一化（0-1）棋盘区域提示：用户框选/对齐时传给识别器作先验——
+ * 帮助网格窗口选择与 fallback 定位，并排除棋盘外的误判点（多子主因）。 */
+export interface BoardRoi { x: number; y: number; w: number; h: number }
+
+/** 网格窗与用户框选区域的相对重叠（0-1）——窗与框越吻合分越高，
+ * 让「棋盘外 UI 上的错窗」在同分候选中落选。ROI 是提示不是硬约束，
+ * 框偏了也不会否决正确窗（加分幅度有限，硬门槛不变）。 */
+const roiOverlapBonus = (roi: { x: number; y: number; w: number; h: number }, originX: number, originY: number, spacingX: number, spacingY: number, boardSize: number): number => {
+  const x0 = originX, y0 = originY;
+  const x1 = originX + (boardSize - 1) * spacingX, y1 = originY + (boardSize - 1) * spacingY;
+  const ix0 = Math.max(x0, roi.x), iy0 = Math.max(y0, roi.y);
+  const ix1 = Math.min(x1, roi.x + roi.w), iy1 = Math.min(y1, roi.y + roi.h);
+  if (ix1 <= ix0 || iy1 <= iy0) return 0;
+  const inter = (ix1 - ix0) * (iy1 - iy0);
+  const union = (x1 - x0) * (y1 - y0) + roi.w * roi.h - inter;
+  if (union <= 0) return 0;
+  return Math.min(1, inter / union) * 30;
+};
+
+const detectGrid = async (
+  image: SampledImage,
+  boardSize: number,
+  roi: BoardRoi | undefined,
+  acc: RecognitionAccelerator,
+): Promise<GridEstimate | null> => {
+  const { width: side, height } = image;
+  // ROI 转像素坐标；仅在调用方给了框选时参与评分，缺省路径与旧版完全一致。
+  const roiPx = roi && roi.w > 0 && roi.h > 0
+    ? { x: roi.x * side, y: roi.y * height, w: roi.w * side, h: roi.h * height }
+    : null;
   // A readable board screenshot never shows a fifteen-tooth comb narrower than
   // ~1.5% of the image width per cell; anything below that is text baselines
   // or icon rows. The floor keeps dense UI texture out of the global candidate
-  // pools, where it previously outranked the real board rows.
-  const globalMinSpacing = Math.max(5, side * 0.015);
-  const rowFits = fitCombSeries(collectLineScores(gray, side, height, true), boardSize, undefined, { minimum: globalMinSpacing });
-  const columnFits = fitCombSeries(collectLineScores(gray, side, height, false), boardSize, undefined, { minimum: globalMinSpacing });
+  // pools, where it previously outranked the real board rows. The reference
+  // must be the SHORT side: wide banner screenshots (status-bar crops) carry
+  // a small board whose line pitch is far below 1.5% of the image width, and
+  // using the width there rejected every real board comb (2026-09-11).
+  const globalMinSpacing = Math.max(5, Math.min(side, height) * 0.015);
+  // 行/列两条全局线梳彼此独立，一次交给加速器（串行时就是逐条调用原函数）。
+  const globalFits = await acc.fitCombs([
+    { alongX: true, innerStart: 1, boardSize, spacingRange: { minimum: globalMinSpacing } },
+    { alongX: false, innerStart: 1, boardSize, spacingRange: { minimum: globalMinSpacing } },
+  ]);
+  const rowFits = globalFits[0];
+  const columnFits = globalFits[1];
   const debug = (globalThis as typeof globalThis & { __BANBU_IMAGE_RECOGNITION_DEBUG__?: boolean }).__BANBU_IMAGE_RECOGNITION_DEBUG__;
   if (debug) console.info("[banbu-image-fits]", JSON.stringify({
     rows: rowFits.slice(0, 5),
@@ -965,19 +1121,16 @@ const detectGrid = (image: SampledImage, boardSize: number): GridEstimate | null
   // Debug-only rejection ledger: when nothing passes, this explains which
   // hard gate killed the strongest candidates, in evaluation order.
   const rejected: Array<Record<string, unknown>> = [];
-  const consider = (row: CombFit, column: CombFit, localBonus = 0): string[] | null => {
-    const spacingRatio = Math.min(row.spacing, column.spacing) / Math.max(row.spacing, column.spacing);
-    if (spacingRatio < 0.92) return ["spacingRatio"];
-    const mismatchPenalty = (1 - spacingRatio) * boardSize * 2.4;
-    const window = scoreGridWindow(
-      image,
-      column.origin,
-      row.origin,
-      column.spacing,
-      row.spacing,
-      boardSize,
-    );
-    if (!window) return ["outOfBounds"];
+  // 候选评分被拆成两半：evaluateCandidate 是纯函数（参数相同则结果相同，因此
+  // 可以丢进 worker 并行算），applyCandidate 是顺序归约（谁最优、就近平手取谁、
+  // rejected 台账的插入顺序），永远留在主线程按原顺序执行。多核与单线程因此
+  // 得到完全相同的网格——加速器换的只是「算」的执行者，不是判定规则。
+  type Candidate = { row: CombFit; column: CombFit; localBonus: number };
+  const spacingRatioOf = (row: CombFit, column: CombFit) =>
+    Math.min(row.spacing, column.spacing) / Math.max(row.spacing, column.spacing);
+  const evaluateCandidate = (candidate: Candidate, window: GridWindowQuality | null): { failures: string[]; pairedScore: number } => {
+    const { row, column, localBonus } = candidate;
+    if (!window) return { failures: ["outOfBounds"], pairedScore: 0 };
     const failures: string[] = [];
     if (window.continuity < 0.55) failures.push("continuity");
     if (window.lineCoverage < 0.12) failures.push("lineCoverage");
@@ -986,7 +1139,14 @@ const detectGrid = (image: SampledImage, boardSize: number): GridEstimate | null
     if (window.colorCoherence < 0.36) failures.push("colorCoherence");
     if (window.borderContext < 0.38) failures.push("borderContext");
     if (window.intersectionSupport < 0.55) failures.push("intersectionSupport");
-    if (window.outerFrameShare >= 0.5) failures.push("outerFrame");
+    // A window anchored on a DECORATIVE frame sits one row/column short of the
+    // real grid, and that shortfall is already what the row/column counts
+    // below measure — so the thickness test only adds information when those
+    // counts are short too. Boards that draw their own border thick (printed
+    // and notation-paper diagrams use a 3-4px frame) are complete on both
+    // counts and must not be rejected for their border weight.
+    if (window.outerFrameShare >= 0.5
+      && (window.validRowCount < boardSize || window.validColumnCount < boardSize)) failures.push("outerFrame");
     if (window.validRowCount < boardSize - 1) failures.push("validRowCount");
     if (window.validColumnCount < boardSize - 1) failures.push("validColumnCount");
     if (window.rowContinuity < 0.68) failures.push("rowContinuity");
@@ -997,7 +1157,22 @@ const detectGrid = (image: SampledImage, boardSize: number): GridEstimate | null
     // probe. The intersection validity gates above already reject windows cut
     // from inside a larger grid far more reliably.
     if (window.sizeRatio >= 0.72 && window.crossAxisBalance < 0.42) failures.push("crossAxisBalance");
+    if (failures.length) return { failures, pairedScore: 0 };
+    // 求和顺序必须与拆分前逐字一致：浮点加法不满足结合律，换顺序就会在
+    // 平手边界上换出一个不同的网格。
+    const pairedScore = window.score
+      + (row.score + column.score) * 0.035
+      + localBonus
+      + (roiPx ? roiOverlapBonus(roiPx, column.origin, row.origin, column.spacing, row.spacing, boardSize) : 0)
+      - (1 - spacingRatioOf(row, column)) * boardSize * 2.4;
+    return { failures, pairedScore };
+  };
+  const applyCandidate = (candidate: Candidate, window: GridWindowQuality | null): string[] | null => {
+    const { row, column } = candidate;
+    const { failures, pairedScore } = evaluateCandidate(candidate, window);
     if (failures.length) {
+      // 越界候选在原实现里就是「评分函数返回 null」的早退，不进台账。
+      if (!window) return failures;
       const record = {
         x: Math.round(column.origin * 10) / 10,
         y: Math.round(row.origin * 10) / 10,
@@ -1020,22 +1195,41 @@ const detectGrid = (image: SampledImage, boardSize: number): GridEstimate | null
       }
       return failures;
     }
-    const pairedScore = window.score
-      + (row.score + column.score) * 0.035
-      + localBonus
-      - mismatchPenalty;
-    if (!best || pairedScore > best.score) best = { row, column, score: pairedScore, window };
-    if (window.strokeBeyondSides === 0
+    if (!best || pairedScore > best.score) best = { row, column, score: pairedScore, window: window as GridWindowQuality };
+    if ((window as GridWindowQuality).strokeBeyondSides === 0
       && (!cleanBest || pairedScore > cleanBest.score)) {
-      cleanBest = { row, column, score: pairedScore, window };
+      cleanBest = { row, column, score: pairedScore, window: window as GridWindowQuality };
     }
     return null;
   };
+  // 一批候选：先剔掉间距比不合格的（原实现在评分前就返回，无副作用、不进台账），
+  // 其余的交给加速器批量评分，再按原顺序重放归约。
+  const considerBatch = async (batch: readonly Candidate[]): Promise<void> => {
+    const scorable: Candidate[] = [];
+    const queries: GridWindowQuery[] = [];
+    for (const candidate of batch) {
+      if (spacingRatioOf(candidate.row, candidate.column) < 0.92) continue;
+      scorable.push(candidate);
+      queries.push({
+        originX: candidate.column.origin,
+        originY: candidate.row.origin,
+        spacingX: candidate.column.spacing,
+        spacingY: candidate.row.spacing,
+        boardSize,
+      });
+    }
+    if (!scorable.length) return;
+    const windows = await acc.scoreWindows(queries);
+    scorable.forEach((candidate, index) => applyCandidate(candidate, windows[index]));
+  };
 
+  // 三个候选来源按原顺序拼成一批：全局配对 → 锁定一列的局部行 → 锁定一行的
+  // 局部列。顺序不能变：同分时谁先被考虑决定谁留在 best / cleanBest 上。
+  const candidates: Candidate[] = [];
   // First consider pairs found across the complete image. This is the fast and
   // accurate path for already-cropped board images.
   for (const row of rowFits.slice(0, 36)) {
-    for (const column of columnFits.slice(0, 36)) consider(row, column);
+    for (const column of columnFits.slice(0, 36)) candidates.push({ row, column, localBonus: 0 });
   }
 
   // For full-screen UI screenshots, one global axis is often correct while the
@@ -1043,28 +1237,31 @@ const detectGrid = (image: SampledImage, boardSize: number): GridEstimate | null
   // restrict the perpendicular scan to that square, and fit the missing axis
   // again. Thus both combs must belong to the same physical board region.
   const localLimits = { pool: 48, seeds: 20, output: 16 };
-  for (const column of columnFits.slice(0, 12)) {
-    const startX = column.origin - column.spacing * 0.35;
-    const endX = column.origin + (boardSize - 1) * column.spacing + column.spacing * 0.35;
-    const localRows = fitCombSeries(
-      collectLineScores(gray, side, height, true, startX, endX),
-      boardSize,
-      localLimits,
-      { minimum: column.spacing * 0.88, maximum: column.spacing * 1.12 },
-    );
-    localRows.forEach((row) => consider(row, column, 4));
-  }
-  for (const row of rowFits.slice(0, 12)) {
-    const startY = row.origin - row.spacing * 0.35;
-    const endY = row.origin + (boardSize - 1) * row.spacing + row.spacing * 0.35;
-    const localColumns = fitCombSeries(
-      collectLineScores(gray, side, height, false, startY, endY),
-      boardSize,
-      localLimits,
-      { minimum: row.spacing * 0.88, maximum: row.spacing * 1.12 },
-    );
-    localColumns.forEach((column) => consider(row, column, 4));
-  }
+  const columnSeeds = columnFits.slice(0, 12);
+  const localRowFits = await acc.fitCombs(columnSeeds.map((column) => ({
+    alongX: true,
+    innerStart: column.origin - column.spacing * 0.35,
+    innerEnd: column.origin + (boardSize - 1) * column.spacing + column.spacing * 0.35,
+    boardSize,
+    limits: localLimits,
+    spacingRange: { minimum: column.spacing * 0.88, maximum: column.spacing * 1.12 },
+  })));
+  columnSeeds.forEach((column, index) => {
+    localRowFits[index].forEach((row) => candidates.push({ row, column, localBonus: 4 }));
+  });
+  const rowSeeds = rowFits.slice(0, 12);
+  const localColumnFits = await acc.fitCombs(rowSeeds.map((row) => ({
+    alongX: false,
+    innerStart: row.origin - row.spacing * 0.35,
+    innerEnd: row.origin + (boardSize - 1) * row.spacing + row.spacing * 0.35,
+    boardSize,
+    limits: localLimits,
+    spacingRange: { minimum: row.spacing * 0.88, maximum: row.spacing * 1.12 },
+  })));
+  rowSeeds.forEach((row, index) => {
+    localColumnFits[index].forEach((column) => candidates.push({ row, column, localBonus: 4 }));
+  });
+  await considerBatch(candidates);
 
   // The one-dimensional comb score cannot separate the board's own rows from
   // stronger periodic UI texture (analysis tables, text baselines) sharing the
@@ -1073,17 +1270,26 @@ const detectGrid = (image: SampledImage, boardSize: number): GridEstimate | null
   // from the most trusted column combs (and vice versa) and pre-filter them
   // with cheap two-direction mesh evidence: only the real board has a dense
   // intersection mesh, texture and tables stay near zero.
-  const enumeratePhases = (fixed: CombFit, alongRows: boolean) => {
+  const enumeratePhases = async (fixed: CombFit, alongRows: boolean): Promise<Array<{ origin: number; mesh: number }>> => {
     const span = (boardSize - 1) * fixed.spacing;
     const bound = alongRows ? height : side;
-    const step = Math.max(2, fixed.spacing * 0.055);
-    const phases: Array<{ origin: number; mesh: number }> = [];
-    for (let origin = 0; origin <= bound - span + 0.001; origin += step) {
-      const mesh = alongRows
-        ? intersectionMesh(image, fixed.origin, origin, fixed.spacing, fixed.spacing, boardSize, 2)
-        : intersectionMesh(image, origin, fixed.origin, fixed.spacing, fixed.spacing, boardSize, 2);
-      phases.push({ origin, mesh: mesh.support });
-    }
+    // Phase enumeration cost scales with the image; the kept phases are
+    // re-polished over ±1px below, so a coarser sweep step is safe
+    // (enumeratePhases is a top hotspot on full-screen screenshots).
+    const step = Math.max(3, fixed.spacing * 0.11);
+    // 整个相位扫描是一串互相独立的网格证据探针（每张图数百次），一次性交给
+    // 加速器；排序与「保留彼此相距半格以上的前 4 个」的筛选保持原样。
+    const sweepOrigins: number[] = [];
+    for (let origin = 0; origin <= bound - span + 0.001; origin += step) sweepOrigins.push(origin);
+    const sweepMeshes = await acc.meshSupports(sweepOrigins.map((origin) => ({
+      originX: alongRows ? fixed.origin : origin,
+      originY: alongRows ? origin : fixed.origin,
+      spacingX: fixed.spacing,
+      spacingY: fixed.spacing,
+      boardSize,
+      sampleStep: 2,
+    })));
+    const phases = sweepOrigins.map((origin, index) => ({ origin, mesh: sweepMeshes[index] }));
     phases.sort((left, right) => right.mesh - left.mesh);
     const kept: Array<{ origin: number; mesh: number }> = [];
     for (const phase of phases) {
@@ -1097,27 +1303,32 @@ const detectGrid = (image: SampledImage, boardSize: number): GridEstimate | null
     // FULL window score: raw mesh support is bistable at the subpixel level
     // (a 0.5px phase move flips borderline rows), while the window score
     // integrates every piece of evidence and ranks stably.
+    const polishPlan: Array<{ index: number; origin: number }> = [];
     for (let index = 0; index < kept.length; index += 1) {
-      let best = kept[index];
-      let bestScore = scoreGridWindow(
-        image,
-        alongRows ? fixed.origin : kept[index].origin,
-        alongRows ? kept[index].origin : fixed.origin,
-        fixed.spacing,
-        fixed.spacing,
-        boardSize,
-      )?.score ?? -1;
+      polishPlan.push({ index, origin: kept[index].origin });
       for (const delta of [-1, -0.5, 0.5, 1]) {
         const origin = kept[index].origin + delta;
         if (origin < 0 || origin > bound - span) continue;
-        const score = scoreGridWindow(
-          image,
-          alongRows ? fixed.origin : origin,
-          alongRows ? origin : fixed.origin,
-          fixed.spacing,
-          fixed.spacing,
-          boardSize,
-        )?.score ?? -1;
+        polishPlan.push({ index, origin });
+      }
+    }
+    const polishWindows = await acc.scoreWindows(polishPlan.map((item) => ({
+      originX: alongRows ? fixed.origin : item.origin,
+      originY: alongRows ? item.origin : fixed.origin,
+      spacingX: fixed.spacing,
+      spacingY: fixed.spacing,
+      boardSize,
+    })));
+    let cursor = 0;
+    for (let index = 0; index < kept.length; index += 1) {
+      let best = kept[index];
+      let bestScore = polishWindows[cursor]?.score ?? -1;
+      cursor += 1;
+      for (const delta of [-1, -0.5, 0.5, 1]) {
+        const origin = kept[index].origin + delta;
+        if (origin < 0 || origin > bound - span) continue;
+        const score = polishWindows[cursor]?.score ?? -1;
+        cursor += 1;
         if (score > bestScore) {
           bestScore = score;
           best = { origin, mesh: kept[index].mesh };
@@ -1152,21 +1363,25 @@ const detectGrid = (image: SampledImage, boardSize: number): GridEstimate | null
       });
     }
   }
+  // 相位枚举出来的候选同样攒成一批：先按原顺序把 (列→行相位)、(行→列相位)
+  // 两段跑完，再统一批量评分、按原顺序重放。
+  const phaseCandidates: Candidate[] = [];
   for (const column of [...columnFits.slice(0, 3), ...geometricSeeds]) {
-    for (const phase of enumeratePhases(column, true)) {
+    for (const phase of await enumeratePhases(column, true)) {
       if (phase.mesh < 0.3) break;
-      const failures = consider({ origin: phase.origin, spacing: column.spacing, score: 0, coverage: 1 }, column, 6);
+      const candidate: Candidate = { row: { origin: phase.origin, spacing: column.spacing, score: 0, coverage: 1 }, column, localBonus: 6 };
+      phaseCandidates.push(candidate);
       if (debug) {
         const meshFull = intersectionMesh(image, column.origin, phase.origin, column.spacing, column.spacing, boardSize);
+        const windowFull = scoreGridWindow(image, column.origin, phase.origin, column.spacing, column.spacing, boardSize);
         console.info("[banbu-image-phase-window]", JSON.stringify({
           y: Math.round(phase.origin * 10) / 10,
           x: Math.round(column.origin * 10) / 10,
           mesh: Math.round(phase.mesh * 1000) / 1000,
-          failures,
+          failures: evaluateCandidate(candidate, windowFull).failures,
           rows: meshFull.rowFractions.map((fraction) => Math.round(fraction * 100) / 100),
           cols: meshFull.columnFractions.map((fraction) => Math.round(fraction * 100) / 100),
         }));
-        const windowFull = scoreGridWindow(image, column.origin, phase.origin, column.spacing, column.spacing, boardSize);
         if (windowFull) {
           console.info("[banbu-image-phase-scores]", JSON.stringify({
             y: Math.round(phase.origin * 10) / 10,
@@ -1181,11 +1396,12 @@ const detectGrid = (image: SampledImage, boardSize: number): GridEstimate | null
     }
   }
   for (const row of rowFits.slice(0, 3)) {
-    for (const phase of enumeratePhases(row, false)) {
+    for (const phase of await enumeratePhases(row, false)) {
       if (phase.mesh < 0.3) break;
-      consider(row, { origin: phase.origin, spacing: row.spacing, score: 0, coverage: 1 }, 6);
+      phaseCandidates.push({ row, column: { origin: phase.origin, spacing: row.spacing, score: 0, coverage: 1 }, localBonus: 6 });
     }
   }
+  await considerBatch(phaseCandidates);
 
   // Mobile screenshots usually show the board as a large, horizontally
   // centred square while controls occupy the space above/below it. When the
@@ -1195,32 +1411,41 @@ const detectGrid = (image: SampledImage, boardSize: number): GridEstimate | null
   // seeds: they cannot win unless real grid lines validate the complete area.
   if (height >= side * 1.15) {
     const screenLimits = { pool: 32, seeds: 12, output: 10 };
-    for (const spanRatio of [0.84, 0.87, 0.9, 0.93]) {
+    // 两级依赖：先并行的 4 条整宽横向线梳，再并行的每个 (span, 行) 纵向精修，
+    // 最后攒成一批候选。顺序（span → 行 → 居中种子优先于精修列）保持不变。
+    const spans = [0.84, 0.87, 0.9, 0.93].map((spanRatio) => {
       const span = side * spanRatio;
-      const spacing = span / (boardSize - 1);
-      const origin = (side - span) / 2;
-      const seededColumn: CombFit = { origin, spacing, score: 0, coverage: 0.75 };
-      const localRows = fitCombSeries(
-        collectLineScores(gray, side, height, true, origin, origin + span),
-        boardSize,
-        screenLimits,
-        { minimum: spacing * 0.88, maximum: spacing * 1.12 },
-      );
-      for (const row of localRows.slice(0, 6)) {
-        const startY = row.origin - row.spacing * 0.35;
-        const endY = row.origin + (boardSize - 1) * row.spacing + row.spacing * 0.35;
-        const refinedColumns = fitCombSeries(
-          collectLineScores(gray, side, height, false, startY, endY),
-          boardSize,
-          screenLimits,
-          { minimum: row.spacing * 0.88, maximum: row.spacing * 1.12 },
-        );
-        // Also retain the centred seed when vertical grid lines are faint; the
-        // window scorer still requires distributed line evidence on both axes.
-        consider(row, seededColumn, 5);
-        refinedColumns.slice(0, 8).forEach((column) => consider(row, column, 8));
-      }
-    }
+      return { origin: (side - span) / 2, span, spacing: span / (boardSize - 1) };
+    });
+    const spanRowFits = await acc.fitCombs(spans.map((item) => ({
+      alongX: true,
+      innerStart: item.origin,
+      innerEnd: item.origin + item.span,
+      boardSize,
+      limits: screenLimits,
+      spacingRange: { minimum: item.spacing * 0.88, maximum: item.spacing * 1.12 },
+    })));
+    const refinePlan: Array<{ spanIndex: number; row: CombFit }> = [];
+    spans.forEach((_, spanIndex) => {
+      spanRowFits[spanIndex].slice(0, 6).forEach((row) => refinePlan.push({ spanIndex, row }));
+    });
+    const refinedFits = await acc.fitCombs(refinePlan.map(({ row }) => ({
+      alongX: false,
+      innerStart: row.origin - row.spacing * 0.35,
+      innerEnd: row.origin + (boardSize - 1) * row.spacing + row.spacing * 0.35,
+      boardSize,
+      limits: screenLimits,
+      spacingRange: { minimum: row.spacing * 0.88, maximum: row.spacing * 1.12 },
+    })));
+    const screenCandidates: Candidate[] = [];
+    refinePlan.forEach(({ spanIndex, row }, index) => {
+      // Also retain the centred seed when vertical grid lines are faint; the
+      // window scorer still requires distributed line evidence on both axes.
+      const seededColumn: CombFit = { origin: spans[spanIndex].origin, spacing: spans[spanIndex].spacing, score: 0, coverage: 0.75 };
+      screenCandidates.push({ row, column: seededColumn, localBonus: 5 });
+      refinedFits[index].slice(0, 8).forEach((column) => screenCandidates.push({ row, column, localBonus: 8 }));
+    });
+    await considerBatch(screenCandidates);
   }
   // A borrowed-edge winner (strokes still running 0.9 cells past an outer
   // line) has anchored one row/column off the real board and borrowed a
@@ -1312,7 +1537,7 @@ const meanPatchGray = (image: SampledImage, x: number, y: number, radius: number
 
 type Rgb = [number, number, number];
 
-interface IntersectionFeatures {
+export interface IntersectionFeatures {
   stoneLike: boolean;
   markerLike: boolean;
   score: number;
@@ -1343,10 +1568,39 @@ interface IntersectionFeatures {
 }
 
 const median = (values: number[]) => {
-  if (!values.length) return 0;
-  const ordered = values.slice().sort((a, b) => a - b);
-  const middle = Math.floor(ordered.length / 2);
-  return ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
+  const count = values.length;
+  if (!count) return 0;
+  if (count === 1) return values[0];
+  // In-place quickselect on a copy returns the exact same order statistics
+  // as the previous full sort (same multiset ranks, identical float values),
+  // without the sort's allocations — median(+comparator) was ~19% of
+  // recognition time and a major GC driver (2026-09-11 profile).
+  const work = values.slice();
+  const select = (rank: number) => {
+    let lo = 0;
+    let hi = count - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (work[mid] < work[lo]) { const t = work[mid]; work[mid] = work[lo]; work[lo] = t; }
+      if (work[hi] < work[lo]) { const t = work[hi]; work[hi] = work[lo]; work[lo] = t; }
+      if (work[hi] < work[mid]) { const t = work[hi]; work[hi] = work[mid]; work[mid] = t; }
+      const pivot = work[mid];
+      let i = lo;
+      let j = hi;
+      while (i <= j) {
+        while (work[i] < pivot) i += 1;
+        while (work[j] > pivot) j -= 1;
+        if (i <= j) { const t = work[i]; work[i] = work[j]; work[j] = t; i += 1; j -= 1; }
+      }
+      if (rank <= j) hi = j;
+      else if (rank >= i) lo = i;
+      else break;
+    }
+    return work[rank];
+  };
+  const lower = select((count - 1) >> 1);
+  if (count % 2) return lower;
+  return (lower + select(count >> 1)) / 2;
 };
 
 const rgbDistance = (left: Rgb, right: Rgb) => Math.hypot(
@@ -1364,7 +1618,7 @@ const rgbDistance = (left: Rgb, right: Rgb) => Math.hypot(
  * change a narrow centre stroke. This also recognises non-round notebook
  * crosses/checks because their ink reaches the outer band.
  */
-const analyzeIntersection = (image: SampledImage, x: number, y: number, spacing: number): IntersectionFeatures => {
+export const analyzeIntersection = (image: SampledImage, x: number, y: number, spacing: number): IntersectionFeatures => {
   const { data, gray, width, height } = image;
   const safeSpacing = Math.max(10, spacing);
   const sampleRadius = safeSpacing * 0.68;
@@ -1680,6 +1934,22 @@ const analyzeIntersection = (image: SampledImage, x: number, y: number, spacing:
     && discShare >= 0.22
     && outerShare < 0.28;
   const backgroundLightValue = luminance(background[0], background[1], background[2]);
+  // Printed / notation-paper white stones: a thin dark circle outline with a
+  // paper-lit interior, and — the reason every detector above misses them — a
+  // dark MOVE NUMBER printed inside. The numeral lifts the core's dark share
+  // to 0.3-0.6, so outerRingStone's `coreShare < 0.2` and hollowStone's
+  // `middleShare >= 0.5` both fail even though the outer band carries a
+  // complete ring. Identify them by the pairing instead: the middle band stays
+  // empty (nothing fills the stone), while the outer band and the diagonals
+  // both catch the outline. Empty crossings measure outerShare ≈ 0.06, and a
+  // solid black stone fills the middle band (> 0.9), so neither can reach here.
+  // Thresholds stay strict here; the slack for weaker captures lives in the
+  // neighbour-gated rescue after the candidate scan.
+  const printedHollowStone = !darkBoard
+    && middleShare <= 0.26
+    && outerShare >= 0.36
+    && ringShare >= 0.17
+    && diagonalShare >= 0.2;
   // Pale-fill stones (jade/snow bright materials on mid-tone boards) fade
   // out before the outer band: the bright core and middle band carry the
   // signal, and the fill must be clearly LIGHTER than the local board. The
@@ -1747,6 +2017,7 @@ const analyzeIntersection = (image: SampledImage, x: number, y: number, spacing:
     || brightStone
     || paleSoftStone
     || softDarkStone
+    || printedHollowStone
     || coherentDiscStone
     || mutedDiscStone
     || outerRingStone
@@ -1775,7 +2046,14 @@ const analyzeIntersection = (image: SampledImage, x: number, y: number, spacing:
     && voidShare >= 0.4
     && voidSpread < 28
     && rgbDistance(voidMedian, foregroundColor) < 30;
-  const stoneLike = !coloredMarker && rawStoneLike && !sprawlingLight;
+  // 棋盘边缘被切断的半圆亮斑（悬浮球/反光/木纹结疤）：圆盘占比明显低于完整
+  // 棋子（真实白子 ≥0.96）、暗像素几乎全堆在下半部（上半亮下半暗=半圆结构）、
+  // 但填充仍是实心亮色——不是棋子。实测用户整屏截图右上角稳定两颗假白子。
+  const splitEdgeBlob = foregroundLight >= 180
+    && discShare < 0.9
+    && darkBelowShare > 0.8
+    && discRawFillShare >= 0.85;
+  const stoneLike = !coloredMarker && rawStoneLike && !sprawlingLight && !splitEdgeBlob;
   const markerLike = coloredMarker || (!stoneLike
     && coreShare >= 0.42
     && outerShare < 0.32
@@ -1817,68 +2095,518 @@ const analyzeIntersection = (image: SampledImage, x: number, y: number, spacing:
   };
 };
 
-/** 5x7 dot-matrix digit templates used for move-number recovery. Each row is
- * one bit pattern of the digit glyph (1 = ink). */
-const DIGIT_TEMPLATES: Record<string, number[]> = {
-  "0": [0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110],
-  "1": [0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110],
-  "2": [0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111],
-  "3": [0b11111, 0b00010, 0b00100, 0b00010, 0b00001, 0b10001, 0b01110],
-  "4": [0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010],
-  "5": [0b11111, 0b10000, 0b11110, 0b00001, 0b00001, 0b10001, 0b01110],
-  "6": [0b00110, 0b01000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110],
-  "7": [0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000],
-  "8": [0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110],
-  "9": [0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b01100],
-};
+/**
+ * 印谱空心白子：一圈细描边 + 纸面亮的圈内 + 盘面本来就亮。
+ *
+ * 为什么单独立一个谓词：这类子的 `foregroundColor`（前景墨色中值）统计到的正是
+ * 那圈深色描边，所以**任何一个「前景够不够亮」的判据都会把它判成黑子**——线上
+ * 手机就是这样（白子变黑子）：柔化后描边中值掉到 128 以下，而 2-means 聚类用的
+ * 也是同一个前景色，同样把它拉向黑簇。桌面同一张图能对，只是因为清晰图上描边中值
+ * 刚好还在阈值以上，属于运气，不是判据。
+ *
+ * 这个签名本身就是「白」的几何证据：实心黑子的暗面占比 0.8+、中带几乎全暗，
+ * 两条都过不了中带门与 darkDiscShare 门（实测空心白子描边占 0.33）。所以命中
+ * 签名的格子按白子处理，不再依赖聚类质量或设备的渲染亮度。
+ */
+const isHollowPrintedStone = (features: IntersectionFeatures): boolean =>
+  features.backgroundLight >= 110
+  && features.middleShare <= 0.28
+  && features.outerShare >= 0.34
+  && features.ringShare >= 0.15
+  && features.diagonalShare >= 0.18
+  && features.foregroundSaturation < 50
+  && features.darkDiscShare < 0.5
+  && !features.markerLike;
 
-const matchDigitTemplate = (image: SampledImage, cx: number, cy: number, halfWidth: number, glyphHeight: number, inkIsDark: boolean) => {
-  const { gray } = image;
-  const templateWidth = 5, templateHeight = 7;
-  let bestDigit = "", bestScore = 0;
-  for (const [digit, pattern] of Object.entries(DIGIT_TEMPLATES)) {
-    let hit = 0, total = 0;
-    for (let row = 0; row < templateHeight; row += 1) {
-      for (let column = 0; column < templateWidth; column += 1) {
-        const want = Boolean((pattern[row] >> (templateWidth - 1 - column)) & 1);
-        const gx = cx - halfWidth + (column + 0.5) * (halfWidth * 2) / templateWidth;
-        const gy = cy - glyphHeight / 2 + (row + 0.5) * glyphHeight / templateHeight;
-        const px = Math.round(gx), py = Math.round(gy);
-        if (px < 0 || py < 0 || px >= image.width || py >= image.height) continue;
-        const value = gray[py * image.width + px];
-        const isInk = inkIsDark ? value < 120 : value > 175;
-        total += 1;
-        if (want === isInk) hit += 1;
+/**
+ * Move-number recovery by analysis-by-synthesis. The app paints each number as
+ * SVG text (App.tsx Board): font `700 …px ui-monospace, monospace`, size
+ * max(8, 0.64r)·scale with r = 0.43·gap, text-anchor middle; on a 15-line
+ * board the font is 0.2752·spacing. The newest move gets a stroked, tinted
+ * variant. Because recognition runs in the same browser engine that rendered
+ * the screenshot, we rasterize every candidate string with that exact font at
+ * the observed size and score it with normalized cross-correlation against a
+ * 4× supersampled window — a 5×7 dot-matrix collapses every small antialiased
+ * glyph into "1", real font templates do not.
+ *
+ * Self-alignment: the grid anchor may be off by a few px (fallback geometry
+ * drifts up to ±4 px toward the board edge) and the ink placement inside it is
+ * only approximately known. So per stone we first locate the number's own ink
+ * centroid (disc level from an annulus that never contains ink; peak from the
+ * inner circle), then place each template by its ink centroid (identical font
+ * ⇒ identical centroid) and search only a small residual offset. Candidates
+ * are bounded by the number of stones on the board and box sums use integral
+ * images, keeping the pass fast even on 117-stone screenshots.
+ */
+const MOVE_NUMBER_SUP = 4;                  // supersampling factor for matching
+const MOVE_NUMBER_FONT_RATIO = 0.2752;      // font px per grid spacing (15路 geometry)
+interface MoveNumberTemplate {
+  w: number; h: number;
+  icx: number; icy: number;                 // ink centroid inside the bitmap, sup px
+  ax: number; ay: number;                   // advance/baseline anchor, sup px
+  bh: number;                               // full alpha>0 ink height, sup px
+  ink: Int32Array;                          // coverage>=0.5 indices (row-major)
+  inkX: Int16Array;                         // column/row of each ink pixel, precomputed
+  inkY: Int16Array;                         // (scoreAt is the top hotspot; this removes
+                                            //  a division and a floor per ink pixel)
+  mean: number; norm: number;
+}
+const moveNumberTemplateCache = new Map<string, MoveNumberTemplate | null>();
+
+// Screenshots usually come from this very app on the same device, so the
+// default family is exact. But a shot taken on another phone (or an older
+// WebView) renders ui-monospace as a different face (Droid Sans Mono /
+// Roboto Mono on Android, SF Mono on iOS, Cascadia on Windows). To stay
+// useful across devices, the first stones of each image VOTE for the mono
+// family that best explains the digits, and every later stone matches with
+// that family first (weak stones still escape to the others).
+// Family 0 must be the app's OWN CSS stack: canvas resolves
+// `ui-monospace, monospace` to exactly the same face the app's SVG text
+// renders on the same device (verified by advance-width probe), so
+// same-device screenshots match pixel-perfectly. The remaining entries name
+// the real faces other platforms map ui-monospace to (Cascadia/Consolas on
+// Windows, Roboto/Droid Sans Mono on Android, SF Mono/Menlo on Apple,
+// DejaVu/Noto on Linux, Courier New as the thick classic) — a screenshot
+// taken on a different device escalates to the family that fits it. Unknown
+// names in a stack just skip to the next entry, so each stack is safe
+// everywhere.
+const MOVE_NUMBER_FAMILIES = [
+  "ui-monospace, monospace",
+  "Cascadia Mono, Consolas, monospace",
+  "Roboto Mono, Droid Sans Mono, monospace",
+  "SF Mono, Menlo, monospace",
+  "DejaVu Sans Mono, Noto Sans Mono, monospace",
+  "Consolas, monospace",
+  "Courier New, monospace",
+];
+const moveNumberCapRatioCache = new Map<string, number>();
+// Single-stroke glyphs like "1" cannot tell fonts apart, so the vote keeps
+// sampling families across the first few stones before locking in.
+const MOVE_NUMBER_VOTE_SAMPLES = 3;
+let moveNumberFamilyVote: { scores: number[]; decided: number; samples: number } | null = null;
+const resetMoveNumberCalibration = () => { moveNumberFamilyVote = null; };
+
+const renderMoveNumberTemplate = (text: string, fontPx: number, bold: boolean, family: string): MoveNumberTemplate | null => {
+  if (typeof document === "undefined") return null;
+  const sup = MOVE_NUMBER_SUP;
+  const key = `${text}|${fontPx.toFixed(2)}|${bold ? "b" : ""}|${family}`;
+  const cached = moveNumberTemplateCache.get(key);
+  if (cached !== undefined) return cached;
+  if (moveNumberTemplateCache.size > 6000) moveNumberTemplateCache.clear();
+  const build = (): MoveNumberTemplate | null => {
+    const fs = fontPx * sup;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(8, Math.ceil(fs * (text.length * 0.8 + 1.2)));
+    canvas.height = Math.max(8, Math.ceil(fs * 1.8));
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.font = `700 ${fs}px ${family}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    const ax = canvas.width / 2;
+    const ay = Math.round(canvas.height * 0.7);
+    ctx.fillStyle = "#fff";
+    ctx.strokeStyle = "#fff";
+    ctx.lineJoin = "round";
+    if (bold) ctx.lineWidth = Math.max(1, fs * 0.05);
+    ctx.fillText(text, ax, ay);
+    if (bold) ctx.strokeText(text, ax, ay);
+    // measureText's ink bbox locates the glyph without scanning the canvas;
+    // only the (small) crop around it is ever read back as pixels.
+    const metrics = ctx.measureText(text);
+    const grow = bold ? Math.ceil(ctx.lineWidth / 2) + 1 : 1;
+    const x0 = Math.max(0, Math.floor(ax - metrics.actualBoundingBoxLeft) - grow);
+    const x1 = Math.min(canvas.width - 1, Math.ceil(ax + metrics.actualBoundingBoxRight) + grow);
+    const y0 = Math.max(0, Math.floor(ay - metrics.actualBoundingBoxAscent) - grow);
+    const y1 = Math.min(canvas.height - 1, Math.ceil(ay + metrics.actualBoundingBoxDescent) + grow);
+    if (x1 <= x0 || y1 <= y0) return null;
+    const pad = 2 * sup;
+    const cx0 = Math.max(0, x0 - pad), cx1 = Math.min(canvas.width - 1, x1 + pad);
+    const cy0 = Math.max(0, y0 - pad), cy1 = Math.min(canvas.height - 1, y1 + pad);
+    const w = cx1 - cx0 + 1, h = cy1 - cy0 + 1;
+    const rgba = ctx.getImageData(cx0, cy0, w, h).data;
+    const inkList: number[] = [];
+    const inkXList: number[] = [];
+    const inkYList: number[] = [];
+    let sum = 0, sumSq = 0, wx = 0, wy = 0;
+    for (let py = 0; py < h; py += 1) {
+      for (let px = 0; px < w; px += 1) {
+        const a = rgba[(py * w + px) * 4 + 3] / 255;
+        sum += a; sumSq += a * a;
+        wx += a * px; wy += a * py;
+        if (a >= 0.5) { inkList.push(py * w + px); inkXList.push(px); inkYList.push(py); }
       }
     }
-    const score = total ? hit / total : 0;
-    if (score > bestScore) { bestScore = score; bestDigit = digit; }
-  }
-  return { digit: bestDigit, score: bestScore };
+    if (!sum) return null;
+    const n = w * h;
+    const mean = sum / n;
+    const norm = Math.sqrt(Math.max(1e-6, sumSq - n * mean * mean));
+    // Integer anchors: scoreAt indexes Float32Array linearly and a fractional
+    // (canvas.width/2 - cx0) silently yields undefined -> NaN -> zero scores.
+    return { w, h, bh: y1 - y0 + 1, icx: Math.round(wx / sum), icy: Math.round(wy / sum), ax: Math.round(ax - cx0), ay: Math.round(ay - cy0), ink: Int32Array.from(inkList), inkX: Int16Array.from(inkXList), inkY: Int16Array.from(inkYList), mean, norm };
+  };
+  const built = build();
+  moveNumberTemplateCache.set(key, built);
+  return built;
 };
 
-const detectMoveNumber = (image: SampledImage, x: number, y: number, spacing: number, player: Player): number | null => {
-  // The move number is painted in the opposite color near the stone center;
-  // our own board renders it at ~0.26 of the grid spacing tall.
-  const inkIsDark = player === "white";
-  let best: { value: number; score: number } | null = null;
-  for (const scale of [0.9, 1, 1.15, 1.3]) {
-    const glyphHeight = spacing * 0.26 * scale;
-    const halfWidth = glyphHeight * (5 / 7) / 2;
-    const single = matchDigitTemplate(image, x, y, halfWidth, glyphHeight, inkIsDark);
-    if (!best || single.score > best.score) best = { value: Number(single.digit), score: single.score };
-    // two-digit numbers: probe the left and right glyph boxes
-    const offset = glyphHeight * 0.62;
-    const left = matchDigitTemplate(image, x - offset, y, halfWidth, glyphHeight, inkIsDark);
-    const right = matchDigitTemplate(image, x + offset, y, halfWidth, glyphHeight, inkIsDark);
-    if (left.score > 0.72 && right.score > 0.72) {
-      const value = Number(left.digit + right.digit);
-      const score = (left.score + right.score) / 2;
-      if (!best || score > best.score) best = { value, score };
+interface MoveNumberCandidate { value: number; score: number }
+
+const matchMoveNumbers = (image: SampledImage, x: number, y: number, spacing: number, player: Player, maxNumber: number, forceFamily = -1): MoveNumberCandidate[] => {
+  const dbg = (globalThis as typeof globalThis & { __BANBU_IMAGE_RECOGNITION_DEBUG__?: boolean }).__BANBU_IMAGE_RECOGNITION_DEBUG__;
+  const logDigit = (value: number | null, score: number, margin: number, scale = 1, why = "ok", cands: MoveNumberCandidate[] = []) => {
+    const record = { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, player, value, score: Math.round(score * 1000) / 1000, margin: Math.round(margin * 1000) / 1000, scale, why, cands, family: moveNumberFamilyVote && moveNumberFamilyVote.decided >= 0 ? MOVE_NUMBER_FAMILIES[moveNumberFamilyVote.decided] : null, spacing: Math.round(spacing * 10) / 10 };
+    if (dbg) console.info("[banbu-image-digit]", JSON.stringify(record));
+    const trace = (globalThis as typeof globalThis & { __BANBU_MOVEORDER_TRACE__?: unknown[] }).__BANBU_MOVEORDER_TRACE__;
+    if (Array.isArray(trace)) trace.push(record);
+  };
+  const fontPx = MOVE_NUMBER_FONT_RATIO * spacing;
+  if (fontPx < 3.2 || maxNumber < 1) { logDigit(null, 0, 0, 1, "small"); return []; } // glyph would be unresolvable
+  const sup = MOVE_NUMBER_SUP;
+  const { gray, width: IW, height: IH } = image;
+  const half = Math.max(4, Math.ceil(spacing * 0.55) + 2);
+  const gx0 = Math.round(x) - half, gy0 = Math.round(y) - half;
+  const gw = half * 2 + 1, sw = gw * sup;
+  const g = new Float32Array(sw * sw);
+  const sign = player === "white" ? -1 : 1; // flip so that the number ink is always the bright side
+  for (let sy = 0; sy < sw; sy += 1) {
+    const fy = gy0 + sy / sup;
+    const py = Math.min(IH - 1.001, Math.max(0, fy)), py0 = Math.floor(py), wy = py - py0;
+    for (let sx = 0; sx < sw; sx += 1) {
+      const fx = gx0 + sx / sup;
+      const px = Math.min(IW - 1.001, Math.max(0, fx)), px0 = Math.floor(px), wx = px - px0;
+      const a = gray[py0 * IW + px0], b = gray[py0 * IW + px0 + 1], c = gray[(py0 + 1) * IW + px0], d = gray[(py0 + 1) * IW + px0 + 1];
+      g[sy * sw + sx] = sign * (a * (1 - wx) * (1 - wy) + b * wx * (1 - wy) + c * (1 - wx) * wy + d * wx * wy);
     }
   }
-  if (best && best.score >= 0.76 && best.value > 0) return best.value;
-  return null;
+  // Disc level from the annulus (never carries ink), ink peak from the centre.
+  const cxs = (x - gx0) * sup + 0.5, cys = (y - gy0) * sup + 0.5;
+  const rAnnIn = 0.28 * spacing * sup, rAnnOut = 0.46 * spacing * sup, rIn = 0.26 * spacing * sup;
+  const ann: number[] = [], inner: number[] = [];
+  for (let sy = 0; sy < sw; sy += 1) {
+    for (let sx = 0; sx < sw; sx += 1) {
+      const dxs = sx + 0.5 - cxs, dys = sy + 0.5 - cys, r2 = dxs * dxs + dys * dys;
+      if (r2 <= rAnnOut * rAnnOut) {
+        if (r2 >= rAnnIn * rAnnIn) ann.push(g[sy * sw + sx]);
+        else if (r2 <= rIn * rIn) inner.push(g[sy * sw + sx]);
+      }
+    }
+  }
+  if (ann.length < 150 || inner.length < 30) { logDigit(null, 0, 0, 1, "edge"); return []; }
+  ann.sort((a, b) => a - b);
+  inner.sort((a, b) => a - b);
+  const disc = ann[Math.floor(ann.length * 0.5)];
+  const peak = inner[Math.min(inner.length - 1, Math.floor(inner.length * 0.98))];
+  const spread = peak - disc;
+  if (spread < 32) { logDigit(null, 0, 0, 1, "flat"); return []; } // no number ink on this stone
+  // Tiny glyphs lose their AA edges to the threshold, which biases the ink
+  // centroid; cut deeper into the spread only when the glyph is big enough.
+  const inkThr = disc + (MOVE_NUMBER_FONT_RATIO * spacing < 9 ? Math.max(16, spread * 0.42) : Math.max(20, spread * 0.5));
+  const rCent = 0.34 * spacing * sup;
+  // Outer (AA-inclusive) ink extent must be measured with the SAME basis as
+  // the template's alpha>0 bbox, or the calibrated scale biases ~8% small.
+  const inkOuter = disc + Math.max(10, spread * 0.25);
+  let inkCount = 0, inkX = 0, inkY = 0, inkMinY = 1e9, inkMaxY = -1e9, outMinY = 1e9, outMaxY = -1e9, outCount = 0;
+  for (let sy = 0; sy < sw; sy += 1) {
+    const dys = sy + 0.5 - cys;
+    if (Math.abs(dys) > rCent) continue;
+    for (let sx = 0; sx < sw; sx += 1) {
+      const dxs = sx + 0.5 - cxs;
+      if (dxs * dxs + dys * dys > rCent * rCent) continue;
+      const v = g[sy * sw + sx];
+      if (v > inkThr) {
+        inkCount += 1; inkX += sx; inkY += sy;
+        if (sy < inkMinY) inkMinY = sy;
+        if (sy > inkMaxY) inkMaxY = sy;
+      }
+      if (v > inkOuter) {
+        outCount += 1;
+        if (sy < outMinY) outMinY = sy;
+        if (sy > outMaxY) outMaxY = sy;
+      }
+    }
+  }
+  const maxInk = 0.3 * Math.PI * rCent * rCent;
+  if (inkCount < 10 || inkCount > maxInk) { logDigit(null, 0, 0, 1, "ink"); return []; }
+  const inkCx = inkX / inkCount, inkCy = inkY / inkCount;
+  if (Math.abs(inkCx - cxs) > 0.24 * spacing * sup || Math.abs(inkCy - cys) > 0.26 * spacing * sup) { logDigit(null, 0, 0, 1, "shift"); return []; }
+  // The fallback grid misjudges spacing by a few percent toward the board
+  // edge, and a 3% size error costs the true font more score than a thicker
+  // fallback face at nominal size. Measure the digit's own cap height and,
+  // per family, divide by that family's rendered cap ratio (self-calibrated,
+  // no font-specific constants) to get the scale its templates need.
+  const capH = (outCount >= 8 ? outMaxY - outMinY + 1 : inkMaxY - inkMinY + 1) / sup;
+  const capRatioOf = (familyIndex: number): number => {
+    const key = `${MOVE_NUMBER_FAMILIES[familyIndex]}|${fontPx.toFixed(2)}`;
+    let ratio = moveNumberCapRatioCache.get(key);
+    if (ratio === undefined) {
+      const t = renderMoveNumberTemplate("8", fontPx, false, MOVE_NUMBER_FAMILIES[familyIndex]);
+      ratio = t ? t.bh / (fontPx * sup) : 0.71; // alpha>0 full height, same basis as the outer stone bbox
+      if (moveNumberCapRatioCache.size > 200) moveNumberCapRatioCache.clear();
+      moveNumberCapRatioCache.set(key, ratio);
+    }
+    return ratio;
+  };
+  const scaleFor = (familyIndex: number) => Math.min(1.9, Math.max(0.7, capH / capRatioOf(familyIndex) / fontPx));
+  // Integral images over the sign-flipped sup window for O(1) box sums.
+  const integral = new Float64Array((sw + 1) * (sw + 1));
+  const integralSq = new Float64Array((sw + 1) * (sw + 1));
+  for (let sy = 0; sy < sw; sy += 1) {
+    let rowSum = 0, rowSq = 0;
+    for (let sx = 0; sx < sw; sx += 1) {
+      const v = g[sy * sw + sx];
+      rowSum += v; rowSq += v * v;
+      const up = sy * (sw + 1), here = (sy + 1) * (sw + 1) + sx + 1;
+      integral[here] = integral[up + sx + 1] + rowSum;
+      integralSq[here] = integralSq[up + sx + 1] + rowSq;
+    }
+  }
+  const scoreAt = (t: MoveNumberTemplate, dx: number, dy: number): number => {
+    const ix0 = Math.round(inkCx + dx) - t.icx, iy0 = Math.round(inkCy + dy) - t.icy;
+    const x1c = Math.min(sw, ix0 + t.w), y1c = Math.min(sw, iy0 + t.h);
+    const x0c = Math.max(0, ix0), y0c = Math.max(0, iy0);
+    if (x1c <= x0c || y1c <= y0c) return 0;
+    const count = (x1c - x0c) * (y1c - y0c);
+    if (count < t.w * t.h * 0.6) return 0;
+    const A = y0c * (sw + 1) + x0c, B = y0c * (sw + 1) + x1c, C = y1c * (sw + 1) + x0c, D = y1c * (sw + 1) + x1c;
+    const sum = integral[D] - integral[C] - integral[B] + integral[A];
+    const sq = integralSq[D] - integralSq[C] - integralSq[B] + integralSq[A];
+    const meanW = sum / count;
+    const varW = sq / count - meanW * meanW;
+    if (varW < 4) return 0;
+    let dot = 0;
+    // t.inkX/t.inkY hold each ink pixel's position inside the template bitmap,
+    // precomputed at build time: the previous `idx % t.w` / `Math.floor(idx / t.w)`
+    // pair cost a division per ink pixel on the hottest loop in the pipeline.
+    const inkCount = t.ink.length;
+    const inkX = t.inkX;
+    const inkY = t.inkY;
+    for (let i = 0; i < inkCount; i += 1) {
+      const px = ix0 + inkX[i];
+      if (px < 0 || px >= sw) continue;
+      const py = iy0 + inkY[i];
+      if (py < 0 || py >= sw) continue;
+      dot += g[py * sw + px];
+    }
+    dot -= t.mean * sum;
+    return dot / (t.norm * Math.sqrt(varW * count));
+  };
+  const small = fontPx < 9; // centroid noise grows as glyphs shrink
+  const limit = Math.min(maxNumber, 225);
+  const offsets = small && limit <= 40 ? [-6, -4, -2, 0, 2, 4, 6] : [-4, -2, 0, 2, 4];
+  const offsetsFine: number[] = [];
+  for (let o = small ? -3 : -6; o <= (small ? 3 : 6); o += 1) offsetsFine.push(o);
+  const byValue = new Map<number, number>();
+  const merge = (value: number, score: number) => { if (score > (byValue.get(value) ?? 0)) byValue.set(value, score); };
+  const vote = moveNumberFamilyVote ?? (moveNumberFamilyVote = { scores: MOVE_NUMBER_FAMILIES.map(() => 0), decided: -1, samples: 0 });
+  let bestScale = 1;
+  // One coarse+fine sweep at a fixed (family, scale, bold); returns its best
+  // score. `sink` merges winners into byValue — measurement passes (family
+  // voting) must NOT pollute the candidate pool with wrong-family values.
+  const runSweep = (familyIndex: number, scale: number, bold: boolean, sink: boolean): number => {
+    const size = fontPx * scale;
+    const family = MOVE_NUMBER_FAMILIES[familyIndex];
+    let sweepBest = 0;
+    let confidentValue = 0;
+    const ranked: { value: number; score: number }[] = [];
+    for (let value = 1; value <= limit; value += 1) {
+      const t = renderMoveNumberTemplate(String(value), size, bold, family);
+      if (!t) continue;
+      let sBest = 0;
+      for (const dy of offsets) for (const dx of offsets) {
+        const s = scoreAt(t, dx, dy);
+        if (s > sBest) sBest = s;
+      }
+      ranked.push({ value, score: sBest });
+      if (sBest >= 0.85) { // strong unambiguous match: accept immediately
+        if (sink) merge(value, sBest);
+        confidentValue = value; bestScale = scale; sweepBest = sBest;
+        break;
+      }
+    }
+    if (!confidentValue) {
+      ranked.sort((a, b) => b.score - a.score);
+      for (const cand of ranked.slice(0, 6)) {
+        const t = renderMoveNumberTemplate(String(cand.value), size, bold, family);
+        if (!t) continue;
+        let sBest = cand.score;
+        for (const dy of offsetsFine) for (const dx of offsetsFine) {
+          const s = scoreAt(t, dx, dy);
+          if (s > sBest) sBest = s;
+        }
+        if (sink) merge(cand.value, sBest);
+        if (sBest > sweepBest) { sweepBest = sBest; bestScale = scale; }
+        if (sweepBest >= 0.85) break;
+      }
+    }
+    return sweepBest;
+  };
+  // tryFamily sweeps the NOMINAL scale first (v3-proven: the fallback-grid
+  // spacing error is only a few percent, and 1.0 is the one size guaranteed
+  // present in the slider), then the cap-height-calibrated size as a rescue
+  // for genuinely mis-sized shots. Calibrated-only sweeps were the source of
+  // lookalike-digit swaps (5↔6, 57↔75) on rescaled screenshots.
+  const tryFamily = (f: number, sink: boolean): number => {
+    let s = runSweep(f, 1, false, sink);
+    const measured = scaleFor(f);
+    if (s < 0.8 && Math.abs(measured - 1) > 0.02) {
+      const s2 = runSweep(f, measured, false, sink);
+      if (s2 > s) s = s2;
+    }
+    return s;
+  };
+  // Gated escalation: family 0 (the app's own face) is tried FIRST and alone.
+  // Same-device screenshots — the overwhelming majority — resolve there and
+  // never pay for the family machinery. Only weak stones escalate to the
+  // cross-device vote, and once the image locks a family it goes first.
+  // FAST_ACCEPT sits above rescaling noise but below what a SIMILAR wrong
+  // face reaches: the same-device exact match scores 0.75+ at nominal size,
+  // while a wrong-but-similar face plateaus around 0.65.
+  const FAST_ACCEPT = 0.7;
+  let chosen = forceFamily >= 0 ? forceFamily : vote.decided >= 0 ? vote.decided : 0;
+  let overall = tryFamily(chosen, true);
+  if (chosen !== 0) {
+    // Belt and braces: even with a locked family, family 0 (the app's own
+    // stack) is always tried too — if the lock was wrong, the exact face
+    // still rescues the stone; if the lock is right, family 0 simply loses.
+    const s0 = tryFamily(0, true);
+    if (s0 > overall) { overall = s0; chosen = 0; }
+  }
+  if (overall < FAST_ACCEPT && vote.decided < 0) {
+    // Full measurement sweep per family (no sinking, so wrong families never
+    // enter the candidate pool). Probing only family-0's own candidate values
+    // fails when the true face is very different — family 0's top values then
+    // are not the stone's real number, and the true face cannot show its
+    // strength on the wrong strings. Voting runs on at most a few stones, so
+    // the full sweeps stay cheap where it matters.
+    const voteSweep = (f: number): number => {
+      let s = runSweep(f, 1, false, false);
+      const measured = scaleFor(f);
+      if (s < 0.8 && Math.abs(measured - 1) > 0.02) {
+        const s2 = runSweep(f, measured, false, false);
+        if (s2 > s) s = s2;
+      }
+      return s;
+    };
+    const perStone = MOVE_NUMBER_FAMILIES.map((_, f) => (f === 0 ? overall : voteSweep(f)));
+    for (let f = 0; f < perStone.length; f += 1) vote.scores[f] += perStone[f]; // SUM: one lucky glyph must not win
+    vote.samples += 1;
+    if (vote.samples >= Math.min(MOVE_NUMBER_VOTE_SAMPLES, limit)) {
+      let best = 0;
+      for (let i = 1; i < vote.scores.length; i += 1) if (vote.scores[i] > vote.scores[best]) best = i;
+      // A wrong-but-similar face beats the exact one by ≤0.1 per stone even
+      // on rescaled same-device shots; a genuinely different device's face
+      // beats the foreign stack by 0.25+. Demand the strict margin to
+      // dethrone family 0 — the same-device default.
+      vote.decided = best === 0 || vote.scores[best] >= vote.scores[0] + 0.17 * vote.samples ? best : 0;
+      if (Array.isArray((globalThis as typeof globalThis & { __BANBU_MOVEORDER_TRACE__?: unknown[] }).__BANBU_MOVEORDER_TRACE__)) {
+        (globalThis as typeof globalThis & { __BANBU_MOVEORDER_TRACE__?: unknown[] }).__BANBU_MOVEORDER_TRACE__?.push({ why: "vote", samples: vote.samples, totals: vote.scores.map((s) => Math.round(s * 1000) / 1000), decided: MOVE_NUMBER_FAMILIES[vote.decided] });
+      }
+    }
+    // Voting stones NEVER sink a non-family-0 winner: pre-lock merges were
+    // the source of same-device contamination. The post-pass in
+    // recognizeBoardImage re-scores early stones once the lock exists.
+  }
+  // Stage 2: wider size fallback — mirrors the 0.7–1.8 序号大小 slider.
+  if (overall < 0.55) {
+    const m = scaleFor(chosen);
+    for (const scale of [m * 0.94, m * 1.06, 1.25, 0.75, 1.5, 1.8, 0.9, 1.1, 1.4]) {
+      const s = runSweep(chosen, scale, false, true);
+      if (s > overall) overall = s;
+      if (overall >= 0.55) break;
+    }
+  }
+  // Stage 3: escape hatch — this stone disagrees with the image's chosen family.
+  if (overall < 0.45 && vote.decided >= 0) {
+    for (let f = 0; f < MOVE_NUMBER_FAMILIES.length; f += 1) {
+      if (f === vote.decided) continue;
+      const s = runSweep(f, scaleFor(f), false, true);
+      if (s > overall) overall = s;
+      if (overall >= 0.55) break;
+    }
+  }
+  // Stage 4: the newest move is tinted red with a .8px stroke — retry slightly bolder.
+  if (overall < (small ? 0.3 : 0.35)) {
+    const s = runSweep(chosen, bestScale, true, true);
+    if (s > overall) overall = s;
+  }
+  const cands = [...byValue]
+    .map(([value, score]) => ({ value, score }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
+  const strong = cands.filter((c) => c.score >= 0.4);
+  const top = cands[0];
+  logDigit(top ? top.value : null, top ? top.score : 0, top && cands[1] ? top.score - cands[1].score : (top ? 1 : 0), bestScale, "ok", strong);
+  return strong;
+};
+
+/**
+ * Optimal one-to-one stone→number assignment (Hungarian algorithm on the
+ * cost matrix -score, missing candidates forbidden). Per-stone template
+ * matching is already precise, but the app only rebuilds a move order when
+ * the numbers form the complete sequence 1..N; a single ambiguous stone
+ * (5 vs 6 differ by a two-pixel flag) would veto an otherwise perfect image.
+ * The uniqueness constraint lets strongly matched stones push their ambiguous
+ * neighbours onto their correct second choices. Returns the number per stone
+ * (index-aligned with `perStone`), or null when no perfect assignment exists
+ * or its quality floors are not met.
+ */
+const assignMoveNumbers = (perStone: MoveNumberCandidate[][], players: Player[], minScore: number, meanScore: number): number[] | null => {
+  const n = perStone.length;
+  if (!n) return null;
+  // Records always start with black, so odd numbers are black stones and even
+  // numbers are white; parity-killing wrong edges removes an entire class of
+  // cyclic mis-assignments from the joint solve.
+  const maps = perStone.map((cands, i) => new Map(cands.filter((c) => (c.value % 2 === 1) === (players[i] === "black")).map((c) => [c.value, c.score] as const)));
+  const INF = 1e6;
+  const u = new Float64Array(n + 1);
+  const v = new Float64Array(n + 1);
+  const p = new Int32Array(n + 1); // p[j] = stone row matched to number j
+  const way = new Int32Array(n + 1);
+  for (let i = 1; i <= n; i += 1) {
+    p[0] = i;
+    let j0 = 0;
+    const minv = new Float64Array(n + 1).fill(Infinity);
+    const used = new Uint8Array(n + 1);
+    let failed = false;
+    for (;;) {
+      used[j0] = 1;
+      const i0 = p[j0];
+      let delta = Infinity, j1 = -1;
+      for (let j = 1; j <= n; j += 1) {
+        if (used[j]) continue;
+        const s = maps[i0 - 1].get(j);
+        const cur = (s === undefined ? INF : -s) - u[i0] - v[j];
+        if (cur < minv[j]) { minv[j] = cur; way[j] = j0; }
+        if (minv[j] < delta) { delta = minv[j]; j1 = j; }
+      }
+      if (!Number.isFinite(delta)) { failed = true; break; } // no augmenting path without forbidden edges
+      for (let j = 0; j <= n; j += 1) {
+        if (used[j]) { u[p[j]] += delta; v[j] -= delta; }
+        else minv[j] -= delta;
+      }
+      j0 = j1;
+      if (p[j0] === 0) break;
+    }
+    if (failed) return null;
+    for (;;) {
+      const j1 = way[j0];
+      p[j0] = p[j1];
+      j0 = j1;
+      if (j0 === 0) break;
+    }
+  }
+  const assign = new Array<number>(n + 1).fill(0);
+  for (let j = 1; j <= n; j += 1) assign[p[j]] = j;
+  let total = 0, lowest = Infinity;
+  for (let i = 1; i <= n; i += 1) {
+    const s = maps[i - 1].get(assign[i]);
+    if (s === undefined) return null;
+    total += s;
+    if (s < lowest) lowest = s;
+  }
+  if (lowest < minScore || total / n < meanScore) return null;
+  return assign.slice(1);
 };
 
 /**
@@ -1888,15 +2616,86 @@ const detectMoveNumber = (image: SampledImage, x: number, y: number, spacing: nu
  * a position, not a move record: analysis labels (green/blue points) never
  * become invented moves, and legible move numbers are reported separately.
  */
-export const recognizeBoardImage = async (file: File, boardSize = 15): Promise<ImageRecognitionResult> => {
+// ---------------------------------------------------------------------------
+// 多核识谱（用户 09-14：把手机的处理器与内存用起来）
+//
+// 识别管线里真正吃时间的几段都是「图像 + 参数 → 结果」的纯函数：
+//   1) 全局线梳拟合（行/列各一次）
+//   2) 候选网格窗口评分（36×36 = 1296 次 scoreGridWindow，最大头 42%）
+//   3) 局部线梳拟合（锁定一轴后重拟合另一轴）
+//   4) 每个交点的特征分析（225 格）
+// 这些批次彼此独立，可以分片到多个 worker 并行；而**顺序归约**（谁最优、
+// 谁先达分、rejected 台账顺序）全部留在主线程按原顺序重放，所以开不开多核
+// 的识别结果逐位相同——门禁 qa/recognition-parallel-parity.mjs 在语料上
+// 逐张对照串行/并行两种模式的完整输出。
+//
+// 序号匹配（matchMoveNumbers）**不并行**：它依赖模块级的字体族投票校准状态
+// （moveNumberFamilyVote），且模板渲染需要 canvas——worker 里 document 不存在，
+// 字体栈解析结果可能不同，而那正是识谱里最脆的一环。它留在主线程。
+// ---------------------------------------------------------------------------
+export interface GridWindowQuery { originX: number; originY: number; spacingX: number; spacingY: number; boardSize: number }
+export interface CombQuery {
+  alongX: boolean;
+  innerStart: number;
+  innerEnd?: number;
+  boardSize: number;
+  limits?: { pool: number; seeds: number; output: number };
+  spacingRange?: { minimum: number; maximum?: number };
+}
+export interface CellQuery { x: number; y: number; spacing: number }
+export interface MeshQuery {
+  originX: number;
+  originY: number;
+  spacingX: number;
+  spacingY: number;
+  boardSize: number;
+  sampleStep?: number;
+}
+
+/** 批处理执行器。主线程直算与 worker 池是同一种形状，调用点只有一条代码
+ * 路径；两种实现的返回值必须逐位一致（否则并行就成了另一种识别器）。 */
+export interface RecognitionAccelerator {
+  scoreWindows(queries: readonly GridWindowQuery[]): Promise<Array<GridWindowQuality | null>>;
+  meshSupports(queries: readonly MeshQuery[]): Promise<number[]>;
+  fitCombs(queries: readonly CombQuery[]): Promise<CombFit[][]>;
+  cellFeatures(queries: readonly CellQuery[]): Promise<IntersectionFeatures[]>;
+  dispose(): void;
+}
+
+/** 单线程直算：逐条调用原函数、按原顺序返回，等价于接入加速器之前的代码。
+ * 多核不可用（老 WebView、worker 构造失败、分片超时）时也回落用它。 */
+export const localAccelerator = (image: SampledImage): RecognitionAccelerator => ({
+  scoreWindows: async (queries) => queries.map(
+    (q) => scoreGridWindow(image, q.originX, q.originY, q.spacingX, q.spacingY, q.boardSize),
+  ),
+  meshSupports: async (queries) => queries.map(
+    (q) => intersectionMesh(image, q.originX, q.originY, q.spacingX, q.spacingY, q.boardSize, q.sampleStep ?? 1).support,
+  ),
+  fitCombs: async (queries) => queries.map(
+    (q) => fitCombSeries(
+      collectLineScores(image.gray, image.width, image.height, q.alongX, q.innerStart, q.innerEnd),
+      q.boardSize,
+      q.limits,
+      q.spacingRange,
+    ),
+  ),
+  cellFeatures: async (queries) => queries.map((q) => analyzeIntersection(image, q.x, q.y, q.spacing)),
+  dispose: () => { /* 无资源可释放 */ },
+});
+
+export const recognizeBoardImage = async (file: File, boardSize = 15, opts: { skipMoveOrder?: boolean; roi?: BoardRoi; parallel?: boolean } = {}): Promise<ImageRecognitionResult> => {
   if (!isSupportedBoardSize(boardSize)) throw new Error("棋盘尺寸必须在 5–25 路之间");
   const loaded = await loadRasterImage(file);
   const { image } = loaded;
+  // 声明在 try 之外：无论识别成功还是抛错，finally 都要把 worker 池收掉。
+  let accelerator: RecognitionAccelerator | null = null;
   try {
     const sourceWidth = image.width;
     const sourceHeight = image.height;
     if (!sourceWidth || !sourceHeight) throw new Error("图片没有有效尺寸");
 
+    // Keep the whole frame (no crop): the grid detector locates the board by
+    // its lines wherever it sits. Long side is capped for memory.
     // Keep the whole frame (no crop): the grid detector locates the board by
     // its lines wherever it sits. Long side is capped for memory.
     const scale = Math.min(1, 1600 / Math.max(sourceWidth, sourceHeight));
@@ -1909,20 +2708,109 @@ export const recognizeBoardImage = async (file: File, boardSize = 15): Promise<I
     if (!ctx) throw new Error("当前浏览器不支持图片识谱");
     ctx.drawImage(image, 0, 0, sourceWidth, sourceHeight, 0, 0, canvasWidth, canvasHeight);
     const data = ctx.getImageData(0, 0, canvasWidth, canvasHeight).data;
-    const gray = new Float32Array(canvasWidth * canvasHeight);
-    for (let pixel = 0; pixel < gray.length; pixel += 1) {
-      gray[pixel] = luminance(data[pixel * 4], data[pixel * 4 + 1], data[pixel * 4 + 2]);
-    }
-    const sampled: SampledImage = { data, width: canvasWidth, height: canvasHeight, gray };
+    const sampled = createSampledImage(data, canvasWidth, canvasHeight);
+    const gray = sampled.gray;
 
-    let grid = detectGrid(sampled, boardSize);
+    // 多核加速（设置「可选增强功能 · 识谱多核加速」）：按设备核心数与可用
+    // 内存起一个 worker 池并行算那几段纯函数批次。任何一步失败都静默回落
+    // 单线程直算——加速是优化，绝不能变成识别失败的原因。
+    if (opts.parallel) {
+      try {
+        const { createParallelAccelerator } = await import("./features/recognition/recognition-accelerator");
+        accelerator = await createParallelAccelerator(sampled);
+      } catch (error) {
+        console.warn("[banbu-image-accelerator] 多核识谱不可用，回落单线程", error);
+        accelerator = null;
+      }
+    }
+    const acc = accelerator ?? localAccelerator(sampled);
+
+    let grid = await detectGrid(sampled, boardSize, opts.roi, acc);
     // Fallback: legacy fixed-inset geometry, still better than failing hard.
+    // 用户框选（ROI）存在时以框为中心生成网格——整屏截图（含状态栏/UI）在
+    // 网格探测失败时，标准边距会落在页面中间的错误位置，框选直接救回。
     const fallback = !grid;
     if (!grid) {
-      const inset = canvasWidth * 0.055;
-      const span = canvasWidth - inset * 2;
-      const spacing = span / (boardSize - 1);
-      grid = { originX: inset, originY: canvasHeight * 0.5 - span / 2, spacingX: spacing, spacingY: spacing, quality: 0.5 };
+      if (opts.roi && opts.roi.w > 0 && opts.roi.h > 0) {
+        const roiW = opts.roi.w * canvasWidth, roiH = opts.roi.h * canvasHeight;
+        const side = Math.max(32, Math.min(roiW, roiH));
+        const span = side * 0.94;
+        const centerX = (opts.roi.x + opts.roi.w / 2) * canvasWidth;
+        const centerY = (opts.roi.y + opts.roi.h / 2) * canvasHeight;
+        const spacing = span / (boardSize - 1);
+        grid = { originX: centerX - span / 2, originY: centerY - span / 2, spacingX: spacing, spacingY: spacing, quality: 0.45 };
+      } else {
+        const inset = canvasWidth * 0.055;
+        const span = canvasWidth - inset * 2;
+        const spacing = span / (boardSize - 1);
+        grid = { originX: inset, originY: canvasHeight * 0.5 - span / 2, spacingX: spacing, spacingY: spacing, quality: 0.5 };
+      }
+    }
+    // 相位校正（2026-09-11）：无坐标/弱外框的棋盘，15 线梳齿拟合可能整体偏移
+    // 一格，识别出的子整体错位一行。用户实测（2026-09-11 拍板）：识别出的子
+    // 比真实位置「整体上移一格」——即拟合网格比真实棋盘高一格，修正是把
+    // 网格下移一格（dy=+1，识别标签 +1）。
+    // 证据模式（repro.jpg 实测）：拟合线 0 空白（棋盘上缘留白）、真实顶线
+    // 落在拟合线 1 处且为最强线；下半线常因 2~3px 累积漂移测不到证据
+    // （前置度 frontLoad≤12），并非图里真的缺线。
+    // 正则性门控：棋盘内部线条强度应均匀（std/mean<0.25）；「顶线外侧有
+    // 一条超强线」且内部参差（user-crop-test 实测，34%）是 UI 分隔线诱饵——
+    // 修正前网格才对，不得校正（dy=-1/两向 dx 方向零实证已被移除）。
+    if (!fallback && grid) {
+      const strengthAt = (fixed: number, alongX: boolean): number => {
+        const span = alongX ? canvasWidth : canvasHeight;
+        const inner = alongX ? canvasHeight : canvasWidth;
+        const f = Math.round(fixed);
+        if (f <= 0 || f >= span - 1) return 0;
+        let hits = 0, samples = 0;
+        for (let i = 1; i < inner - 2; i += 1) {
+          const center = alongX ? gray[f * canvasWidth + i] : gray[i * canvasWidth + f];
+          const a = alongX ? gray[(f - 1) * canvasWidth + i] : gray[i * canvasWidth + f - 1];
+          const b = alongX ? gray[(f + 1) * canvasWidth + i] : gray[i * canvasWidth + f + 1];
+          const contrast = Math.abs(center - (a + b) / 2);
+          const nd = Math.abs(a - b);
+          if (contrast > 10 && nd < 55 && contrast > nd * 0.22) hits += 1;
+          samples += 1;
+        }
+        return samples ? hits / samples : 0;
+      };
+      let dy = 0;
+      const oy = grid.originY, sy = grid.spacingY;
+      const top = strengthAt(oy, true);
+      const second = strengthAt(oy + sy, true);
+      const below = strengthAt(oy + 15 * sy, true);
+      let frontLoadRows = 0;
+      const rowVals: number[] = [];
+      for (let k = 1; k <= 14; k += 1) {
+        const v = strengthAt(oy + k * sy, true);
+        rowVals.push(v);
+        if (v > second * 0.4) frontLoadRows = k;
+      }
+      const interior = rowVals.filter((v) => v > second * 0.4);
+      let uniform = false;
+      if (interior.length >= 4) {
+        const mean = interior.reduce((s, v) => s + v, 0) / interior.length;
+        const std = Math.sqrt(interior.reduce((s, v) => s + (v - mean) * (v - mean), 0) / interior.length);
+        uniform = mean > 0 && std / mean < 0.25;
+      }
+      // A shift is only meaningful while the corrected board still lies inside
+      // the image. An edge-crowded top row (stones sitting on the border line
+      // hide it, so `top` measures weak while the next line down measures
+      // strong) made this fire on a board whose fitted origin was already
+      // correct: the shift pushed the bottom line past the frame — originY
+      // 113.7 with spacing 57.6 on a 916px image, i.e. the whole position read
+      // exactly one row low. Requiring the shifted window to fit keeps the
+      // genuine case the correction was built for (a real top margin, where the
+      // board still ends on its own bottom line after the shift).
+      const shiftedBottom = oy + boardSize * sy;
+      const shiftFits = shiftedBottom <= canvasHeight - 1;
+      if (uniform && shiftFits && top < second * 0.6 && second > 0.08 && (below > second * 0.6 || frontLoadRows <= 12)) dy = 1;
+      if (dy) {
+        grid = { ...grid, originY: oy + dy * sy, quality: Math.min(0.65, grid.quality + 0.06) };
+        if ((globalThis as typeof globalThis & { __BANBU_IMAGE_RECOGNITION_DEBUG__?: boolean }).__BANBU_IMAGE_RECOGNITION_DEBUG__) {
+          console.info("[banbu-image-phase-fix]", JSON.stringify({ dy, strengths: { top, second, below }, frontLoadRows, uniform }));
+        }
+      }
     }
     if ((globalThis as typeof globalThis & { __BANBU_IMAGE_RECOGNITION_DEBUG__?: boolean }).__BANBU_IMAGE_RECOGNITION_DEBUG__) {
       console.info("[banbu-image-grid]", JSON.stringify({
@@ -1934,18 +2822,45 @@ export const recognizeBoardImage = async (file: File, boardSize = 15): Promise<I
       }));
     }
     const board: Cell[][] = Array.from({ length: boardSize }, () => Array<Cell>(boardSize).fill(null));
-    const numberedMoves: Array<Position & { player: Player; number: number }> = [];
+    let numberedMoves: Array<Position & { player: Player; number: number }> = [];
+    const numberCandidates: MoveNumberCandidate[][] = [];
+    const numberStones: Array<{ row: number; col: number; player: Player }> = [];
     let candidates: Array<{ row: number; col: number; x: number; y: number; features: IntersectionFeatures }> = [];
     let ignoredColoredMarkers = 0;
+    let hollowLikeCount = 0;
     const localSpacing = Math.min(grid.spacingX, grid.spacingY);
     const debugPoints: Array<Record<string, unknown>> = [];
+    // Every intersection's features, kept so the hollow-stone rescue below can
+    // look at a cell's neighbours.
+    const featureGrid: Array<Array<{ features: IntersectionFeatures; x: number; y: number } | null>> = [];
 
+    // 逐格特征分析（225 格）彼此独立，攒成一批交给加速器并行；填格仍按原来的
+    // 逐行逐列顺序重放，所以 featureGrid / candidates / debugPoints 的顺序不变。
+    const cellQueries: CellQuery[] = [];
     for (let row = 0; row < boardSize; row += 1) {
       for (let col = 0; col < boardSize; col += 1) {
         const x = grid.originX + col * grid.spacingX;
         const y = grid.originY + row * grid.spacingY;
         if (x < 3 || y < 3 || x > canvasWidth - 4 || y > canvasHeight - 4) continue;
-        const features = analyzeIntersection(sampled, x, y, localSpacing);
+        cellQueries.push({ x, y, spacing: localSpacing });
+      }
+    }
+    const cellFeatures = await acc.cellFeatures(cellQueries);
+    let cellCursor = 0;
+    for (let row = 0; row < boardSize; row += 1) {
+      featureGrid.push([]);
+      for (let col = 0; col < boardSize; col += 1) {
+        const x = grid.originX + col * grid.spacingX;
+        const y = grid.originY + row * grid.spacingY;
+        if (x < 3 || y < 3 || x > canvasWidth - 4 || y > canvasHeight - 4) { featureGrid[row].push(null); continue; }
+        const features = cellFeatures[cellCursor];
+        cellCursor += 1;
+        featureGrid[row].push({ features, x, y });
+        // Printed-diagram signature: a thin dark outline around a paper-lit
+        // middle with a mostly-light disc. Counted here because the balance
+        // filter below must not run on such a board (see there).
+        if (features.middleShare <= 0.26 && features.outerShare >= 0.36 && features.ringShare >= 0.17
+          && features.diagonalShare >= 0.2 && features.darkDiscShare < 0.5) hollowLikeCount += 1;
         if (features.stoneLike) candidates.push({ row, col, x, y, features });
         else if (features.markerLike) ignoredColoredMarkers += 1;
         debugPoints.push({
@@ -1977,29 +2892,88 @@ export const recognizeBoardImage = async (file: File, boardSize = 15): Promise<I
       console.info("[banbu-image-points]", JSON.stringify(debugPoints));
     }
 
+    // Hollow-stone rescue, gated on neighbours. A printed white stone is a thin
+    // dark ring around a paper-lit middle, and the same board measures that ring
+    // a little lower in one capture than in another: a phone capture of a book
+    // diagram lost F5/E4/I2 this way while the desktop copy of the same board
+    // kept all 43 stones, two of the lost ones white. Granting the slack to
+    // every cell costs false positives wherever a UI page draws circles
+    // (measured 9 extra "stones" on a screenshot asset), so it is granted only
+    // inside a stone cluster — a cell with at least two occupied neighbours,
+    // which is what a diagram stone nearly always has and a stray page circle
+    // does not. Two, not three: on a softened capture the two rescued white
+    // stones measured only two occupied neighbours because the surrounding
+    // cells had also weakened. Off-board neighbours do not count, or an edge
+    // would supply them for free.
+    const occupiedKeys = new Set(candidates.map((candidate) => `${candidate.row},${candidate.col}`));
+    for (let row = 0; row < boardSize; row += 1) {
+      for (let col = 0; col < boardSize; col += 1) {
+        const key = `${row},${col}`;
+        if (occupiedKeys.has(key)) continue;
+        const cell = featureGrid[row]?.[col];
+        if (!cell) continue;
+        const features = cell.features;
+        // 空心白子签名与下面的颜色判定共用同一个谓词（见 isHollowPrintedStone）：
+        // 救回来的子必须和「它为什么是白的」用同一套几何证据，否则会出现
+        // 救回了子、却把它涂成黑色（线上手机的实测现象）。
+        if (!isHollowPrintedStone(features)) continue;
+        let neighbours = 0;
+        for (let dr = -1; dr <= 1; dr += 1) {
+          for (let dc = -1; dc <= 1; dc += 1) {
+            if (!dr && !dc) continue;
+            const r = row + dr, c = col + dc;
+            if (r < 0 || c < 0 || r >= boardSize || c >= boardSize) continue;
+            if (occupiedKeys.has(`${r},${c}`)) neighbours += 1;
+          }
+        }
+        if (neighbours < 2) continue;
+        candidates.push({ row, col, x: cell.x, y: cell.y, features });
+        occupiedKeys.add(key);
+        if ((globalThis as typeof globalThis & { __BANBU_IMAGE_RECOGNITION_DEBUG__?: boolean }).__BANBU_IMAGE_RECOGNITION_DEBUG__) {
+          console.info("[banbu-image-hollow-rescue]", JSON.stringify({
+            rc: `${String.fromCharCode(65 + col)}${boardSize - row}`,
+            ring: Math.round(features.ringShare * 100) / 100,
+            diagonal: Math.round(features.diagonalShare * 100) / 100,
+            outer: Math.round(features.outerShare * 100) / 100,
+            middle: Math.round(features.middleShare * 100) / 100,
+            neighbours,
+          }));
+        }
+      }
+    }
+
+    // 用户框选（ROI）时，把网格交叉点里落在框外（外扩 25%）的候选直接排除——
+    // 整屏截图里网格窗若错位到状态栏/文字上，这些假子正是「多子」的来源。
+    if (opts.roi && opts.roi.w > 0 && opts.roi.h > 0) {
+      const roiX0 = opts.roi.x * canvasWidth, roiY0 = opts.roi.y * canvasHeight;
+      const roiX1 = (opts.roi.x + opts.roi.w) * canvasWidth, roiY1 = (opts.roi.y + opts.roi.h) * canvasHeight;
+      const pad = Math.max(roiX1 - roiX0, roiY1 - roiY0) * 0.25;
+      candidates = candidates.filter((candidate) => {
+        const px = grid!.originX + candidate.col * grid!.spacingX;
+        const py = grid!.originY + candidate.row * grid!.spacingY;
+        return px >= roiX0 - pad && px <= roiX1 + pad && py >= roiY0 - pad && py <= roiY1 + pad;
+      });
+    }
+
     // The app draws its "five in a row" victory pill over the top-centre of
     // the board. Its body reaches the second grid row, so the two top rows
     // need targeted checks; everything else keeps its normal classification.
-    // Row 0: the pill and its badge hide the grid lines completely — a real
-    // top-row stone keeps stubs on at least two of its three inward axes.
-    // Row 1: the pill's bright bottom edge reads as a solid disc over a
-    // gradient background; a real stone there either is darker or sits on a
-    // verifiably non-overlay void band.
+    // Both top rows use the same test. The pill is a horizontal BAND: at a cell
+    // it covers, the band continues outside the stone's disc, so the void band
+    // stays overlay-coloured (voidShare 0.41-0.44 on a rendered win) while a
+    // real stone sits in its own cell with board around it (0.06-0.14) —
+    // including WHITE stones, whose stub count measures an unreliable 1 for
+    // both classes. Row 0 previously demanded two stubs instead, which deleted
+    // genuine top-row stones (a 54-stone rendered record lost its stone and 13
+    // move numbers) and still admitted band blobs with three stubs.
     const boardCenterCol = (boardSize - 1) / 2;
     candidates = candidates.filter((candidate) => {
       if (candidate.row > 1 || Math.abs(candidate.col - boardCenterCol) > 3.2) return true;
       const features = candidate.features;
-      if (candidate.row === 0) return features.stubCount >= 2;
-      // Row 1: the pill's bright bottom edge reads as a solid disc over a
-      // gradient background. A DARK stone under the pill edge keeps a large
-      // dark share inside its disc and must survive; the overlay body has no
-      // dark pixels at all, whatever the board tone is.
-      // The pill body is BRIGHTER than the board under it, on every theme;
-      // a dark stone under the pill edge is DARKER than the board. Relative
-      // brightness separates them where absolute thresholds drift. A DARK
-      // stone under the pill edge keeps a bright polluted fill (fg ≥ bg+20
-      // as well!) — its disc still holds the stone's own dark pixels, so a
-      // large dark share survives the overlay tests.
+      // The overlay body is BRIGHTER than the board on every theme, so a disc
+      // that is overwhelmingly darker than the board cannot be the pill: a dark
+      // stone under the pill edge is DARKER than the board, and its disc still
+      // holds the stone's own dark pixels whatever the overlay does.
       if (features.darkDiscShare >= 0.3) return true;
       if (
         features.voidShare >= 0.4
@@ -2060,10 +3034,35 @@ export const recognizeBoardImage = async (file: File, boardSize = 15): Promise<I
     }
 
     let score = 0;
+    resetMoveNumberCalibration(); // family voting is per screenshot
     candidates.forEach((candidate) => {
       const { row, col, x, y, features } = candidate;
       let player: Player;
-      if (clusteredPlayers.has(candidate)) {
+      // 空心印谱白子定色：空心签名 + 前景中值不暗于盘面太多，两条同时成立才判白。
+      //
+      // 为什么必须在这里拦一道：这类子的「前景」统计到的是那圈细描边（深色），
+      // 于是柔化/异设备只要让 darkDiscShare 越过 0.3，上面的聚类输入就会从
+      // 「前景中值（亮，≈220）」切成「最暗四分位（≈描边，深）」——白子被判进黑簇。
+      // 实测 paper02 清晰 22黑/21白 → 1px 柔化 24黑/19白 的两格（E4/I2）正是这样
+      // 翻的，与线上手机「白子变黑子」同一机制。
+      //
+      // 光有签名不够，**带白色序号的实心黑子**（盘内被白字挖空）同样命中中带/暗面
+      // 占比签名（heavyborder.png 实测 34 格）。两类只能靠「前景中值有多亮」分开，
+      // 而这一条要同时满足两件相反的事，所以是「绝对够亮 或 相对盘面不算暗」：
+      //
+      //   foregroundLight >= 128        ← 原本的绝对阈值，清晰到中度柔化都靠它
+      //   foregroundLight - backgroundLight >= -80  ← 整图变暗时兜底（b 同向下降）
+      //
+      // 实测（paper02 空心白子 / heavyborder 黑子挖白字 / numbered-full J11）：
+      //   空心白子   l 203–236，变暗到 brightness 0.65 后 l≈121 但 l-b≈-44；
+      //   黑子挖白字 l 18–34，l-b -169 ~ -185；
+      //   numbered-full 里那颗几何与白子一致、亮度居中的子（J11）l=102、l-b=-102。
+      // 取 -80：白子最差 -50 仍有 30 点余量，J11 差 22 点落在外（保持既有判定，
+      // 我对它的真实颜色没有独立证据，不能拿它赌），黑子挖白字差 89 点。
+      if (isHollowPrintedStone(features)
+        && (features.foregroundLight >= 128 || features.foregroundLight - features.backgroundLight >= -80)) {
+        player = "white";
+      } else if (clusteredPlayers.has(candidate)) {
         player = clusteredPlayers.get(candidate)!;
       } else if (candidates.length === 1) {
         // A legal single-stone position starts with black.
@@ -2077,28 +3076,139 @@ export const recognizeBoardImage = async (file: File, boardSize = 15): Promise<I
       }
       board[row][col] = player;
       score += features.score;
-      const number = detectMoveNumber(sampled, x, y, localSpacing, player);
-      if (number !== null) numberedMoves.push({ row, col, player, number });
+      // 序号匹配（模板渲染 + NCC 全值扫描）是整个识别管线最重的部分。只做
+      // 静态局面导入（App 的默认通道/对齐探针）时完全用不到 numberedMoves，
+      // 由调用方传 skipMoveOrder 跳过，识别直接省掉一大截耗时。
+      if (!opts.skipMoveOrder) {
+        const cands = matchMoveNumbers(sampled, x, y, localSpacing, player, candidates.length);
+        const stoneDebug = (globalThis as typeof globalThis & { __BANBU_STONE_DEBUG__?: unknown[] }).__BANBU_STONE_DEBUG__;
+        if (Array.isArray(stoneDebug)) stoneDebug.push({ row, col, x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 });
+        numberCandidates.push(cands);
+        numberStones.push({ row, col, player });
+        const top = cands[0];
+        if (top && top.score >= 0.55 && (cands.length === 1 || top.score - cands[1].score >= 0.05)) {
+          numberedMoves.push({ row, col, player, number: top.value });
+        }
+      }
     });
+    // Post-pass: when the family vote locked a NON-default face, the early
+    // stones (voted before the lock) only carry family-0 candidates — give
+    // the weak ones a second pass with the winning family so the joint
+    // assignment sees full coverage. Same-device images never get here.
+    if (!opts.skipMoveOrder && moveNumberFamilyVote && moveNumberFamilyVote.decided > 0) {
+      for (let i = 0; i < candidates.length; i += 1) {
+        const prev = numberCandidates[i];
+        if (prev && prev.length && prev[0].score >= 0.55) continue;
+        const cand = candidates[i];
+        const rerun = matchMoveNumbers(sampled, cand.x, cand.y, localSpacing, numberStones[i].player, candidates.length, moveNumberFamilyVote.decided);
+        if (rerun.length && (!prev?.length || rerun[0].score > prev[0].score)) numberCandidates[i] = rerun;
+      }
+    }
+    // Joint sequence consistency: when every stone carries candidates that can
+    // form the unique complete 1..N assignment, trust it over the per-stone
+    // margin rejections (an ambiguous stone is disambiguated by its peers).
+    if (!opts.skipMoveOrder && candidates.length >= 2 && numberCandidates.length === candidates.length && numberCandidates.every((c) => c.length > 0)) {
+      const assignment = assignMoveNumbers(numberCandidates, numberStones.map((s) => s.player), 0.5, 0.7);
+      if (assignment) {
+        numberedMoves = assignment.map((number, index) => ({ ...numberStones[index], number })).sort((a, b) => a.number - b.number);
+      }
+    }
 
     const occupied = candidates.length;
     const confidence = Math.max(0.35, Math.min(0.99, (score / occupied) * (fallback ? 0.8 : 0.9 + grid.quality * 0.1)));
+    // 黑白均衡修复（2026-09-11）：对局截图黑白差 ≤1，识别结果差 >2 几乎必然是
+    // 误判（亮色 UI/文字→白、深色阴影/边框→黑）。把多数派中置信度最低的候选
+    // 移除直到均衡——直接消掉「黑白数量不对等」现象；只在异常时触发，正常图
+    // 一字不动。真·摆棋局面若被误删，note 会说明，可落子补回。
+    let blackCount = 0, whiteCount = 0, removedFalse = 0;
+    let majority: Player = "black";
+    board.forEach((row) => row.forEach((player) => { if (player === "black") blackCount += 1; else if (player === "white") whiteCount += 1; }));
+    // 带序号的谱（书籍/记谱纸图）本身就是权威：序号决定黑白奇偶，棋盘上的
+    // 数量差来自图只截了一段，不是误判。此时若仍按「对局黑白差 ≤1」删子，
+    // 会把真子整片删掉（实测一张 11 黑/7 白的编号图被删掉 5 枚真黑子）。
+    // 所以只有序号证据稀薄（多数子没有号码，即整屏截图场景）才做均衡清理。
+    // 印刷空心子（hollowLikeCount ≥2）同样跳过：它的颜色聚类在这种图上会
+    // 把空心白子判成暗色，实测一张柔化的书谱图因此被删掉 3 枚真子
+    // （I11 黑、E4/I2 白）——这正是用户报的「白棋总少识别」。
+    const numberedShare = occupied > 0 ? numberedMoves.length / occupied : 0;
+    const isPrintedDiagram = hollowLikeCount >= 2;
+    if (Math.abs(blackCount - whiteCount) > 2 && numberedShare < 0.5 && !isPrintedDiagram) {
+      majority = blackCount > whiteCount ? "black" : "white";
+      const excess = Math.min(5, Math.abs(blackCount - whiteCount) - 2);
+      const removable = candidates
+        .filter((candidate) => board[candidate.row][candidate.col] === majority)
+        .sort((left, right) => left.features.score - right.features.score)
+        .slice(0, excess);
+      for (const candidate of removable) {
+        board[candidate.row][candidate.col] = null;
+        if (majority === "black") blackCount -= 1; else whiteCount -= 1;
+      }
+      removedFalse = removable.length;
+      if (removedFalse > 0) {
+        const removedKeys = new Set(removable.map((candidate) => `${candidate.row},${candidate.col}`));
+        numberedMoves = numberedMoves.filter((move) => !removedKeys.has(`${move.row},${move.col}`));
+      }
+    }
+    const balanceWarning = occupied > 0 && Math.abs(blackCount - whiteCount) > 2
+      ? `；黑白数量异常（黑 ${blackCount} 白 ${whiteCount}），请核对或重新框选棋盘`
+      : removedFalse > 0 ? `；已自动移除 ${removedFalse} 个疑似误判的${majority === "black" ? "黑" : "白"}子（黑白失衡）` : "";
     const ordered = numberedMoves.slice().sort((a, b) => a.number - b.number);
+    const actualStones = blackCount + whiteCount;
+    // 序号可信度自检（2026-09-14）：只有「每颗子一份、恰好 1..N、且奇偶与黑白
+    // 一致」的序号才能拿去重建落子顺序——调用方（App 的「复原手序」）正是按
+    // 「数量等于子数且恰好 1..N」判定的，但奇偶从来不查：一份完整却把奇偶配错
+    // 的序号会重建出一盘错棋。这里先按多数派推定奇偶极性，剔除与极性矛盾的那
+    // 些条目（剔完自然就不完整，调用方只会按局面导入），再判断是否完整。
+    // 实测动机：一张 63 子的谱只认出 36 个（跳号 1..62）、另一张认出 6 个且奇偶
+    // 冲突，而 note 却声称「已按序号恢复 N 手顺序」。
+    const polarityVotes = { oddBlackOddWhite: 0, oddWhiteOddBlack: 0 };
+    ordered.forEach((move) => {
+      if (move.number % 2 === 1) {
+        if (move.player === "black") polarityVotes.oddBlackOddWhite += 1;
+        else polarityVotes.oddWhiteOddBlack += 1;
+      } else if (move.player === "black") polarityVotes.oddWhiteOddBlack += 1;
+      else polarityVotes.oddBlackOddWhite += 1;
+    });
+    const oddIsBlack = polarityVotes.oddBlackOddWhite >= polarityVotes.oddWhiteOddBlack;
+    const parityConsistent = ordered.filter((move) => {
+      const oddNumber = move.number % 2 === 1;
+      const isOddColour = oddIsBlack ? move.player === "black" : move.player === "white";
+      return oddNumber === isOddColour;
+    });
+    const parityDropped = ordered.length - parityConsistent.length;
+    const completeOrder = parityConsistent.length >= 2
+      && parityConsistent.length === actualStones
+      && parityConsistent.every((move, index) => move.number === index + 1);
+    const recoveredMoves = completeOrder ? parityConsistent : [];
+    // 棋盘线距太小的图，序号本身就认不出来（实测线距 ~21px 时 54 张图里序号全对
+    // 0 张，~24px 起恢复正常）。这种时候直说"图太小"，比笼统的"没认出来"有用。
+    const linePitch = grid ? Math.min(grid.spacingX, grid.spacingY) : 0;
+    const numberingNote = opts.skipMoveOrder ? "" : completeOrder
+      ? `已按序号恢复 ${recoveredMoves.length} 手顺序`
+      : ordered.length === 0
+        ? "未检测到可靠序号"
+        : parityDropped > 0
+          ? `序号不可靠（${ordered.length} 个中 ${parityDropped} 个与黑白不符），已按局面导入`
+          : linePitch > 0 && linePitch < 24
+            ? `序号难以辨认（棋盘线距仅 ${Math.round(linePitch)}px，仅认出 ${ordered.length}/${actualStones} 个），建议放大或只截取棋盘区域`
+            : `序号不连续（仅认出 ${ordered.length}/${actualStones} 个），已按局面导入`;
     const note = [
       fallback ? "未检测到网格线，已按标准边距识别，建议截取仅含棋盘的区域。" : "已自动定位棋盘网格。",
-      `识别 ${occupied} 子`,
+      `识别 ${actualStones} 子`,
       ignoredColoredMarkers ? `忽略 ${ignoredColoredMarkers} 个彩色标注` : "",
-      ordered.length ? `已按序号恢复 ${ordered.length} 手顺序` : "未检测到可靠序号",
+      numberingNote,
+      balanceWarning,
     ].filter(Boolean).join("；");
     return {
       boardSize,
       board,
-      numberedMoves: ordered,
+      numberedMoves: recoveredMoves,
       confidence,
       ignoredColoredMarkers,
       note,
     };
   } finally {
     closeRasterImage(image, loaded.revoke);
+    accelerator?.dispose();
   }
 };

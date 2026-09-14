@@ -7,6 +7,7 @@ const browser = await chromium.launch({ headless: true });
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
+  await page.addInitScript(() => localStorage.setItem("banbu-first-run-welcome-v1", "true"));
   await page.goto(baseURL);
   await page.evaluate(() => {
     localStorage.clear();
@@ -30,7 +31,8 @@ try {
   });
   await page.getByText(/已导入 SGF/).waitFor({ timeout: 10000 });
 
-  await page.getByRole("button", { name: "打开导入方式" }).click();
+  // T40 后顶栏导入按钮移除（底部导航有导入入口）
+  await page.getByRole("button", { name: "导入", exact: false }).last().click();
   const recent = page.locator(".recent-imports");
   await recent.waitFor();
   assert.equal(await recent.locator(".recent-import-item").count(), 1, "成功导入后应出现最近导入记录");
@@ -40,7 +42,7 @@ try {
 
   const reopenedPage = await context.newPage();
   await reopenedPage.goto(baseURL);
-  await reopenedPage.getByRole("button", { name: "打开导入方式" }).click();
+  await reopenedPage.getByRole("button", { name: "导入", exact: false }).last().click();
   const reopenedRecent = reopenedPage.locator(".recent-imports");
   await reopenedRecent.waitFor();
   await reopenedRecent.getByRole("button", { name: "重新打开 最近导入测试.sgf" }).click();
@@ -49,7 +51,9 @@ try {
   assert.match(reopenedText, /最近导入测试/, `最近导入重开后页面未恢复棋谱：${reopenedText.slice(-800)}`);
   assert.equal(await reopenedPage.locator(".import-options").count(), 0, "一键重开后导入面板应关闭");
   assert.match(reopenedText, /最近导入测试/);
-  assert.equal(await reopenedPage.locator(".unified-status-facts").getByText("第 0 手 / 2", { exact: true }).count(), 1, "最近导入重开后应恢复完整主线长度");
+  // 手机视口下 .unified-status-facts 被 CSS 隐藏（≤699px absolute clip），
+  // getByText 命中不到——改读状态栏全文（compat 文本含 stepLabel）。
+  assert.match(await reopenedPage.locator(".unified-status").innerText(), /第 0 手 \/ 2/, "最近导入重开后应恢复完整主线长度");
   await reopenedPage.getByRole("button", { name: "到最后一手", exact: true }).click();
   const reopenedStones = await reopenedPage.locator(".stone").count();
   assert.equal(reopenedStones, 2, `跳到终点后应恢复棋谱内容，当前棋子数=${reopenedStones}；页面状态：${(await reopenedPage.locator("body").innerText()).slice(-1000)}`);

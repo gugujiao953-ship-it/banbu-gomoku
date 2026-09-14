@@ -1,14 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 960" fill="none">
-  <g fill="#fff">
-    <circle cx="72" cy="92" r="5" opacity=".8"/><circle cx="196" cy="184" r="3.5" opacity=".58"/><circle cx="334" cy="76" r="6.5" opacity=".72"/><circle cx="522" cy="166" r="4" opacity=".66"/><circle cx="650" cy="58" r="3" opacity=".78"/>
-    <circle cx="116" cy="352" r="6" opacity=".64"/><circle cx="278" cy="294" r="3" opacity=".82"/><circle cx="432" cy="402" r="5" opacity=".7"/><circle cx="606" cy="326" r="7" opacity=".55"/>
-    <circle cx="64" cy="622" r="3.5" opacity=".72"/><circle cx="220" cy="544" r="5.5" opacity=".62"/><circle cx="372" cy="684" r="3" opacity=".82"/><circle cx="548" cy="576" r="6" opacity=".68"/><circle cx="676" cy="716" r="4" opacity=".58"/>
-    <circle cx="142" cy="862" r="5" opacity=".7"/><circle cx="306" cy="790" r="7" opacity=".52"/><circle cx="470" cy="898" r="3.5" opacity=".8"/><circle cx="624" cy="824" r="5.5" opacity=".65"/>
+  <!-- 雪落主题背景（用户 09-13：此前几乎看不到雪）——浅色主题上纯白不可见，
+       改用冷蓝白 + 更大半径 + 更高不透明度；雪花与雪点混合，两层视差平铺。 -->
+  <g fill="#b9d3e4">
+    <circle cx="72" cy="92" r="9" opacity=".85"/><circle cx="196" cy="184" r="6.5" opacity=".7"/><circle cx="334" cy="76" r="11" opacity=".8"/><circle cx="522" cy="166" r="7.5" opacity=".72"/><circle cx="650" cy="58" r="5.5" opacity=".8"/>
+    <circle cx="116" cy="352" r="10" opacity=".72"/><circle cx="278" cy="294" r="5.5" opacity=".85"/><circle cx="432" cy="402" r="9" opacity=".76"/><circle cx="606" cy="326" r="12" opacity=".66"/>
+    <circle cx="64" cy="622" r="6.5" opacity=".8"/><circle cx="220" cy="544" r="10" opacity=".7"/><circle cx="372" cy="684" r="5.5" opacity=".86"/><circle cx="548" cy="576" r="11" opacity=".74"/><circle cx="676" cy="716" r="7.5" opacity=".68"/>
+    <circle cx="142" cy="862" r="9" opacity=".78"/><circle cx="306" cy="790" r="12" opacity=".64"/><circle cx="470" cy="898" r="6.5" opacity=".84"/><circle cx="624" cy="824" r="10" opacity=".72"/>
   </g>
-  <g stroke="#f8fcff" stroke-width="2.2" stroke-linecap="round" opacity=".72">
-    <path d="M151 238v24m-10-18 20 12m-20 0 20-12M484 256v28m-12-21 24 14m-24 0 24-14M326 494v26m-11-20 22 13m-22 0 22-13M584 682v28m-12-21 24 14m-24 0 24-14M226 730v24m-10-18 20 12m-20 0 20-12"/>
+  <g fill="#ffffff" opacity=".92">
+    <circle cx="72" cy="92" r="4.5"/><circle cx="334" cy="76" r="5.5"/><circle cx="116" cy="352" r="5"/><circle cx="432" cy="402" r="4.5"/><circle cx="548" cy="576" r="5.5"/><circle cx="306" cy="790" r="6"/><circle cx="142" cy="862" r="4.5"/><circle cx="624" cy="824" r="5"/>
   </g>
-  <g fill="#d9edf7" opacity=".6">
-    <circle cx="376" cy="224" r="2.5"/><circle cx="52" cy="456" r="2.5"/><circle cx="332" cy="382" r="4"/><circle cx="680" cy="474" r="3"/><circle cx="456" cy="746" r="4"/><circle cx="92" cy="774" r="3"/>
+  <g stroke="#9fc0d6" stroke-width="3.4" stroke-linecap="round" opacity=".85">
+    <path d="M151 238v30m-13-23 26 16m-26 0 26-16M484 256v34m-15-26 30 18m-30 0 30-18M326 494v32m-14-24 28 16m-28 0 28-16M584 682v34m-15-26 30 18m-30 0 30-18M226 730v30m-13-23 26 16m-26 0 26-16"/>
+  </g>
+  <g fill="#cfe3ef" opacity=".85">
+    <circle cx="376" cy="224" r="5"/><circle cx="52" cy="456" r="5"/><circle cx="332" cy="382" r="8"/><circle cx="680" cy="474" r="6"/><circle cx="456" cy="746" r="8"/><circle cx="92" cy="774" r="6"/>
   </g>
 </svg>

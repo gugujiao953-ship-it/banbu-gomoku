@@ -4,7 +4,9 @@ import { chromium } from "playwright";
 const baseUrl = process.env.BANBU_URL || "http://127.0.0.1:5181/";
 const maxPlies = Number(process.env.AI_PUZZLE_PLIES || 15);
 const thinkTime = Number(process.env.AI_PUZZLE_TIME || 1800);
-const puzzleFile = new URL("../public/puzzles/kaibao/三手胜4-高级题.json", import.meta.url);
+const puzzleFile = process.env.AI_PUZZLE_FILE
+  ? new URL(process.env.AI_PUZZLE_FILE, import.meta.url)
+  : new URL("../public/puzzles/kaibao/三手胜4-高级题.json", import.meta.url);
 const raw = JSON.parse(await readFile(puzzleFile, "utf8"));
 const puzzles = raw.slice(0, process.env.AI_PUZZLE_LIMIT ? Number(process.env.AI_PUZZLE_LIMIT) : undefined).map((stones, index) => ({
   id: index + 1,
@@ -23,7 +25,7 @@ await page.waitForFunction(() => Boolean(window.Worker));
 
 const engineVariant = process.env.AI_ENGINE || "fallback";
 const dataUrl = process.env.AI_DATA_URL || "";
-const analyze = async (moves, player) => page.evaluate(({ moves: nextMoves, player: nextPlayer, thinkTime: nextThinkTime, engine: nextEngine, data: nextData }) => new Promise((resolve, reject) => {
+const analyze = async (moves, player) => page.evaluate(({ moves: nextMoves, player: nextPlayer, thinkTime: nextThinkTime, engine: nextEngine, data: nextData, rule: nextRule }) => new Promise((resolve, reject) => {
   const key = "__banbuRapfiBench";
   const state = window[key] || (() => {
     const worker = new Worker("./rapfi/rapfi-worker.js");
@@ -37,14 +39,17 @@ const analyze = async (moves, player) => page.evaluate(({ moves: nextMoves, play
     return created;
   })();
   state.pending = { resolve, reject };
-  state.worker.postMessage({ type: "analyze", engine: nextEngine, dataUrl: nextData || undefined, size: 15, moves: nextMoves, player: nextPlayer, rule: "renju", timeMs: nextThinkTime, maxDepth: 64 });
-}), { moves, player, thinkTime, engine: engineVariant, data: dataUrl });
+  state.worker.postMessage({ type: "analyze", engine: nextEngine, dataUrl: nextData || undefined, size: 15, moves: nextMoves, player: nextPlayer, rule: nextRule, timeMs: nextThinkTime, maxDepth: 64 });
+}), { moves, player, thinkTime, engine: engineVariant, data: dataUrl, rule: ruleName });
 
 const other = (player) => player === "black" ? "white" : "black";
+const ruleName = process.env.AI_RULE || "renju";
 const winner = (moves, last) => {
   const board = Array.from({ length: 15 }, () => Array(15).fill(null));
   for (const move of moves) board[move.row][move.col] = move.player;
-  const exact = last.player === "black";
+  // renju: black wins with exactly five (overline is forbidden), white with
+  // five or more. standard: both exactly five. freestyle: both five or more.
+  const exact = ruleName === "standard" || (ruleName === "renju" && last.player === "black");
   const directions = [[1, 0], [0, 1], [1, 1], [1, -1]];
   return directions.some(([dr, dc]) => {
     let count = 1;
@@ -55,9 +60,16 @@ const winner = (moves, last) => {
 
 const results = [];
 const engineVariants = new Set();
+// The mover follows the first stone's color, not a black-first assumption:
+// kaibao problem sets mix black-first and white-first positions.
+const moverOf = (stones) => {
+  const firstIsBlack = stones[0].player === "black";
+  const lastIsBlack = stones.length % 2 === 1 ? firstIsBlack : !firstIsBlack;
+  return lastIsBlack ? "white" : "black";
+};
 for (const puzzle of puzzles) {
   let moves = [...puzzle.stones];
-  const attacker = moves.length % 2 === 0 ? "black" : "white";
+  const attacker = moverOf(moves);
   let solved = false;
   let error = "";
   let aiMoves = 0;
@@ -80,5 +92,5 @@ for (const puzzle of puzzles) {
 }
 await browser.close();
 const solved = results.filter((result) => result.solved).length;
-console.log(JSON.stringify({ requestedEngine: engineVariant, actualEngines: [...engineVariants], total: results.length, solved, failed: results.length - solved, maxPlies, thinkTime }));
+console.log(JSON.stringify({ requestedEngine: engineVariant, actualEngines: [...engineVariants], rule: ruleName, total: results.length, solved, failed: results.length - solved, maxPlies, thinkTime }));
 if (solved !== results.length) process.exitCode = 1;

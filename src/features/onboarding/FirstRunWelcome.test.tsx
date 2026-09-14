@@ -9,15 +9,18 @@ describe("FirstRunWelcome", () => {
   let container: HTMLDivElement;
   afterEach(() => { act(() => root?.unmount()); root = null; container?.remove(); });
 
-  it("offers acknowledgement and manual paths", () => {
+  it("offers tour, manual and acknowledgement paths", () => {
     container = document.createElement("div"); document.body.appendChild(container);
     let dismissed = 0;
     let manual = 0;
-    act(() => { root = createRoot(container); root.render(<FirstRunWelcome onDismiss={() => { dismissed += 1; }} onOpenManual={() => { manual += 1; }}/>); });
+    let tour = 0;
+    act(() => { root = createRoot(container); root.render(<FirstRunWelcome onDismiss={() => { dismissed += 1; }} onOpenManual={() => { manual += 1; }} onStartTour={() => { tour += 1; }}/>); });
     const buttons = [...container.querySelectorAll("button")];
-    act(() => { buttons[0]?.click(); buttons[1]?.click(); });
-    expect(dismissed).toBe(1);
+    act(() => { buttons[0]?.click(); buttons[1]?.click(); buttons[2]?.click(); });
+    expect(tour).toBe(1);
     expect(manual).toBe(1);
+    expect(dismissed).toBe(1);
+    expect(container.textContent).toContain("新手引导");
     expect(container.textContent).toContain("手机端打谱");
     expect(container.textContent).toContain("图片识谱");
     expect(container.textContent).toContain("多种主题、棋盘、棋子");

@@ -15,8 +15,8 @@ describe("rule guide mapping", () => {
   });
 
   it("exposes a single AI rule catalog with the expected forbidden labels", () => {
-    expect(AI_RULE_PRESET_GUIDES.map((entry) => entry.key)).toEqual(["freestyle", "standard", "swap1", "swap3", "five-two", "five-n", "yamaguchi", "soosyrv-8", "taraguchi-10", "tarannikov"]);
-    expect(AI_RULE_PRESET_GUIDES.filter((entry) => entry.badge === "有禁").map((entry) => entry.key)).toEqual(["five-two", "five-n", "yamaguchi", "soosyrv-8", "taraguchi-10", "tarannikov"]);
+    expect(AI_RULE_PRESET_GUIDES.map((entry) => entry.key)).toEqual(["freestyle", "standard", "swap1", "swap3", "renju-free", "five-two", "five-n", "yamaguchi", "soosyrv-8", "taraguchi-10", "tarannikov"]);
+    expect(AI_RULE_PRESET_GUIDES.filter((entry) => entry.badge === "有禁").map((entry) => entry.key)).toEqual(["renju-free", "five-two", "five-n", "yamaguchi", "soosyrv-8", "taraguchi-10", "tarannikov"]);
   });
 
   it("uses the same detailed rule labels in legacy record surfaces", () => {
@@ -24,6 +24,6 @@ describe("rule guide mapping", () => {
     expect(recordRuleDisplayName({ rule: "renju", openingRule: "five-n", openingN: 7 })).toBe("五手多打（7打） · 有禁");
     expect(recordRuleDisplayName({ rule: "renju", openingRule: "yamaguchi" })).toBe("山口 · 有禁");
     expect(recordRuleDisplayName({ rule: "renju", openingRule: "soosyrv-8" })).toBe("索索夫-8 · 有禁");
-    expect(recordRuleDisplayName({ rule: "renju", openingRule: "free" })).toBe("连珠规则 · 有禁");
+    expect(recordRuleDisplayName({ rule: "renju", openingRule: "free" })).toBe("有禁手 · 有禁");
   });
 });

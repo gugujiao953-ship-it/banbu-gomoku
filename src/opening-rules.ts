@@ -113,7 +113,10 @@ export const chooseFifthCount = (session: OpeningSession, count: number): Openin
   const declared = Math.round(Number.isFinite(count) ? count : 0);
   if (session.rule === "five-n") {
     const normalized = Math.max(3, Math.min(10, declared || 3));
-    return { ...session, n: normalized, candidates: [], stage: { kind: "offer-fifths", actor: session.stage.actor, count: normalized } };
+    // 打点由黑方放置（openingInstruction 同文：「随后黑方依次放置 A1、A2…」）。
+    // 旧实现继承 count 选择方的 actor（白方），白=AI 时会 AI 代放+代选、
+    // 黑方全程被跳过（T30 修复，五手两打/索索夫/塔拉均显式 black）。
+    return { ...session, n: normalized, candidates: [], stage: { kind: "offer-fifths", actor: actorForColor(session, "black"), count: normalized } };
   }
   if (session.rule === "soosyrv-8") {
     // RenjuNet Soosyrv-8: 白方落第4手时宣布 1–8 个第5手打点，随后对方仍有一次交换权。

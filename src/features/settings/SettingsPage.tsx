@@ -1,22 +1,27 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { Accessibility, ArchiveRestore, BookOpen, Bot, Check, ChevronDown, ChevronRight, Download, Eye, FolderOpen, Info, Mail, Palette, PlayCircle, RotateCw, Save, Search, Settings2, SlidersHorizontal, Sparkles, TabletSmartphone, Upload, Volume2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Accessibility, ArchiveRestore, BookOpen, Bot, Check, ChevronDown, ChevronRight, Compass, Download, Eye, FlaskConical, FolderOpen, Info, Mail, Palette, PlayCircle, RotateCw, Save, Search, Settings2, SlidersHorizontal, Sparkles, TabletSmartphone, Upload, Volume2, X } from "lucide-react";
 import type { FontScale } from "../../accessibility";
 import type { BoardTheme, ResolvedTheme, StoneTheme, ThemePreference } from "../../app-shell-types";
 import type { SoundCue } from "../../audio-engine";
 import type { SoundSettings } from "../../audio-settings";
 import { APP_VERSION } from "../../diagnostics";
-import type { EnhancementSettings } from "../../enhancement-settings";
-import type { ExportDirectoryHandle } from "../../file-destination";
+import { DEFAULT_COORDINATE_FONT_SIZE } from "./display-defaults";
+import { fmtAnalysisMemory, getAnalysisMode, withAnalysisMode, type AnalysisCandidateMetric, type AnalysisMode, type EnhancementSettings } from "../../enhancement-settings";
+import { defaultNativeExportHandle, exportLocationLabel, isNativeDirectoryHandle, isSafDirectoryHandle, nativeExportDirectoryHandle, type ExportDirectoryHandle } from "../../file-destination";
 import type { PlaybackBranchPolicy, PlaybackSpeed } from "../research/record-playback";
 import { DEFAULT_BOARD_OPACITY, MIN_BOARD_OPACITY } from "../../board-opacity";
 import { DEFAULT_STONE_OPACITY, MIN_STONE_OPACITY } from "../../stone-opacity";
 import type { AnnotationHighlight } from "../../annotation-highlight";
+import { EnginePackSection } from "../ai/EnginePackSection";
 
 interface SettingsPageProps {
-  thinkDirectMove: boolean;
-  thinkSheetOnStart: boolean;
-  onThinkDirectMoveChange: (value: boolean) => void;
-  onThinkSheetOnStartChange: (value: boolean) => void;
+  onOpenLayout?: () => void;
+  // 分析引擎档位：快捷中心有这一项，设置页必须同步有（快捷中心自定义条目池的硬约束）。
+  aiEngineChoice: "light" | "strong" | "tuned";
+  enginePackReady: boolean;
+  onAiEngineChoiceChange: (value: "light" | "strong" | "tuned") => void;
+  thinkingIndicatorPosition: "corner" | "below";
+  onThinkingIndicatorPositionChange: (value: "corner" | "below") => void;
   playbackSpeed: PlaybackSpeed;
   onPlaybackSpeedChange: (value: PlaybackSpeed) => void;
   playbackBranchPolicy: PlaybackBranchPolicy;
@@ -51,11 +56,19 @@ interface SettingsPageProps {
   showNumbers: boolean;
   showCoordinates: boolean;
   showForbidden: boolean;
+  showLastMove: boolean;
+  moveNumberScale: number;
+  gridLineWidth: number;
+  coordinateFontSize: number;
   motionEnabled: boolean;
   restoreLastPosition: boolean;
   onShowNumbersChange: (value: boolean) => void;
   onShowCoordinatesChange: (value: boolean) => void;
   onShowForbiddenChange: (value: boolean) => void;
+  onShowLastMoveChange: (value: boolean) => void;
+  onMoveNumberScaleChange: (value: number) => void;
+  onGridLineWidthChange: (value: number) => void;
+  onCoordinateFontSizeChange: (value: number) => void;
   onMotionEnabledChange: (value: boolean) => void;
   onRestoreLastPositionChange: (value: boolean) => void;
   defaultDirectory: ExportDirectoryHandle | null;
@@ -71,9 +84,12 @@ interface SettingsPageProps {
   onOpenHelp: () => void;
   onOpenAbout: () => void;
   onOpenManual: () => void;
+  onOpenTour: () => void;
   onOpenFeedback: () => void;
   enhancementSettings: EnhancementSettings;
   onEnhancementSettingsChange: (value: EnhancementSettings) => void;
+  updateAutoCheck: boolean;
+  onUpdateAutoCheckChange: (value: boolean) => void;
 }
 
 const themeOptions: Array<[ThemePreference, string, string]> = [
@@ -115,6 +131,8 @@ const preferenceLabel = (theme: ThemePreference) => theme === "system"
         : themeLabel(theme);
 
 export function SettingsPage(props: SettingsPageProps) {
+  // 自调内存输入框（非受控，读 DOM 提交；滑杆拖动用 ref 同步显示）。
+  const memoryNumberRef = useRef<HTMLInputElement | null>(null);
   const boardSizeOptions = Array.from({ length: 17 }, (_, index) => index + 5);
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLowerCase();
@@ -124,14 +142,16 @@ export function SettingsPage(props: SettingsPageProps) {
   }, [normalizedQuery]);
   const visibleSectionCount = [
     searchable("外观与音效", "主题、棋盘、棋子、声音与动效", ["颜色", "棋盘透明度", "棋子透明度", "背景透出", "透明度", "标注", "高亮", "白色", "金色", "蓝色", "音量", "动效", "外观"]),
-    searchable("思考", "AI 推荐点和思考结果", ["直接落子", "结果面板", "AI"]),
-    searchable("自动演示", "播放速度、分支处理和循环", ["播放", "速度", "分支", "循环"]),
-    searchable("棋盘显示", "手数、坐标和禁手辅助", ["序号", "坐标", "禁手"]),
+    searchable("棋盘显示", "手数、坐标、禁手和最后一手标记", ["序号", "坐标", "禁手", "最后一手", "红点"]),
     searchable("无障碍与字号", "文字大小、键盘和屏幕阅读器", ["大字", "特大字", "无障碍"]),
-    searchable("设备布局", "平板横屏双栏", ["平板", "横屏", "双栏"]),
-    searchable("文件与存储", "恢复上次局面和默认导出文件夹", ["恢复", "导出文件夹", "本机"]),
+    searchable("自动演示", "播放速度、分支处理和循环", ["播放", "速度", "分支", "循环"]),
+    searchable("分析", "自动分析、引擎和棋盘候选点", ["AI", "引擎", "胜率", "评估", "深度", "节点", "选点"]),
+    searchable("强力 AI 引擎", "下载冠军级评估网络包", ["引擎", "引擎包", "下载", "网络", "棋力", "AI"]),
+    searchable("可选增强功能", "手势、最近导入、AI 提示和开局库", ["手势", "最近导入", "引导", "开局库", "打点簿", "开局", "人机", "识谱", "加速", "多核", "识谱加速"]),
+    searchable("文件与存储", "储存位置、导出文件夹与上次局面", ["恢复", "导出文件夹", "本机", "储存位置", "存储位置", "保存位置", "文件夹", "占用", "空间"]),
     searchable("数据与兼容", "导入、导出、备份与格式说明", ["导入", "导出", "备份", "格式"]),
-    searchable("可选增强功能", "手势、最近导入、AI 提示和引导", ["手势", "最近导入", "引导"]),
+    searchable("设备布局", "平板横屏双栏", ["平板", "横屏", "双栏", "走棋", "文字", "功能栏", "图标", "功能区", "按钮", "排序"]),
+    searchable("开发测试功能", "尚未成熟的实验开关，默认关闭", ["开发", "测试", "实验", "复原手序", "识谱"]),
     searchable("使用手册与反馈", "操作说明与反馈", ["手册", "反馈"]),
     searchable("关于", "项目说明和下载地址", ["版本", "GitHub", "更新"]),
   ].filter(Boolean).length;
@@ -146,11 +166,11 @@ export function SettingsPage(props: SettingsPageProps) {
       </div>
       <div className="settings-overview"><span className="settings-overview-icon"><Settings2 aria-hidden="true"/></span><div><b>按优先级整理</b><small>外观与音效在这里集中调整主题、棋盘、棋子、音效和动效；其他功能按使用场景分组。</small></div><span className="settings-overview-total">{visibleSectionCount}<small>分类</small></span></div>
 
-      {searchable("外观与音效", "主题、棋盘、棋子、声音与动效", ["颜色", "棋盘透明度", "棋子透明度", "背景透出", "透明度", "标注", "高亮", "白色", "金色", "蓝色", "音量", "动效", "外观"]) && <SettingsSection icon={<Palette/>} order={0} search={normalizedQuery} title="外观与音效" summary={`${themeLabel(props.resolvedTheme)} · ${props.boardTheme === "porcelain" ? "青花瓷棋盘" : "主题、棋盘、棋子与音效"}`} open>
+      {searchable("外观与音效", "主题、棋盘、棋子、声音与动效", ["颜色", "棋盘透明度", "棋子透明度", "背景透出", "透明度", "标注", "高亮", "白色", "金色", "蓝色", "音量", "动效", "外观"]) && <SettingsSection icon={<Palette/>} order={0} search={normalizedQuery} title="外观与音效" summary={`${themeLabel(props.resolvedTheme)} · ${props.boardTheme === "porcelain" ? "青花瓷棋盘" : "主题、棋盘、棋子与音效"}`}>
         <div className="appearance-center-intro"><span><Sparkles/></span><div><b>统一调整视觉与反馈</b><small>主题、棋盘材质、棋盘与棋子透明度、音效和动效集中在这里，改动会即时预览。</small></div></div>
         <AppearanceSubsection icon={<Palette/>} title="主题" summary={preferenceLabel(props.themePreference)} search={normalizedQuery} keywords={["应用主题", "背景", "颜色"]}>
           <div className="theme-preference" role="radiogroup" aria-label="外观主题">
-            {themeOptions.map(([value, label, text]) => <button key={value} type="button" className={props.themePreference === value ? "selected" : ""} role="radio" aria-checked={props.themePreference === value} onClick={() => props.onThemePreferenceChange(value)}><span className={`theme-swatch ${value}`} aria-hidden="true"/><span><b>{label}</b><small>{text}</small></span><Check className="theme-check" aria-hidden="true"/></button>)}
+            {themeOptions.map(([value, label, text]) => <button key={value} type="button" className={props.themePreference === value ? "selected" : ""} role="radio" aria-checked={props.themePreference === value} title={`${label} · ${text}`} onClick={() => props.onThemePreferenceChange(value)}><span className={`theme-swatch ${value}`} aria-hidden="true"/><span><b>{label}</b><small>{text}</small></span><Check className="theme-check" aria-hidden="true"/></button>)}
           </div>
           <p className={`theme-motion-note ${props.motionEnabled ? "enabled" : "disabled"}`}><Sparkles aria-hidden="true"/><span><b>主题动效{props.motionEnabled ? "已开启" : "已关闭"}</b><small>{props.motionEnabled ? "动态光影、微尘与漂浮效果正在运行" : "请在下方“声音与音效”中开启界面动效"}</small></span></p>
           {props.themePreference === "custom" && <div className="custom-background-controls">
@@ -176,21 +196,18 @@ export function SettingsPage(props: SettingsPageProps) {
         </AppearanceSubsection>
       </SettingsSection>}
 
-      {searchable("思考", "完成后直接落子或弹出结果面板", ["AI", "推荐点", "落子"]) && <SettingsSection icon={<Bot/>} order={10} search={normalizedQuery} title="思考" summary={props.thinkDirectMove ? "完成后直接落子" : props.thinkSheetOnStart ? "完成后弹出结果面板" : "后台显示推荐点"}>
-        <SettingRow title="思考后直接落子" text="跳过推荐确认，自动在当前棋谱创建推荐落点" checked={props.thinkDirectMove} onChange={props.onThinkDirectMoveChange}/>
-        <SettingRow title="思考后弹出结果面板" text={props.thinkDirectMove ? "直接落子开启时暂不弹出，关闭后恢复此偏好" : "关闭后只在棋盘标出推荐点"} checked={props.thinkSheetOnStart} disabled={props.thinkDirectMove} onChange={props.onThinkSheetOnStartChange}/>
-      </SettingsSection>}
-
-      {searchable("自动演示", "播放速度、分支处理和循环", ["播放", "速度", "分支", "循环"]) && <SettingsSection icon={<PlayCircle/>} order={15} search={normalizedQuery} title="自动演示" summary={`${props.playbackSpeed}× · ${props.playbackBranchPolicy === "pause" ? "遇分支暂停" : "沿主线继续"} · ${props.playbackLoop ? "循环" : "不循环"}`}>
-        <SettingChoiceRow title="播放速度" text="控制自动前进到下一手的等待时间" value={String(props.playbackSpeed)} options={[["0.5", "0.5×"], ["1", "1×"], ["1.5", "1.5×"], ["2", "2×"]]} onChange={(value) => props.onPlaybackSpeedChange(Number(value) as PlaybackSpeed)}/>
-        <SettingChoiceRow title="分支处理" text="当前局面出现多个后续时如何继续" value={props.playbackBranchPolicy} options={[["pause", "遇分支暂停"], ["mainline", "沿主线继续"]]} onChange={(value) => props.onPlaybackBranchPolicyChange(value as PlaybackBranchPolicy)}/>
-        <SettingRow title="循环当前变化" text="到末尾后回到本次播放起点继续演示" checked={props.playbackLoop} onChange={props.onPlaybackLoopChange}/>
-      </SettingsSection>}
-
-      {searchable("棋盘显示", "显示、坐标、禁手辅助", ["序号", "坐标", "禁手"]) && <SettingsSection icon={<Eye/>} order={20} search={normalizedQuery} title="棋盘显示" summary={`手数、坐标、禁手辅助 · 动效已移入外观中心`}>
+      {searchable("棋盘显示", "显示、坐标、禁手辅助", ["序号", "坐标", "禁手", "最后一手", "红点"]) && <SettingsSection icon={<Eye/>} order={10} search={normalizedQuery} title="棋盘显示" summary={`手数、坐标、禁手辅助 · 动效已移入外观中心`}>
+        <div className="board-display-preview"><BoardDisplayPreview showNumbers={props.showNumbers} showCoordinates={props.showCoordinates} showForbidden={props.showForbidden} showLastMove={props.showLastMove} moveNumberScale={props.moveNumberScale} gridLineWidth={props.gridLineWidth} coordinateFontSize={props.coordinateFontSize}/><small>预览随下方设置实时变化</small></div>
         <SettingRow title="显示手数" text="在棋子上显示落子序号" checked={props.showNumbers} onChange={props.onShowNumbersChange}/>
         <SettingRow title="显示坐标" text="棋盘边缘显示 A–O / 1–15" checked={props.showCoordinates} onChange={props.onShowCoordinatesChange}/>
         <SettingRow title="禁手辅助" text="提示黑方常见三三、四四与长连" checked={props.showForbidden} onChange={props.onShowForbiddenChange}/>
+        <SettingRow title="最后一手标记" text="最新一手显示红点；开启手数时改为红色高亮序号" checked={props.showLastMove} onChange={props.onShowLastMoveChange}/>
+        <div className="board-display-sliders">
+          <label><span>棋子序号大小</span><div className="slider-line"><input aria-label="棋子序号大小" type="range" min="0.7" max="1.8" step="0.05" value={props.moveNumberScale} onChange={(event) => props.onMoveNumberScaleChange(Number(event.target.value))}/><output>{Math.round(props.moveNumberScale * 100)}%</output></div></label>
+          <label><span>棋盘画线粗细</span><div className="slider-line"><input aria-label="棋盘画线粗细" type="range" min="0.6" max="3" step="0.05" value={props.gridLineWidth} onChange={(event) => props.onGridLineWidthChange(Number(event.target.value))}/><output>{props.gridLineWidth.toFixed(2)}px</output></div></label>
+          <label><span>坐标字体大小</span><div className="slider-line"><input aria-label="坐标字体大小" type="range" min="6" max="14" step="0.5" value={props.coordinateFontSize} onChange={(event) => props.onCoordinateFontSizeChange(Number(event.target.value))}/><output>{props.coordinateFontSize.toFixed(1)}px</output></div></label>
+          {(props.moveNumberScale !== 1 || props.gridLineWidth !== 1.25 || props.coordinateFontSize !== DEFAULT_COORDINATE_FONT_SIZE) && <button type="button" className="board-display-reset" onClick={() => { props.onMoveNumberScaleChange(1); props.onGridLineWidthChange(1.25); props.onCoordinateFontSizeChange(DEFAULT_COORDINATE_FONT_SIZE); }}>恢复默认显示</button>}
+        </div>
       </SettingsSection>}
 
       {searchable("无障碍与字号", "调整文字大小，改善键盘与屏幕阅读器使用体验", ["大字", "特大字", "无障碍"]) && <SettingsSection icon={<Accessibility/>} order={30} search={normalizedQuery} title="无障碍与字号" summary="文字大小、焦点和屏幕阅读器支持">
@@ -202,7 +219,26 @@ export function SettingsPage(props: SettingsPageProps) {
         <p className="helper">字号只放大界面文字与控件，不整体缩放棋盘，避免棋盘布局变形。</p>
       </SettingsSection>}
 
-      {searchable("文件与存储", "应用内保存与默认导出文件夹", ["恢复", "导出文件夹", "本机"]) && <SettingsSection icon={<FolderOpen/>} order={50} search={normalizedQuery} title="文件与存储" summary="恢复上次局面与默认导出文件夹">
+      {searchable("自动演示", "播放速度、分支处理和循环", ["播放", "速度", "分支", "循环"]) && <SettingsSection icon={<PlayCircle/>} order={15} search={normalizedQuery} title="自动演示" summary={`${props.playbackSpeed}× · ${props.playbackBranchPolicy === "pause" ? "遇分支暂停" : "沿主线继续"} · ${props.playbackLoop ? "循环" : "不循环"}`}>
+        <SettingChoiceRow title="播放速度" text="控制自动前进到下一手的等待时间" value={String(props.playbackSpeed)} options={[["0.5", "0.5×"], ["1", "1×"], ["1.5", "1.5×"], ["2", "2×"]]} onChange={(value) => props.onPlaybackSpeedChange(Number(value) as PlaybackSpeed)}/>
+        <SettingChoiceRow title="分支处理" text="当前局面出现多个后续时如何继续" value={props.playbackBranchPolicy} options={[["pause", "遇分支暂停"], ["mainline", "沿主线继续"]]} onChange={(value) => props.onPlaybackBranchPolicyChange(value as PlaybackBranchPolicy)}/>
+        <SettingRow title="循环当前变化" text="到末尾后回到本次播放起点继续演示" checked={props.playbackLoop} onChange={props.onPlaybackLoopChange}/>
+      </SettingsSection>}
+
+      {searchable("分析", "持续分析、引擎和棋盘候选点", ["AI", "引擎", "轻量", "强力", "胜率", "评估", "深度", "节点", "选点", "小数", "连线", "变化", "开关", "快捷", "思考显示位置", "提示", "自对弈", "落子"]) && <SettingsSection icon={<Bot/>} order={65} search={normalizedQuery} title="分析" summary={props.enhancementSettings.analysisSelfPlay ? "自对弈进行中" : props.enhancementSettings.analysisHintMode ? "提示 · 点击分析直接落子" : props.enhancementSettings.analysisAuto ? `持续 · ${props.enhancementSettings.analysisCandidateCount} 个选点` : "持续已关闭"}>
+        <SettingChoiceRow title="分析引擎" text={props.enginePackReady ? "轻量随包 / 强力 128MB 标准 / 自调内存可自定义" : "强力与自调引擎需先在下方「强力 AI 引擎」下载引擎包"} value={props.aiEngineChoice} options={[["light", "轻量引擎"], ["strong", props.enginePackReady ? "强力引擎" : "强力（需下载）"], ["tuned", props.enginePackReady ? "自调引擎" : "自调（需下载）"]] as const} onChange={(value) => props.onAiEngineChoiceChange(value as "light" | "strong" | "tuned")}/>
+        {props.aiEngineChoice === "tuned" && <label className="think-search-row"><span><b>分析内存</b><small>128-2048MB 自调（实验）；分配失败先降 256MB 重试再回落轻量。强力档固定 128MB 标准</small></span><output>{fmtAnalysisMemory(props.enhancementSettings.analysisMaxMemoryMb)}</output><input aria-label="分析内存滑杆" type="range" min="256" max="2048" step="32" value={props.enhancementSettings.analysisMaxMemoryMb} onChange={(event) => { const v = Math.min(2048, Math.max(256, Number(event.target.value))); props.onEnhancementSettingsChange({ ...props.enhancementSettings, analysisMaxMemoryMb: v }); if (memoryNumberRef.current) memoryNumberRef.current.value = String(v); }}/><input ref={memoryNumberRef} aria-label="分析内存数值" type="number" min="256" max="2048" step="32" defaultValue={props.enhancementSettings.analysisMaxMemoryMb} onBlur={(event) => { const v = Math.min(2048, Math.max(256, Math.round(Number(event.target.value) || 256))); props.onEnhancementSettingsChange({ ...props.enhancementSettings, analysisMaxMemoryMb: v }); event.currentTarget.value = String(v); }} onKeyDown={(event) => { if (event.key === "Enter") { const target = event.currentTarget; const v = Math.min(2048, Math.max(256, Math.round(Number(target.value) || 256))); props.onEnhancementSettingsChange({ ...props.enhancementSettings, analysisMaxMemoryMb: v }); target.value = String(v); target.blur(); } }}/></label>}
+        <SettingChoiceRow title="思考显示位置" text="统一显示做题、打谱和人机对战的后台计算状态" value={props.thinkingIndicatorPosition} options={[["corner", "棋盘右上角"], ["below", "棋盘下方"]] as const} onChange={(value) => props.onThinkingIndicatorPositionChange(value as "corner" | "below")}/>
+        <AnalysisSettingsPanel settings={props.enhancementSettings} onChange={props.onEnhancementSettingsChange}/>
+      </SettingsSection>}
+
+      {searchable("强力 AI 引擎", "下载冠军级评估网络包", ["引擎", "引擎包", "下载", "网络", "棋力", "AI"]) && <EnginePackSection order={66} search={normalizedQuery}/>}
+
+      {searchable("可选增强功能", "手势、最近导入、AI 提示和开局库", ["手势", "最近导入", "引导", "开局库", "打点簿", "开局", "人机", "识谱", "加速", "多核", "识谱加速"]) && <SettingsSection icon={<Sparkles/>} order={70} search={normalizedQuery} title="可选增强功能" summary={`${Object.entries(props.enhancementSettings).filter(([key, value]) => value === true && key !== "devMoveOrderRestore").length} 项已开启 · 除识谱加速外默认关闭`}>
+        <EnhancementSettingsPanel settings={props.enhancementSettings} onChange={props.onEnhancementSettingsChange}/>
+      </SettingsSection>}
+
+      {searchable("文件与存储", "储存位置、导出文件夹与上次局面", ["恢复", "导出文件夹", "本机", "储存位置", "存储位置", "保存位置", "文件夹", "占用", "空间"]) && <SettingsSection icon={<FolderOpen/>} order={50} search={normalizedQuery} title="文件与存储" summary="储存位置、导出文件夹与上次局面">
         <SettingRow title="退出后恢复上次局面" text="下次进入时恢复上次棋谱、节点和打谱/做题模式" checked={props.restoreLastPosition} onChange={props.onRestoreLastPositionChange}/>
         <StorageSettings defaultDirectory={props.defaultDirectory} directorySupported={props.directorySupported} nativeDirectorySupported={props.nativeDirectorySupported} onChoose={props.onChooseDefaultDirectory} onClear={props.onClearDefaultDirectory}/>
       </SettingsSection>}
@@ -215,22 +251,24 @@ export function SettingsPage(props: SettingsPageProps) {
         <SettingsLink icon={<Info/>} title="格式兼容说明" text="各格式的可写能力、保真范围与数据库边界" onClick={props.onOpenHelp}/>
       </SettingsSection>}
 
-      {searchable("可选增强功能", "手势、最近导入、AI 提示和引导", ["手势", "最近导入", "引导"]) && <SettingsSection icon={<Sparkles/>} order={70} search={normalizedQuery} title="可选增强功能" summary={`${Object.values(props.enhancementSettings).filter(Boolean).length} 项已开启 · 新功能默认关闭`}>
-        <EnhancementSettingsPanel settings={props.enhancementSettings} onChange={props.onEnhancementSettingsChange}/>
-      </SettingsSection>}
-
-      {searchable("设备布局", "平板横屏双栏", ["平板", "横屏", "双栏", "走棋", "文字", "功能栏", "图标"]) && <SettingsSection icon={<TabletSmartphone/>} order={80} search={normalizedQuery} title="设备布局" summary={props.enhancementSettings.tabletSplit ? "平板横屏双栏已开启" : "默认单栏 · 双栏默认关闭"}>
+      {searchable("设备布局", "平板横屏双栏", ["平板", "横屏", "双栏", "走棋", "文字", "功能栏", "图标", "功能区", "按钮", "排序"]) && <SettingsSection icon={<TabletSmartphone/>} order={80} search={normalizedQuery} title="设备布局" summary={props.enhancementSettings.tabletSplit ? "平板横屏双栏已开启" : "默认单栏 · 双栏默认关闭"}>
+        {props.onOpenLayout && <SettingsLink icon={<Settings2/>} title="功能区布局" text="打谱 · 读谱 · 做题" onClick={props.onOpenLayout}/>}
         <SettingRow title="平板横屏双栏" text="在平板或横屏设备上将棋盘与操作区并排显示" checked={props.enhancementSettings.tabletSplit} onChange={(tabletSplit) => props.onEnhancementSettingsChange({ ...props.enhancementSettings, tabletSplit })}/>
-        <SettingRow title="走棋栏显示文字" text="关闭后走棋导航只显示图标、绝不换行；开启则显示起点 / 上一手 / 下一手等短标签" checked={props.enhancementSettings.movesTextDisplay} onChange={(movesTextDisplay) => props.onEnhancementSettingsChange({ ...props.enhancementSettings, movesTextDisplay })}/>
-        <SettingRow title="走棋并入功能栏" text="把走棋导航从常驻行改为底部功能栏里的一个标签页，点击才展开，可为棋盘腾出更多高度" checked={props.enhancementSettings.dockMergeMoves} onChange={(dockMergeMoves) => props.onEnhancementSettingsChange({ ...props.enhancementSettings, dockMergeMoves })}/>
       </SettingsSection>}
 
-      {searchable("使用手册与反馈", "先看操作说明，再反馈问题或建议", ["手册", "反馈"]) && <SettingsSection icon={<BookOpen/>} order={90} search={normalizedQuery} title="使用手册与反馈" summary="先看操作说明，再反馈问题或建议">
+      {searchable("开发测试功能", "尚未成熟的实验开关，默认关闭", ["开发", "测试", "实验", "复原手序", "识谱"]) && <SettingsSection icon={<FlaskConical/>} order={72} search={normalizedQuery} title="开发测试功能" summary={props.enhancementSettings.devMoveOrderRestore ? "复原手序（实验）已开启" : "实验开关 · 默认关闭"}>
+        <p className="settings-feature-note">这里的开关用于试用尚未打磨成熟的新功能，行为与界面可能随时调整；不使用时保持关闭即可。</p>
+        <SettingRow title="图片识谱「复原手序」" text="实验功能：导入带落子序号的截图时，尝试按序号重建落子顺序；开启后导入流程中出现对应开关。真实截图成功率仍在改进，默认关闭" checked={props.enhancementSettings.devMoveOrderRestore} onChange={(devMoveOrderRestore) => props.onEnhancementSettingsChange({ ...props.enhancementSettings, devMoveOrderRestore })}/>
+      </SettingsSection>}
+
+      {searchable("使用手册与反馈", "先看操作说明，再反馈问题或建议", ["手册", "反馈", "引导", "新手"]) && <SettingsSection icon={<BookOpen/>} order={90} search={normalizedQuery} title="使用手册与反馈" summary="先看操作说明，再反馈问题或建议">
+        <SettingsLink icon={<Compass/>} title="新手引导" text="高亮 spotlight 再走一遍核心功能，约 1 分钟" onClick={props.onOpenTour}/>
         <SettingsLink className="manual-entry-link" icon={<BookOpen/>} title="使用手册" text="逐项了解棋盘、棋谱库、题库、AI、导入导出和设置" onClick={props.onOpenManual}/>
         <SettingsLink icon={<Mail/>} title="反馈问题或建议" text="通过邮件或 GitHub Issue 发送，内容不会自动上传" onClick={props.onOpenFeedback}/>
       </SettingsSection>}
 
       {searchable("关于", "项目说明、维护计划与下载地址", ["版本", "GitHub", "更新"]) && <SettingsSection icon={<Info/>} order={100} search={normalizedQuery} title="关于" summary="项目说明、维护计划与下载地址">
+        <SettingRow title="启动时自动检查新版本" text="联网查询 GitHub 的最新正式版本；发现新版本会在快捷中心提示。关闭后仍可在关于页手动检查" checked={props.updateAutoCheck} onChange={props.onUpdateAutoCheckChange}/>
         <SettingsLink icon={<Info/>} title="关于半步五子棋打谱" text="版本、检查更新、项目说明与 GitHub 下载" onClick={props.onOpenAbout}/>
       </SettingsSection>}
 
@@ -240,7 +278,52 @@ export function SettingsPage(props: SettingsPageProps) {
   </>;
 }
 
-function SettingsLink({ icon, title, text, onClick, disabled = false, className = "" }: { icon: ReactNode; title: string; text: string; onClick: () => void; disabled?: boolean; className?: string }) {
+function BoardDisplayPreview({ showNumbers, showCoordinates, showForbidden, showLastMove, moveNumberScale, gridLineWidth, coordinateFontSize }: { showNumbers: boolean; showCoordinates: boolean; showForbidden: boolean; showLastMove: boolean; moveNumberScale: number; gridLineWidth: number; coordinateFontSize: number }) {
+  const gap = 26;
+  const originX = 36;
+  const originY = 28;
+  const cols = 7;
+  const rows = 5;
+  const px = (col: number) => originX + col * gap;
+  const py = (row: number) => originY + row * gap;
+  const width = originX * 2 + (cols - 1) * gap;
+  const height = originY * 2 + (rows - 1) * gap;
+  const stoneRadius = 10.5;
+  // 黑棋左三右二、中间留一个长连禁手点（黑下在此处即为六连）；白棋上二下三，末手白10 带标记。
+  const stones = [
+    { col: 0, row: 2, player: "black", number: 1, last: false },
+    { col: 2, row: 0, player: "white", number: 2, last: false },
+    { col: 1, row: 2, player: "black", number: 3, last: false },
+    { col: 5, row: 0, player: "white", number: 4, last: false },
+    { col: 2, row: 2, player: "black", number: 5, last: false },
+    { col: 1, row: 3, player: "white", number: 6, last: false },
+    { col: 4, row: 2, player: "black", number: 7, last: false },
+    { col: 3, row: 3, player: "white", number: 8, last: false },
+    { col: 5, row: 2, player: "black", number: 9, last: false },
+    { col: 4, row: 3, player: "white", number: 10, last: true },
+  ];
+  const numberFontSize = Math.max(7, stoneRadius * 0.64) * moveNumberScale;
+  return (
+    <svg className="board-display-preview-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="棋盘显示实时预览">
+      <rect x="6" y="6" width={width - 12} height={height - 12} rx="10" className="board-preview-bg"/>
+      {Array.from({ length: cols }, (_, col) => <g key={`v${col}`} style={{ strokeWidth: gridLineWidth }}><line x1={px(col)} y1={py(0)} x2={px(col)} y2={py(rows - 1)}/></g>)}
+      {Array.from({ length: rows }, (_, row) => <g key={`h${row}`} style={{ strokeWidth: gridLineWidth }}><line x1={px(0)} y1={py(row)} x2={px(cols - 1)} y2={py(row)}/></g>)}
+      <circle cx={px(3)} cy={py(2)} r="2.4" className="board-preview-star"/>
+      {showCoordinates && Array.from({ length: cols }, (_, col) => <text key={`t${col}`} style={{ fontSize: coordinateFontSize }} className="board-preview-coord" x={px(col)} y={originY - 12}>{String.fromCharCode(65 + col)}</text>)}
+      {showCoordinates && Array.from({ length: rows }, (_, row) => <text key={`n${row}`} style={{ fontSize: coordinateFontSize }} className="board-preview-coord" x={originX - 16} y={py(row) + coordinateFontSize / 3}>{rows - row}</text>)}
+      {showForbidden && <g pointerEvents="none"><circle cx={px(3)} cy={py(2)} r={stoneRadius * 0.66} className="forbidden-point" fill="none"/><text x={px(3)} y={py(2) + stoneRadius * 0.2} textAnchor="middle" className="forbidden-point-label" style={{ fontSize: `${Math.max(9, stoneRadius * 0.5)}px`, fill: "var(--red)", fontWeight: 700 }} stroke="none">长</text></g>}
+      {stones.map((stone) => (
+        <g key={stone.number}>
+          <circle cx={px(stone.col)} cy={py(stone.row)} r={stoneRadius} className={`board-preview-stone ${stone.player}`}/>
+          {showNumbers && <text x={px(stone.col)} y={py(stone.row) + stoneRadius * 0.28} className={`move-number ${stone.player}${stone.last && showLastMove ? " last-move-number" : ""}`} style={{ fontSize: `${numberFontSize}px` }}>{stone.number}</text>}
+          {stone.last && showLastMove && !showNumbers && <circle cx={px(stone.col)} cy={py(stone.row)} r={Math.max(3, stoneRadius * 0.25)} className="last-dot"/>}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+export function SettingsLink({ icon, title, text, onClick, disabled = false, className = "" }: { icon: ReactNode; title: string; text: string; onClick: () => void; disabled?: boolean; className?: string }) {
   return <button className={`settings-link ${className}`.trim()} disabled={disabled} onClick={onClick}><span>{icon}<b>{title}</b><small>{text}</small></span><ChevronRight/></button>;
 }
 
@@ -253,13 +336,59 @@ function AppearanceSubsection({ icon, title, summary, search = "", keywords = []
   </details>;
 }
 
-function SettingsSection({ title, summary, open = false, icon, order, search = "", children }: { title: string; summary: string; open?: boolean; icon?: ReactNode; order?: number; search?: string; children: ReactNode }) {
+export function SettingsSection({ title, summary, open = false, icon, order, search = "", children }: { title: string; summary: string; open?: boolean; icon?: ReactNode; order?: number; search?: string; children: ReactNode }) {
   return <details className={`settings-group settings-collapsible${order === undefined ? "" : ` settings-order-${order}`}`} open={open || Boolean(search)}><summary className="settings-section-toggle"><span className="settings-section-icon" aria-hidden="true">{icon || <Settings2/>}</span><span className="settings-section-title"><b>{title}</b><small>{summary}</small></span><ChevronDown/></summary><div className="settings-section-content">{children}</div></details>;
 }
 
+const formatStorageSize = (bytes: number) => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 MB";
+  const mb = bytes / (1024 * 1024);
+  if (mb < 1) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  if (mb < 1024) return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
+  return `${(mb / 1024).toFixed(2)} GB`;
+};
+
+const readStorageUsage = async () => {
+  try {
+    const estimate = await navigator.storage?.estimate?.();
+    return typeof estimate?.usage === "number" ? formatStorageSize(estimate.usage) : null;
+  } catch {
+    return null;
+  }
+};
+
 function StorageSettings({ defaultDirectory, directorySupported, nativeDirectorySupported, onChoose, onClear }: { defaultDirectory: ExportDirectoryHandle | null; directorySupported: boolean; nativeDirectorySupported: boolean; onChoose: () => void; onClear: () => void }) {
-  const native = nativeDirectorySupported && !defaultDirectory;
-  return <div className="storage-settings-body"><div className="storage-summary"><span className="storage-icon"><Save size={18}/></span><div><div className="storage-summary-heading"><b>应用内保存</b><em>本机</em></div><p>保存按钮写入本机棋谱库，可在“棋谱库”中继续查看和编辑。</p></div></div><div className="storage-divider"/><div className="storage-destination"><span className={`storage-icon folder ${defaultDirectory ? "ready" : ""}`}><FolderOpen size={18}/></span><div className="storage-destination-copy"><div className="storage-summary-heading"><b>默认导出文件夹</b>{defaultDirectory && <em className="ready">已设置</em>}</div><p>{defaultDirectory ? `导出文件会直接写入“${defaultDirectory.name}”` : native ? "点击后使用手机“文档 / 半步五子棋打谱 / 导出”，棋谱和 PNG 都能在这里找到" : directorySupported ? "尚未设置，将使用浏览器默认下载目录" : "当前浏览器不支持选择文件夹，将使用默认下载目录"}</p></div><button type="button" className="storage-action" onClick={onChoose}>{defaultDirectory ? "更换" : native ? "使用手机文档" : "选择"}</button></div>{defaultDirectory && <button type="button" className="storage-remove" onClick={onClear}><X size={14}/>取消默认位置</button>}<div className="storage-tip"><Info size={14}/><span>{nativeDirectorySupported ? "Android 端会保存到手机“文档 / 半步五子棋打谱 / 导出”；网页端则使用你授权的文件夹。" : directorySupported ? "网页只会记住文件夹授权和名称，不会读取系统完整路径；可随时更换。" : "可在支持目录权限的浏览器中选择文件夹；当前环境会继续使用默认下载目录。"}</span></div></div>;
+  const [usage, setUsage] = useState<string | null>(null);
+  // 默认位置是「下载」还是退回「文档」要看设备能力（公共下载目录 API 29+ 才可
+  // 免权限写入），所以先按文档兜底渲染，探测回来再改成实际位置。
+  const [fallbackLocation, setFallbackLocation] = useState<string | null>(() => exportLocationLabel(nativeExportDirectoryHandle()));
+
+  useEffect(() => {
+    let active = true;
+    void readStorageUsage().then((value) => { if (active) setUsage(value); });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!nativeDirectorySupported) return undefined;
+    let active = true;
+    void defaultNativeExportHandle().then((handle) => { if (active) setFallbackLocation(exportLocationLabel(handle)); });
+    return () => { active = false; };
+  }, [nativeDirectorySupported]);
+
+  // Android shows the system document picker (SAF) instead of a path field, so
+  // "chosen" is any stored native/SAF folder; the web build stores a directory
+  // handle. Until a folder is chosen, exports use the default location.
+  const pickedFolder = defaultDirectory && (isSafDirectoryHandle(defaultDirectory) || isNativeDirectoryHandle(defaultDirectory)) ? defaultDirectory : null;
+  const webDirectory = defaultDirectory && !pickedFolder ? defaultDirectory : null;
+  return <div className="storage-settings-body">
+    <div className="storage-summary"><span className="storage-icon"><Save size={18}/></span><div><div className="storage-summary-heading"><b>应用内数据</b><em>本机</em></div><p>棋谱库、题库、回收站、草稿和设置都放在系统给 App 的内部空间里，不需要你选文件夹；卸载或清除数据会一起消失，想留档请用“数据与兼容”里的一键备份。</p>{usage && <span className="storage-usage">已用 {usage}</span>}</div></div>
+    <div className="storage-divider"/>
+    <div className="storage-destination"><span className={`storage-icon folder ${defaultDirectory ? "ready" : ""}`}><FolderOpen size={18}/></span><div className="storage-destination-copy"><div className="storage-summary-heading"><b>导出位置</b>{pickedFolder ? <em className="ready">已设置</em> : <em>默认</em>}</div>{nativeDirectorySupported ? <p>{pickedFolder ? `导出的棋谱和 PNG 会写入“${exportLocationLabel(pickedFolder) ?? pickedFolder.name}”` : "还没选文件夹。点右侧按钮会打开系统的文件管理，选一个文件夹长期使用；不选就先用下面的默认位置。"}</p> : <p>{webDirectory ? `导出文件会直接写入“${exportLocationLabel(webDirectory) ?? webDirectory.name}”` : directorySupported ? "尚未设置，导出会进入浏览器默认下载目录。" : "当前环境不支持选择文件夹，导出会进入默认下载目录。"}</p>}{nativeDirectorySupported && <code className="storage-path">{pickedFolder ? `当前文件夹：${exportLocationLabel(pickedFolder) ?? pickedFolder.name}` : `默认位置：${fallbackLocation ?? "文档"}`}</code>}</div><button type="button" className="storage-action" onClick={onChoose}>{nativeDirectorySupported ? (pickedFolder ? "更换文件夹" : "选择文件夹") : defaultDirectory ? "更换" : "选择"}</button></div>
+    {pickedFolder && <button type="button" className="storage-remove" onClick={onClear}><X size={14}/>恢复默认位置</button>}
+    {webDirectory && <button type="button" className="storage-remove" onClick={onClear}><X size={14}/>取消默认位置</button>}
+    <div className="storage-tip"><Info size={14}/><span>{nativeDirectorySupported ? "手机端会打开系统文件夹选择器，选中的文件夹长期有效，不需要额外的存储权限；想换回默认位置随时可以恢复。" : directorySupported ? "网页只会记住文件夹授权和名称，不会读取系统完整路径；可随时更换。" : "可在支持目录权限的浏览器中选择文件夹；当前环境会继续使用默认下载目录。"}</span></div>
+  </div>;
 }
 
 function SettingRow({ title, text, checked, disabled = false, onChange }: { title: string; text: string; checked: boolean; disabled?: boolean; onChange: (value: boolean) => void }) {
@@ -279,12 +408,30 @@ function SettingChoiceRow({ title, text, value, options, onChange }: {
 function EnhancementSettingsPanel({ settings, onChange }: { settings: EnhancementSettings; onChange: (value: EnhancementSettings) => void }) {
   const update = (patch: Partial<EnhancementSettings>) => onChange({ ...settings, ...patch });
   return <div className="enhancement-settings">
-    <p className="settings-feature-note">下面这些功能会增加界面提示或触摸处理，默认关闭；需要时逐项打开即可。</p>
+    <p className="settings-feature-note">下面这些功能会增加界面提示或触摸处理；除识谱多核加速（出厂默认开启）外都默认关闭，需要时逐项打开即可。</p>
+    <SettingRow title="识谱多核加速" text="图片识谱按手机的处理器核心数与可用内存自动开多个线程并行计算网格与棋子，识别更快、导入时界面不卡；识别结果与单线程逐位相同。关闭后回落单线程" checked={settings.fastRecognition} onChange={(fastRecognition) => update({ fastRecognition })}/>
     <SettingRow title="双指缩放棋盘" text="用两根手指放大或缩小棋盘，适合平板复盘" checked={settings.gestureZoom} onChange={(gestureZoom) => update({ gestureZoom })}/>
     <SettingRow title="双指滑动切手" text="双指左右滑动切换上一手或下一手" checked={settings.gestureSwipe} onChange={(gestureSwipe) => update({ gestureSwipe })}/>
     <SettingRow title="最近导入列表" text="在导入面板保留最近 5 个可快速重开的文件" checked={settings.recentImports} onChange={(recentImports) => update({ recentImports })}/>
     <SettingRow title="AI 棋盘提示点" text="在棋盘上显示 AI 推荐落点和开局候选编号" checked={settings.aiBoardHints} onChange={(aiBoardHints) => update({ aiBoardHints })}/>
+    <SettingRow title="开局库（打点簿）" text="人机对局优先查内置开局打点簿（索索夫 / 山口五手两打，按开局规则自动选簿）：命中开局线时按最强打点秒落，未命中回落引擎。关闭时零占用" checked={settings.openingBook} onChange={(openingBook) => update({ openingBook })}/>
     <SettingRow title="操作引导卡片" text="在记录、棋谱库和设置页显示轻量使用提示" checked={settings.coachMarks} onChange={(coachMarks) => update({ coachMarks })}/>
+  </div>;
+}
+
+function AnalysisSettingsPanel({ settings, onChange }: { settings: EnhancementSettings; onChange: (value: EnhancementSettings) => boolean | void }) {
+  const update = (patch: Partial<EnhancementSettings>) => onChange({ ...settings, ...patch });
+  const metrics: Array<[AnalysisCandidateMetric, string]> = [["winRate", "胜率"], ["score", "评估分"], ["nodes", "计算量"], ["depth", "深度"]];
+  return <div className="analysis-settings-panel">
+    <SettingRow title="首行快捷滑动开关" text="开启后首行功能区出现分析滑动开关（滑块即状态，默认在「分析」左侧，可在功能区布局里移动或隐藏），点一下直接开关分析" checked={settings.analysisQuickToggle} onChange={(analysisQuickToggle) => update({ analysisQuickToggle })}/>
+    <SettingRow title={settings.analysisSelfPlay ? "自对弈" : "持续"} text={settings.analysisSelfPlay ? "开启后引擎双方逐回合落子，直到五连或满盘；关闭立即停手" : "开启后持续加深当前局面；落子或切换局面后自动重启，不会自动落子"} checked={settings.analysisAuto} onChange={(analysisAuto) => update({ analysisAuto })}/>
+    <SettingChoiceRow title="分析模式" value={getAnalysisMode(settings)} text="持续：分析按钮展开面板，一直分析当前局面、越算越深；自对弈：双方交给引擎按每步时限逐回合落子，五连或满盘自动结束；提示：分析按钮不展开面板，点一下想一手直接落子" options={[["continuous", "持续"], ["selfplay", "自对弈"], ["hint", "提示"]]} onChange={(mode) => { onChange(withAnalysisMode(settings, mode as AnalysisMode)); }}/>
+    {settings.analysisSelfPlay && <label className="think-search-row"><span><b>自对弈每步时限</b><small>到点即落子；引擎提前算出杀棋会立刻落下不占满时限</small></span><output>{(settings.analysisSelfPlayTimeMs / 1000).toFixed(1)} 秒</output><input aria-label="自对弈每步时限" type="range" min="1000" max="10000" step="500" value={settings.analysisSelfPlayTimeMs} onChange={(event) => update({ analysisSelfPlayTimeMs: Number(event.target.value) })}/></label>}
+    <SettingRow title="棋盘显示实时选点" text="将引擎候选点显示在棋盘空位上；这些提示不会落子，也不会写入棋谱" checked={settings.analysisShowCandidates} onChange={(analysisShowCandidates) => update({ analysisShowCandidates })}/>
+    <SettingChoiceRow title="候选点显示内容" text="候选点圆标中的数值和分析面板候选列表使用同一指标" value={settings.analysisCandidateMetric} options={metrics} onChange={(analysisCandidateMetric) => update({ analysisCandidateMetric: analysisCandidateMetric as AnalysisCandidateMetric })}/>
+    <label className="think-search-row"><span><b>候选点数量</b><small>默认只显示当前最佳点，最多同时显示 10 个引擎选点</small></span><output>{settings.analysisCandidateCount} 选</output><input aria-label="候选点数量" type="range" min="1" max="10" step="1" value={settings.analysisCandidateCount} onChange={(event) => update({ analysisCandidateCount: Number(event.target.value) })}/></label>
+    <SettingChoiceRow title="选点小数位数" text="胜率与评估分显示到小数点后几位，最多两位；深度和计算量不受影响" value={String(settings.analysisCandidateDecimals)} options={[["0", "0 位（整数）"], ["1", "1 位"], ["2", "2 位"]]} onChange={(analysisCandidateDecimals) => update({ analysisCandidateDecimals: Number(analysisCandidateDecimals) })}/>
+    <SettingRow title="变化预览连线" text="点击候选点后，在棋盘预览变化图时画出各手之间的连线；默认关闭，带序号的预览棋子已足够看清变化。预览期间候选点上的胜率等指标会暂时隐藏，避免互相干扰" checked={settings.analysisPreviewGuide} onChange={(analysisPreviewGuide) => update({ analysisPreviewGuide })}/>
   </div>;
 }
 
@@ -303,7 +450,7 @@ function SoundSettingsPanel({ settings, onChange, onPreview }: { settings: Sound
 
 function VisualThemeSettings({ boardTheme, stoneTheme, onBoardThemeChange, onStoneThemeChange, only = "both" }: { boardTheme: BoardTheme; stoneTheme: StoneTheme; onBoardThemeChange: (value: BoardTheme) => void; onStoneThemeChange: (value: StoneTheme) => void; only?: "board" | "stone" | "both" }) {
   const boards: Array<[BoardTheme, string, string]> = [["wood", "原木棋盘", "温暖木色，默认风格"], ["jade", "玉石棋盘", "青玉底色，柔和对比"], ["notebook", "练习本", "纸张横线与红色边线"], ["emerald", "翡翠棋盘", "深翠绿与金色网格"], ["porcelain", "青花瓷棋盘", "暖瓷白棋面与深钴蓝网格"], ["whitejade", "白玉棋盘", "柔白玉色，冷静通透"], ["walnut", "深胡桃木", "深棕木纹与暖色边框"], ["frosted", "磨砂玻璃", "半透明雾面与柔和网格"], ["circuit", "电路棋盘", "暗色底与蓝绿发光线路"], ["minimal", "极简棋盘", "纯色棋面与清晰灰黑网格"], ["blackgold", "尊贵黑金棋盘", "黑曜石漆面与香槟金线"], ["pale", "苍白世界棋盘", "月白矿石与石墨灰线"], ["kawaii", "卡哇伊棋盘", "奶油莓粉与柔紫网格"], ["aurora", "极光棋盘", "极夜玻璃与流彩极光"]];
-  const stones: Array<[StoneTheme, string, string]> = [["classic", "经典棋子", "黑白高光"], ["jade", "玉石棋子", "青玉与白玉"], ["yun", "云子棋子", "温润黑白云子"], ["ink", "墨蓝棋子", "练习本墨水质感"], ["mono", "黑白极简", "纯黑纯白，无光泽"], ["notebook", "勾叉棋子", "黑叉与红勾手绘笔迹"], ["porcelain", "青花瓷棋子", "青白瓷釉与蓝色纹样"], ["snow", "雪晶棋子", "深冰晶与浅霜晶，带结冰切面"], ["terminal", "终端字符棋子", "X / O 字符，避开禁手红叉"], ["gold-diamond", "黑钻白金棋子", "黑棋钻石质感，白棋黄金质感"], ["gold", "鎏金棋子", "黑棋鎏金纹理与暖金高光"], ["diamond", "钻石棋子", "黑白钻石切面与折射高光"], ["blackgold", "尊贵黑金棋子", "黑玛瑙与鎏金珠光"], ["pale", "苍白世界棋子", "石墨黑与银白珍珠"], ["kawaii", "卡哇伊棋子", "草莓粉小猫与薄荷青搭档"], ["aurora", "极光棋子", "极夜深青与极光凝珠"]];
+  const stones: Array<[StoneTheme, string, string]> = [["classic", "经典棋子", "黑白高光"], ["jade", "玉石棋子", "青玉与白玉"], ["yun", "云子棋子", "温润黑白云子"], ["ink", "墨蓝棋子", "练习本墨水质感"], ["mono", "黑白极简", "纯黑纯白，无光泽"], ["notebook", "勾叉棋子", "黑叉与红勾手绘笔迹"], ["porcelain", "青花瓷棋子", "青白瓷釉与蓝色纹样"], ["snow", "雪晶棋子", "深冰晶与浅霜晶，带结冰切面"], ["terminal", "终端字符棋子", "深色终端盘配荧光描边"], ["gold-diamond", "黑钻白金棋子", "黑棋钻石质感，白棋黄金质感"], ["gold", "鎏金棋子", "黑棋鎏金纹理与暖金高光"], ["diamond", "钻石棋子", "黑白钻石切面与折射高光"], ["blackgold", "尊贵黑金棋子", "黑玛瑙与鎏金珠光"], ["pale", "苍白世界棋子", "石墨黑与银白珍珠"], ["kawaii", "卡哇伊棋子", "草莓粉小猫与薄荷青搭档"], ["aurora", "极光棋子", "极夜深青与极光凝珠"]];
   return <div className="visual-theme-settings">
     {only !== "stone" && <div><b className="visual-theme-label">棋盘材质</b><div className="visual-option-grid">{boards.map(([value, label, text]) => <button key={value} type="button" className={boardTheme === value ? "selected" : ""} onClick={() => onBoardThemeChange(value)}><i className={`board-preview ${value}`} aria-hidden="true"/><span><b>{label}</b><small>{text}</small></span><Check className="visual-check" aria-hidden="true"/></button>)}</div></div>}
     {only !== "board" && <div><b className="visual-theme-label">棋子材质</b><div className="visual-option-grid">{stones.map(([value, label, text]) => <button key={value} type="button" className={stoneTheme === value ? "selected" : ""} onClick={() => onStoneThemeChange(value)}><i className={`stone-preview ${value}`} aria-hidden="true"/><span><b>{label}</b><small>{text}</small></span><Check className="visual-check" aria-hidden="true"/></button>)}</div></div>}
