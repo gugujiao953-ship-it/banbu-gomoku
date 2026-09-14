@@ -2,8 +2,10 @@
 
 本文档说明在 iPhone / iPad 的 Safari 上使用「半步五子棋打谱」网页版，以及把它「添加到主屏幕」当作本地应用使用的步骤与已知限制。
 
-部署地址（来自 `src/features/ai/engine-pack.ts` 中配置的 Pages 地址）：
-<https://gugujiao953-ship-it.github.io/banbu-gomoku/>
+网页版地址（应用本体部署在站点根的 `/app/` 子路径下）：
+
+- **网页版（打开这个）**：<https://gugujiao953-ship-it.github.io/banbu-gomoku/app/>
+- 站点首页（功能介绍与全部下载入口）：<https://gugujiao953-ship-it.github.io/banbu-gomoku/>
 
 ---
 

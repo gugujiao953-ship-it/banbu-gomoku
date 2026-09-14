@@ -2791,7 +2791,8 @@ export default function App() {
     setBackupBusy(true);
     recordAction("导出一键备份");
     try {
-      const snapshot = await createBackupSnapshot("1.1.7");
+      // 备份里的 appVersion 必须跟着构建走：以前写死 "1.1.7"，导出/诊断里一直显示旧版本。
+      const snapshot = await createBackupSnapshot(APP_VERSION);
       const stamp = snapshot.exportedAt.replace(/[:.]/g, "-").replace("Z", "");
       const zip = await createZip([
         { name: "banbu-backup.json", data: serializeBackup(snapshot) },

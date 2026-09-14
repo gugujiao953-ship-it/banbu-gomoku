@@ -2,7 +2,19 @@
 
 移动优先的五子棋 / 连珠打谱与做题工具。当前版本以 React + TypeScript 实现共享核心，通过 PWA 提供离线网页版，通过 Capacitor 提供 Android 应用；未来桌面端可继续复用相同的棋谱模型与格式层。
 
-当前发布版本：**v1.1.7**（2026-09-05）。
+当前发布版本：**v1.1.8**（2026-09-14）。
+
+## 下载与在线使用
+
+| 方式 | 入口 | 说明 |
+| --- | --- | --- |
+| **网页版（含 iOS）** | **[打开网页版](https://gugujiao953-ship-it.github.io/banbu-gomoku/app/)** | 手机 / 桌面浏览器直接使用；**iPhone / iPad 用 Safari 打开后「分享 → 添加到主屏幕」，即可当本地应用离线使用**，无需安装 |
+| Android APK | [GitHub Releases v1.1.8](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/tag/v1.1.8) | `banbu-gomoku-1.1.8-android-release.apk`（44.6 MB，含冠军网络引擎包），同页附 SHA-256 |
+| 百度网盘 | [下载链接](https://pan.baidu.com/s/1N5TW5BlXPQgNVFGKap3VhQ?pwd=v6tn) | 提取码 `v6tn`（GitHub 访问不便时用） |
+| 蓝奏云 | [下载链接](https://wwbwc.lanzouq.com/iJJgS48ghxji) | 密码 `1i8s` |
+| 项目主页 | [gugujiao953-ship-it.github.io/banbu-gomoku](https://gugujiao953-ship-it.github.io/banbu-gomoku/) | 功能说明、更新亮点与全部下载入口 |
+
+本版更新说明（相对 v1.1.7）见 [RELEASE_NOTES.md](./RELEASE_NOTES.md)。
 
 > 这是一个 Vibecoding 的产物，也是一款永久免费、开放源代码的软件。希望它能让手机打谱和做题更方便；如有内容涉及侵权，请通过 GitHub Issue 联系，我会及时处理或删除。
 
@@ -112,7 +124,7 @@ cd android
 npm run android:release
 ```
 
-发布流程说明见 [docs/Android发布流程.md](./docs/Android发布流程.md)。当前 v1.1.6 Release APK 和 SHA-256 校验文件保存在本地 `artifacts/releases/1.1.6/`，GitHub Release 页面会提供下载。
+发布流程说明见 [docs/Android发布流程.md](./docs/Android发布流程.md)。当前 v1.1.8 Release APK 和 SHA-256 校验文件保存在本地 `artifacts/releases/1.1.8/`，GitHub Release 页面会提供下载。
 
 需要 JDK 21、Android Studio / Android SDK；发布脚本会优先使用项目内的工具链，避免依赖全局 `JAVA_HOME`。
 
