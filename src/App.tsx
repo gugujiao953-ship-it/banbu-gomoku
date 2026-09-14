@@ -1,5 +1,6 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { Capacitor } from "@capacitor/core";
 import { ActionLayoutEditor } from "./features/workspace/ActionLayoutEditor";
 import { WorkspaceAction } from "./features/workspace/WorkspaceAction";
 import { ACTION_LABELS, actionVisibleInMode, defaultModeLayout, loadActionLayouts, saveActionLayouts, visibleModeLayout, type ActionId, type ActionLayouts, type LayoutZone, type ModeLayout } from "./features/workspace/action-layout";
@@ -224,20 +225,10 @@ const engineMemoryMbFor = (choice: AiEngineChoice, sliderMb: number): number | u
   const cap = ram <= 2 ? 256 : ram <= 4 ? 512 : ram <= 8 ? 1024 : 2048;
   return choice === "strong" ? Math.min(128, cap) : Math.min(Math.round(sliderMb) || 256, cap);
 };
-/** 只读图片的像素尺寸（不参与识别）。相册选择器与聊天软件会转码或缩放，「手机
- *  到底交了多少像素」是排查「同一张图设备间结果不同」的第一手数据：实测同一张
- *  931² 的谱图重压到 q0.6 会丢全部序号、缩到 500px 以下会开始掉子，而 1600px
- *  长边以上又会被识别器自己缩放。失败时返回空串，识别本身照常进行。 */
-const describeImageSize = async (file: File): Promise<string> => {
-  try {
-    const bitmap = await createImageBitmap(file);
-    const size = `${bitmap.width}×${bitmap.height}`;
-    bitmap.close();
-    return size;
-  } catch {
-    return "";
-  }
-};
+// 说明：这里原先有个 describeImageSize(file)，在识别前又 createImageBitmap 一次
+// 只为显示原图像素尺寸，大图在 iOS 上白解码一遍（100-400ms）。现在识别器会把
+// 解码后的原图尺寸随结果一起回报（ImageRecognitionResult.imageWidth/Height），
+// 直接复用即可，同一个文件不再被解码两次。
 
 interface PuzzleSetupWorkspace { session: PuzzleSetupSession; sourceOutcome: "won" | "lost" | "stopped" | null }
 // 难度档时长（用户 2026-09-10 钦定）：初级 0.6s / 中级 2s / 高级 5s / 大师 10s。
@@ -573,6 +564,34 @@ const analysisCandidateTone = (candidate: AiAnalysisCandidate, metric: AnalysisC
   if (candidate.score !== undefined) return candidate.score >= 120 ? "high" : candidate.score <= -120 ? "low" : "mid";
   return "mid";
 };
+
+// 为什么要有这两个模块级空数组常量：Board 用 React.memo 包裹，默认浅比较 props。
+// 只要有一个 prop 每次渲染换成新引用，memo 就失效、整盘（225 个格子 + 全部棋子）
+// 会跟着父组件重渲染。而调用处写的 `aiGame?.opening.candidates || []`、三元表达式
+// 里的 `: []` 都是「渲染时现建数组」——引用必然每次都变。提到模块级后引用永久
+// 稳定，且 Board 只读不写这些数组，共享是安全的。
+const EMPTY_POSITIONS: Position[] = [];
+const EMPTY_ANALYSIS_CANDIDATES: AiAnalysisCandidate[] = [];
+// 变化预览线的空值：元素类型比 Position 多一个 player（Board 的
+// analysisPreviewLine prop 类型），单独建常量避免每次渲染现建空数组。
+const EMPTY_PREVIEW_LINE: Array<Position & { player: Player }> = [];
+// onMark 在不适用时曾传内联 `() => undefined`，同样是每渲染新函数；用模块级常量
+// 替代，保证 Board 的 onMark 引用始终稳定。
+const NOOP_MARK = () => undefined;
+
+// 把「每次渲染都会换身份」的事件回调转发成引用稳定的回调。Board 的 memo 要求
+// onPlay/onMark/onVariation/onGestureStep/onStopThinking 引用稳定，但这些实现
+// （play/mark/navigateVariation/…）依赖几十个 state 与其它回调，逐个写进
+// useCallback 依赖数组极易漏项，从而产生陈旧闭包——这类 bug 极难排查（落子用到
+// 旧 state，现象是偶发、难复现）。这里用 latest-ref 方案：布局阶段把最新实现写进
+// ref，稳定的 useCallback 永远调用 ref.current，因此既稳住了引用，又保证执行的是
+// 最新逻辑，不存在陈旧闭包。用 useLayoutEffect（而非 useEffect）是为了在浏览器
+// 绘制/用户事件之前就完成更新，事件回调永远拿到本帧的实现。
+function useStableCallback<T extends (...args: never[]) => unknown>(callback: T): T {
+  const ref = useRef(callback);
+  useLayoutEffect(() => { ref.current = callback; });
+  return useCallback(((...args: Parameters<T>) => ref.current(...args)) as T, []);
+}
 
 const Board = memo(function Board({ document, currentId, currentBookmarked = false, showNumbers, showCoordinates, showLastMove = true, moveNumberScale = 1, gridLineWidth = 1.25, coordinateFontSize = DEFAULT_COORDINATE_FONT_SIZE, largeBoard, rotation, mirrored, initialDepth = 0, disabled = false, forbiddenMarkers = [], winningLines = [], openingCandidates = [], analysisCandidates = [], analysisCandidateMetric = "winRate", analysisCandidateDecimals = 0, analysisPreviewLine = [], analysisPreviewMove = null, analysisPreviewGuide = false, openingStage, thinking = false, thinkingIndicatorPosition = "corner", onStopThinking, motion, feedback, result, boardTheme = "wood", stoneTheme = "classic", boardOpacity = 1, stoneOpacity = 1, annotationHighlight = "none", gestureZoomEnabled = false, gestureSwipeEnabled = false, onPlay, onVariation, onMark, onGestureStep }: {
   document: GameDocument; currentId: string; showNumbers: boolean; showCoordinates: boolean; showLastMove?: boolean; moveNumberScale?: number; gridLineWidth?: number; coordinateFontSize?: number; largeBoard: boolean;
@@ -1370,28 +1389,63 @@ export default function App() {
   // 真计算）；aiGame 的 rapfiPersistentWorker 首次使用时再加载（避免 3 个
   // 40MB 并行预热拖垮启动——门禁实测 45s 都等不到就绪）。
   // 低内存设备由 worker 内 chooseVariant 的 deviceMemory 门槛自动降级。
+  // 2026-09 扩展：默认「轻量档」此前完全不预热，而网页版首次对弈/分析要现场
+  // new Worker + importScripts + WASM 编译，第一手明显卡顿。现在轻量档在网页
+  // （非 Capacitor 原生）改为「页面空闲后再预热」：用 requestIdleCallback（Safari
+  // 等不支持时退回 setTimeout），不跟启动阶段的渲染/索引抢资源；原生端有本地
+  // 资源与自己的冷启动策略，保持不预热。调度可取消，依赖变化或卸载都不会泄漏。
   useEffect(() => {
-    if (!engineNeedsPack(aiEngineChoice) || !enginePackReady) return;
-    const packUrl = enginePackUrlRef.current;
-    if (!packUrl) return;
+    const needsPack = engineNeedsPack(aiEngineChoice);
+    // 原生端不预热轻量（见上）；`typeof Worker` 兜底，防止无 Worker 的环境报错。
+    const lightWebIdleWarm = aiEngineChoice === "light" && typeof Worker !== "undefined" && !Capacitor.isNativePlatform();
+    if (!needsPack && !lightWebIdleWarm) return;
+    if (needsPack && !enginePackReady) return;
+    const packUrl = needsPack ? enginePackUrlRef.current : null;
+    if (needsPack && !packUrl) return;
     const warmEngine = engineVariantFor(aiEngineChoice, packUrl);
-    const slotKey = `${warmEngine}:${packUrl}`;
-    const warmOne = () => {
-      const warm = new Worker(`${import.meta.env.BASE_URL}rapfi/rapfi-worker.js`);
-      warm.postMessage({ type: "warmup", engine: warmEngine, dataUrl: packUrl });
-      return warm;
+    const slotKey = engineSlotKeyFor(aiEngineChoice, packUrl);
+    const warmSlots = () => {
+      for (let i = 0; i < 2; i += 1) {
+        const slot = analysisPersistent.current[i];
+        if (slot?.key === slotKey) continue;
+        if (slot) slot.worker.terminate();
+        const slotController = new AiWorkerController((discarded) => {
+          const idx = analysisPersistent.current.findIndex((s) => s?.worker === discarded);
+          if (idx >= 0) analysisPersistent.current[idx] = null;
+        });
+        const warm = new Worker(`${import.meta.env.BASE_URL}rapfi/rapfi-worker.js`);
+        warm.postMessage({ type: "warmup", engine: warmEngine, dataUrl: packUrl || undefined });
+        analysisPersistent.current[i] = { worker: warm, key: slotKey, controller: slotController, running: false };
+      }
     };
-    for (let i = 0; i < 2; i += 1) {
-      const slot = analysisPersistent.current[i];
-      if (slot?.key === slotKey) continue;
-      if (slot) slot.worker.terminate();
-      const slotController = new AiWorkerController((discarded) => {
-        const idx = analysisPersistent.current.findIndex((s) => s?.worker === discarded);
-        if (idx >= 0) analysisPersistent.current[idx] = null;
-      });
-      analysisPersistent.current[i] = { worker: warmOne(), key: slotKey, controller: slotController, running: false };
-    }
+    // 强力/实验档：包一就绪立即预热（40MB 冷加载 10-30s，等不到空闲）。
+    if (!lightWebIdleWarm) { warmSlots(); return; }
+    let idleHandle: number | null = null;
+    let timeoutHandle: number | null = null;
+    const requestIdle = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    if (requestIdle) idleHandle = requestIdle(() => { idleHandle = null; warmSlots(); }, { timeout: 4000 });
+    else timeoutHandle = window.setTimeout(() => { timeoutHandle = null; warmSlots(); }, 2500);
+    return () => {
+      const cancelIdle = (globalThis as { cancelIdleCallback?: (handle: number) => void }).cancelIdleCallback;
+      if (idleHandle !== null && cancelIdle) cancelIdle(idleHandle);
+      if (timeoutHandle !== null) window.clearTimeout(timeoutHandle);
+    };
   }, [aiEngineChoice, enginePackReady]);
+  // 页面卸载时收掉分析槽的常驻 worker（含上面空闲预热的轻量实例）：实例存活在
+  // ref 里，不挂 pagehide 就会一直留到进程结束。进 bfcache 的 pagehide
+  //（persisted=true）不终止——缓存页返回后 worker 无法复活，杀掉会让返回后
+  //「分析」直接失效。
+  useEffect(() => {
+    const teardown = (event: PageTransitionEvent) => {
+      if (event.persisted) return;
+      for (let i = 0; i < analysisPersistent.current.length; i += 1) {
+        analysisPersistent.current[i]?.worker.terminate();
+        analysisPersistent.current[i] = null;
+      }
+    };
+    window.addEventListener("pagehide", teardown);
+    return () => window.removeEventListener("pagehide", teardown);
+  }, []);
   const runUpdateCheck = useCallback(() => {
     // Silent by design: a failed or offline check must never nag the user.
     checkForLatestRelease(APP_VERSION)
@@ -1400,6 +1454,10 @@ export default function App() {
         setLatestUpdate(release);
         // Interrupt once per release; "以后再说" records the version so the
         // same release never pops again, while a future one prompts once more.
+        // ?qa=1 时不弹：这是会挡住点击的模态弹层，自动化门禁（qa runner 统一带 ?qa=1）
+        // 若被它拦住会变成「点不动」的假失败——首运行欢迎页同理由同一参数抑制。
+        // 快捷中心的「发现新版本」角标仍会更新，手动检查也照常。
+        if (typeof location !== "undefined" && new URLSearchParams(location.search).get("qa") === "1") return;
         if (loadUpdatePromptDismissed() !== release.version) setUpdatePrompt(release);
       })
       .catch(() => { /* offline or rate limited; the About page allows a manual retry */ });
@@ -1702,6 +1760,26 @@ export default function App() {
   // 人机对战不暴露胜率：棋盘选点整个隐藏（见 Board 调用处），面板里的指标也
   // 从胜率降级为评估分——即使玩家在分析设置里选了胜率也一样（用户 09-13）。
   const analysisShownMetric: AnalysisCandidateMetric = aiGame && enhancementSettings.analysisCandidateMetric === "winRate" ? "score" : enhancementSettings.analysisCandidateMetric;
+  // 候选点展示数组：以前直接在 Board 调用点 rank+slice，父组件每次渲染都得到
+  // 新数组引用——即使坐标/指标文本/胜负色调完全没变，也会击穿 Board 的 memo
+  //（引擎进度每 100ms 一次，2 秒里白白把整盘 225 格重渲染 ~20 次，iOS 上体感
+  // 就是落子不跟手）。这里按「展示内容签名」记忆化：签名不变就复用旧引用、Board
+  // 直接跳过；内容真变了（候选集/指标文本/色调变化）才换引用放行更新，视觉与
+  // 之前完全一致。签名不含 depth/nodes——棋盘标记不展示它们，纯进度爬升不应重绘。
+  const rankedAnalysisCandidates = useMemo(
+    () => (!aiGame && enhancementSettings.analysisShowCandidates && aiAnalysis.contextKey === currentPositionKey)
+      ? rankAnalysisCandidates(aiAnalysis.candidates || EMPTY_ANALYSIS_CANDIDATES, analysisShownMetric).slice(0, enhancementSettings.analysisCandidateCount)
+      : EMPTY_ANALYSIS_CANDIDATES,
+    [aiGame, enhancementSettings.analysisShowCandidates, aiAnalysis.contextKey, aiAnalysis.candidates, currentPositionKey, analysisShownMetric, enhancementSettings.analysisCandidateCount],
+  );
+  const analysisCandidatesSignature = rankedAnalysisCandidates
+    .map((candidate) => `${candidate.move.row},${candidate.move.col},${analysisMetricText(candidate, analysisShownMetric, enhancementSettings.analysisCandidateDecimals)},${analysisCandidateTone(candidate, analysisShownMetric)}`)
+    .join("|");
+  const boardAnalysisCandidates = useMemo(
+    () => rankedAnalysisCandidates,
+    // 有意只依赖内容签名：签名不变就复用上一次的数组引用（见上方说明）。
+    [analysisCandidatesSignature], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const boardResult = useMemo<BoardResultState | null>(() => {
     if (puzzleSetup) return null;
     if (aiGame?.outcome === "won") return { kind: "won", label: "你已获胜" };
@@ -3568,9 +3646,17 @@ export default function App() {
     const active = analysisPreview && analysisPreview.contextKey === aiAnalysis.contextKey && analysisPreview.row === candidate.move.row && analysisPreview.col === candidate.move.col;
     setAnalysisPreview(active ? null : { contextKey: aiAnalysis.contextKey || currentPositionKey, row: candidate.move.row, col: candidate.move.col });
   };
-  const analysisPreviewLine = analysisPreview && aiAnalysis.contextKey === analysisPreview.contextKey
-    ? ((aiAnalysis.candidates || []).find((candidate) => candidate.move.row === analysisPreview.row && candidate.move.col === analysisPreview.col)?.principalVariation || []).slice(0, 24)
-    : [];
+  // Board 是 memo 组件：预览线为空时必须复用同一个空数组常量（原先的 `: []`
+  // 每渲染都换新引用，引擎进度每 100ms 一次 → 2 秒内白白重渲染整盘 ~20 次）。
+  // 未固定预览点时 previewCandidate 恒为 undefined，依赖不变、结果恒为常量；
+  // 固定了预览点时只在候选对象真正变化时重算，避免无意义的新数组。
+  const previewCandidate = analysisPreview && aiAnalysis.contextKey === analysisPreview.contextKey
+    ? (aiAnalysis.candidates || EMPTY_ANALYSIS_CANDIDATES).find((candidate) => candidate.move.row === analysisPreview.row && candidate.move.col === analysisPreview.col)
+    : undefined;
+  const analysisPreviewLine = useMemo(
+    () => previewCandidate?.principalVariation?.slice(0, 24) ?? EMPTY_PREVIEW_LINE,
+    [previewCandidate],
+  );
   const toggleAnalysis = (enabled: boolean) => {
     if (enabled) autoAnalysisKey.current = "";
     else autoAnalysisKey.current = currentPositionKey;
@@ -3914,6 +4000,13 @@ export default function App() {
       if (next) setCurrentId(next);
     }
   };
+  // Board 的 memo 要求这些交互回调引用稳定（见模块级 useStableCallback 注释）。
+  // 包成稳定引用后，AI 引擎思考期间父组件每 100ms 的重渲染不会再重绘棋盘。
+  const stablePlay = useStableCallback(play);
+  const stableMark = useStableCallback(mark);
+  const stableNavigateVariation = useStableCallback(navigateVariation);
+  const stableStopUnifiedThinking = useStableCallback(stopUnifiedThinking);
+  const stableGestureStep = useStableCallback((direction: -1 | 1) => { if (direction < 0) goPrev(); else goNext(); });
   const goRoot = () => {
     clearBoardMotion();
     playSound("navigate");
@@ -4972,11 +5065,14 @@ export default function App() {
     try {
       // 把送进识别器的文件信息显示出来：相册选择器/聊天软件有时会转码或缩放，
       // 远程排查「同一张图手机与电脑结果不同」时这行就是最直接的证据。
-      // 像素尺寸必须一起显示：识别器只看这份解码结果（长边超 1600px 会被缩放），
-      // 实测同一张图重压到 q0.6、或缩到 500px 以下就会开始掉子/丢序号，所以
-      // 「手机到底交了多少像素」是判断设备差异的第一手数据，不能靠猜。
-      const decodedSize = await describeImageSize(file);
-      updateImportProgress(progressId, { phase: "parsing", detail: `按 15 路识别棋盘 · ${file.name.slice(0, 24)} · ${file.type || "?"} · ${Math.round(file.size / 1024)}KB${decodedSize ? ` · ${decodedSize}` : ""}`, progress: 0 });
+      // 这里不再预先 createImageBitmap 取尺寸（大图在 iOS 上会白解码 100-400ms）：
+      // 原图像素尺寸改由识别器回报（result.imageWidth/Height），识别完成后那行
+      //（finishImportProgress 的 detail）会补上“宽×高”。早期这行拿不到尺寸是
+      // 可以接受的——它出现的瞬间用户主要在等识别，识别完的完成行才是要看的证据。
+      // 另外不再传 progress: 0：定量 0% 会让进度条停在 0 直到完成、观感像卡死；
+      // 去掉后卡片走它已有的不定量动画（is-indeterminate + 骨架），如实表达
+      //「正在进行、不知道确切百分比」，也不需要用定时器伪造百分比。
+      updateImportProgress(progressId, { phase: "parsing", detail: `按 15 路识别棋盘 · ${file.name.slice(0, 24)} · ${file.type || "?"} · ${Math.round(file.size / 1024)}KB` });
       // 只有勾选「复原手序」（且实验开关开启）才需要逐手序号；默认静态局面导入
       // 直接跳过序号匹配——那是整条识别管线最重的部分（40% 耗时）。
       // parallel：设置「可选增强功能 · 识谱多核加速」（默认开）。开时网格探测与
@@ -5019,7 +5115,7 @@ export default function App() {
       }
       performOpenRecord(importedDocument);
       setSaved(false);
-      finishImportProgress(progressId, `${result.boardSize} 路识谱完成：识别 ${occupiedCells} 子`);
+      finishImportProgress(progressId, `${result.boardSize} 路识谱完成：识别 ${occupiedCells} 子 · ${result.imageWidth}×${result.imageHeight}`);
       setToast(`${result.boardSize}路图片识谱完成：识别 ${occupiedCells} 子，置信度 ${Math.round(result.confidence * 100)}%${result.ignoredColoredMarkers ? `，忽略 ${result.ignoredColoredMarkers} 个彩色分析点` : ""}${restoreFromNumbers
         ? `；已按序号复原第 1 手到第 ${result.numberedMoves.length} 手的完整落子顺序`
         : opts.restoreMoveOrder
@@ -5962,7 +6058,7 @@ export default function App() {
           onExitEraseStone={() => setEraseStone(false)}
         />
          {mode === "record" && aiGame && aiOpeningStage?.kind !== "normal" && <section className="ai-opening-banner" aria-live="polite"><span className="ai-opening-step">开</span><div><b>{openingRuleName(aiGame.opening.rule, aiGame.opening.n)}</b><small>{openingInstruction(aiGame.opening)}</small></div>{aiOpeningStage?.kind === "swap" && aiOpeningStage.chooser === "human" && <div className="ai-opening-actions"><button onClick={() => chooseOpeningSwap(false)}>{aiOpeningStage.taraguchiChoice ? "进入十打" : "不交换"}</button><button className="accent" onClick={() => chooseOpeningSwap(true)}>交换</button></div>}{aiThinking && <i className="ai-opening-thinking"/>}</section>}
-          <Board document={reviewDocument} currentId={currentId} currentBookmarked={activeBookmarks.some((bookmark) => bookmark.nodeId === currentId)} showNumbers={showNumbers} showCoordinates={showCoordinates} showLastMove={showLastMove} moveNumberScale={moveNumberScale} gridLineWidth={gridLineWidth} coordinateFontSize={coordinateFontSize} largeBoard={largeBoard} rotation={rotation} mirrored={mirrored} boardTheme={boardTheme} stoneTheme={stoneTheme} boardOpacity={boardOpacity} stoneOpacity={stoneOpacity} annotationHighlight={annotationHighlight} initialDepth={isPuzzleMode ? puzzleSetup ? 0 : puzzleInitialDepth : 0} forbiddenMarkers={boardForbiddenMarkers} winningLines={boardWinningLines} openingCandidates={aiGame?.opening.candidates || []} analysisCandidates={!aiGame && enhancementSettings.analysisShowCandidates && aiAnalysis.contextKey === currentPositionKey ? rankAnalysisCandidates(aiAnalysis.candidates || [], analysisShownMetric).slice(0, enhancementSettings.analysisCandidateCount) : []} analysisCandidateMetric={analysisShownMetric} analysisCandidateDecimals={enhancementSettings.analysisCandidateDecimals} analysisPreviewLine={analysisPreviewLine} analysisPreviewMove={analysisPreviewLine.length ? analysisPreview : null} analysisPreviewGuide={enhancementSettings.analysisPreviewGuide} openingStage={aiOpeningStage} thinking={machineThinking} thinkingIndicatorPosition={enhancementSettings.thinkingIndicatorPosition} onStopThinking={stopUnifiedThinking} motion={boardMotion} feedback={boardFeedback} result={boardResult} gestureZoomEnabled={enhancementSettings.gestureZoom} gestureSwipeEnabled={enhancementSettings.gestureSwipe} disabled={dynamicNavigationBusy || (isPuzzleMode && !puzzleSetup && (aiThinking || !!puzzleOutcome)) || aiBoardDisabled} onPlay={play} onVariation={!isPuzzleMode && !aiGame && !continuationEditMode && !annotationActive && !eraseStone ? navigateVariation : undefined} onMark={(mode === "record" || mode === "review") && !aiGame ? mark : () => undefined} onGestureStep={!isPuzzleMode ? (delta) => { if (delta < 0) goPrev(); else goNext(); } : undefined}/>
+          <Board document={reviewDocument} currentId={currentId} currentBookmarked={activeBookmarks.some((bookmark) => bookmark.nodeId === currentId)} showNumbers={showNumbers} showCoordinates={showCoordinates} showLastMove={showLastMove} moveNumberScale={moveNumberScale} gridLineWidth={gridLineWidth} coordinateFontSize={coordinateFontSize} largeBoard={largeBoard} rotation={rotation} mirrored={mirrored} boardTheme={boardTheme} stoneTheme={stoneTheme} boardOpacity={boardOpacity} stoneOpacity={stoneOpacity} annotationHighlight={annotationHighlight} initialDepth={isPuzzleMode ? puzzleSetup ? 0 : puzzleInitialDepth : 0} forbiddenMarkers={boardForbiddenMarkers} winningLines={boardWinningLines} openingCandidates={aiGame?.opening.candidates || EMPTY_POSITIONS} analysisCandidates={boardAnalysisCandidates} analysisCandidateMetric={analysisShownMetric} analysisCandidateDecimals={enhancementSettings.analysisCandidateDecimals} analysisPreviewLine={analysisPreviewLine} analysisPreviewMove={analysisPreviewLine.length ? analysisPreview : null} analysisPreviewGuide={enhancementSettings.analysisPreviewGuide} openingStage={aiOpeningStage} thinking={machineThinking} thinkingIndicatorPosition={enhancementSettings.thinkingIndicatorPosition} onStopThinking={stableStopUnifiedThinking} motion={boardMotion} feedback={boardFeedback} result={boardResult} gestureZoomEnabled={enhancementSettings.gestureZoom} gestureSwipeEnabled={enhancementSettings.gestureSwipe} disabled={dynamicNavigationBusy || (isPuzzleMode && !puzzleSetup && (aiThinking || !!puzzleOutcome)) || aiBoardDisabled} onPlay={stablePlay} onVariation={!isPuzzleMode && !aiGame && !continuationEditMode && !annotationActive && !eraseStone ? stableNavigateVariation : undefined} onMark={(mode === "record" || mode === "review") && !aiGame ? stableMark : NOOP_MARK} onGestureStep={!isPuzzleMode ? stableGestureStep : undefined}/>
           <div className="record-rail">
           <div className="action-layout-workspace" data-action-size={actionLayout.size} data-icons-only={actionLayout.iconsOnly}>
           {/* 做题的状态文字 + 黑白切换在首行功能区之上（用户 09-10）；常驻操作区做题默认为空。 */}
@@ -6309,7 +6405,7 @@ export default function App() {
         </section>
         <button className={`export-primary-card direct${recommendDirect ? " recommended" : ""}`} disabled={exportScope !== "whole" || !directExportAvailable} onClick={exportDirect}>{recommendDirect && <em className="direct-flag">原格式{sourceFormat ? ` · ${sourceFormat.toUpperCase()}` : ""}</em>}<span className="format-icon direct"><Download/></span><div><b>原格式直接导出</b><small>{exportScope !== "whole" ? "切换到“整份棋谱”后可使用原格式直出" : sourceFormat ? `按 ${sourceFormat.toUpperCase()} 原样导出${binarySourceFormats.has(sourceFormat) ? "完整原库与全部注释" : ""}` : "当前没有原始格式，将按默认 SGF 导出"}</small></div><Upload/></button>
       </div>}
-       {sheet === "help" && <div className="sheet-body help-content"><div className="support-row"><b>棋谱导入</b><span>RenLib 3.x / 旧版无头 LIB（按设备能力分页导入）、SGF / FGF、REN / RENJS / WZQ（SGF 语法）、JSON、POS，以及 DP / DB 局面数据库。SGF 支持设置局面、过手、UTF-16 和同文件多盘棋。</span></div><div className="support-row"><b>导出与保真</b><span>可导出 SGF、FGF、REN、RENJS、WZQ（均为 SGF 语法内容，扩展名供不同软件识别）、RenLib LIB（十五路，含变化树与注释，首手天元且无过手时写 3.0 兼容格式，爱五子棋等连珠软件可读）、Piskvorky PSQ（只剩主线）、JSON 和 POS / TXT。普通 SGF 和 JSON 会重新生成当前完整变化树。当前刚打开且未编辑的 LIB 在 64MB 以内可由 RenLib 核心完整转换为 SGF，也可原文件直出；大型 LIB 只允许原文件直出或导出当前可见内容。编辑副本可导出 LIB / SGF / JSON 等，但不会写回源 LIB。DP / DB 可原文件直出或导出当前可见内容，不生成新数据库。</span></div><div className="support-row"><b>规则与开局</b><span>连珠规则：黑方恰五获胜、白方五个以上获胜，黑方受三三、四四、长连禁手约束；标准五子棋：双方无禁手，必须恰好五连；自由五子棋：双方无禁手，五个以上即可获胜。开局规则目前支持自由开局、五手两打、五手多打（3–10 打）、山口（先手方开局时宣布 1–10 打）、索索夫-8（白4后宣布 1–8 打，宣布后可再交换）、塔十（塔拉山口-10）和塔拉（五次交换），可在人机设置的“规则说明”中比较。</span></div><div className="support-row"><b>JSON 的用途</b><span>棋谱库读取本软件的完整变化树或带明确 moves 字段的落子列表对象；题库页读取 puzzles 包装题库、连续坐标串、黑白分色坐标串和旧版二维数组。数字坐标棋谱必须声明 coordinateBase，不猜测任意数组。</span></div><div className="support-row"><b>AI 完全本地</b><span>人机与“思考”使用应用内置 Rapfi WASM 数据，不访问 gomocalc.com，也不会上传当前棋局。</span></div><div className="support-row warning"><b>棋盘路数边界</b><span>棋盘支持 5–25 路方形棋盘，范围外的 SGF SZ 会明确拒绝，不会缩放后生成错误棋谱；内置题库固定为十五路。</span></div><div className="support-row warning"><b>TXT 不是统一棋谱标准</b><span>TXT 仅作为纯文本坐标序列兼容入口，例如 H8 I8 H9；带专有结构的文本应使用原软件导出的 SGF。</span></div><div className="support-row warning"><b>LIB 兼容边界</b><span>大型 LIB 在后台线程解析并按页存储。完整转 SGF 会额外申请整份输出缓冲区，因此源文件超过 64MB 时主动停用，避免手机或低内存设备崩溃。原谱的普通注释、局面文字和 RenLib 标记会分别保留并在节点详情中显示；超出 RenLib 3.4 的扩展仍会提示。导出 LIB 仅支持十五路；摆局面节点无法在 LIB 中表达，导出时会提升其子分支并提示。</span></div><h3>手机快捷操作</h3><ul><li>点空交叉点：落子；点已有棋子：不会改变局面</li><li>底部“标注”：放置数字、胜败平衡和自定义文字</li><li>长按交叉点：圆圈 → 三角 → 叉号 → 清除</li><li>左右方向键（外接键盘）：前后导航</li></ul><button className="primary-button" onClick={() => setSheet(null)}>知道了</button></div>}
+       {sheet === "help" && <div className="sheet-body help-content"><div className="support-row"><b>棋谱导入</b><span>RenLib 3.x / 旧版无头 LIB（按设备能力分页导入）、SGF / FGF、REN / RENJS / WZQ（SGF 语法）、JSON、POS，以及 DP / DB 局面数据库。SGF 支持设置局面、过手、UTF-16 和同文件多盘棋。</span></div><div className="support-row"><b>导出与保真</b><span>可导出 SGF、FGF、REN、RENJS、WZQ（均为 SGF 语法内容，扩展名供不同软件识别）、RenLib LIB（十五路，含变化树与注释，首手天元且无过手时写 3.0 兼容格式，爱五子棋等连珠软件可读）、Piskvorky PSQ（只剩主线）、JSON 和 POS / TXT。普通 SGF 和 JSON 会重新生成当前完整变化树。当前刚打开且未编辑的 LIB 在 64MB 以内可由 RenLib 核心完整转换为 SGF，也可原文件直出；大型 LIB 只允许原文件直出或导出当前可见内容。编辑副本可导出 LIB / SGF / JSON 等，但不会写回源 LIB。DP / DB 可原文件直出或导出当前可见内容，不生成新数据库。</span></div><div className="support-row"><b>规则与开局</b><span>连珠规则：黑方恰五获胜、白方五个以上获胜，黑方受三三、四四、长连禁手约束；标准五子棋：双方无禁手，必须恰好五连；自由五子棋：双方无禁手，五个以上即可获胜。开局规则目前支持自由开局、五手两打、五手多打（山口：先手方开局时宣布 1–10 打，打点之间不得对称同形）、索索夫-8（白4后宣布 1–8 打，宣布后可再交换）、塔十（塔拉山口-10）和塔拉（五次交换），可在人机设置的“规则说明”中比较。</span></div><div className="support-row"><b>JSON 的用途</b><span>棋谱库读取本软件的完整变化树或带明确 moves 字段的落子列表对象；题库页读取 puzzles 包装题库、连续坐标串、黑白分色坐标串和旧版二维数组。数字坐标棋谱必须声明 coordinateBase，不猜测任意数组。</span></div><div className="support-row"><b>AI 完全本地</b><span>人机与“思考”使用应用内置 Rapfi WASM 数据，不访问 gomocalc.com，也不会上传当前棋局。</span></div><div className="support-row warning"><b>棋盘路数边界</b><span>棋盘支持 5–25 路方形棋盘，范围外的 SGF SZ 会明确拒绝，不会缩放后生成错误棋谱；内置题库固定为十五路。</span></div><div className="support-row warning"><b>TXT 不是统一棋谱标准</b><span>TXT 仅作为纯文本坐标序列兼容入口，例如 H8 I8 H9；带专有结构的文本应使用原软件导出的 SGF。</span></div><div className="support-row warning"><b>LIB 兼容边界</b><span>大型 LIB 在后台线程解析并按页存储。完整转 SGF 会额外申请整份输出缓冲区，因此源文件超过 64MB 时主动停用，避免手机或低内存设备崩溃。原谱的普通注释、局面文字和 RenLib 标记会分别保留并在节点详情中显示；超出 RenLib 3.4 的扩展仍会提示。导出 LIB 仅支持十五路；摆局面节点无法在 LIB 中表达，导出时会提升其子分支并提示。</span></div><h3>手机快捷操作</h3><ul><li>点空交叉点：落子；点已有棋子：不会改变局面</li><li>底部“标注”：放置数字、胜败平衡和自定义文字</li><li>长按交叉点：圆圈 → 三角 → 叉号 → 清除</li><li>左右方向键（外接键盘）：前后导航</li></ul><button className="primary-button" onClick={() => setSheet(null)}>知道了</button></div>}
       {sheet === "about" && <AboutPanel onClose={() => setSheet(null)}/>}
       {sheet === "feedback" && <FeedbackPanel version={APP_VERSION} location={tab === "settings" ? "设置" : tab === "library" ? "棋谱库" : "打谱"} onNotice={setToast}/>}
       {sheet === "manual" && <UserManual onClose={() => setSheet(null)} onOpenRules={() => setSheet("rules")} onStartGuide={startManualGuide} focusSection={manualFocusSection}/>}

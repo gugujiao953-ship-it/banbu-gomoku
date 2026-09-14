@@ -345,10 +345,18 @@ const CHUNK_BYTES = 512 * 1024;
 // 注：GitHub Pages 走 HTTP/2，多路复用不受 HTTP/1.1 每源 6 连接上限约束。
 const CONCURRENCY = 24;
 
-/** 按设备内存收敛并发（低内存手机用 8，常规手机 16，桌面满额 24）。 */
+// Safari / WebKit 不实现 navigator.deviceMemory（这是 Chromium 专有字段），旧逻辑
+// 「取不到按桌面处理」会让 iPhone 也开满 24 路并发。iOS 的网络栈与内存压力下，20+
+// 条在途连接更容易被掐断，而带宽本就有限、并发收益递减，稳定性更重要。缺失时收敛到
+// 12：仍是多连接快路径（远高于单连接 50-130KB/s 的慢路径——项目记忆：单连接是 100 倍
+// 慢路径，不得主动退回），又给 iOS 留出连接与内存余量。
+const SAFARI_LIKE_CONCURRENCY = 12;
+
+/** 按设备内存收敛并发（低内存手机用 8，常规手机 16，桌面 24；无 deviceMemory 的
+ *  Safari/WebKit 用 12）。 */
 const concurrencyForDevice = (): number => {
   const memory = (globalThis.navigator as Navigator & { deviceMemory?: number } | undefined)?.deviceMemory;
-  if (typeof memory !== "number") return CONCURRENCY;
+  if (typeof memory !== "number") return SAFARI_LIKE_CONCURRENCY;
   if (memory <= 2) return 8;
   if (memory <= 4) return 16;
   return CONCURRENCY;
@@ -476,80 +484,215 @@ const streamDownload = async (url: string, totalBytes: number, onProgress?: (pro
   return buffer;
 };
 
+// ---- 候选源预检（2026-09-14：iOS/网页版「下载慢」根因之一）-----------------
+// enginePackUrls() 把同源候选排第一，而 Web 部署（GitHub Pages /app/）根本没有
+// engine-packs/ 目录，该候选必然 404；旧逻辑要先把每块各跑满 8 轮退避（约 4.2s）
+// 才换源，用户看到的是「卡住不动」。现在进分片前先做一次轻量探测：
+//   · HEAD：读 status / content-length / accept-ranges；
+//   · HEAD 不被支持（405/501/403 或网络错误）时，退回 Range: bytes=0-0 的 GET——
+//     Android Capacitor 的 WebViewAssetLoader 对 HEAD 的支持并不一致。
+// Range GET 回 206 视为支持 Range；回 200 说明服务器忽略 Range 会返回整文件，
+// 此时必须取消响应体，否则预检就在后台把 40MB 整包拉了一遍。
+// 探测失败（404/网络错误/长度明显不符）返回 null，调用方直接换下一个候选，
+// 不再进入分片重试循环。
+interface CandidateProbe {
+  rangeSupported: boolean;
+}
+
+const probeCandidate = async (url: string, signal?: AbortSignal): Promise<CandidateProbe | null> => {
+  try {
+    const response = await fetch(url, { method: "HEAD", signal, cache: "no-store" });
+    if (response.status === 404 || response.status === 410) return null;
+    if (response.ok) {
+      const declared = Number(response.headers.get("content-length"));
+      // 能读到内容长度且和官方包长不符：多半是 SPA 回退页/index.html（部分静态
+      // 托管对未知路径回 200）。直接判该源不可用，别等 77 块跑完才因长度校验失败。
+      if (Number.isFinite(declared) && declared > 0 && declared !== ENGINE_PACK_SIZE) return null;
+      const acceptRanges = (response.headers.get("accept-ranges") ?? "").toLowerCase();
+      if (acceptRanges.includes("bytes")) return { rangeSupported: true };
+      // HEAD 成功但没带 Accept-Ranges：不少服务端只在 GET 上带，用 Range GET 复核。
+    } else if (response.status !== 405 && response.status !== 501 && response.status !== 403) {
+      return null; // 其他 4xx/5xx：该源不可用
+    }
+  } catch (error) {
+    if (signal?.aborted) throw new Error("已取消下载");
+    // HEAD 被网络层挡掉：不直接判死（有些代理会掐 HEAD），用 GET 再确认一次。
+  }
+  try {
+    const response = await fetch(url, { headers: { Range: "bytes=0-0" }, signal, cache: "no-store" });
+    if (!response.ok) return null;
+    if (response.status === 206) {
+      // Content-Range: bytes 0-0/<total> —— 总长不符说明不是目标包。
+      const total = Number((response.headers.get("content-range") ?? "").split("/")[1]);
+      try { void response.body?.cancel(); } catch { /* 忽略 */ }
+      if (Number.isFinite(total) && total > 0 && total !== ENGINE_PACK_SIZE) return null;
+      return { rangeSupported: true };
+    }
+    // 200：服务器忽略 Range 直接回整文件 → 不支持分片。必须取消响应体。
+    try { void response.body?.cancel(); } catch { /* 忽略 */ }
+    return { rangeSupported: false };
+  } catch (error) {
+    if (signal?.aborted) throw new Error("已取消下载");
+    return null;
+  }
+};
+
+// ---- 存储配额预检 + 持久化（2026-09-14：iOS 根因之二）-----------------------
+// Safari 会在存储压力下回收网站数据，40MB 的引擎包入库后可能被清掉，用户下次打开
+// 又要重下。两条硬约束：预检只判「明显不够」，estimate 不可用/字段缺失一律放行；
+// persist() 只在**成功入库之后**申请，失败或返回 false 都不影响安装结果。
+const STORAGE_HEADROOM_RATIO = 1.5;
+
+/** 可用配额（quota - usage）；estimate 不可用或字段缺失时返回 null（不阻断下载）。 */
+const availableQuotaBytes = async (): Promise<number | null> => {
+  try {
+    const estimate = await globalThis.navigator?.storage?.estimate?.();
+    if (!estimate) return null;
+    const { usage, quota } = estimate;
+    if (typeof quota !== "number" || !Number.isFinite(quota)) return null;
+    const used = typeof usage === "number" && Number.isFinite(usage) ? usage : 0;
+    return Math.max(0, quota - used);
+  } catch {
+    return null;
+  }
+};
+
+const assertStorageHeadroom = async () => {
+  const available = await availableQuotaBytes();
+  if (available === null) return;
+  // 可用配额 < 1.5× 包体积时，继续下载大概率在 storePackBlob 阶段才失败、错误还含糊；
+  // 提前给出可操作提示。留 1.5× 余量给入库时的临时副本（写入瞬间会同时存在
+  // ArrayBuffer 与 Blob 两份）。
+  if (available < ENGINE_PACK_SIZE * STORAGE_HEADROOM_RATIO) {
+    throw new Error(`手机可用存储空间不足（约 ${(available / 1024 / 1024).toFixed(1)}MB，引擎包需要 ${ENGINE_PACK_SIZE_LABEL()}），请清理后重试`);
+  }
+};
+
+/** 入库成功后申请持久化存储；失败/未授予只记日志，绝不影响安装结果。 */
+const requestPersistentStorage = async () => {
+  try {
+    const granted = await globalThis.navigator?.storage?.persist?.();
+    if (granted !== true) console.info("[engine-pack] 持久化存储未授予，iOS 可能在存储紧张时回收引擎包");
+  } catch (error) {
+    console.info("[engine-pack] 持久化存储申请失败（不影响已安装的引擎包）", error);
+  }
+};
+
 export const downloadEnginePack = async (onProgress?: (progress: DownloadProgress) => void, signal?: AbortSignal): Promise<EnginePackState> => {
+  // 配额预检放在最前：明显装不下时直接给明确提示，不浪费一次 40MB 下载。
+  await assertStorageHeadroom();
   let lastError: Error | null = null;
   for (const candidate of enginePackUrls()) {
     // Dev's same-origin candidate is the app's own origin by construction;
     // remote candidates must pass the public-host validation.
     const url = candidate.startsWith(globalThis.location?.origin ?? "\u0000") ? candidate : assertPublicHttpUrl(candidate);
+    // 进分片前先探测候选源：Web 部署下同源候选必然 404，预检一步跳过，不让 77 块
+    // 各跑满 8 轮退避（旧逻辑要白等约 4.2s 才换源）。探测同时产出「是否支持 Range」，
+    // 不支持就直连整文件流式，不再做无意义的分片重试。
+    let probe: CandidateProbe | null;
+    try {
+      probe = await probeCandidate(url, signal);
+    } catch (error) {
+      if (signal?.aborted) throw new Error("已取消下载");
+      lastError = error instanceof Error ? error : new Error(String(error));
+      continue;
+    }
+    if (!probe) {
+      lastError = new Error("引擎包下载源不可用，已尝试下一个下载源");
+      continue;
+    }
     try {
       let bytes: Uint8Array;
-      // 小块 + 断点续传 + 并发池：512KB 一块（小块在国内网络成功率远高于大段），
-      // 固定 CONCURRENCY 个块同时在拉，某块完成立即补下一块。每块内部自带断点
-      // 续传（连接被掐时从已收字节继续），进度随每块完成持续前进。
-      try {
-        const totalEnd = ENGINE_PACK_SIZE - 1;
-        const ranges: Array<[number, number]> = [];
-        for (let start = 0; start < ENGINE_PACK_SIZE; start += CHUNK_BYTES) {
-          ranges.push([start, Math.min(start + CHUNK_BYTES - 1, totalEnd)]);
+      if (!probe.rangeSupported) {
+        // 服务器不支持 Range：分片请求只会拿回整文件，直接单连接流式。
+        bytes = await streamDownload(url, ENGINE_PACK_SIZE, onProgress, signal);
+      } else {
+        // 小块 + 断点续传 + 并发池：512KB 一块（小块在国内网络成功率远高于大段），
+        // 固定 concurrencyForDevice() 个块同时在拉，某块完成立即补下一块。每块内部
+        // 自带断点续传（连接被掐时从已收字节继续），进度随每块完成持续前进。
+        // 分片共用一个 AbortController：任一块最终失败就 abort() 掉其余在途请求，
+        // 否则 20+ 个残留连接会和随后的单连接兜底抢带宽（iOS 带宽小，尤其明显）。
+        const chunkAbort = new AbortController();
+        const abortChunks = () => { try { chunkAbort.abort(); } catch { /* 忽略 */ } };
+        const onOuterAbort = () => abortChunks();
+        if (signal) {
+          if (signal.aborted) throw new Error("已取消下载");
+          signal.addEventListener("abort", onOuterAbort, { once: true });
         }
-        const slots: Array<Uint8Array | null> = ranges.map(() => null);
-        let received = 0;
-        // 用对象容器承接闭包内赋值（TS 对闭包写回的 let 会做 never 收窄）。
-        const wholeFileBox: { value: Uint8Array | null } = { value: null };
-        let completed = 0;
-        onProgress?.({ receivedBytes: 0, totalBytes: ENGINE_PACK_SIZE });
-        let nextIndex = 0;
-        const worker = async () => {
-          for (;;) {
-            const index = nextIndex;
-            nextIndex += 1;
-            if (index >= ranges.length || wholeFileBox.value) return;
-            const [s, e] = ranges[index];
-            // 进度以「已完成块数」为唯一口径：字节级回调在并发 + 断点续传下会重复
-            // 累计（同一段字节可能被算两次，实测进度 1.6s 就假报 100%），块计数则
-            // 天然幂等。77 块（512KB）逐块推进，进度条全程可见。
-            const result = await fetchWholeChunk(url, s, e, signal);
-            if (!result) throw new Error("引擎包分块下载失败");
-            if (result.wholeFile) { wholeFileBox.value = result.wholeFile; return; }
-            slots[index] = result.full ?? null;
-            completed += 1;
-            received = Math.min(completed * CHUNK_BYTES, ENGINE_PACK_SIZE);
-            onProgress?.({ receivedBytes: received, totalBytes: ENGINE_PACK_SIZE });
+        try {
+          const totalEnd = ENGINE_PACK_SIZE - 1;
+          const ranges: Array<[number, number]> = [];
+          for (let start = 0; start < ENGINE_PACK_SIZE; start += CHUNK_BYTES) {
+            ranges.push([start, Math.min(start + CHUNK_BYTES - 1, totalEnd)]);
           }
-        };
-        // 低内存手机下调并发：24 路并发在 2GB 及以下设备容易被系统掐连接或引发
-        // 内存抖动（每块要持有一份 512KB 缓冲）。deviceMemory 是 Chromium 的粗略
-        // 分档值，取不到时按桌面处理（保持满并发）。
-        await Promise.all(Array.from({ length: Math.min(concurrencyForDevice(), ranges.length) }, () => worker()));
-        const wholeFileBytes = wholeFileBox.value;
-        if (received >= ENGINE_PACK_SIZE) onProgress?.({ receivedBytes: ENGINE_PACK_SIZE, totalBytes: ENGINE_PACK_SIZE });
-        if (wholeFileBytes && wholeFileBytes.length === ENGINE_PACK_SIZE) {
-          bytes = wholeFileBytes;
-        } else if (completed === ranges.length && slots.every((part) => part)) {
-          // 每块必须严格等于自己请求的区间长度：预分配缓冲会把「短一截的块」零
-          // 填充补齐——40.3MB 包少 1 字节时下载照样"成功"，入库的是被补零的坏包
-          // （与 v1/v2 repack 同类教训：宁可下载失败，也不能存坏包）。长度不符即
-          // 判分片失败，退回整文件流式，由下游大小校验兜住。
-          const exact = ranges.every(([s, e], index) => slots[index]?.length === e - s + 1);
-          if (exact) {
-            bytes = new Uint8Array(ENGINE_PACK_SIZE);
-            let offset = 0;
-            for (const part of slots) { bytes.set(part as Uint8Array, offset); offset += (part as Uint8Array).length; }
+          const slots: Array<Uint8Array | null> = ranges.map(() => null);
+          let received = 0;
+          // 用对象容器承接闭包内赋值（TS 对闭包写回的 let 会做 never 收窄）。
+          const wholeFileBox: { value: Uint8Array | null } = { value: null };
+          let completed = 0;
+          onProgress?.({ receivedBytes: 0, totalBytes: ENGINE_PACK_SIZE });
+          let nextIndex = 0;
+          const worker = async () => {
+            for (;;) {
+              const index = nextIndex;
+              nextIndex += 1;
+              if (index >= ranges.length || wholeFileBox.value) return;
+              const [s, e] = ranges[index];
+              // 进度以「已完成块数」为唯一口径：字节级回调在并发 + 断点续传下会重复
+              // 累计（同一段字节可能被算两次，实测进度 1.6s 就假报 100%），块计数则
+              // 天然幂等。77 块（512KB）逐块推进，进度条全程可见。
+              const result = await fetchWholeChunk(url, s, e, chunkAbort.signal);
+              if (!result) throw new Error("引擎包分块下载失败");
+              if (result.wholeFile) { wholeFileBox.value = result.wholeFile; return; }
+              slots[index] = result.full ?? null;
+              completed += 1;
+              received = Math.min(completed * CHUNK_BYTES, ENGINE_PACK_SIZE);
+              onProgress?.({ receivedBytes: received, totalBytes: ENGINE_PACK_SIZE });
+            }
+          };
+          // 低内存手机下调并发；Safari/WebKit 无 deviceMemory 字段，收敛到 12 路
+          // （见 concurrencyForDevice 注释）。
+          await Promise.all(Array.from({ length: Math.min(concurrencyForDevice(), ranges.length) }, () => worker()));
+          const wholeFileBytes = wholeFileBox.value;
+          if (received >= ENGINE_PACK_SIZE) onProgress?.({ receivedBytes: ENGINE_PACK_SIZE, totalBytes: ENGINE_PACK_SIZE });
+          if (wholeFileBytes && wholeFileBytes.length === ENGINE_PACK_SIZE) {
+            bytes = wholeFileBytes;
+          } else if (completed === ranges.length && slots.every((part) => part)) {
+            // 每块必须严格等于自己请求的区间长度：预分配缓冲会把「短一截的块」零
+            // 填充补齐——40.3MB 包少 1 字节时下载照样"成功"，入库的是被补零的坏包
+            // （与 v1/v2 repack 同类教训：宁可下载失败，也不能存坏包）。长度不符即
+            // 判分片失败，退回整文件流式，由下游大小校验兜住。
+            const exact = ranges.every(([s, e], index) => slots[index]?.length === e - s + 1);
+            if (exact) {
+              bytes = new Uint8Array(ENGINE_PACK_SIZE);
+              let offset = 0;
+              for (const part of slots) { bytes.set(part as Uint8Array, offset); offset += (part as Uint8Array).length; }
+            } else {
+              abortChunks(); // 兜底前先掐掉在途请求（此时通常已无在途，幂等）
+              bytes = await streamDownload(url, ENGINE_PACK_SIZE, onProgress, signal);
+            }
           } else {
+            abortChunks();
             bytes = await streamDownload(url, ENGINE_PACK_SIZE, onProgress, signal);
           }
-        } else {
+        } catch (chunkError) {
+          // 分片失败：先 abort() 其余在途请求，再走单连接兜底；abort 只会让别的
+          // worker 抛 AbortError，这里保存的仍是原始错误（兜底用外层 signal，不复用
+          // 已 abort 的 chunkAbort.signal）。
+          abortChunks();
+          if (signal?.aborted) throw new Error("已取消下载");
+          // 并发失败（断流/超时）——整体流式重试一次，仍失败抛给换源循环
           bytes = await streamDownload(url, ENGINE_PACK_SIZE, onProgress, signal);
+          lastError = chunkError instanceof Error ? chunkError : new Error(String(chunkError));
+        } finally {
+          signal?.removeEventListener("abort", onOuterAbort);
         }
-      } catch (chunkError) {
-        // 并发失败（断流/超时）——整体流式重试一次，仍失败抛给换源循环
-        bytes = await streamDownload(url, ENGINE_PACK_SIZE, onProgress, signal);
-        lastError = chunkError instanceof Error ? chunkError : new Error(String(chunkError));
       }
       if (bytes.length !== ENGINE_PACK_SIZE) throw new Error(`引擎包大小不符（收到 ${bytes.length} 字节，应为 ${ENGINE_PACK_SIZE_LABEL()}）`);
       const blob = new Blob([blobFromBytes(bytes)], { type: "application/octet-stream" });
       await storePackBlob(blob);
+      // 入库成功后再申请持久化存储：失败不影响安装结果（见 requestPersistentStorage）。
+      await requestPersistentStorage();
       const state: EnginePackState = { version: ENGINE_PACK_VERSION, size: ENGINE_PACK_SIZE, downloadedAt: Date.now() };
       setEnginePackOptOut(false); // 用户主动下载：重新视为「想要引擎」
       swapPackUrl(state, URL.createObjectURL(await tunePackBlob(blob)));

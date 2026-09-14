@@ -8,6 +8,11 @@ export interface ImageRecognitionResult {
   confidence: number;
   ignoredColoredMarkers: number;
   note: string;
+  /** 解码后原图的像素尺寸（缩放前）。调用方用它显示「手机到底交了多少像素」这类
+   *  诊断信息——以前是在识别前先 createImageBitmap 一次只为拿尺寸，同一张图白解码
+   *  两遍（iOS 上大图一次 100-400ms），所以由识别器顺带回报。 */
+  imageWidth: number;
+  imageHeight: number;
 }
 
 type RasterImage = ImageBitmap | HTMLImageElement;
@@ -2664,14 +2669,35 @@ export interface RecognitionAccelerator {
 
 /** 单线程直算：逐条调用原函数、按原顺序返回，等价于接入加速器之前的代码。
  * 多核不可用（老 WebView、worker 构造失败、分片超时）时也回落用它。 */
+/** 单线程直算时的一批查询上限。整批同步跑完会把主线程连同导入进度卡片一起冻住
+ *  （iOS / 无法开 worker 的环境下就是「点了没反应」的观感，实测进度条甚至不动）。
+ *  分块执行不改变任何计算、也不改变结果顺序，只是每块之间让出一次宏任务，
+ *  界面得以重绘。分片从 worker 进来时每片通常远小于这个值，等于不额外开销。 */
+const LOCAL_YIELD_EVERY = 256;
+const mapWithYield = async <TItem, TResult>(
+  items: readonly TItem[],
+  run: (item: TItem) => TResult,
+): Promise<TResult[]> => {
+  const results = new Array<TResult>(items.length);
+  for (let start = 0; start < items.length; start += LOCAL_YIELD_EVERY) {
+    const end = Math.min(items.length, start + LOCAL_YIELD_EVERY);
+    for (let index = start; index < end; index += 1) results[index] = run(items[index]);
+    if (end < items.length) await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+  }
+  return results;
+};
+
 export const localAccelerator = (image: SampledImage): RecognitionAccelerator => ({
-  scoreWindows: async (queries) => queries.map(
+  scoreWindows: (queries) => mapWithYield(
+    queries,
     (q) => scoreGridWindow(image, q.originX, q.originY, q.spacingX, q.spacingY, q.boardSize),
   ),
-  meshSupports: async (queries) => queries.map(
+  meshSupports: (queries) => mapWithYield(
+    queries,
     (q) => intersectionMesh(image, q.originX, q.originY, q.spacingX, q.spacingY, q.boardSize, q.sampleStep ?? 1).support,
   ),
-  fitCombs: async (queries) => queries.map(
+  fitCombs: (queries) => mapWithYield(
+    queries,
     (q) => fitCombSeries(
       collectLineScores(image.gray, image.width, image.height, q.alongX, q.innerStart, q.innerEnd),
       q.boardSize,
@@ -2679,7 +2705,7 @@ export const localAccelerator = (image: SampledImage): RecognitionAccelerator =>
       q.spacingRange,
     ),
   ),
-  cellFeatures: async (queries) => queries.map((q) => analyzeIntersection(image, q.x, q.y, q.spacing)),
+  cellFeatures: (queries) => mapWithYield(queries, (q) => analyzeIntersection(image, q.x, q.y, q.spacing)),
   dispose: () => { /* 无资源可释放 */ },
 });
 
@@ -3206,6 +3232,8 @@ export const recognizeBoardImage = async (file: File, boardSize = 15, opts: { sk
       confidence,
       ignoredColoredMarkers,
       note,
+      imageWidth: sourceWidth,
+      imageHeight: sourceHeight,
     };
   } finally {
     closeRasterImage(image, loaded.revoke);

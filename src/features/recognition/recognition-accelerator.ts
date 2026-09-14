@@ -39,7 +39,10 @@ interface PendingRequest {
 export const createParallelAccelerator = async (image: SampledImage): Promise<RecognitionAccelerator | null> => {
   if (typeof Worker === "undefined") return null;
   const cores = typeof navigator !== "undefined" && navigator.hardwareConcurrency ? navigator.hardwareConcurrency : 4;
-  const memoryGb = (typeof navigator === "undefined" ? 4 : (navigator as Navigator & { deviceMemory?: number }).deviceMemory) ?? 4;
+  // WebKit 不实现 navigator.deviceMemory（Chromium 专有），缺失时以前兜底 4GB——
+  // 那会把池子按「低内存机」卡在 3 个线程。现代 iPhone/iPad 普遍 4-8GB，按 5GB 估计：
+  // 既不按 4GB 过度保守，也不放开到 8GB 让内存闸门失效（每个线程要持一份像素+灰度图）。
+  const memoryGb = (typeof navigator === "undefined" ? 5 : (navigator as Navigator & { deviceMemory?: number }).deviceMemory) ?? 5;
   const poolSize = planRecognitionPool({ cores, memoryGb, pixelCount: image.width * image.height });
   const local = localAccelerator(image);
   const pending = new Map<number, PendingRequest>();
