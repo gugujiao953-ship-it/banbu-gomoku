@@ -400,6 +400,28 @@ h1,h2,h3,h4{font-weight:600;line-height:1.16;}
   html{scroll-behavior:auto;}
   #stoneRain{display:none;}
 }
+
+/* ---------- v1.1.8 新增：网页版入口（本次只加这两处链接，CSS 只加下面 3 条） ---------- */
+/* 1) ≤640px 时上面的 .hdr-nav a:not(.hdr-cta){display:none} 会把全部导航项隐藏，
+      而「网页版」是 iPhone / iPad 用户的第一触点，必须保留可见：单列一条覆盖规则，
+      提高一级选择器权重，避免与隐藏规则打平后依赖书写顺序。 */
+@media(max-width:640px){
+  .hdr .hdr-nav a.hdr-web{display:inline-block;color:var(--gold);}
+}
+/* 2) 761–880px（iPad 竖屏 768 / 820 / 834）原本就放不下「品牌 + 5 项导航 + CTA」：
+      原版在 768px 处 CTA 已被裁掉 40px。这里沿用 ≤760px 已有的紧凑参数
+      （同一批属性与取值，不是新样式）腾出空间，保证新增导航项后顶栏不被裁切。 */
+@media(max-width:880px){
+  .hdr-meta{display:none;}
+  .hdr-in{padding:0 16px;gap:12px;}
+  .hdr-nav a{padding:8px 8px;font-size:10px;letter-spacing:.08em;}
+}
+/* 3) hero 装饰线/角标（.stage-hline 的 right:-6%、.tick 的 translate(30%)）故意越出容器，
+      body{overflow-x:hidden} 早已把它们裁掉、视口内像素不变；这里把裁剪边界上移到
+      .hero-in（≤1360px 时它的 padding-box 右缘就是视口右缘），只是让
+      documentElement.scrollWidth 如实等于视口宽度，不再报出并不存在的横向溢出。
+      旧版 Safari（<16）不支持 overflow:clip 时会退回 visible，等同于改动前行为。 */
+.hero-in{overflow-x:clip;}
 </style>
 </head>
 <body>
@@ -427,6 +449,7 @@ h1,h2,h3,h4{font-weight:600;line-height:1.16;}
       <a href="#sec02">02 外观主题</a>
       <a href="#sec03">03 本版更新</a>
       <a href="#sec04">04 规格</a>
+      <a class="hdr-web" href="./app/">网页版</a>
       <a class="hdr-cta" href="#download">获取 v1.1.8</a>
     </nav>
   </div>
@@ -461,7 +484,9 @@ h1,h2,h3,h4{font-weight:600;line-height:1.16;}
       <div class="btns" data-rv data-d="540">
         <a class="btn p mag" href="#sec01">查看功能清单 →</a>
         <a class="btn g mag" href="#sec03">本版更新</a>
+        <a class="btn g mag glow" href="./app/">网页版试用 · iOS</a>
       </div>
+      <p class="hero-p" data-rv data-d="580" style="margin-top:14px">网页版网址（iPhone / iPad / 电脑浏览器均可直接打开）：<b style="word-break:break-all">gugujiao953-ship-it.github.io/banbu-gomoku/app/</b></p>
       <div class="readout" data-rv data-d="620">
         <div class="ro"><span class="k">BOARD MATS</span><span class="d"></span><span class="v" data-count="14">00</span><span class="u">种棋盘</span></div>
         <div class="ro"><span class="k">STONE MATS</span><span class="d"></span><span class="v" data-count="16">00</span><span class="u">种棋子</span></div>
@@ -672,7 +697,7 @@ h1,h2,h3,h4{font-weight:600;line-height:1.16;}
         <div class="sp-h"><span class="dot"></span><h4>平台与运行</h4><span class="en">RUNTIME</span></div>
         <div class="sp-rows">
           <div class="r"><span>网页版为 PWA，可<em>离线运行</em>，也可安装到桌面</span></div>
-          <div class="r"><span>Android 包名 <em>cn.renjunote.mobile</em>，versionCode 14，可覆盖安装升级</span></div>
+          <div class="r"><span>Android 包名 <em>cn.renjunote.mobile</em>，versionCode 27，可覆盖安装升级</span></div>
           <div class="r"><span>引擎两档：随包轻量引擎 + 官方 NNUE 冠军网络（应用内一键下载）</span></div>
           <div class="r"><span>向下兼容较旧 WebView，旧机型也能跑</span></div>
         </div>
@@ -734,7 +759,7 @@ h1,h2,h3,h4{font-weight:600;line-height:1.16;}
           <div class="dl-card">
             <span class="dl-k">GitHub</span>
             <a class="dl-go" href="https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/tag/v1.1.8" target="_blank" rel="noopener">打开 Releases →</a>
-            <span class="dl-t">banbu-gomoku-1.1.8-android-release.apk（44.6 MB，含冠军网络引擎包）</span>
+            <span class="dl-t">banbu-gomoku-1.1.8-android-release.apk（44.61 MB，含 38.44 MB 冠军网络引擎包）</span>
             <div class="dl-m">
               <span>SHA-256</span>
               <span class="dl-code" data-code="FEC46EFFA0B143828DEDEF3745F9078BD5BC2FC1010DF0CD8B1C7FE5D3486EC1">FEC46EFF…486EC1<button type="button" aria-label="复制 SHA-256">复制</button></span>
@@ -745,8 +770,8 @@ h1,h2,h3,h4{font-weight:600;line-height:1.16;}
             <a class="dl-go" href="./app/" rel="noopener">打开网页版 →</a>
             <span class="dl-t">iPhone / iPad：Safari 打开后「分享 → 添加到主屏幕」，可离线当本地应用用</span>
             <div class="dl-m">
-              <span>iOS</span>
-              <span class="dl-code" data-code="添加到主屏幕">免安装<button type="button" aria-label="复制说明">复制</button></span>
+              <span>网址</span>
+              <span class="dl-code" data-code="https://gugujiao953-ship-it.github.io/banbu-gomoku/app/">gugujiao953-ship-it.github.io/<wbr>banbu-gomoku/app/<button type="button" aria-label="复制网页版网址">复制</button></span>
             </div>
           </div>
         </div>
