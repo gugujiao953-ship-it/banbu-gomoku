@@ -1,6 +1,13 @@
 {
-  "version": "1.1.8",
-  "tag": "v1.1.8",
-  "publishedAt": "2026-09-14T13:03:37Z",
-  "url": "https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/tag/v1.1.8"
+  "version": "1.1.8.1",
+  "tag": "v1.1.8.1",
+  "publishedAt": "2026-09-17T19:04:53Z",
+  "url": "https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/tag/v1.1.8.1",
+  "apk": "https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/download/v1.1.8.1/banbu-gomoku-1.1.8.1-android-release.apk",
+  "sha256": "B74E8B88FC869FEF25EE00A569F1F628007F4A9299F2D9E9F34DEA83059B0AB9",
+  "mirrors": {
+    "baidu": "https://pan.baidu.com/s/1Tp6t5DwCy59szdZ9YrA01Q?pwd=r4ak",
+    "lanzou": "https://wwbwc.lanzouq.com/iSrgR48vw2xg",
+    "lanzouCode": "6uzc"
+  }
 }
