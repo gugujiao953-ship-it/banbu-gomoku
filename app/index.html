@@ -13,7 +13,11 @@
          编译，否则 RenLib.wasm 与 Rapfi WASM 在目标旧 WebView 上直接抛 CSP 错误。两者同时保留是「旧设备可用」的下限。
          即便如此，本策略仍挡住了：外部脚本注入、外部资源加载（data: 仅图片）、跨源网络行为（connect 仅本机+GitHub）、
          object/base/form/manifest 全部收紧。未来若放弃 WebView 83 兼容，可去掉 'unsafe-inline'/'unsafe-eval' 收紧一档。 -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' data: blob: https://api.github.com https://gugujiao953-ship-it.github.io https://cdn.jsdelivr.net https://github.com https://release-assets.githubusercontent.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <!-- 在线棋谱库 / 自建题库只放行实际会用到的公开来源（励精连珠教室、你自己的 GitHub Pages 与
+         raw 链接），且仅用于用户主动发起的检索/下载；安卓包内走系统网络直连，不依赖此策略。
+         国际连珠联盟官方库 renju.net 与「五子棋小工具」renjutool.top 已于 2026-09 因条款/授权
+         不明而撤下，这里也一并收紧。 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' data: blob: https://api.github.com https://gugujiao953-ship-it.github.io https://raw.githubusercontent.com https://cdn.jsdelivr.net https://github.com https://release-assets.githubusercontent.com https://www.ljrenju.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
     <meta name="theme-color" content="#365e4b" />
     <meta name="description" content="半步五子棋打谱：移动优先的五子棋打谱与做题工具" />
     <!-- iOS「添加到主屏幕」：Capacitor 侧本来就有 mobile-web-app-capable，这里补 Safari 专属写法。
@@ -33,15 +37,15 @@
     <link rel="apple-touch-icon" sizes="152x152" href="./apple-touch-icon-152x152.png" />
     <link rel="icon" href="./icon.svg" />
     <title>半步五子棋打谱</title>
-    <script type="module" crossorigin src="./assets/index-CcAgcQir.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-B-CII9FP.css">
+    <script type="module" crossorigin src="./assets/index-4EThe1GF.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DdcW-2LC.css">
     <script type="module">import'data:text/javascript,if(!import.meta.resolve)throw Error("import.meta.resolve not supported")';import.meta.url;import("_").catch(()=>1);(async function*(){})().next();window.__vite_is_modern_browser=true</script>
     <script type="module">!function(){if(window.__vite_is_modern_browser)return;console.warn("vite: loading legacy chunks, syntax error above and the same error below should be ignored");var e=document.getElementById("vite-legacy-polyfill"),n=document.createElement("script");n.src=e.src,n.onload=function(){System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))},document.body.appendChild(n)}();</script>
   <link rel="manifest" href="./manifest.webmanifest"></head>
   <body>
-    <div id="root"></div>
+    <div id="root"></div>
     <script nomodule>!function(){var e=document,t=e.createElement("script");if(!("noModule"in t)&&"onbeforeload"in t){var n=!1;e.addEventListener("beforeload",(function(e){if(e.target===t)n=!0;else if(!e.target.hasAttribute("nomodule")||!n)return;e.preventDefault()}),!0),t.type="module",t.src=".",e.head.appendChild(t),t.remove()}}();</script>
-    <script nomodule crossorigin id="vite-legacy-polyfill" src="./assets/polyfills-legacy-B7JHEGCs.js"></script>
-    <script nomodule crossorigin id="vite-legacy-entry" data-src="./assets/index-legacy-tQz4rkdK.js">System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))</script>
+    <script nomodule crossorigin id="vite-legacy-polyfill" src="./assets/polyfills-legacy-BEutUQIr.js"></script>
+    <script nomodule crossorigin id="vite-legacy-entry" data-src="./assets/index-legacy-BIYrS33w.js">System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))</script>
   </body>
 </html>

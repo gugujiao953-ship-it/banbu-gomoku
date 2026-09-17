@@ -10,10 +10,29 @@ let loadTimer = null;
 let fullBlocked = false;
 let experimentBlocked = false;
 let relaxedBlocked = false;
-// 多线程引擎已移除（2026-09-12）：App 内 blob MIME + WebView 无 COI/SAB 双重
-// 阻塞，multi 从未在真机生效过，只剩失败重试与冷加载损耗。请求 "multi" 一律
-// 落单线程强力（full），旧存档/旧 worker 消息兼容。
+let multiBlocked = false;
 let simdSupport = null;
+// 多线程档（2026-09-15 恢复）：pthread 构建强制 import 共享内存
+// （memory flags=3、82 个 import vs 单线程 70 个），因此**必须**跑在跨源隔离
+// 页面里（COOP same-origin + COEP require-corp）。网页版靠 Service Worker 注入
+// 这两个头拿到隔离；原生 WebView 拿不到隔离（Android WebView 不实现
+// crossOriginIsolated），所以在 APK 里这一档永远不会被选中，自动落单线程。
+let sharedMemoryProbe = null;
+// App 侧「多线程引擎」开关（默认允许）。关掉时 App 发 "full"，这里再兜一层，
+// 免得旧的常驻 worker 还握着允许状态。
+let engineMultiAllowed = true;
+// 原生引擎（安卓 APK）：主线程用 Capacitor 插件起一个真正跑 Rapfi 的进程，本 worker
+// 只负责协议与解析——命令通过 postMessage 交给主线程写进进程 stdin，进程 stdout
+// 按行回灌给 parseOutput。这样协议逻辑（候选/深度/时限/收尾）一份代码两处复用，
+// 原生侧也**不需要 SharedArrayBuffer**（安卓 WebView 拿不到跨源隔离，wasm 多线程
+// 在 APK 里永远不可能，设备实测过）。
+let nativeAllowed = false;
+// 原生启动失败过一次就别再试（每次都要起进程、复制权重，代价高）。
+let nativeBlocked = false;
+let nativeReady = false;
+let nativeVersion = null;
+let pendingNative = null;
+const NATIVE_START_TIMEOUT_MS = 20000;
 let enginePreference = "auto";
 let dataUrlOverride = null;
 let activeVariant = "fallback";
@@ -101,6 +120,10 @@ function finish(request, move, stats) {
   // was searched nearly as deep as the principal variation (threshold lowered
   // 8→4 with searchedCandidates, 2026-09-11: candidates appear ~1s earlier).
   const minDepth = Math.max(2, (stats.depth || 0) - 8);
+  // 本轮结束：把「本局面累计到现在的节点」留给下一轮接着算（见 continuousNodesBase）。
+  // 必须在这里定格——stats 会在下一轮 run() 里被清零。
+  const cumulativeNodes = request.continuous ? reportedNodes(request) : (stats.totalNodes || stats.nodes || 0);
+  if (request.continuous) continuousNodesBase = cumulativeNodes;
   active = null;
   const candidates = (stats.candidates || []).slice()
     .filter((candidate) => (candidate.pvIndex ?? 99) <= 0 || (candidate.depth ?? 0) >= minDepth)
@@ -124,7 +147,10 @@ function finish(request, move, stats) {
       // the legacy numeric field for callers, but expose availability below.
       score: primary?.score ?? 0,
       depth: stats.depth || 0,
-      nodes: stats.totalNodes || stats.nodes || 0,
+      selDepth: stats.selDepth || 0,
+      nodes: cumulativeNodes,
+      // 本轮结束时的节点速度：引擎自报的 SPEED 优先，否则按总节点/用时现算。
+      speed: requestSpeed({ stats, started: request.started }),
       elapsedMs,
       illegalRejected: 0,
       reason: "rapfi",
@@ -161,14 +187,88 @@ function parseCoordinateList(value, size, player) {
   }).filter(Boolean);
 }
 
+// 节点速度（节点/秒）：优先用引擎自报的 INFO SPEED，它已经做过平滑；引擎这一轮
+// 还没打印过就按「总节点 / 已用时」现算，保证界面上始终有个可比的数字。
+// 多线程线程数：引擎支持运行时 `INFO THREAD_NUM n`（config 的 default_thread_num
+// 只在启动时读一次，改它得重做数据包）。request.threads 为 0/缺省 = 按设备自动取
+// 一半核心；上限钉在 hardwareConcurrency，避免把机器压死反而更慢。
+function threadCountFor(request) {
+  const cores = (typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 4;
+  const requested = Number(request.threads);
+  // 「多线程引擎」是**网页版 wasm** 的实验开关（多线程 wasm 需要跨源隔离，安卓
+  // WebView 永远拿不到），关掉时 wasm 固定单线程。原生引擎不受它约束：原生是真线程、
+  // 不需要隔离，套用这个「默认关」的开关等于让原生默认只跑 1 线程——模拟器实测同一
+  // 局面 1 线程 109-199k nps、4 线程 230-340k nps，白扔一半以上算力（用户 09-15：
+  // 手机常态不到 100k，别人能跑 225k）。原生要省电降温，请在「引擎线程数」里显式
+  // 选 1 线程，而不是靠一个默认关的实验开关。
+  if (!engineMultiAllowed && activeVariant !== "native") return 1;
+  // 0/缺省 = 自动（一半核心，与同类网页引擎的默认一致）；-2 = 大核；负数 = 全核；正数 = 指定。
+  // 「大核」是 09-17 新增：手机多是 4 大 + 4 小，Lazy SMP 每一层迭代都被最慢的线程拖住，
+  // 把小核算进来可能比只铺大核还慢。bigCores 由原生插件读 cpufreq 得出、App 随请求下发；
+  // 拿不到（网页版 / 机器同构）就退回「自动」档的行为。
+  const bigCores = Number(request.bigCores);
+  const auto = Math.max(1, Math.round(cores / 2));
+  const wanted = !Number.isFinite(requested) || requested === 0
+    ? auto
+    : requested === -2
+      ? (Number.isFinite(bigCores) && bigCores > 0 ? Math.min(Math.round(bigCores), cores) : auto)
+      : requested < 0 ? cores : requested;
+  return Math.max(1, Math.min(Math.round(cores), Math.round(wanted)));
+}
+
+function requestSpeed(request) {
+  const stats = request.stats || {};
+  if (typeof stats.speed === "number" && stats.speed > 0) return stats.speed;
+  const elapsedMs = performance.now() - (request.started || 0);
+  const nodes = stats.totalNodes || stats.nodes || 0;
+  if (!nodes || elapsedMs < 200) return undefined;
+  return Math.round(nodes / (elapsedMs / 1000));
+}
+
+// 持续分析的节点数必须累计，不能按轮各算各的。
+//
+// 背景（2026-09-15 用户报「速度一直近 100k，节点总量却迟迟不破 1m，十秒才加一秒
+// 的量」）：持续分析是一轮接一轮的有界搜索（每轮 2s/4s/…/20s），每轮 `stats` 从零
+// 开始，而引擎的 INFO TOTALNODES 也只是**本轮**的累计值。热 TT 让后面的轮省得多
+// 得多——实测同一局面 4 核原生：第 4 轮 8s 搜了 1.49M 节点，第 5 轮 10s 只搜了
+// 0.28M。界面侧为了保证「同面续算不闪数字」取的是历史最大值，于是这个数字在某一
+// 轮之后再也不会被刷新——看起来就是「引擎满速在跑但节点不动」。
+//
+// 累加之后 nodes ≈ 速度 × 时间，才是用户理解的「这个局面总共算了多少」；每轮都会
+// 有 TT 命中被重复计入，那是引擎真实访问过的节点，不是估算。
+let continuousNodesBase = 0;
+let continuousNodesKey = null;
+
+/** 同一局面的判据：轮到谁走、规则、以及整条着法序列。与 App 侧 currentPositionKey 同源。 */
+function continuousKey(request) {
+  const moves = request.moves || [];
+  return `${request.size}|${request.player}|${request.rule}|${moves.map((move) => `${move.row},${move.col},${move.player}`).join(" ")}`;
+}
+
+/** 对外汇报的节点数：本局面跨轮累计 + 本轮搜索量。非持续分析恒为本轮量。 */
+function reportedNodes(request) {
+  const stats = (request && request.stats) || {};
+  return (request.nodesBase || 0) + (stats.totalNodes || stats.nodes || 0);
+}
+
 function parseInfo(text) {
   const result = {};
   const depth = text.match(/(?:^|\s)(?:DEPTH|depth)\s+(-?\d+)/);
+  // 引擎实际搜索到达的最大深度（selective depth）。DEPTH 是「当前完成的迭代层」，
+  // SELDEPTH 含选择延伸，所以总是更靠前——「17-42」这种区间就是这两个数（用户 09-16：
+  // 计算器网页版那样显示最小到最大深度）。引擎一直在发，我们此前从没解析。
+  // 必须用  排除掉 DEPTH 行本身（SELDEPTH 里含 DEPTH 子串）。
+  const selDepth = text.match(/(?:^|\s)SELDEPTH\s+(\d+)/i);
   const nodes = text.match(/(?:^|\s)(?:NODES|nodes)\s+(-?\d+)/);
+  // 引擎自己报的瞬时速度（INFO SPEED n）。尾部的 \b 是必须的：同名的
+  // "MESSAGE Speed 223K" 摘要行带 K 后缀，不挡住会把 223K 当成 223。
+  const speed = text.match(/(?:^|\s)(?:SPEED|speed)\s+(\d+)\b/);
   const score = text.match(/(?:^|\s)(?:SCORE|score|VALUE|value|EVAL|eval|V)\s+(?:CP\s+)?(-?(?:\d+(?:\.\d+)?|\.\d+))/i);
   const winRate = text.match(/(?:^|\s)(?:WINRATE|winrate|WR|wr|WDL)\s*[:=]?\s*(-?(?:\d+(?:\.\d+)?|\.\d+))\s*%?/i);
   if (depth) result.depth = Number(depth[1]);
+  if (selDepth) result.selDepth = Number(selDepth[1]);
   if (nodes) result.nodes = Number(nodes[1]);
+  if (speed) result.speed = Number(speed[1]);
   if (score) result.score = Number(score[1]);
   if (winRate) result.winRate = normalizeWinRate(Number(winRate[1]));
   return result;
@@ -211,14 +311,16 @@ function parseOutput(line) {
     const pvIndex = text.match(/^INFO\s+PV\s+(\d+)$/i);
     if (pvIndex) active.stats.pvIndex = Number(pvIndex[1]);
     if (parsed.depth !== undefined) active.stats.depth = parsed.depth;
+    if (parsed.selDepth !== undefined) active.stats.selDepth = parsed.selDepth;
     if (parsed.nodes !== undefined) active.stats.nodes = parsed.nodes;
     const totalNodes = text.match(/^INFO\s+TOTALNODES\s+(\d+)$/i);
     if (totalNodes) active.stats.totalNodes = Number(totalNodes[1]);
     if (parsed.score !== undefined) active.stats.score = parsed.score;
     if (parsed.winRate !== undefined) active.stats.winRate = parsed.winRate;
+    if (parsed.speed !== undefined) active.stats.speed = parsed.speed;
     if (performance.now() - (active.lastProgressAt || 0) >= 100) {
       active.lastProgressAt = performance.now();
-      post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: active.stats.depth || 0, nodes: active.stats.totalNodes || active.stats.nodes || 0, score: active.stats.score, winRate: active.stats.winRate, candidates: searchedCandidates(active.stats) });
+      post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: active.stats.depth || 0, selDepth: active.stats.selDepth || 0, nodes: reportedNodes(active), speed: requestSpeed(active), score: active.stats.score, winRate: active.stats.winRate, candidates: searchedCandidates(active.stats) });
     }
     if (match?.[1] === "BESTLINE") {
       active.stats.bestline = parseCoordinateList(match[2], active.size, active.player);
@@ -273,7 +375,7 @@ function parseOutput(line) {
   rememberCandidate(request, move);
   if (request.continuous && performance.now() - (request.lastProgressAt || 0) >= 100) {
     request.lastProgressAt = performance.now();
-    post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: request.stats.depth || 0, nodes: request.stats.totalNodes || request.stats.nodes || 0, score: request.stats.score, winRate: request.stats.winRate, candidates: searchedCandidates(request.stats) });
+    post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: request.stats.depth || 0, selDepth: request.stats.selDepth || 0, nodes: reportedNodes(request), score: request.stats.score, winRate: request.stats.winRate, candidates: searchedCandidates(request.stats) });
   }
   // A prefixed BESTMOVE is an explicit terminal response. Bare coordinate
   // lines are often intermediate YXNBEST/PV output, so never finish merely
@@ -476,6 +578,16 @@ function run(request) {
   request.started = performance.now();
   request.nBest = Math.max(1, Math.min(10, request.topN || 3));
   request.continuous = request.continuous === true;
+  // 同一局面的续轮继承累计节点（见 continuousNodesBase）：换局面、或中间穿插了
+  // 普通（非持续）请求时归零。
+  const continuousNodesRequestKey = request.continuous ? continuousKey(request) : null;
+  if (continuousNodesRequestKey && continuousNodesRequestKey === continuousNodesKey) {
+    request.nodesBase = continuousNodesBase;
+  } else {
+    request.nodesBase = 0;
+    continuousNodesKey = continuousNodesRequestKey;
+    continuousNodesBase = 0;
+  }
   // Continuous means "report as you go, no early completion tricks" — NOT
   // "run forever". A time-unbounded search cannot be stopped cooperatively
   // (the WASM loop blocks the worker queue), which deadlocks the persistent
@@ -487,7 +599,7 @@ function run(request) {
   request.stopRequested = false;
   request.bestMove = null;
   request.deadline = request.unlimited ? Number.POSITIVE_INFINITY : request.started + request.timeMs;
-  request.stats = { depth: 0, nodes: 0, totalNodes: 0, pvIndex: 0, bestline: [], primaryBestline: [], candidates: [] };
+  request.stats = { depth: 0, selDepth: 0, nodes: 0, totalNodes: 0, speed: 0, pvIndex: 0, bestline: [], primaryBestline: [], candidates: [] };
   request.finishOnBareMove = request.finishOnBareMove === true;
   // Continuous analysis runs in bounded rounds that roll over a warm TT. Inside
   // a bounded round the engine still declares its timeout answer via
@@ -502,6 +614,10 @@ function run(request) {
   scheduleStop(request);
   send(`START ${request.size}`);
   send(`INFO RULE ${ruleId(request.rule)}`);
+  // 多线程变体与原生引擎都按设置下发线程数。单线程 wasm 构建会忽略这条命令。
+  // 原生引擎的 config 里 default_thread_num=1，不发就等于只用 1 线程——白白少掉
+  // 数倍算力（模拟器实测 1 线程 44.8k vs 4 线程 235k nps）。
+  if (activeVariant === "multi" || activeVariant === "native") send(`INFO THREAD_NUM ${threadCountFor(request)}`);
   // Gomocup's default TT budget on desktop is 350MB, but this build's config
   // ships default_tt_size_kb=32768 (32MB) and nothing raised it — long rolling
   // analyses thrash a small table. MAX_MEMORY is the total budget (bytes); the
@@ -517,6 +633,14 @@ function run(request) {
   else if (ram >= 2) send("INFO MAX_MEMORY 67108864");
   send(`INFO TIMEOUT_TURN ${request.unlimited ? 0 : request.timeMs}`);
   send(`INFO MAX_DEPTH ${request.maxDepth}`);
+  // 深度范围的下界（用户 09-16：像五子棋计算器那样给「最小 / 最大」深度）。
+  // Rapfi 的 START_DEPTH 决定迭代加深从第几层开始搜索：>1 时跳过更浅的迭代。
+  // 注意这在**持续分析**里基本是白拿（热 TT 下走到 d12 只要 0.1s，见改造表 R21），
+  // 它的价值在「单次分析已经算过深、只想继续加深」这类场景。缺省/0 不发命令，
+  // 引擎保持自己的默认（从第 1 层起算）。
+  if (Number.isFinite(request.depthMin) && request.depthMin > 1 && request.depthMin < request.maxDepth) {
+    send(`INFO START_DEPTH ${Math.round(request.depthMin)}`);
+  }
   send(`INFO SHOW_DETAIL 2`);
   const board = canonicalBoardMoves(request.moves, request.player).map((point) => protocolPoint(point, request.size)).join(" ");
   send(`YXBOARD${board ? ` ${board}` : ""} DONE`);
@@ -529,14 +653,19 @@ function drain() {
 }
 
 function startVariant(variant) {
+  if (variant === "native") return startNativeVariant();
   importScripts(`./${variant}/rapfi-single.js`);
   const factory = self.Rapfi;
   if (typeof factory !== "function") throw new Error("Rapfi WASM 工厂未找到");
+  const scriptUrl = new URL(`./${variant}/rapfi-single.js`, self.location.href).href;
   return factory({
+    // pthread 构建按需再起 Worker 时，Emscripten 用 mainScriptUrlOrBlob 当脚本
+    // 地址（worker 里没有 document.currentScript 可查）；不传就只能挂起。
+    mainScriptUrlOrBlob: variant === "multi" ? scriptUrl : undefined,
     locateFile: (name) => {
       // An analyze-level override lets the benchmark harness point at an
       // alternative NNUE data package without rebuilding assets.
-      if ((variant === "full" || /^experiment/.test(variant)) && dataUrlOverride && /^rapfi.*\.data$/.test(name)) return dataUrlOverride;
+      if ((variant === "full" || variant === "multi" || /^experiment/.test(variant)) && dataUrlOverride && /^rapfi.*\.data$/.test(name)) return dataUrlOverride;
       const file = /^rapfi.*\.data$/.test(name) ? "rapfi.data" : name;
       return new URL(`./${variant}/${file}`, self.location.href).href;
     },
@@ -546,6 +675,68 @@ function startVariant(variant) {
     setStatus: (status) => post({ type: "status", status }),
     noExitRuntime: true,
   });
+}
+
+// WASM threads probe: a minimal module that declares a *shared* memory with a
+// max and runs memory.atomic.notify. Exactly the capability Emscripten pthreads
+// needs, so a pass means the multi build can instantiate. `new SharedArrayBuffer`
+// alone is not enough — newer Chromium lets WebAssembly.Memory({shared:true})
+// through even outside cross-origin isolation, while the Emscripten runtime
+// still needs the SAB constructor for its atomics glue.
+function detectSharedMemory() {
+  if (sharedMemoryProbe !== null) return sharedMemoryProbe;
+  sharedMemoryProbe = Promise.resolve().then(() => {
+    if (typeof SharedArrayBuffer !== "function") return false;
+    if (typeof Atomics !== "object" || typeof Atomics.wait !== "function") return false;
+    const probe = new Uint8Array([
+      0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, // magic + version 1
+      0x01, 0x04, 0x01, 0x60, 0x00, 0x00,             // type section: () -> ()
+      0x03, 0x02, 0x01, 0x00,                         // func section: one func
+      0x05, 0x04, 0x01, 0x03, 0x01, 0x01,             // memory: flags 3 (shared) min 1 max 1
+      0x0a, 0x0b, 0x01, 0x09, 0x00, 0x41, 0x00,       // code: i32.const 0
+      0xfe, 0x10, 0x02, 0x00, 0x1a, 0x0b,             // memory.atomic.notify 0 2; drop; end
+    ]);
+    return WebAssembly.validate(probe);
+  }).catch(() => false);
+  return sharedMemoryProbe;
+}
+
+/** 原生变体：请主线程起进程，等它报就绪；之后 send() 走 postMessage。 */
+function startNativeVariant() {
+  return new Promise((resolve, reject) => {
+    nativeReady = false;
+    const timer = setTimeout(() => {
+      pendingNative = null;
+      reject(new Error("原生引擎启动超时"));
+    }, NATIVE_START_TIMEOUT_MS);
+    pendingNative = { resolve, reject, timer };
+    post({ type: "native-start" });
+  });
+}
+
+/** 主线程回报进程已就绪。 */
+function resolveNativeReady(payload) {
+  if (!pendingNative) return;
+  const { resolve, timer } = pendingNative;
+  clearTimeout(timer);
+  pendingNative = null;
+  nativeReady = true;
+  nativeVersion = payload && payload.version ? payload.version : null;
+  resolve({
+    // 与 wasm 实例同一形状：只用到 sendCommand。
+    sendCommand: (command) => {
+      if (!nativeReady) return;
+      post({ type: "native-command", line: command });
+    },
+  });
+}
+
+function rejectNativeReady(reason) {
+  if (!pendingNative) return;
+  const { reject, timer } = pendingNative;
+  clearTimeout(timer);
+  pendingNative = null;
+  reject(new Error(reason || "原生引擎启动失败"));
 }
 
 function clearLoadTimer() {
@@ -576,10 +767,25 @@ function startFallback(token) {
 }
 
 function chooseVariant(requested) {
+  // 原生可用时它优先于 wasm 的任何档（含 multi）：安卓上本来就不需要 SAB，而且
+  // 「轻量/强力/自调」在原生侧的差别只剩内存/线程/时限——把轻量也落到 wasm 只会让
+  // 用户默认拿到弱引擎。原生启动失败（nativeBlocked）时自动回到 wasm 那套。
+  if (nativeAllowed && !nativeBlocked) return "native";
   if (requested === "fallback" || (fullBlocked && requested !== "experiment")) return "fallback";
-  // 多线程档已移除（2026-09-12）：真机 WebView 无 COI/SAB，multi 从未生效。
-  // 旧 worker 消息/旧缓存请求直接落单线程强力，不再尝试失败加载。
-  if (requested === "multi") return "full";
+  if (requested === "multi" || requested === "auto" || requested === "full") {
+    // "full"/"auto" 的语义是「当前环境下最强的可用引擎」，而多线程档就是最强的
+    // 那个（App 的预热就直接发 "full"）。三个条件缺一条就落单线程强力/轻量档：
+    // 用户没关（关掉时 App 发 multi:false）、冠军包在（算力来自 mix9svq，没包的
+    // 多线程毫无意义）、页面跨源隔离（pthread 构建强制 import 共享内存）。
+    // 必须在加载前判死：非隔离环境里 pthread 构建既不 resolve 也不报错，
+    // 会静静挂满 30 秒加载超时。
+    const isolated = self.crossOriginIsolated === true;
+    const usable = requested === "multi" ? isolated : isolated && engineMultiAllowed;
+    if (usable && !multiBlocked && dataUrlOverride) {
+      const deviceMemory = self.navigator ? self.navigator.deviceMemory : undefined;
+      if (!(typeof deviceMemory === "number" && deviceMemory < 2)) return "multi";
+    }
+  }
   if (requested === "experiment") {
     // 实验档 = 官方 wasm-multi-simd128 的 SIMD 构建（实验性，先看效果）。
     // 与 full 相同的先决条件：冠军数据包必须在（40MB heap 同源）。
@@ -643,15 +849,17 @@ async function startExperimentChain() {
 }
 
 function loadVariant(variant, token) {
-  if (variant === "full" || variant === "experiment") {
+  if (variant === "full" || variant === "experiment" || variant === "multi" || variant === "native") {
     // A stalled data fetch must not leave analyze requests queued forever.
     // Abandon the slow attempt and serve the fallback build instead.
     loadTimer = setTimeout(() => {
       if (token !== loadToken || engine) return;
       loading = false;
-      if (variant === "experiment" && !experimentBlocked) experimentBlocked = true;
+      if (variant === "native") nativeBlocked = true;
+      else if (variant === "experiment" && !experimentBlocked) experimentBlocked = true;
+      else if (variant === "multi" && !multiBlocked) multiBlocked = true;
       else fullBlocked = true;
-      post({ type: "log", message: "Rapfi 加载超时，改用单线程强力引擎" });
+      post({ type: "log", message: variant === "native" ? "原生引擎启动超时，改用 WASM 引擎" : variant === "multi" ? "多线程引擎加载超时，改用单线程强力引擎" : "Rapfi 加载超时，改用单线程强力引擎" });
       load();
     }, FULL_LOAD_TIMEOUT_MS);
   }
@@ -667,8 +875,14 @@ function loadVariant(variant, token) {
     if (token !== loadToken) return;
     clearLoadTimer();
     loading = false;
-    if (variant === "full" || variant === "experiment") {
-      if (variant === "experiment") {
+    if (variant === "full" || variant === "experiment" || variant === "multi" || variant === "native") {
+      if (variant === "native") {
+        nativeBlocked = true;
+        post({ type: "log", message: "原生引擎不可用，改用 WASM 引擎：" + (error instanceof Error ? error.message : String(error)) });
+      } else if (variant === "multi") {
+        multiBlocked = true;
+        post({ type: "log", message: "多线程引擎不可用，改用单线程强力引擎：" + (error instanceof Error ? error.message : String(error)) });
+      } else if (variant === "experiment") {
         experimentBlocked = true;
         post({ type: "log", message: "Rapfi 实验引擎加载失败，改用基础引擎：" + (error instanceof Error ? error.message : String(error)) });
       } else {
@@ -693,6 +907,18 @@ function load() {
 
 self.onmessage = (event) => {
   const message = event.data || {};
+  // ---- 原生引擎的回灌（主线程转发进程输出）----
+  if (message.type === "native-ready") { resolveNativeReady(message); return; }
+  if (message.type === "native-start-failed") { rejectNativeReady(message.reason); return; }
+  if (message.type === "native-stdout") { parseOutput(message.line); return; }
+  if (message.type === "native-exit") {
+    nativeReady = false;
+    engine = null;
+    if (active) { active.finished = true; active = null; }
+    post({ type: "error", message: `原生引擎进程已退出（code ${message.code}）` });
+    drain();
+    return;
+  }
   if (message.type === "stop") {
       if (active && message.requestId && active.requestId && message.requestId !== active.requestId) return;
     if (engine) engine.sendCommand("YXSTOP");
@@ -723,7 +949,10 @@ self.onmessage = (event) => {
   // analyze 到来时引擎已就绪，直接 drain。
   if (message.type === "warmup") {
     if (!engine && !loading) {
-      if (message.engine === "full" || message.engine === "fallback" || message.engine === "auto" || message.engine === "experiment") enginePreference = message.engine;
+      if (message.native === true) nativeAllowed = true;
+      if (message.multi === false) engineMultiAllowed = false;
+      else if (message.multi === true) engineMultiAllowed = true;
+      if (message.engine === "full" || message.engine === "fallback" || message.engine === "auto" || message.engine === "experiment" || message.engine === "multi") enginePreference = message.engine;
       if (typeof message.dataUrl === "string" && message.dataUrl) dataUrlOverride = message.dataUrl;
       load();
     }
@@ -736,7 +965,10 @@ self.onmessage = (event) => {
   // 走异步让路分支时会提前 return，若那时才钉死，miss 后 load() 会按未钉死状态起
   // fallback 变体且常驻 worker 整局锁死在轻量引擎（用户选强力却静默降档）。
   if (!engine && !loading) {
-    if (message.engine === "full" || message.engine === "fallback" || message.engine === "auto" || message.engine === "experiment") enginePreference = message.engine;
+    if (message.native === true) nativeAllowed = true;
+      if (message.multi === false) engineMultiAllowed = false;
+      else if (message.multi === true) engineMultiAllowed = true;
+      if (message.engine === "full" || message.engine === "fallback" || message.engine === "auto" || message.engine === "experiment" || message.engine === "multi") enginePreference = message.engine;
     if (typeof message.dataUrl === "string" && message.dataUrl) dataUrlOverride = message.dataUrl;
   }
   // Opening book first (engine-layer, see above): on a hit answer instantly

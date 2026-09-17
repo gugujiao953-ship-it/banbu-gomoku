@@ -1,0 +1,752 @@
+{
+ "_readme": "棋手中文名 → 来源站点拉丁写法。由豆包联网检索生成（2026-09-15，124 条），命中则用拉丁名去来源检索，未命中回落到用户原文。扩充此文件无需改代码。",
+ "_source": "豆包文本智能体 + 人工核对；renju.net 的 /media/people.json 只认小写拉丁名",
+ "aliases": [
+  {
+   "cn": "万俊宏",
+   "latin": [
+    "Wan Junhong"
+   ]
+  },
+  {
+   "cn": "中山智晴",
+   "latin": [
+    "Nakayama Tomoharu"
+   ]
+  },
+  {
+   "cn": "中村茂",
+   "latin": [
+    "Nakamura Shigeru"
+   ]
+  },
+  {
+   "cn": "丹妮拉·格罗莫夫",
+   "latin": [
+    "Gromov Danila"
+   ]
+  },
+  {
+   "cn": "丹尼斯·卡恰耶夫",
+   "latin": [
+    "Kachaev Denis"
+   ]
+  },
+  {
+   "cn": "久富隆洋",
+   "latin": [
+    "Kudomi Takahiro"
+   ]
+  },
+  {
+   "cn": "于亚君",
+   "latin": [
+    "Yu Yajun"
+   ]
+  },
+  {
+   "cn": "井上史也",
+   "latin": [
+    "Inoue Fumiya"
+   ]
+  },
+  {
+   "cn": "亚历山大·平斯基",
+   "latin": [
+    "Pinsky Alexander"
+   ]
+  },
+  {
+   "cn": "伊琳娜·麦特烈维里",
+   "latin": [
+    "Metreveli Irina"
+   ]
+  },
+  {
+   "cn": "何舒军",
+   "latin": [
+    "He Shujun"
+   ]
+  },
+  {
+   "cn": "倪仲星",
+   "latin": [
+    "Ni Zhongxing"
+   ]
+  },
+  {
+   "cn": "克里斯托弗·洛穆斯",
+   "latin": [
+    "Lõhmus Kristofer"
+   ]
+  },
+  {
+   "cn": "兰志仁",
+   "latin": [
+    "Lan Zhiren"
+   ]
+  },
+  {
+   "cn": "冈部宽",
+   "latin": [
+    "Okabe Hiroshi"
+   ]
+  },
+  {
+   "cn": "凌世杰",
+   "latin": [
+    "Ling Shijie"
+   ]
+  },
+  {
+   "cn": "刘恂",
+   "latin": [
+    "Liu Xun"
+   ]
+  },
+  {
+   "cn": "刘梦云",
+   "latin": [
+    "Liu Mengyun"
+   ]
+  },
+  {
+   "cn": "刘洋",
+   "latin": [
+    "Liu Yang"
+   ]
+  },
+  {
+   "cn": "卡尔·马蒂亚斯·穆尔",
+   "latin": [
+    "Moor Karl Mattias"
+   ]
+  },
+  {
+   "cn": "史宇轩",
+   "latin": [
+    "Shi Yuxuan"
+   ]
+  },
+  {
+   "cn": "叶卡捷琳娜·鲁缅采娃",
+   "latin": [
+    "Rumiantseva Ekaterina"
+   ]
+  },
+  {
+   "cn": "吴镝",
+   "latin": [
+    "Wu Di"
+   ]
+  },
+  {
+   "cn": "周昱虔",
+   "latin": [
+    "Chou Yu-Chien"
+   ]
+  },
+  {
+   "cn": "周睿",
+   "latin": [
+    "Zhou Rui"
+   ]
+  },
+  {
+   "cn": "周童",
+   "latin": [
+    "Zhou Tong"
+   ]
+  },
+  {
+   "cn": "周黄一帆",
+   "latin": [
+    "Zhou Huang Yifan"
+   ]
+  },
+  {
+   "cn": "大角友希",
+   "latin": [
+    "Oosumi Yuuki"
+   ]
+  },
+  {
+   "cn": "奥列格·费多金",
+   "latin": [
+    "Fedorkin Oleg"
+   ]
+  },
+  {
+   "cn": "姜相敏",
+   "latin": [
+    "Kang Sang-min"
+   ]
+  },
+  {
+   "cn": "安度·麦利蒂",
+   "latin": [
+    "Meritee Ando"
+   ]
+  },
+  {
+   "cn": "宣然",
+   "latin": [
+    "Xuan Ran"
+   ]
+  },
+  {
+   "cn": "宫川纯三",
+   "latin": [
+    "Miyagawa Jyunzo"
+   ]
+  },
+  {
+   "cn": "小山纯",
+   "latin": [
+    "Koyama Jun"
+   ]
+  },
+  {
+   "cn": "尤丽娅·萨夫拉索娃",
+   "latin": [
+    "Savrasova Yulia"
+   ]
+  },
+  {
+   "cn": "尼古拉·布尔采夫",
+   "latin": [
+    "Burtsev Nikolay"
+   ]
+  },
+  {
+   "cn": "尼古拉·波尔塔拉茨基",
+   "latin": [
+    "Poltaratskiy Nikolay"
+   ]
+  },
+  {
+   "cn": "山口釉水",
+   "latin": [
+    "Yamaguchi Yusui"
+   ]
+  },
+  {
+   "cn": "布雷内特·拉胡马吉",
+   "latin": [
+    "Rahumägi Brenet"
+   ]
+  },
+  {
+   "cn": "帕维尔·马卡罗夫",
+   "latin": [
+    "Makarov Pavel"
+   ]
+  },
+  {
+   "cn": "库诺·科尔克",
+   "latin": [
+    "Kuno Kolk"
+   ]
+  },
+  {
+   "cn": "康哲铭",
+   "latin": [
+    "Kang Zeming"
+   ]
+  },
+  {
+   "cn": "康斯坦丁·尼科诺夫",
+   "latin": [
+    "Nikonov Konstantin"
+   ]
+  },
+  {
+   "cn": "弗拉基米尔·苏切科夫",
+   "latin": [
+    "Sushkov Vladimir"
+   ]
+  },
+  {
+   "cn": "张元哲",
+   "latin": [
+    "Jang Won-cheol"
+   ]
+  },
+  {
+   "cn": "张益丰",
+   "latin": [
+    "Zhang Yifeng"
+   ]
+  },
+  {
+   "cn": "张红梅",
+   "latin": [
+    "Zhang Hongmei"
+   ]
+  },
+  {
+   "cn": "张轶峰",
+   "latin": [
+    "Zhang Yifeng"
+   ]
+  },
+  {
+   "cn": "彼得·加迪斯特罗姆",
+   "latin": [
+    "Gardstrom Petter"
+   ]
+  },
+  {
+   "cn": "彼得·荣松",
+   "latin": [
+    "Jonsson Peter"
+   ]
+  },
+  {
+   "cn": "徐毅宽",
+   "latin": [
+    "Xu Yikuan"
+   ]
+  },
+  {
+   "cn": "徐若颖",
+   "latin": [
+    "Xu Ruoying"
+   ]
+  },
+  {
+   "cn": "德米特里·叶皮法诺夫",
+   "latin": [
+    "Epifanov Dmitry"
+   ]
+  },
+  {
+   "cn": "成艳珍",
+   "latin": [
+    "Cheng Yanzhen"
+   ]
+  },
+  {
+   "cn": "托德·安德森",
+   "latin": [
+    "Andersson Tord"
+   ]
+  },
+  {
+   "cn": "曹冬",
+   "latin": [
+    "Cao Dong"
+   ]
+  },
+  {
+   "cn": "朱安彬",
+   "latin": [
+    "Zhu Anbin"
+   ]
+  },
+  {
+   "cn": "朱建锋",
+   "latin": [
+    "Zhu Jianfeng"
+   ]
+  },
+  {
+   "cn": "朴道荣",
+   "latin": [
+    "Park Doyoung"
+   ]
+  },
+  {
+   "cn": "朴雄培",
+   "latin": [
+    "Park Woong-bae"
+   ]
+  },
+  {
+   "cn": "李一",
+   "latin": [
+    "Li Yi"
+   ]
+  },
+  {
+   "cn": "李东",
+   "latin": [
+    "Li Dong"
+   ]
+  },
+  {
+   "cn": "李小青",
+   "latin": [
+    "Li Xiaoqing"
+   ]
+  },
+  {
+   "cn": "李洪斌",
+   "latin": [
+    "Li Hongbin"
+   ]
+  },
+  {
+   "cn": "李浩然",
+   "latin": [
+    "Li Haoran"
+   ]
+  },
+  {
+   "cn": "李镐俊",
+   "latin": [
+    "Lee Ho June"
+   ]
+  },
+  {
+   "cn": "杨彦希",
+   "latin": [
+    "Yang Yanxi"
+   ]
+  },
+  {
+   "cn": "杨海鑫",
+   "latin": [
+    "Yang Haixin"
+   ]
+  },
+  {
+   "cn": "林书玄",
+   "latin": [
+    "Lin Shihsuan"
+   ]
+  },
+  {
+   "cn": "林仕斌",
+   "latin": [
+    "Lin Shibin"
+   ]
+  },
+  {
+   "cn": "林皇羽",
+   "latin": [
+    "Lin Huangyu"
+   ]
+  },
+  {
+   "cn": "格奥尔格-罗梅特·托普金",
+   "latin": [
+    "Topkin Georg-Romet"
+   ]
+  },
+  {
+   "cn": "梅凡",
+   "latin": [
+    "Mei Fan"
+   ]
+  },
+  {
+   "cn": "樊宇天",
+   "latin": [
+    "Fan Yutian"
+   ]
+  },
+  {
+   "cn": "欧尔·爱伏",
+   "latin": [
+    "Oll Aivo"
+   ]
+  },
+  {
+   "cn": "殷立成",
+   "latin": [
+    "Yin Licheng"
+   ]
+  },
+  {
+   "cn": "毛玮铭",
+   "latin": [
+    "Mao Weiming"
+   ]
+  },
+  {
+   "cn": "江齐文",
+   "latin": [
+    "Jiang Qiwen"
+   ]
+  },
+  {
+   "cn": "汪清清",
+   "latin": [
+    "Wang Qingqing"
+   ]
+  },
+  {
+   "cn": "沈兰心",
+   "latin": [
+    "Shen Lanxin"
+   ]
+  },
+  {
+   "cn": "泰姆拉·特耐特",
+   "latin": [
+    "Taimla Tunnet"
+   ]
+  },
+  {
+   "cn": "潘冠臣",
+   "latin": [
+    "Pan Guanchen"
+   ]
+  },
+  {
+   "cn": "王春谱",
+   "latin": [
+    "Wang Chunpu"
+   ]
+  },
+  {
+   "cn": "王毓熙",
+   "latin": [
+    "Wang Yuxi"
+   ]
+  },
+  {
+   "cn": "理查德·桑德斯特罗姆",
+   "latin": [
+    "Sandstrom Richard"
+   ]
+  },
+  {
+   "cn": "皮奥特·马洛维耶斯基",
+   "latin": [
+    "Malowiejski Piotr"
+   ]
+  },
+  {
+   "cn": "石谷信一",
+   "latin": [
+    "Ishitani Shinichi"
+   ]
+  },
+  {
+   "cn": "祁观",
+   "latin": [
+    "Qi Guan"
+   ]
+  },
+  {
+   "cn": "神谷俊介",
+   "latin": [
+    "Kamiya Shunsuke"
+   ]
+  },
+  {
+   "cn": "米哈尔·茹科夫斯基",
+   "latin": [
+    "Zukowski Michal"
+   ]
+  },
+  {
+   "cn": "维莱姆·梅西拉",
+   "latin": [
+    "Mesila Villem"
+   ]
+  },
+  {
+   "cn": "胡啸同",
+   "latin": [
+    "Hu Xiaotong"
+   ]
+  },
+  {
+   "cn": "艾显平",
+   "latin": [
+    "Ai Xianping"
+   ]
+  },
+  {
+   "cn": "芦海",
+   "latin": [
+    "Lu Hai"
+   ]
+  },
+  {
+   "cn": "范玮宸",
+   "latin": [
+    "Fan Weichen"
+   ]
+  },
+  {
+   "cn": "菲利普·戈德莱夫斯基",
+   "latin": [
+    "Godlewski Filip"
+   ]
+  },
+  {
+   "cn": "葛凌峰",
+   "latin": [
+    "Ge Lingfeng"
+   ]
+  },
+  {
+   "cn": "藤田麻衣子",
+   "latin": [
+    "Fujita Maiko"
+   ]
+  },
+  {
+   "cn": "许正彬",
+   "latin": [
+    "Heo Jeong-bin"
+   ]
+  },
+  {
+   "cn": "赵云",
+   "latin": [
+    "Zhao Yun"
+   ]
+  },
+  {
+   "cn": "邓启霖",
+   "latin": [
+    "Deng Qilin",
+    "Tang Kai Lam"
+   ]
+  },
+  {
+   "cn": "那威",
+   "latin": [
+    "Na Wei"
+   ]
+  },
+  {
+   "cn": "郑逸宁",
+   "latin": [
+    "Zheng Yining"
+   ]
+  },
+  {
+   "cn": "金奕婵",
+   "latin": [
+    "Jin Yichan"
+   ]
+  },
+  {
+   "cn": "金弘顺",
+   "latin": [
+    "Kim Hong-soon"
+   ]
+  },
+  {
+   "cn": "金瑞",
+   "latin": [
+    "Jin Rui"
+   ]
+  },
+  {
+   "cn": "钟先骥",
+   "latin": [
+    "Zhong Xianji"
+   ]
+  },
+  {
+   "cn": "长谷川一人",
+   "latin": [
+    "Hasegawa Kazuto"
+   ]
+  },
+  {
+   "cn": "阿尔戈·利马",
+   "latin": [
+    "Argo Lillemaa"
+   ]
+  },
+  {
+   "cn": "陈伟",
+   "latin": [
+    "Chen Wei"
+   ]
+  },
+  {
+   "cn": "陈可翰",
+   "latin": [
+    "Chen Ko-Han"
+   ]
+  },
+  {
+   "cn": "陈科翰",
+   "latin": [
+    "Chen Kehan"
+   ]
+  },
+  {
+   "cn": "陈靖",
+   "latin": [
+    "Chen Jing"
+   ]
+  },
+  {
+   "cn": "陈骏笙",
+   "latin": [
+    "Chen Junsheng"
+   ]
+  },
+  {
+   "cn": "韦振强",
+   "latin": [
+    "Wei Zhenqiang",
+    "Wai Chan Keong"
+   ]
+  },
+  {
+   "cn": "顾炜",
+   "latin": [
+    "Gu Wei"
+   ]
+  },
+  {
+   "cn": "马丁·卡尔松",
+   "latin": [
+    "Carlsson Martin"
+   ]
+  },
+  {
+   "cn": "马丁·霍贝马吉",
+   "latin": [
+    "Hõbemägi Martin"
+   ]
+  },
+  {
+   "cn": "马克西姆·卡拉肖夫",
+   "latin": [
+    "Karasyov Maxim"
+   ]
+  },
+  {
+   "cn": "马晨",
+   "latin": [
+    "Ma Chen"
+   ]
+  },
+  {
+   "cn": "黄休一",
+   "latin": [
+    "Huang Xiuyi"
+   ]
+  },
+  {
+   "cn": "黄圣明",
+   "latin": [
+    "Huang Shengming"
+   ]
+  },
+  {
+   "cn": "黄立勤",
+   "latin": [
+    "Huang Liqin"
+   ]
+  },
+  {
+   "cn": "黄道勋",
+   "latin": [
+    "Hwang Do-hoon"
+   ]
+  }
+ ]
+}
