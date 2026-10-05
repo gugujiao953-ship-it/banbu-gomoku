@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-CN">
   <head>
-    <script type="module" crossorigin src="./assets/polyfills-Cta5BfY_.js"></script>
+    <script type="module" crossorigin src="./assets/polyfills-DTHVI6-Z.js"></script>
 
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
@@ -22,8 +22,12 @@
          探测永远失败 → **所有浏览器**都会白白去加载那份 868KB 的 legacy 包（线上实测还会
          连带 SystemJS 报错与两条跨源 fetch 失败），而 Safari 15.x 该走的降级反而走不通。
          实测对照：保留原样时 legacy 请求 2 个、pageerror 2 条；加上 `data:` 后两者都归零。
-         这个 CSP 本来就开了 'unsafe-inline'/'unsafe-eval'，允许 data: 脚本的边际风险可忽略。 -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' data:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' data: blob: https://api.github.com https://gugujiao953-ship-it.github.io https://raw.githubusercontent.com https://cdn.jsdelivr.net https://github.com https://release-assets.githubusercontent.com https://www.ljrenju.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+         这个 CSP 本来就开了 'unsafe-inline'/'unsafe-eval'，允许 data: 脚本的边际风险可忽略。
+         「复原手序」2026-09-28 转正：设置只保留自定义端点（豆包、通义千问、MiMo 等识图大模型，
+         只要 OpenAI 兼容接口），服务地址无法预先枚举，因此 connect-src 放行全部 https——
+         与 APP 版（原生桥本就不过 CSP）能力对齐。能否连上仍取决于服务方是否允许浏览器直连
+         （CORS），连不上时应用会如实报原因。 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' data:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' data: blob: https: https://www.ljrenju.com https://api.github.com https://gugujiao953-ship-it.github.io https://cdn.jsdelivr.net https://release-assets.githubusercontent.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
     <meta name="theme-color" content="#365e4b" />
     <meta name="description" content="半步五子棋打谱：移动优先的五子棋打谱与做题工具" />
     <!-- iOS「添加到主屏幕」：Capacitor 侧本来就有 mobile-web-app-capable，这里补 Safari 专属写法。
@@ -43,15 +47,17 @@
     <link rel="apple-touch-icon" sizes="152x152" href="./apple-touch-icon-152x152.png" />
     <link rel="icon" href="./icon.svg" />
     <title>半步五子棋打谱</title>
-    <script type="module" crossorigin src="./assets/index-I_Gvn8N1.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DdcW-2LC.css">
+    <script type="module" crossorigin src="./assets/index-CeyeCdb0.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/createLucideIcon-QE2kj6ru.js">
+    <link rel="modulepreload" crossorigin href="./assets/dist-7ek_NUxH.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-CRCfLTFv.css">
     <script type="module">import'data:text/javascript,if(!import.meta.resolve)throw Error("import.meta.resolve not supported")';import.meta.url;import("_").catch(()=>1);(async function*(){})().next();window.__vite_is_modern_browser=true</script>
     <script type="module">!function(){if(window.__vite_is_modern_browser)return;console.warn("vite: loading legacy chunks, syntax error above and the same error below should be ignored");var e=document.getElementById("vite-legacy-polyfill"),n=document.createElement("script");n.src=e.src,n.onload=function(){System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))},document.body.appendChild(n)}();</script>
   <link rel="manifest" href="./manifest.webmanifest"></head>
   <body>
-    <div id="root"></div>
+    <div id="root"></div>
     <script nomodule>!function(){var e=document,t=e.createElement("script");if(!("noModule"in t)&&"onbeforeload"in t){var n=!1;e.addEventListener("beforeload",(function(e){if(e.target===t)n=!0;else if(!e.target.hasAttribute("nomodule")||!n)return;e.preventDefault()}),!0),t.type="module",t.src=".",e.head.appendChild(t),t.remove()}}();</script>
-    <script nomodule crossorigin id="vite-legacy-polyfill" src="./assets/polyfills-legacy-BEutUQIr.js"></script>
-    <script nomodule crossorigin id="vite-legacy-entry" data-src="./assets/index-legacy-B6wnti6K.js">System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))</script>
+    <script nomodule crossorigin id="vite-legacy-polyfill" src="./assets/polyfills-legacy-Bs9ZgBvt.js"></script>
+    <script nomodule crossorigin id="vite-legacy-entry" data-src="./assets/index-legacy-DGkHy_21.js">System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))</script>
   </body>
 </html>
