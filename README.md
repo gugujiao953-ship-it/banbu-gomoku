@@ -1,26 +1,38 @@
 # 半步五子棋打谱
 
-移动优先的五子棋 / 连珠打谱与做题工具。当前版本以 React + TypeScript 实现共享核心，通过 PWA 提供离线网页版，通过 Capacitor 提供 Android 应用；未来桌面端可继续复用相同的棋谱模型与格式层。
+![半步五子棋打谱](marketing/social-preview-1280x640.png)
 
-当前发布版本：**v1.1.8**（2026-09-14）。
+移动优先的五子棋 / 连珠打谱、读谱、做题与题库工具：共享核心用 React + TypeScript，网页版是 PWA（离线可用、含 iOS），Android 应用用 Capacitor 打包；本地 AI 引擎（Rapfi / KataGo）全部在设备上跑，不连服务器也能分析。
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/gugujiao953-ship-it/banbu-gomoku)](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest)
+[![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Web-blue.svg)](#下载与在线使用)
+
+当前稳定版：**v1.1.9**（2026-10-02）· 版本号、体积与 SHA-256 以 [Releases](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest) 为准。
 
 ## 下载与在线使用
 
 | 方式 | 入口 | 说明 |
 | --- | --- | --- |
-| **网页版（含 iOS）** | **[打开网页版](https://gugujiao953-ship-it.github.io/banbu-gomoku/app/)** | 手机 / 桌面浏览器直接使用；**iPhone / iPad 用 Safari 打开后「分享 → 添加到主屏幕」，即可当本地应用离线使用**，无需安装 |
-| Android APK | [GitHub Releases v1.1.8](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/tag/v1.1.8) | `banbu-gomoku-1.1.8-android-release.apk`（44.6 MB，含冠军网络引擎包），同页附 SHA-256 |
-| 百度网盘 | [下载链接](https://pan.baidu.com/s/1N5TW5BlXPQgNVFGKap3VhQ?pwd=v6tn) | 提取码 `v6tn`（GitHub 访问不便时用） |
-| 蓝奏云 | [下载链接](https://wwbwc.lanzouq.com/iJJgS48ghxji) | 密码 `1i8s` |
-| 项目主页 | [gugujiao953-ship-it.github.io/banbu-gomoku](https://gugujiao953-ship-it.github.io/banbu-gomoku/) | 功能说明、更新亮点与全部下载入口 |
+| **网页版（含 iOS）** | **[打开网页版](https://gugujiao953-ship-it.github.io/banbu-gomoku/app/)** | 手机 / 桌面浏览器直接用，可加到主屏当离线应用 |
+| Android APK | **[最新版本 Releases](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest)** | 每个版本都带 `.sha256` 校验文件；v1.1.9 = 80.1MB |
+| 百度网盘 | [下载链接](https://pan.baidu.com/s/11FAINtqCMJ1D6fNFyz5ozw?pwd=y563) | 提取码 `y563`（GitHub 访问不便时用） |
+| 蓝奏云 | [下载链接](https://wwbwc.lanzouq.com/iHnXI4aonaxa) | 密码 `bwk1` |
+| 项目主页 | [gugujiao953-ship-it.github.io/banbu-gomoku](https://gugujiao953-ship-it.github.io/banbu-gomoku/) | 功能说明、更新亮点与宣传页 |
 
-本版更新说明（相对 v1.1.7）见 [RELEASE_NOTES.md](./RELEASE_NOTES.md)。
+更新说明：应用内「设置 → 关于 → 本版本更新内容」随时可看；开发日志与逐版细节见 [RELEASE_NOTES.md](./RELEASE_NOTES.md)。
 
-> 这是一个 Vibecoding 的产物，也是一款永久免费、开放源代码的软件。希望它能让手机打谱和做题更方便；如有内容涉及侵权，请通过 GitHub Issue 联系，我会及时处理或删除。
+## 反馈与参与
+
+- **有问题、想加功能**：直接[提一个 issue](https://github.com/gugujiao953-ship-it/banbu-gomoku/issues/new/choose)——仓库里带了反馈模板；把「设置 → 关于 → 兼容性自检」的输出一起贴上，定位会快很多。
+- **随便聊聊**：欢迎到 [Discussions](https://github.com/gugujiao953-ship-it/banbu-gomoku/discussions) 发帖。
+- 想自己编译：`npm ci && npm run build`（网页版），`npm run android:release` 打 Android 包；引擎与模型资产由构建脚本铺进包内。
+
+> 这是一个 Vibecoding 的产物，也是一款永久免费、开放源代码的软件。希望它能让手机打谱和做题更方便；如果你也做五子棋工具，欢迎互相借鉴。
 
 项目仓库：[github.com/gugujiao953-ship-it/banbu-gomoku](https://github.com/gugujiao953-ship-it/banbu-gomoku)
 
-桌面参考软件的功能拆解与移动端迁移决策见 [DESKTOP_REFERENCE_AUDIT.md](./DESKTOP_REFERENCE_AUDIT.md)，开宝 APK、题库和 SlowRenju 引擎的审计见 [KAIBAO_REFERENCE_AUDIT.md](./KAIBAO_REFERENCE_AUDIT.md)。
+桌面参考软件的功能拆解与移动端迁移决策见 [DESKTOP_REFERENCE_AUDIT.md](./DESKTOP_REFERENCE_AUDIT.md)，开宝 APK、题库格式与界面参照见 [KAIBAO_REFERENCE_AUDIT.md](./KAIBAO_REFERENCE_AUDIT.md)。
 
 ## 简单致谢
 
