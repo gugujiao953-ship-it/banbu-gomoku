@@ -8,15 +8,15 @@
 [![Latest release](https://img.shields.io/github/v/release/gugujiao953-ship-it/banbu-gomoku)](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Web-blue.svg)](#下载与在线使用)
 
-当前稳定版：**v1.1.9**（2026-10-02）· 版本号、体积与 SHA-256 以 [Releases](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest) 为准。
+当前稳定版：**v1.2.0**（2026-10-15）· 版本号、体积与 SHA-256 以 [Releases](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest) 为准。
 
 ## 下载与在线使用
 
 | 方式 | 入口 | 说明 |
 | --- | --- | --- |
 | **网页版（含 iOS）** | **[打开网页版](https://gugujiao953-ship-it.github.io/banbu-gomoku/app/)** | 手机 / 桌面浏览器直接用，可加到主屏当离线应用 |
-| Android APK | **[最新版本 Releases](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest)** | 每个版本都带 `.sha256` 校验文件；v1.1.9 = 80.1MB |
-| 蓝奏云 | [下载链接](https://wwbwc.lanzouq.com/iHnXI4aonaxa) | 密码 `bwk1` |
+| Android APK | **[最新版本 Releases](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest)** | 每个版本都带 `.sha256` 校验文件；v1.2.0 = 90.4MB |
+| 蓝奏云 | [下载链接](https://wwbwc.lanzouq.com/ihYTE4c6aube) | 密码 `hrbj` |
 | 项目主页 | [gugujiao953-ship-it.github.io/banbu-gomoku](https://gugujiao953-ship-it.github.io/banbu-gomoku/) | 功能说明、更新亮点与宣传页 |
 
 更新说明：应用内「设置 → 关于 → 本版本更新内容」随时可看；开发日志与逐版细节见 [RELEASE_NOTES.md](./RELEASE_NOTES.md)。
