@@ -16,7 +16,6 @@
 | --- | --- | --- |
 | **网页版（含 iOS）** | **[打开网页版](https://gugujiao953-ship-it.github.io/banbu-gomoku/app/)** | 手机 / 桌面浏览器直接用，可加到主屏当离线应用 |
 | Android APK | **[最新版本 Releases](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest)** | 每个版本都带 `.sha256` 校验文件；v1.1.9 = 80.1MB |
-| 百度网盘 | [下载链接](https://pan.baidu.com/s/11FAINtqCMJ1D6fNFyz5ozw?pwd=y563) | 提取码 `y563`（GitHub 访问不便时用） |
 | 蓝奏云 | [下载链接](https://wwbwc.lanzouq.com/iHnXI4aonaxa) | 密码 `bwk1` |
 | 项目主页 | [gugujiao953-ship-it.github.io/banbu-gomoku](https://gugujiao953-ship-it.github.io/banbu-gomoku/) | 功能说明、更新亮点与宣传页 |
 
