@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" fill="none">
+  <defs>
+    <linearGradient id="silk" x1="165" y1="460" x2="823" y2="85" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#517b70"/><stop offset=".28" stop-color="#649185"/><stop offset=".52" stop-color="#2c625b"/><stop offset=".78" stop-color="#71958b"/><stop offset="1" stop-color="#426a64"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="60" y1="420" x2="940" y2="147" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d9b978" stop-opacity="0"/><stop offset=".16" stop-color="#d9b978" stop-opacity=".7"/><stop offset=".8" stop-color="#ebcc91" stop-opacity=".8"/><stop offset="1" stop-color="#d9b978" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- A complete tapered ribbon. Both ends live inside the viewBox. -->
+  <path d="M62 420C180 385 205 268 316 240C434 210 503 391 628 328C741 270 650 85 802 84C867 84 905 135 939 147C891 157 835 123 806 123C703 121 764 314 636 369C478 436 429 254 321 267C198 283 217 409 62 420Z" fill="url(#silk)"/>
+  <path d="M62 420C180 385 205 268 316 240C434 210 503 391 628 328C741 270 650 85 802 84C867 84 905 135 939 147" stroke="url(#edge)" stroke-width="2"/>
+  <path d="M321 267C429 254 478 436 636 369C764 314 703 121 806 123" stroke="#1d4d47" stroke-width="1.8" opacity=".65"/>
+  <path d="M644 324C701 287 687 207 718 151" stroke="#9fb29a" stroke-width="1.5" opacity=".35"/>
+</svg>

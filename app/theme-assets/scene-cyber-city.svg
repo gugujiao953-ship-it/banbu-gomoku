@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 360" fill="none">
+  <!-- 霓虹赛博·天际线（底部锚定）：层叠楼体剪影 + 零星窗光 + 几块霓虹招牌。
+       霓虹用高饱和直线与方框，楼体近黑——对比来自「暗楼 + 亮管」。 -->
+  <defs>
+    <linearGradient id="cyFar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#151033" stop-opacity=".78"/>
+      <stop offset="1" stop-color="#0b0a1c" stop-opacity=".92"/>
+    </linearGradient>
+    <linearGradient id="cyNear" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b0a1e" stop-opacity=".92"/>
+      <stop offset="1" stop-color="#05040f" stop-opacity=".98"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 远排楼（矮、淡） -->
+  <path d="M0 236h34v-40h26v40h30v-62h30v62h28v-34h26v34h34v-52h28v52h30v-28h26v28h34v-44h28v44h34v-30h26v30h24v124H0Z" fill="url(#cyFar)"/>
+  <!-- 近排楼（高、实，带霓虹招牌） -->
+  <path d="M0 360V268h58v-46h54v46h62v-72h68v72h58v-38h64v38h62v92Z" fill="url(#cyNear)"/>
+  <!-- 窗光（稀疏，冷暖不分） -->
+  <g fill="#7fe8ff" opacity=".5">
+    <rect x="16" y="284" width="6" height="4" rx="1"/>
+    <rect x="32" y="300" width="6" height="4" rx="1"/>
+    <rect x="74" y="292" width="6" height="4" rx="1"/>
+    <rect x="126" y="272" width="6" height="4" rx="1"/>
+    <rect x="146" y="292" width="6" height="4" rx="1"/>
+    <rect x="206" y="252" width="6" height="4" rx="1"/>
+    <rect x="228" y="276" width="6" height="4" rx="1"/>
+    <rect x="286" y="290" width="6" height="4" rx="1"/>
+    <rect x="344" y="278" width="6" height="4" rx="1"/>
+    <rect x="372" y="300" width="6" height="4" rx="1"/>
+  </g>
+  <g fill="#ffb3e6" opacity=".42">
+    <rect x="46" y="308" width="6" height="4" rx="1"/>
+    <rect x="96" y="276" width="6" height="4" rx="1"/>
+    <rect x="170" y="286" width="6" height="4" rx="1"/>
+    <rect x="252" y="258" width="6" height="4" rx="1"/>
+    <rect x="312" y="274" width="6" height="4" rx="1"/>
+    <rect x="392" y="290" width="6" height="4" rx="1"/>
+  </g>
+  <!-- 霓虹招牌：竖管 + 横向灯带 + 方框 -->
+  <g stroke="#4de8ff" stroke-width="2.6" opacity=".85">
+    <path d="M112 236v-72M112 236h30"/>
+    <path d="M212 260v-56"/>
+  </g>
+  <g stroke="#ff5ec7" stroke-width="2.6" opacity=".8">
+    <path d="M60 268h34M60 288h22"/>
+    <path d="M300 232v-58M300 232h26"/>
+  </g>
+  <g stroke="#c9a8ff" stroke-width="2.2" opacity=".7">
+    <rect x="352" y="204" width="30" height="44" rx="3"/>
+    <path d="M366 204v44M352 226h30"/>
+  </g>
+  <g stroke="#7dffd0" stroke-width="2.2" opacity=".62">
+    <path d="M168 300h40M168 312h26"/>
+  </g>
+  <!-- 霓虹在地面的反光 -->
+  <g opacity=".22">
+    <path d="M104 360v-26h26v26Z" fill="#4de8ff"/>
+    <path d="M292 360v-22h24v22Z" fill="#ff5ec7"/>
+    <path d="M348 360v-18h30v18Z" fill="#c9a8ff"/>
+  </g>
+</svg>

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" fill="none">
+  <!-- 雪落主题·远景：雪原丘陵 + 松林剪影（竖屏可见，底部锚定）
+       素材按「宽度贴合屏幕」使用（background-size:100% auto），构图集中在下方 2/3。 -->
+  <defs>
+    <linearGradient id="snowHaze" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset=".55" stop-color="#ffffff" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity=".85"/>
+    </linearGradient>
+    <linearGradient id="snowFar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c3d3e0" stop-opacity=".30"/>
+      <stop offset="1" stop-color="#aec2d2" stop-opacity=".62"/>
+    </linearGradient>
+    <linearGradient id="snowMid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9db4c6" stop-opacity=".42"/>
+      <stop offset="1" stop-color="#8ba4b8" stop-opacity=".74"/>
+    </linearGradient>
+    <linearGradient id="pineFar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7e97ab" stop-opacity=".40"/>
+      <stop offset="1" stop-color="#6b8399" stop-opacity=".58"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 远山（两层重叠，制造纵深） -->
+  <path d="M0 452C96 412 168 430 246 396S406 330 486 350s150 60 232 34c78-25 130-58 182-84v310H0Z" fill="url(#snowFar)"/>
+  <path d="M0 512C104 486 190 500 268 470s154-52 238-30 152 56 232 34 118-40 162-58v204H0Z" fill="url(#snowMid)"/>
+
+  <!-- 远松（细而淡，排在雪坡上） -->
+  <g fill="url(#pineFar)">
+    <path d="M120 470l-11 34h22Zm-4 26-16 22h38Zm2 14-20 26h46Zm-20 26h46v8h-46Z"/>
+    <path d="M196 458l-9 28h18Zm-3 21-13 19h31Zm2 12-17 22h39Zm-17 22h39v7h-39Z"/>
+    <path d="M726 462l-10 31h20Zm-4 24-15 21h35Zm2 13-19 24h43Zm-19 24h43v7h-43Z"/>
+    <path d="M800 476l-8 24h16Zm-3 18-11 16h26Zm1 10-14 19h33Zm-14 19h33v6h-33Z"/>
+  </g>
+
+  <!-- 中景松林（更实，带积雪的枝顶） -->
+  <g>
+    <g fill="#6d879c" opacity=".72">
+      <path d="M296 430l-16 46h32Zm-6 34-24 32h56Zm3 20-29 38h66Zm-29 38h66v10h-66Z"/>
+      <path d="M640 424l-18 52h36Zm-7 38-27 36h63Zm3 22-32 42h73Zm-32 42h73v11h-73Z"/>
+    </g>
+    <g fill="#ffffff" opacity=".78">
+      <path d="M279 500h34l-5 7h-24Z"/>
+      <path d="M621 522h38l-6 8h-26Z"/>
+      <path d="M289 452h14l-3 5h-8Z"/>
+      <path d="M633 448h16l-3 5h-10Z"/>
+    </g>
+  </g>
+
+  <!-- 近处雪坡与雾带 -->
+  <path d="M0 556c118-30 214-8 322-26s214-42 316-18 190 40 262 26v82H0Z" fill="#ffffff" opacity=".92"/>
+  <rect y="392" width="900" height="180" fill="url(#snowHaze)" opacity=".5"/>
+</svg>

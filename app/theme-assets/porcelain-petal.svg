@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" fill="none">
+  <!-- 青花瓷影 · 飘落的花瓣（ts-parts 的 mask，颜色由 CSS 给）。
+       2026-10-09 重做：原来直接用梅花的单瓣（petal.svg），形状尖而窄、且是实心剪影。
+       青花瓷上的花瓣该是**饱满的莲瓣/花头**，并且要能表现出"描轮廓 + 分水填色"两层——
+       但 mask 只能是单色（CSS 用它裁形、颜色后填），所以这里靠**内部留白线**表达层次：
+       花瓣主体的实心部分负责"分水填色"，镂空的花心圆孔与中脉细线负责"描白"。
+
+       ⚠ 用于 mask 时，**白色＝显示、黑色/透明＝隐藏**。所以：
+         · 花瓣外形用 fill="#fff"（要显示）；
+         · 中脉与花心用**镂空**（挖掉），落下来才看得到"描白"的细节。
+       下面用 mask 组件实现镂空（白底 + 黑线挖空）。 -->
+
+  <mask id="cut">
+    <rect width="120" height="140" fill="#000"/>
+    <!-- 花瓣本体 -->
+    <path d="M60 6c22 16 34 38 34 62 0 30-14 58-34 72-20-14-34-42-34-72 0-24 12-46 34-62Z" fill="#fff"/>
+    <!-- 挖掉中脉：一条细缝，落下来透出底色 ⇒ 读作"描白"的中脉 -->
+    <path d="M60 22v112" stroke="#000" stroke-width="3.4" stroke-linecap="round"/>
+    <!-- 挖掉两侧的两道内弧：分水的"深浅分界" -->
+    <path d="M44 40c-6 22-4 46 4 70" stroke="#000" stroke-width="2" stroke-linecap="round"/>
+    <path d="M76 40c6 22 4 46-4 70" stroke="#000" stroke-width="2" stroke-linecap="round"/>
+    <!-- 花心：挖一个小圆（留白的莲蓬心） -->
+    <circle cx="60" cy="34" r="5" fill="#000"/>
+  </mask>
+
+  <rect width="120" height="140" fill="#fff" mask="url(#cut)"/>
+</svg>

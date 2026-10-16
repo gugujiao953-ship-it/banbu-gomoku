@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 200 430 130" preserveAspectRatio="none" fill="none">
+  <!-- 地面层（2026-10-08 从 scene-pelican-ride.svg 里拆出来单独立层）。
+       为什么要单独一层：这一层要**横贯整个视口**，而 .ts-ride 只有 17dvh×1.6288 宽
+       （手机竖屏约 234px，左右各留 78px），原来地面跟着 .ts-ride 走，
+       于是在屏幕下方缩成一块两边是「空气海」的孤岛（用户 10-08 点名）。
+       现在这层用 left:50% + margin-left:-50vw + width:100vw 铺满视口宽度，
+       纵向仍是场景坐标（y200..330），所以车轮压地线的高度一分不差。
+       ⚠ preserveAspectRatio="none" 是这一层成立的关键：SVG 默认 `xMidYMid meet`
+       （等比缩放后居中，会留黑边），上面别的素材因为长宽比与元素一致才没暴露这个问题；
+       这一层元素是 390×72（比例 5.4）、viewBox 是 430×130（比例 3.3），
+       不加 none 的话内容只会铺 238px 并居中——看上去还是一座孤岛。
+       横向拉伸会把山脊压扁一些——地平线本来就该横贯全屏，这样反而更对。
+       ⚠ 路面那条虚线（pelican-road.svg）已删除：它在车后凭空出现、再往后流走、又消失，
+       用户看了觉得奇怪（「你去了那个斑马线吧」）。前进感靠车轮自转 + 双腿蹬踏已经够了。 -->
+  <defs>
+    <linearGradient id="pkRoad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a2f46"/>
+      <stop offset="1" stop-color="#241c2e"/>
+    </linearGradient>
+    <linearGradient id="pkHills" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4b3358" stop-opacity=".85"/>
+      <stop offset="1" stop-color="#2e2140" stop-opacity=".95"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Distant foothills soften the transition from sky to road. -->
+  <path d="M0 235C31 224 51 238 77 221S124 229 153 214S203 225 228 212S275 230 307 217S373 229 430 211V330H0Z" fill="#9a6977" opacity=".36"/>
+  <!-- 远处山脊（给鹈鹕一个地平线） -->
+  <path d="M0 250c46-14 74-34 116-32s58 20 96 16 62-26 106-20 74 22 112 16v100H0Z" fill="url(#pkHills)"/>
+  <!-- 路面：上沿 y=284 就是车轮着地线（后轮中心 244 + 半径 40 = 284） -->
+  <path d="M0 284h430v46H0Z" fill="url(#pkRoad)"/>
+  <path d="M0 284h430" stroke="#ffcf9a" stroke-width="1.2" opacity=".28"/>
+</svg>

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 930" fill="none">
+  <!-- 萤火森林·夜景（竖版 430×930）：顶部树冠压暗、树干贯穿全高、地面雾与暖光。
+       原素材 1200×800 横构图被 center 裁掉两侧，4 根竹竿整根看不见——这版全部落在画面内。 -->
+  <defs>
+    <linearGradient id="ffCanopy" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a1f1b" stop-opacity=".94"/>
+      <stop offset=".58" stop-color="#0e2622" stop-opacity=".52"/>
+      <stop offset="1" stop-color="#123029" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="ffGround" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b5a4c" stop-opacity="0"/>
+      <stop offset="1" stop-color="#2b5a4c" stop-opacity=".40"/>
+    </linearGradient>
+    <radialGradient id="ffWarm" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#f7dd8a" stop-opacity=".26"/>
+      <stop offset="1" stop-color="#f7dd8a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 远处林线 -->
+  <path d="M0 616c56-34 100-16 150-40s92-40 146-24 96 42 134 26v352H0Z" fill="#123029" opacity=".5"/>
+
+  <!-- 树干（粗细疏密错落，全高） -->
+  <g fill="#0c2620" opacity=".72">
+    <path d="M40 930c6-220 0-420 12-660h22c-10 240-6 440-14 660Z"/>
+    <path d="M152 930c8-206 2-390 14-616h18c-8 226-4 410-12 616Z"/>
+    <path d="M330 930c-6-214 0-404-12-630h20c8 226 4 416 12 630Z"/>
+  </g>
+  <g fill="#0c2620" opacity=".54">
+    <path d="M92 930c4-186-2-350 8-548h14c-6 198-4 362-8 548Z"/>
+    <path d="M262 930c-4-178 2-338 8-530h14c-4 192-8 352-6 530Z"/>
+    <path d="M392 930c-2-166 4-318 8-500h12c-2 182-6 334-4 500Z"/>
+  </g>
+
+  <!-- 斜枝（打破竖线） -->
+  <g stroke="#0c2620" stroke-linecap="round" opacity=".46">
+    <path d="M56 300 168 250M166 356 274 306M340 286 240 236M392 330 300 282" stroke-width="8"/>
+    <path d="M56 300 20 280M166 356 130 378M340 286 376 262M392 330 424 352" stroke-width="5"/>
+  </g>
+
+  <!-- 顶部树冠 -->
+  <path d="M0 0h430v186c-46 30-84 4-134 18s-74 42-124 24-84-52-124-38-48 14-48 14Z" fill="url(#ffCanopy)"/>
+  <g fill="#0a1f1b" opacity=".7">
+    <path d="M-12 116c32-40 68-50 104-30-26 34-60 46-104 30Z"/>
+    <path d="M78 78c32-36 68-44 102-22-28 32-62 40-102 22Z"/>
+    <path d="M336 96c34-38 70-44 104-20-30 34-64 42-104 20Z"/>
+    <path d="M262 62c28-30 60-36 92-16-26 28-56 34-92 16Z"/>
+  </g>
+
+  <!-- 地面雾 + 暖光 -->
+  <rect y="600" width="430" height="330" fill="url(#ffGround)"/>
+  <ellipse cx="216" cy="806" rx="240" ry="120" fill="url(#ffWarm)"/>
+</svg>

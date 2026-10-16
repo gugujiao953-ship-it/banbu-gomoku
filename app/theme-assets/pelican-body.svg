@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 66 430 264" fill="none">
+  <defs>
+      <linearGradient id="pkBody" x1="0" y1="0" x2=".3" y2="1">
+        <stop offset="0" stop-color="#fff8ea"/>
+        <stop offset=".58" stop-color="#f7e7d2"/>
+        <stop offset="1" stop-color="#e3c9b3"/>
+      </linearGradient>
+      <linearGradient id="pkBeak" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f8b551"/>
+        <stop offset="1" stop-color="#dd7d20"/>
+      </linearGradient>
+      <linearGradient id="pkPouch" x1="0" y1="0" x2=".4" y2="1">
+        <stop offset="0" stop-color="#f6c478"/>
+        <stop offset="1" stop-color="#d98b2c"/>
+      </linearGradient>
+      <linearGradient id="pkTail" x1="0" y1="0" x2=".2" y2="1">
+        <stop offset="0" stop-color="#f3e5d4"/>
+        <stop offset="1" stop-color="#cfb79c"/>
+      </linearGradient>
+      <linearGradient id="pkFrame" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#5b5578"/>
+        <stop offset="1" stop-color="#2c2740"/>
+      </linearGradient>
+      <linearGradient id="pkRoad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#3a2f46"/>
+        <stop offset="1" stop-color="#241c2e"/>
+      </linearGradient>
+      <linearGradient id="pkHills" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#4b3358" stop-opacity=".85"/>
+        <stop offset="1" stop-color="#2e2140" stop-opacity=".95"/>
+      </linearGradient>
+    </defs>
+
+  <!-- 鹈鹕上身（单独一层，跟着踏频微动）。取景框与场景一致，直接叠上去对齐。
+       ⚠ 2026-10-08 重画：这一版之前有三处「飘在半空」——
+         ① 尾羽画在 x130–168，而身体后缘实测在 x193，中间空了 25 个单位：尾巴是浮空的；
+         ② 背脊轮廓光起点 x170 也在身体外面（同一个毛病）；
+         ③ 头冠顶到 y61，而 viewBox 从 y66 起 —— 被裁掉 5 个单位（原来那两根「触角」只有半截）。
+       现在：尾羽根部埋进身体后缘（后缘实测 x193–206 ／ y140–183，根画到 x226–231）；
+       轮廓光改成**同一条身体路径 + stroke-dasharray**，只点亮背脊那一段，几何上不可能飘；
+       头冠下移收短。 -->
+
+  <!-- 尾羽：3 枚扇形，根部埋进身体后缘（先画，会被身体盖住根；末端错开成尖） -->
+  <g class="pk-tail">
+  <path d="M226 148C206 143 176 146 162 155 178 163 208 166 228 160Z" fill="url(#pkTail)"/>
+  <path d="M230 162C208 159 174 165 156 175 176 183 210 184 231 175Z" fill="#e0cdb6"/>
+  <path d="M226 176C208 178 180 187 164 197 182 202 210 197 228 187Z" fill="#c9b096"/>
+  <path d="M226 148C206 143 176 146 162 155" stroke="#ffe3b8" stroke-width="1.6" opacity=".45" fill="none" stroke-linecap="round"/>
+
+  </g>
+
+  <!-- 身体（矮壮、前倾） -->
+  <path id="pkTorso" d="M246 118c18-8 32 4 36 20 5 22-6 44-28 52-20 8-44 2-54-14-12-18-8-42 8-54 10-8 24-10 38-4Z" fill="url(#pkBody)"/>
+  <!-- 远侧翅膀（折在身侧）：肩 + 折翼前缘 + 初级飞羽尖（朝后下方） -->
+  <path d="M212 126c15-6 30 2 33 17 3 13-5 24-18 27-12 2-22-6-24-18-2-11 2-21 9-26Z" fill="#f0dfcb" opacity=".95"/>
+  <path d="M241 146c11 5 18 14 19 24-1 7-6 12-12 14 1-14-1-26-7-38Z" fill="#dfc8ae" opacity=".95"/>
+  <path d="M243 158c7 6 12 14 13 22-4-2-8-7-11-13-2-4-3-7-2-9Z" fill="#d0b497" opacity=".9"/>
+  <path d="M215 133c13-3 25 3 29 14" stroke="#dfc8ae" stroke-width="1.3" opacity=".6" fill="none"/>
+  <path d="M219 158c10 4 17 11 20 20" stroke="#dfc8ae" stroke-width="1.2" opacity=".45" fill="none"/>
+
+  <!-- 颈 + 头 -->
+  <path d="M252 132c14-10 22-24 32-34" stroke="url(#pkBody)" stroke-width="30" stroke-linecap="round"/>
+  <circle cx="292" cy="98" r="21" fill="url(#pkBody)"/>
+  <!-- 头冠小羽（顶端留余量，别再被 viewBox 裁） -->
+  <path d="M274 87c-2-8 2-14 9-15 2 6-1 12-6 15Z" fill="#f7e7d2"/>
+  <path d="M286 82c0-7 4-11 11-11 0 6-4 10-9 12Z" fill="#efe0cd"/>
+  <!-- 长喙（上喙 + 喉囊） -->
+  <path d="M306 90c26-6 54-8 80 2-24 12-52 16-80 10Z" fill="url(#pkBeak)"/>
+  <path d="M306 100c30 4 56 20 74 44-30 4-58-8-76-32Z" fill="url(#pkPouch)"/>
+  <path d="M312 104c22 8 40 22 52 40" stroke="#c9761f" stroke-width="1.6" opacity=".45" fill="none"/>
+  <path d="M306 90c26-6 54-8 80 2" stroke="#fff0c8" stroke-width="1.6" opacity=".55" fill="none"/>
+  <!-- 眼 -->
+  <g class="pk-eye">
+  <circle cx="292" cy="92" r="4.6" fill="#2b2430"/>
+  <circle cx="293.6" cy="90.4" r="1.5" fill="#fffdf6"/>
+  </g>
+
+  <!-- 近侧翅膀（伸到车把上握住）：肩 → 前臂 → 腕，末端三枚初级飞羽搭在把手上 -->
+  <path d="M254 127C280 118 311 130 331 150 337 156 336 165 329 170 321 176 312 173 306 166 295 153 277 146 261 147 250 147 245 136 254 127Z" fill="url(#pkBody)"/>
+  <path d="M258 133C279 127 300 132 317 145" stroke="#e0c7ad" stroke-width="1.4" opacity=".55" fill="none"/>
+  <path d="M264 146C282 144 300 150 313 161" stroke="#e0c7ad" stroke-width="1.3" opacity=".45" fill="none"/>
+  <path d="M324 158c6 0 10 2 12 6-5 2-10 0-13-3Z" fill="#f2e2cf"/>
+  <path d="M328 166c6 1 10 4 11 8-5 1-10-2-13-6Z" fill="#e6d2ba"/>
+  <path d="M329 173c5 2 8 5 8 9-4 0-8-3-10-7Z" fill="#d8c1a4"/>
+  <!-- 背脊与喙沿的暖色轮廓光（黄昏侧逆光）：沿身体路径本身描边，只点亮背脊那一段 -->
+  <use href="#pkTorso" fill="none" stroke="#ffd9a0" stroke-width="2.6" opacity=".5"
+       stroke-dasharray="58 999" stroke-dashoffset="-205" stroke-linecap="round"/>
+  <use href="#pkTorso" fill="none" stroke="#ffe3b8" stroke-width="2" opacity=".3"
+       stroke-dasharray="34 999" stroke-dashoffset="-168" stroke-linecap="round"/>
+  <path d="M274 82c8-6 18-8 28-6" stroke="#ffd9a0" stroke-width="2.2" opacity=".5" fill="none" stroke-linecap="round"/>
+  <path d="M196 156c10 8 22 12 34 12" stroke="#ffe3b8" stroke-width="2" opacity=".35" fill="none" stroke-linecap="round"/>
+</svg>

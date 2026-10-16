@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 930" fill="none">
+  <!-- 水墨竹林·远中景（竖版 430×930，贴合手机全屏；cover 使用时几乎不裁切）
+       构图：竹竿遍布全高、左右都有，雾带压低远景，叶影错落。 -->
+  <defs>
+    <linearGradient id="bMist" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eef2ea" stop-opacity=".78"/>
+      <stop offset=".38" stop-color="#eef2ea" stop-opacity=".14"/>
+      <stop offset="1" stop-color="#dbe4d9" stop-opacity=".62"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 最远：极淡竿影 -->
+  <g stroke="#a6bfac" stroke-linecap="round" opacity=".32">
+    <path d="M36 930C44 700 40 440 58 120" stroke-width="7"/>
+    <path d="M118 930C126 716 120 470 134 190" stroke-width="6"/>
+    <path d="M206 930C212 730 208 500 218 260" stroke-width="5"/>
+    <path d="M300 930C292 726 298 486 286 236" stroke-width="5"/>
+    <path d="M388 930C398 706 392 430 412 106" stroke-width="7"/>
+  </g>
+  <g fill="#a6bfac" opacity=".22">
+    <path d="M58 316c34-14 64-8 92 8-32 14-64 10-92-8Z"/>
+    <path d="M60 456c28 6 50 20 66 42-28-2-52-16-66-42Z"/>
+    <path d="M134 372c36-12 66-4 92 16-34 12-66 6-92-16Z"/>
+    <path d="M286 344c32-16 62-12 92 4-32 16-64 12-92-4Z"/>
+    <path d="M288 470c30 4 54 18 72 40-30 0-56-14-72-40Z"/>
+    <path d="M412 240c-32-14-62-10-90 6 32 14 64 10 90-6Z"/>
+  </g>
+
+  <!-- 中景：中墨竹竿 + 竹节 -->
+  <g stroke="#5a846a" stroke-linecap="round">
+    <path d="M74 930C88 720 80 470 102 150" stroke-width="13" opacity=".38"/>
+    <path d="M232 930C244 738 236 500 252 236" stroke-width="11" opacity=".32"/>
+    <path d="M368 930C356 716 364 456 344 130" stroke-width="13" opacity=".38"/>
+  </g>
+  <g stroke="#5a846a" stroke-width="3" opacity=".32">
+    <path d="M62 792h44M226 806h44M356 786h44M68 556h44M230 572h44M358 552h44M78 320h44M238 336h42M366 316h44M92 108h42M250 124h40M378 104h42"/>
+  </g>
+  <!-- 中景叶（错落的叶簇） -->
+  <g fill="#457056" opacity=".28">
+    <path d="M102 286c42-18 78-12 112 10-42 18-80 12-112-10Z"/>
+    <path d="M104 392c36 8 64 26 84 54-38-2-68-22-84-54Z"/>
+    <path d="M344 258c-42-18-80-10-110 14 42 16 80 8 110-14Z"/>
+    <path d="M342 366c-36 10-62 28-80 56 38-4 66-24 80-56Z"/>
+    <path d="M252 462c34-14 66-8 92 12-34 14-66 8-92-12Z"/>
+    <path d="M232 640c-32-14-64-10-90 8 34 14 66 8 90-8Z"/>
+  </g>
+
+  <!-- 雾带 + 地面压暗 -->
+  <rect y="230" width="430" height="330" fill="url(#bMist)"/>
+  <path d="M0 930c74-34 138-16 214-38s148-30 216-6v0Z" fill="#8fae97" opacity=".18"/>
+</svg>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" preserveAspectRatio="none" fill="none">
+  <defs>
+    <linearGradient id="ink" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#141414"/><stop offset=".48" stop-color="#303030"/><stop offset="1" stop-color="#121212"/>
+    </linearGradient>
+    <radialGradient id="vignette"><stop offset=".3" stop-color="#080808" stop-opacity="0"/><stop offset="1" stop-color="#080808" stop-opacity=".6"/></radialGradient>
+    <radialGradient id="light"><stop stop-color="#8c8c8c" stop-opacity=".22"/><stop offset="1" stop-color="#8c8c8c" stop-opacity="0"/></radialGradient>
+    <filter id="wash" x="-10%" y="-20%" width="120%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency=".012" numOctaves="2" seed="17" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="22" xChannelSelector="R" yChannelSelector="G"/><feGaussianBlur stdDeviation="7"/>
+    </filter>
+    <pattern id="paper" width="73" height="61" patternUnits="userSpaceOnUse">
+      <circle cx="7" cy="11" r=".5" fill="white" opacity=".08"/><circle cx="29" cy="41" r=".7" fill="white" opacity=".05"/>
+      <path d="M48 17h2M18 55h1" stroke="black" stroke-opacity=".12"/>
+    </pattern>
+  </defs>
+  <path fill="url(#ink)" d="M0 0h1200v800H0z"/>
+  <ellipse cx="700" cy="470" rx="680" ry="430" fill="url(#light)"/>
+  <g filter="url(#wash)">
+    <path d="M-40 343C53 297 129 318 206 275S359 322 438 298S570 227 651 253S807 327 901 279S1084 229 1240 276" stroke="#777777" stroke-opacity=".1" stroke-width="42"/>
+  </g>
+  <ellipse cx="600" cy="430" rx="900" ry="650" fill="url(#vignette)"/>
+  <path fill="url(#paper)" d="M0 0h1200v800H0z"/>
+</svg>

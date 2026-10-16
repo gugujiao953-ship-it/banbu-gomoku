@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 640" preserveAspectRatio="none" fill="none">
+  <defs>
+    <pattern id="grain" width="47" height="53" patternUnits="userSpaceOnUse">
+      <path d="M7 12h1M29 36h2M40 9h1M13 45h2" stroke="#e6c49a" stroke-opacity=".16"/>
+      <path d="M22 3h2M41 47h2M3 30h1M31 23h2" stroke="#1c0f0c" stroke-opacity=".28"/>
+      <circle cx="19" cy="21" r=".6" fill="#dbc094" opacity=".2"/>
+    </pattern>
+    <pattern id="pearls" width="18" height="34" patternUnits="userSpaceOnUse">
+      <circle cx="9" cy="17" r="2.3" stroke="#d9b975" stroke-width=".8"/>
+      <path d="M9 1v5m0 22v5" stroke="#ba934e" stroke-width=".7"/>
+    </pattern>
+  </defs>
+  <path d="M65 120l14 23-7 18 6 31m344 188-18 24 5 20-9 18M142 542l13-7 14 3 10-11" stroke="#d5b38d" stroke-width=".7" opacity=".12"/>
+  <path d="M30 54c68-21 103 8 86 32S38 117 30 54ZM382 280c35-17 57 9 48 32s-34 4-48-32ZM170 607c30-22 77-21 95-3s-71 41-95 3Z" fill="#d4b18a" opacity=".025"/>
+  <path fill="url(#grain)" d="M0 0h480v640H0z"/>
+  <path fill="url(#pearls)" d="M11 0h18v640H11zM451 0h18v640h-18z" opacity=".35"/>
+  <path d="M7 0v640M33 0v640M447 0v640M473 0v640" stroke="#b68b4c" stroke-width=".8" opacity=".23"/>
+</svg>

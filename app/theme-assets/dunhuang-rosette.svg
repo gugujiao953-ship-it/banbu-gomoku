@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <defs>
+    <path id="petal" d="M200 174C176 150 169 111 200 70C231 111 224 150 200 174Z"/>
+    <path id="leaf" d="M200 67C179 54 175 35 200 15C225 35 221 54 200 67Z"/>
+  </defs>
+  <circle cx="200" cy="200" r="174" stroke="#c8a15c" stroke-width="1.2" stroke-dasharray="1 9" stroke-linecap="round"/>
+  <circle cx="200" cy="200" r="153" stroke="#c8a15c" opacity=".5"/>
+  <g fill="#b98a48" fill-opacity=".11" stroke="#d2aa66" stroke-width="1.8">
+    <use href="#petal"/><use href="#petal" transform="rotate(45 200 200)"/>
+    <use href="#petal" transform="rotate(90 200 200)"/><use href="#petal" transform="rotate(135 200 200)"/>
+    <use href="#petal" transform="rotate(180 200 200)"/><use href="#petal" transform="rotate(225 200 200)"/>
+    <use href="#petal" transform="rotate(270 200 200)"/><use href="#petal" transform="rotate(315 200 200)"/>
+  </g>
+  <g stroke="#91aa9c" stroke-width="1.4" opacity=".7">
+    <use href="#leaf"/><use href="#leaf" transform="rotate(45 200 200)"/>
+    <use href="#leaf" transform="rotate(90 200 200)"/><use href="#leaf" transform="rotate(135 200 200)"/>
+    <use href="#leaf" transform="rotate(180 200 200)"/><use href="#leaf" transform="rotate(225 200 200)"/>
+    <use href="#leaf" transform="rotate(270 200 200)"/><use href="#leaf" transform="rotate(315 200 200)"/>
+  </g>
+  <circle cx="200" cy="200" r="28" fill="#35625b" stroke="#d2aa66" stroke-width="2"/>
+  <circle cx="200" cy="200" r="14" stroke="#e7d2a5"/>
+  <circle cx="200" cy="200" r="5" fill="#d2aa66"/>
+</svg>

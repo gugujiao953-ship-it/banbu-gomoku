@@ -81,7 +81,7 @@ function pinIkatago(message) {
     // 配置变了：清放弃标记并断开旧连接（下次请求按新地址重连）
     if (changed) {
       ikatagoBlocked = false;
-      try { ikatagoSocket?.close(); } catch { /* 已关 */ }
+      try { if (ikatagoSocket) ikatagoSocket.close(); } catch { /* 已关 */ }
       ikatagoSocket = null;
       ikatagoReady = false;
       if (activeVariant === "ikatago") { engine = null; loading = false; }
@@ -92,6 +92,12 @@ function pinIkatago(message) {
 // （每手都赌一次启动用户等不起）；用户显式切走再切回时清掉，给全新机会。
 let kataBlocked = false;
 let kataAttempts = 0;                  // 本轮加载链已失败的次数
+/** 应用**主动**停过旗舰（切走 rapfi / 设置重启 → kata-stopped）。
+ *  在下一个显式 kata 请求（warmup/analyze）到来之前，任何旧的在飞请求都不得把
+ *  它「原地重连」式复活。真机实测（2026-10-07）：切到 rapfi 后 0.8s 内 katago
+ *  又被拉起来常驻（~800MB），进程表里两套引擎并存、下一次切回旗舰的行为也跟着
+ *  变得不可预期——正是「切换很慢/像卡住」这类现象的温床。 */
+let kataStopIntended = false;
 const KATA_MAX_START_ATTEMPTS = 2;
 let kataReady = false;
 let pendingKata = null;
@@ -252,7 +258,7 @@ function scheduleStop(request) {
     if (!active || active !== request || request.finished) return;
     request.finishTimer = setTimeout(() => {
       if (!active || active !== request || request.finished) return;
-      finish(request, request.bestMove || request.stats.candidates[0]?.move, request.stats);
+      finish(request, request.bestMove || (request.stats.candidates[0] || {}).move, request.stats);
     }, Math.max(250, Math.min(1200, Math.round(request.timeMs * 0.25))));
   }, delayMs);
 }
@@ -276,7 +282,7 @@ function finish(request, move, stats) {
   const matching = stats.candidates.find((candidate) => `${candidate.move.row}:${candidate.move.col}` === finalKey);
   const stalePrimary = stats.candidates.findIndex((candidate) => candidate.pvIndex === 0 && `${candidate.move.row}:${candidate.move.col}` !== finalKey);
   if (stalePrimary >= 0) stats.candidates.splice(stalePrimary, 1);
-  const rawPrimaryLine = stats.primaryBestline?.length ? stats.primaryBestline : stats.bestline || [];
+  const rawPrimaryLine = stats.primaryBestline && stats.primaryBestline.length ? stats.primaryBestline : stats.bestline || [];
   const primaryLine = [{ row: move.row, col: move.col, player: request.player }, ...rawPrimaryLine.filter((point) => point.row !== move.row || point.col !== move.col)];
   if (matching) {
     // kata 路径下**不覆盖 nodes**：候选的 nodes 是它自己的子节点访问数，
@@ -284,8 +290,8 @@ function finish(request, move, stats) {
     // 用后者覆盖前者会让「首选候选」的访问数虚高（回归测试实测 13 → 20）。
     // rapfi 路径没有这个区分（它的 stats.nodes 就是该候选的节点数）。
     const keepKataVisits = isKataFamily() && typeof matching.nodes === "number";
-    Object.assign(matching, { move, pvIndex: -1, score: stats.primaryScore ?? stats.score, winRate: stats.primaryWinRate ?? stats.winRate, ...(keepKataVisits ? {} : { nodes: stats.totalNodes || stats.nodes }), depth: stats.depth, principalVariation: primaryLine });
-  } else stats.candidates.push({ move, pvIndex: -1, score: stats.primaryScore ?? stats.score, winRate: stats.primaryWinRate ?? stats.winRate, nodes: stats.totalNodes || stats.nodes, depth: stats.depth, principalVariation: primaryLine });
+    Object.assign(matching, { move, pvIndex: -1, score: stats.primaryScore != null ? stats.primaryScore : stats.score, winRate: stats.primaryWinRate != null ? stats.primaryWinRate : stats.winRate, ...(keepKataVisits ? {} : { nodes: stats.totalNodes || stats.nodes }), depth: stats.depth, principalVariation: primaryLine });
+  } else stats.candidates.push({ move, pvIndex: -1, score: stats.primaryScore != null ? stats.primaryScore : stats.score, winRate: stats.primaryWinRate != null ? stats.primaryWinRate : stats.winRate, nodes: stats.totalNodes || stats.nodes, depth: stats.depth, principalVariation: primaryLine });
   const elapsedMs = performance.now() - request.started;
   // Root move ordering (history/killer heuristics) makes the engine emit PV
   // lines 2..N that were only probed at shallow depth — displaying them reads
@@ -300,17 +306,17 @@ function finish(request, move, stats) {
   active = null;
   const candidates = (stats.candidates || []).slice()
     .filter((candidate) => candidateVisible(candidate, stats))
-    .sort((a, b) => (a.pvIndex ?? 99) - (b.pvIndex ?? 99)).slice(0, request.nBest).map((candidate) => ({
+    .sort((a, b) => (a.pvIndex != null ? a.pvIndex : 99) - (b.pvIndex != null ? b.pvIndex : 99)).slice(0, request.nBest).map((candidate) => ({
     move: candidate.move,
     // pvIndex 必须带走：App 侧靠它判断「哪一个是引擎的首选」（pvIndex<=0），
     // 丢了这个字段会让「首选点」判定退化（对局提示、候选高亮都受影响）。
-    pvIndex: candidate.pvIndex ?? 0,
+    pvIndex: candidate.pvIndex != null ? candidate.pvIndex : 0,
     ...(candidate.score === undefined ? {} : { score: candidate.score }),
     ...(candidate.winRate === undefined ? {} : { winRate: candidate.winRate }),
     ...(candidate.nodes === undefined ? {} : { nodes: candidate.nodes }),
     ...(candidate.depth === undefined ? {} : { depth: candidate.depth }),
     ...(candidate.drawRate === undefined ? {} : { drawRate: candidate.drawRate }),
-    principalVariation: candidate.principalVariation?.length ? candidate.principalVariation : stats.bestline || [],
+    principalVariation: candidate.principalVariation && candidate.principalVariation.length ? candidate.principalVariation : stats.bestline || [],
   }));
   const primary = candidates[0];
   post({
@@ -322,7 +328,7 @@ function finish(request, move, stats) {
       move,
       // A missing score is materially different from a neutral score. Keep
       // the legacy numeric field for callers, but expose availability below.
-      score: primary?.score ?? 0,
+      score: primary && primary.score != null ? primary.score : 0,
       depth: stats.depth || 0,
       selDepth: stats.selDepth || 0,
       nodes: cumulativeNodes,
@@ -355,9 +361,9 @@ function candidateVisible(candidate, stats) {
   // `candidate.depth >= minDepth`，可 KataGo 的 info 帧根本没有 depth 字段（恒
   // undefined → 0），于是除 order 0 之外**所有候选都被过滤掉**，面板上只剩一个点
   // （用户 09-29 报「引擎又没有选点了」的根因）。
-  if (activeVariant === "kata" || activeVariant === "ikatago") return (candidate.pvIndex ?? 99) <= 50;
+  if (activeVariant === "kata" || activeVariant === "ikatago") return (candidate.pvIndex != null ? candidate.pvIndex : 99) <= 50;
   const minDepth = Math.max(2, (stats.depth || 0) - 8);
-  return (candidate.pvIndex ?? 99) <= 0 || (candidate.depth ?? 0) >= minDepth;
+  return (candidate.pvIndex != null ? candidate.pvIndex : 99) <= 0 || (candidate.depth != null ? candidate.depth : 0) >= minDepth;
 }
 
 // See finish(): drop shallow PV byproducts from live progress too.
@@ -469,7 +475,7 @@ function rememberCandidate(request, move, options) {
   const existing = (stats.candidates || []).find((candidate) => `${candidate.move.row}:${candidate.move.col}` === key);
   // Iterations stream in at their own pace; an older/shallower line must
   // never downgrade data already captured from a deeper iteration.
-  if (existing && (existing.depth ?? 0) > (stats.depth ?? 0)) return;
+  if (existing && (existing.depth != null ? existing.depth : 0) > (stats.depth != null ? stats.depth : 0)) return;
   // kata 路径：候选的 visits 来自它自己那行 info（rememberKataLine 写入），而
   // stats.nodes 是**根访问数**（整帧候选之和）——两者不是一个量。终局行
   // （`play X` / `= X`）再次登记同一着法时若照搬 stats.nodes，会把该候选的
@@ -528,7 +534,7 @@ function parseOutput(line) {
       active.lastProgressAt = performance.now();
       post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: active.stats.depth || 0, selDepth: active.stats.selDepth || 0, nodes: reportedNodes(active), speed: requestSpeed(active), score: active.stats.score, winRate: active.stats.winRate, candidates: searchedCandidates(active.stats) });
     }
-    if (match?.[1] === "BESTLINE") {
+    if (match && match[1] === "BESTLINE") {
       active.stats.bestline = parseCoordinateList(match[2], active.size, active.player);
       const root = active.stats.bestline[0];
       if (root) {
@@ -566,7 +572,7 @@ function parseOutput(line) {
         send(stopCommand());
         request.stopTimer = setTimeout(() => {
           if (!active || active !== request || request.finished) return;
-          finish(request, request.bestMove || request.stats.candidates[0]?.move, request.stats);
+          finish(request, request.bestMove || (request.stats.candidates[0] || {}).move, request.stats);
         }, 800);
       }
     }
@@ -1460,19 +1466,37 @@ function rejectNativeReady(reason) {
  *  各自标定会互相污染），自己标定则回报给桥缓存+持久化。
  *  全程发 engine-loading 进度（App 画进度条），100% 即就绪。 */
 function postKataLoading(percent, label) {
+  if (percent >= 100) clearKataSlowHint();      // 就绪：慢速提示撤掉
   post({ type: "engine-loading", engine: "kata", percent, label, done: percent >= 100 });
 }
 const KATA_PHASE_LABEL = {
   prepare: "准备引擎文件",
   start: "启动引擎进程",
-  // 加载神经网络是最长的一段（模型 + ONNX Runtime 初始化，热机 ~3-6 秒，
-  // 冷机/后台/降频时更久）。文案里写明「首次较慢」，让用户知道在正常加载、
-  // 不是在卡死——用户 09-26 报「1 秒就说启动失败」的观感问题一半来自这里。
-  model: "加载神经网络（首次较慢，约几秒）",
+  /* 加载神经网络是最长的一段（模型 + ONNX Runtime 初始化，热机 ~1.5 秒，冷机/降频/内存紧张
+     时实测可到四五十秒）。文案**不许承诺具体秒数**——用户 2026-10-08：「既不是首次启动也不是
+     只要几秒，目测我切换要四五十秒」：旧文案「首次较慢，约几秒」与实际不符，反而像卡死。
+     这里只如实说「冷启动较慢、可能数十秒」；超过 12 秒还会自动升级一句（见 postKataLoadingPhase）。 */
+  model: "加载神经网络（冷启动较慢，可能数十秒）",
 };
+/** 加载超过这么久，把文案升级成「仍在继续」——让长时间等待有明确的「没卡死」反馈。 */
+const KATA_SLOW_HINT_MS = 12000;
+let kataSlowTimer = null;
+function clearKataSlowHint() {
+  if (kataSlowTimer !== null) {
+    clearTimeout(kataSlowTimer);
+    kataSlowTimer = null;
+  }
+}
 function postKataLoadingPhase(phase) {
   const percent = phase === "prepare" ? 10 : phase === "start" ? 30 : 55;
+  clearKataSlowHint();
   postKataLoading(percent, KATA_PHASE_LABEL[phase] || "加载中");
+  if (phase === "model") {
+    kataSlowTimer = setTimeout(() => {
+      kataSlowTimer = null;
+      postKataLoading(percent, "加载神经网络仍在继续（这次比较慢，请再等一会儿）");
+    }, KATA_SLOW_HINT_MS);
+  }
 }
 function startKataVariant() {
   return new Promise((resolve, reject) => {
@@ -1517,6 +1541,7 @@ function resolveKataReady(payload) {
 
 function rejectKataReady(reason) {
   if (!pendingKata) return;
+  clearKataSlowHint();
   const { reject, timer } = pendingKata;
   clearTimeout(timer);
   pendingKata = null;
@@ -1554,7 +1579,7 @@ function startIkatagoVariant() {
     ikatagoReady = false;
     const timer = setTimeout(() => {
       pendingIkatago = null;
-      try { ikatagoSocket?.close(); } catch { /* 已关 */ }
+      try { if (ikatagoSocket) ikatagoSocket.close(); } catch { /* 已关 */ }
       ikatagoSocket = null;
       reject(new Error("iKataGo 连接超时（服务器未响应）"));
     }, IKATAGO_START_TIMEOUT_MS);
@@ -1855,6 +1880,15 @@ function loadVariant(variant, token) {
  *  ——09-26 主诉根因）；达到上限就如实放弃，本手落到 Rapfi，进度条关掉，
  *  等用户显式切引擎或设置重启再给旗舰全新机会（不再无限循环重试）。 */
 function failKataVariant(token, reason) {
+  /* 应用**主动**停掉的旗舰：这次启动中止不是「失败」——不计失败次数、不弹
+     「正在重试 / 改用 Rapfi」这类会误导用户的提示（真机实测过：切到 rapfi 后
+     还弹出「KataGo 启动失败」，用户 2026-10-07 反馈）。真正的启动失败
+     （kataStopIntended 为假）仍走下面完整的重试/降级链。 */
+  if (kataStopIntended) {
+    loading = false;
+    clearLoadTimer();
+    return;
+  }
   kataAttempts += 1;
   if (kataAttempts < KATA_MAX_START_ATTEMPTS) {
     // 让桥把进程真正杀掉：下一次 start() 走全新 spawn（顺带 killStaleEngines
@@ -1885,6 +1919,10 @@ function startRapfiAfterKataFailure(token) {
 
 function load() {
   if (loading || engine) return;
+  /* 应用主动停掉旗舰之后（kata-stopped → kataStopIntended），挡住在飞请求/兜底 drain
+     把 kata 重新拉起来。下一个显式 kata 请求会清掉标记（见 warmup/analyze 分支），
+     设置重启、切换回来等正常路径不受影响；被一并搁置的旧请求本来就已被应用取消。 */
+  if (kataStopIntended && chooseVariant(enginePreference) === "kata") return;
   loading = true;
   // Analysis stays offline: both variants load from the bundled assets and
   // this worker never downloads model data from a third-party host.
@@ -1952,13 +1990,22 @@ self.onmessage = (event) => {
   if (message.type === "kata-stopped") {
     // 计划内停旗舰进程（设置变更重启 / 切回 Rapfi）：清失效实例 + 重置失败记忆
     // （设置重启与显式切换一样算「用户动作」，给旗舰全新机会）。
+    // kataStopIntended：在下一个显式 kata 请求到来前，禁止任何旧请求把它复活
+    // （真机实测的幽灵进程问题，见变量声明处的注释）。
+    kataStopIntended = true;
     kataReady = false;
     clearKataSilence();
+    clearKataSlowHint();
     kataSetupAcks = 0;
     if (kataCalib) finishKataCalib(true);
     if (isKataFamily()) engine = null;
     kataAttempts = 0;
     kataBlocked = false;
+    /* 启动链还在飞（等 GTP ready / kata-ready）时立刻收掉：进程已经被应用停了，
+       再等 90 秒启动超时毫无意义，而且那次迟到的 reject 会把 kataAttempts 加上去
+       （虽然不致命，但会让「起不来」的计数虚增）。reject 会走 load 链的 catch，
+       向 App 报一条请求级错误——App 侧对已取消/已切走的代守卫后自然忽略。 */
+    if (pendingKata) rejectKataReady("旗舰引擎已按切换指令停止");
     return;
   }
   if (message.type === "kata-write-failed") {
@@ -1970,20 +2017,33 @@ self.onmessage = (event) => {
     // 全量同步），并请求主线程**重新确认/拉起进程**——start() 对活进程是早退
     // 复用（spawned=false），所以进程还活着时这条链是零成本的；真死了才会 spawn。
     kataReady = false;
-    kataSetupAcks = 0;
     clearKataSilence();
+    kataSetupAcks = 0;
     if (isKataFamily()) engine = null;
     const req = active;
     active = null;
     if (req) {
-      // 本轮已发出的命令没被引擎收到，直接回池重发（保持原 requestId/generation，
-      // App 侧的 generation 守卫仍然有效，不会把结果投给错误的局面）。
-      req.finished = false;
-      clearRequestTimers(req);
-      waiting.unshift(req);
+      if (kataStopIntended) {
+        /* 应用是**主动**停的旗舰（切走 rapfi / 设置重启）：不重连、不复活进程——
+           旧实现对「活进程早退复用」的假设在这里恰好反过来：进程是被我们杀的，
+           重连只会把 katago 重新拉起来常驻（真机实测的幽灵进程）。
+           但必须**回执**这条被放弃的请求：对局/分析的错误处理会据此重试（重试带
+           显式 kata 请求，会解除搁置标记重新拉起引擎）；静默丢弃会让调用方永远
+           等不到结果。requestId/generation 沿用原值，App 侧对已取消的代本就丢弃。 */
+        req.finished = true;
+        clearRequestTimers(req);
+        post({ type: "error", requestId: req.requestId, generation: req.generation, message: "旗舰引擎已按切换指令停止" });
+      } else {
+        // 本轮已发出的命令没被引擎收到，直接回池重发（保持原 requestId/generation，
+        // App 侧的 generation 守卫仍然有效，不会把结果投给错误的局面）。
+        req.finished = false;
+        clearRequestTimers(req);
+        waiting.unshift(req);
+      }
     }
-    // 请主线程走一次启动链（活进程会立刻复用，无需冷启动）
-    post({ type: "kata-start" });
+    // 请主线程走一次启动链——**但主动停过就不请**：桥收到 kata-start 会
+    // 直接 spawn（进程是我们刚杀的），这就是幽灵进程的另一条复活路径。
+    if (!kataStopIntended) post({ type: "kata-start" });
     drain();
     return;
   }
@@ -2051,7 +2111,7 @@ self.onmessage = (event) => {
   if (message.type === "warmup") {
     if (!engine && !loading) {
       if (message.native === true) nativeAllowed = true;
-      if (message.engine === "kata") kataAllowed = true;
+      if (message.engine === "kata") { kataAllowed = true; kataStopIntended = false; }   // 显式请求：解除「主动停」的搁置
       pinIkatago(message);
       if (message.multi === false) engineMultiAllowed = false;
       else if (message.multi === true) engineMultiAllowed = true;
@@ -2070,7 +2130,7 @@ self.onmessage = (event) => {
   // fallback 变体且常驻 worker 整局锁死在轻量引擎（用户选强力却静默降档）。
   if (!engine && !loading) {
     if (message.native === true) nativeAllowed = true;
-    if (message.engine === "kata") kataAllowed = true;
+    if (message.engine === "kata") { kataAllowed = true; kataStopIntended = false; }   // 显式请求：解除「主动停」的搁置
     pinIkatago(message);
       if (message.multi === false) engineMultiAllowed = false;
       else if (message.multi === true) engineMultiAllowed = true;
@@ -2078,7 +2138,7 @@ self.onmessage = (event) => {
     if (typeof message.dataUrl === "string" && message.dataUrl) dataUrlOverride = message.dataUrl;
   } else if (ENGINE_PREFERENCES.has(message.engine)) {
     // 引擎已在运行时也要接受档位变化（否则常驻 worker 永远停在旧引擎上）
-    if (message.engine === "kata") kataAllowed = true;
+    if (message.engine === "kata") { kataAllowed = true; kataStopIntended = false; }   // 显式请求：解除「主动停」的搁置
     pinIkatago(message);
     if (message.native === true) nativeAllowed = true;
     if (message.engine !== enginePreference) {

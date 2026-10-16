@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 414 407" fill="none">
+  <!-- 卡哇伊·云与糖点（底部锚定）：三团圆润的云 + 几颗糖点。
+       形状全部用圆与椭圆拼，避免尖角（可爱感来自圆）。 -->
+  <defs>
+    <linearGradient id="kwCloud1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".85"/>
+      <stop offset="1" stop-color="#ffe9f3" stop-opacity=".6"/>
+    </linearGradient>
+    <linearGradient id="kwCloud2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".7"/>
+      <stop offset="1" stop-color="#e8e6ff" stop-opacity=".5"/>
+    </linearGradient>
+  </defs>
+  <!-- 后云 -->
+  <g fill="url(#kwCloud2)">
+    <ellipse cx="330" cy="250" rx="86" ry="46"/>
+    <ellipse cx="266" cy="236" rx="52" ry="40"/>
+    <ellipse cx="386" cy="238" rx="46" ry="34"/>
+  </g>
+  <g fill="url(#kwCloud2)" opacity=".8">
+    <ellipse cx="74" cy="286" rx="66" ry="34"/>
+    <ellipse cx="34" cy="276" rx="40" ry="28"/>
+    <ellipse cx="118" cy="278" rx="38" ry="26"/>
+  </g>
+  <!-- 前云 -->
+  <g fill="url(#kwCloud1)">
+    <ellipse cx="196" cy="330" rx="112" ry="58"/>
+    <ellipse cx="120" cy="308" rx="62" ry="46"/>
+    <ellipse cx="272" cy="306" rx="58" ry="42"/>
+    <ellipse cx="196" cy="352" rx="150" ry="46"/>
+  </g>
+  <!-- 糖点（小圆与心形块） -->
+  <g fill="#ffc2dc" opacity=".75">
+    <ellipse cx="90" cy="384" rx="10" ry="8"/>
+    <ellipse cx="300" cy="392" rx="8" ry="6.4"/>
+    <circle cx="150" cy="396" r="6"/>
+    <circle cx="248" cy="400" r="5"/>
+  </g>
+  <g fill="#c9b8f2" opacity=".6">
+    <ellipse cx="200" cy="398" rx="9" ry="7"/>
+    <circle cx="352" cy="380" r="5.6"/>
+    <circle cx="46" cy="392" r="5"/>
+  </g>
+  <g fill="#fff" opacity=".55">
+    <circle cx="168" cy="368" r="3.4"/>
+    <circle cx="228" cy="360" r="2.8"/>
+    <circle cx="122" cy="376" r="2.6"/>
+  </g>
+</svg>

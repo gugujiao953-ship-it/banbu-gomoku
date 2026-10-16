@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="700" viewBox="0 0 1600 700" fill="none">
+  <defs>
+    <filter id="vapour" x="-20%" y="-40%" width="140%" height="180%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency=".006 .018" numOctaves="3" seed="26" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="48" xChannelSelector="R" yChannelSelector="G"/>
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <linearGradient id="wash" x1="0" y1="150" x2="0" y2="550" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f4f4f4" stop-opacity="0"/><stop offset=".4" stop-color="#dedede" stop-opacity=".72"/>
+      <stop offset=".63" stop-color="#fafafa" stop-opacity=".84"/><stop offset="1" stop-color="#d2d2d2" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="fade"><stop offset=".38" stop-color="white"/><stop offset="1" stop-color="white" stop-opacity="0"/></radialGradient>
+    <mask id="feather"><path fill="url(#fade)" d="M0 0h1600v700H0z"/></mask>
+  </defs>
+  <!-- Filter is baked into this static image; only the image layer moves. -->
+  <g mask="url(#feather)" filter="url(#vapour)">
+    <path d="M-160 385C100 169 254 414 472 252S803 393 1003 272S1303 196 1760 340L1760 494C1398 327 1232 484 1030 366S698 473 473 361S131 482-160 492Z" fill="url(#wash)"/>
+    <path d="M-110 479C184 281 369 573 628 369S983 504 1231 391S1500 317 1701 399" stroke="#f2f2f2" stroke-width="32" opacity=".46"/>
+    <path d="M54 207C297 115 401 310 610 225S963 146 1188 238S1442 305 1590 198" stroke="#bbbbbb" stroke-width="22" opacity=".36"/>
+  </g>
+</svg>

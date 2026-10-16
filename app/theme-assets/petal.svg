@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- 花瓣（梅花单瓣，带尖与中脉）：用作 mask，颜色随主题给。
+       梅枝=粉红、青花=钴蓝、卡哇伊=粉紫，一形三用。 -->
+  <path d="M60 8c16 12 24 28 24 46 0 22-11 42-24 58-13-16-24-36-24-58 0-18 8-34 24-46Z" fill="#000"/>
+  <path d="M60 18v84" stroke="#000" stroke-opacity=".32" stroke-width="2"/>
+</svg>
