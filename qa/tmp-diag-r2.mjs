@@ -1,0 +1,27 @@
+import { chromium } from "playwright";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+const base = process.env.QA_BASE_URL || "http://localhost:5173/";
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({ serviceWorkers: "block" });
+const page = await context.newPage();
+await page.route("**/qa-digit-head-host.html", (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: "<!doctype html><html><head><meta charset=\"utf-8\"></head><body></body></html>" }));
+await page.goto(new URL("qa-digit-head-host.html", base).toString(), { waitUntil: "domcontentloaded" });
+const b64 = readFileSync(resolve("qa/fixtures/materials/remote-image2.png")).toString("base64");
+page.on("console", (m) => { if (m.text().includes("assign-debug")) console.log("[dbg]", m.text()); });
+const diag = await page.evaluate(async (payload) => {
+  const mod = await import("/src/image-recognition.ts");
+  const head = await import("/src/features/record/digit-head.ts");
+  const digitReader = await head.createDigitHeadReader({ modelUrl: "/qa/fixtures/models/digit-head-iter6.onnx", wasmPaths: "/node_modules/onnxruntime-web/dist/", threads: 4 });
+  const boardScanner = await head.createBoardScanner({ modelUrl: "/qa/fixtures/models/cell-cls-real-mix.onnx", digitModelUrl: "/qa/fixtures/models/digit-head-iter6.onnx", wasmPaths: "/node_modules/onnxruntime-web/dist/", threads: 4 });
+  globalThis.__BANBU_MOVEORDER_TRACE__ = [];
+  globalThis.__BANBU_ASSIGN_DEBUG__ = true;
+  const blob = await (await fetch(`data:image/png;base64,${payload}`)).blob();
+  const run = await mod.recognizeBoardImage(new File([blob], "remote-image2.png", { type: "image/png" }), 15, { skipMoveOrder: false, parallel: true, digitReader, boardScanner });
+  const bw = { black: 0, white: 0 };
+  run.board.forEach((row) => row.forEach((cell) => { if (cell) bw[cell] += 1; }));
+  return { trace: globalThis.__BANBU_MOVEORDER_TRACE__, stones: run.board.flat().filter(Boolean).length, read: run.readMoveNumbers.length, note: run.note, bw };
+}, b64);
+console.log("assign-null:", JSON.stringify((diag.trace || []).filter((t) => t.why === "assign-null")));
+console.log("stones:", diag.stones, "read:", diag.read, "bw:", JSON.stringify(diag.bw));
+await browser.close();

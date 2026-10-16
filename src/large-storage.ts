@@ -14,6 +14,7 @@ const TRASH_DOCUMENT_STORE = "trash-documents";
 const TRASH_SUMMARY_STORE = "trash-summaries";
 const TRASH_CHUNK_STORE = "trash-index-chunks";
 const TRASH_DRAFT_STORE = "trash-drafts";
+let derivedVersionSequence = 0;
 
 export interface LargeDocumentSummary {
   id: string;
@@ -174,43 +175,23 @@ export const replaceLargeStorageRecords = async (records: LargeStorageRecords): 
       trashDrafts: transaction.objectStore(TRASH_DRAFT_STORE),
       trashIndexChunks: transaction.objectStore(TRASH_CHUNK_STORE),
     };
-    for (const store of Object.values(stores)) store.clear();
-    for (const record of records.documents) stores.documents.put(record);
-    for (const record of records.summaries) stores.summaries.put(record);
-    for (const record of records.drafts) stores.drafts.put(record);
-    for (const record of records.indexChunks) stores.indexChunks.put(record);
-    for (const record of records.trashDocuments || []) stores.trashDocuments.put(record);
-    for (const record of records.trashSummaries || []) stores.trashSummaries.put(record);
-    for (const record of records.trashDrafts || []) stores.trashDrafts.put(record);
-    for (const record of records.trashIndexChunks || []) stores.trashIndexChunks.put(record);
-    await transactionDone(transaction);
+    const completed = transactionDone(transaction);
+    try {
+      for (const store of Object.values(stores)) store.clear();
+      for (const [name, store] of Object.entries(stores)) {
+        for (const record of records[name as keyof LargeStorageRecords] || []) store.put(record);
+      }
+    } catch (error) {
+      // DataError/DataCloneError can be thrown before a request is queued.
+      // IndexedDB does not abort for these synchronous exceptions itself.
+      transaction.abort();
+      await completed.catch(() => undefined);
+      throw error;
+    }
+    await completed;
   } finally {
     database.close();
   }
-};
-
-const yieldToBrowser = () => new Promise<void>((resolve) => {
-  const taskScheduler = (globalThis as typeof globalThis & { scheduler?: { postTask?: (callback: () => void, options?: { priority?: string }) => Promise<void> } }).scheduler;
-  if (taskScheduler?.postTask) { void taskScheduler.postTask(resolve, { priority: "background" }); return; }
-  setTimeout(resolve, 0);
-});
-
-const deleteDocumentChunks = async (database: IDBDatabase, id: string) => {
-  const transaction = database.transaction(CHUNK_STORE, "readwrite");
-  const request = transaction.objectStore(CHUNK_STORE).openCursor(IDBKeyRange.bound(`${id}:`, `${id}:~`));
-  request.onsuccess = () => {
-    const cursor = request.result;
-    if (!cursor) return;
-    cursor.delete(); cursor.continue();
-  };
-  await transactionDone(transaction);
-};
-
-const writeChunk = async (database: IDBDatabase, value: unknown) => {
-  const transaction = database.transaction(CHUNK_STORE, "readwrite");
-  transaction.objectStore(CHUNK_STORE).put(value);
-  await transactionDone(transaction);
-  await yieldToBrowser();
 };
 
 export const loadLargeSummaries = async (): Promise<LargeDocumentSummary[]> => {
@@ -365,26 +346,47 @@ export async function saveCompactIndex(document: GameDocument, index: CompactRen
   const summary = { ...(prepared || summarizeLargeDocument(document)), id: document.id, metadata: document.metadata, updatedAt: document.updatedAt, nodeCount: index.nodeCount, storageMode: "compact-index" as const };
   const database = await openDatabase();
   try {
-    if (index.nodeCount > 1000000) {
-      await deleteDocumentChunks(database, document.id);
+    const chunked = index.nodeCount > 1000000;
+    const transaction = database.transaction([DOCUMENT_STORE, SUMMARY_STORE, CHUNK_STORE], "readwrite");
+    const completed = transactionDone(transaction);
+    let writeError: unknown;
+    const abort = (error: unknown) => { writeError = error; transaction.abort(); };
+    const storeDocument = () => {
+      transaction.objectStore(DOCUMENT_STORE).put({ ...baseFromStored(document), ...(chunked ? { chunkedIndex: true, nodeCount: index.nodeCount, idPrefix: index.idPrefix } : { compactIndex: index }) });
+      transaction.objectStore(SUMMARY_STORE).put(summary);
+    };
+    const chunks = function* () {
       const fields: Record<string, any> = { parent: index.parent, firstChild: index.firstChild, nextSibling: index.nextSibling, childCount: index.childCount, preferredChild: index.preferredChild, moveCode: index.moveCode, anchorCode: index.anchorCode, state: index.state, evaluation: index.evaluation, evaluationLevel: index.evaluationLevel, markRefs: index.markRefs, textRefs: index.textRefs, setupRefs: index.setupRefs, annotationRefs: index.annotationRefs, renLibFlags: index.renLibFlags, renLibExtendedFlags: index.renLibExtendedFlags, ids: index.ids, texts: index.texts, marks: index.marks, setups: index.setups, annotations: index.annotations };
       for (const [field, value] of Object.entries(fields)) {
         if (!value) continue;
         for (let offset = 0; offset < value.length; offset += INDEX_CHUNK_SIZE) {
           const part = Array.isArray(value) ? value.slice(offset, offset + INDEX_CHUNK_SIZE) : value.slice(offset, offset + INDEX_CHUNK_SIZE).buffer;
-          await writeChunk(database, { key: `${document.id}:${field}:${offset}`, id: document.id, field, offset, value: part });
+          yield { key: `${document.id}:${field}:${offset}`, id: document.id, field, offset, value: part };
         }
       }
-      const transaction = database.transaction([DOCUMENT_STORE, SUMMARY_STORE], "readwrite");
-      transaction.objectStore(DOCUMENT_STORE).put({ id: document.id, version: document.version, rootId: document.rootId, metadata: document.metadata, createdAt: document.createdAt, updatedAt: document.updatedAt, chunkedIndex: true, nodeCount: index.nodeCount, idPrefix: index.idPrefix });
-      transaction.objectStore(SUMMARY_STORE).put(summary);
-      await transactionDone(transaction);
-    } else {
-      const transaction = database.transaction([DOCUMENT_STORE, SUMMARY_STORE], "readwrite");
-      transaction.objectStore(DOCUMENT_STORE).put({ id: document.id, version: document.version, rootId: document.rootId, metadata: document.metadata, createdAt: document.createdAt, updatedAt: document.updatedAt, compactIndex: index });
-      transaction.objectStore(SUMMARY_STORE).put(summary);
-      await transactionDone(transaction);
-    }
+    };
+    const iterator = chunks();
+    // Queue one chunk per IDB success task: this keeps cloning memory bounded
+    // and allows the browser to paint while the single atomic transaction lives.
+    const writeNext = () => {
+      try {
+        if (!chunked) { storeDocument(); return; }
+        const next = iterator.next();
+        if (next.done) { storeDocument(); return; }
+        transaction.objectStore(CHUNK_STORE).put(next.value).onsuccess = writeNext;
+      } catch (error) { abort(error); }
+    };
+    try {
+      const cursorRequest = transaction.objectStore(CHUNK_STORE).openCursor(IDBKeyRange.bound(`${document.id}:`, `${document.id}:~`));
+      cursorRequest.onsuccess = () => {
+        try {
+          const cursor = cursorRequest.result;
+          if (!cursor) { writeNext(); return; }
+          cursor.delete(); cursor.continue();
+        } catch (error) { abort(error); }
+      };
+    } catch (error) { abort(error); }
+    try { await completed; } catch (error) { throw writeError || error; }
     return summary;
   } finally { database.close(); }
 }
@@ -550,7 +552,7 @@ export const commitDraftAsDerivedVersion = async (
   currentId?: string,
 ): Promise<LargeDocumentSummary> => {
   const effectiveRootBaseId = rootBaseId || baseDocument.id;
-  const derivedId = `${effectiveRootBaseId}-edited-${Date.now().toString(36)}`;
+  const derivedId = `${effectiveRootBaseId}-edited-${Date.now().toString(36)}-${(++derivedVersionSequence).toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   // Merge previously committed operations with the new batch so the stored
   // record always projects against the root compact base, never a chain.
   const fullOperations = [...committedOperations, ...operations];

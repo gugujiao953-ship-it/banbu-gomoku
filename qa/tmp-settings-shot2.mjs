@@ -1,0 +1,17 @@
+import { chromium } from "playwright";
+const base = process.env.QA_BASE_URL || "http://localhost:5173/";
+const url = new URL(base); url.searchParams.set("qa", "1");
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({ viewport: { width: 392, height: 852 }, serviceWorkers: "block" });
+await context.addInitScript(() => localStorage.setItem("banbu-first-run-welcome-v1", "true"));
+const page = await context.newPage();
+await page.goto(url.href, { waitUntil: "domcontentloaded" });
+await page.waitForSelector("nav.bottom-nav button", { timeout: 40000 });
+await page.locator("nav.bottom-nav button").filter({ hasText: "设置" }).first().click();
+await page.waitForSelector(".settings-search input", { timeout: 15000 });
+await page.locator(".settings-search input").fill("复原手序");
+await page.waitForTimeout(600);
+const card = page.locator("[data-setting-ai-vision]");
+await card.screenshot({ path: "qa/tmp-ai-card.png" });
+console.log("card shot saved");
+await browser.close();

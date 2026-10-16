@@ -89,9 +89,17 @@ describe("engine pack host validation", () => {
 });
 
 describe("engine pack download lifecycle", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.stubGlobal("localStorage", new MemoryStorage());
     localStorage.clear();
+    // fake-indexeddb 是进程级共享的：用例之间不清库，上一个用例存的 40MB 包会被
+    // 下一个用例的「自愈」逻辑读到（2026-09-18 加自愈后立刻踩到）。
+    await new Promise<void>((resolve) => {
+      const request = indexedDB.deleteDatabase("banbu-engine-pack-v1");
+      request.onsuccess = () => resolve();
+      request.onerror = () => resolve();
+      request.onblocked = () => resolve();
+    });
     vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => fakePackResponse(PACK_SIZE_REF.size, init as { headers?: { get?: (name: string) => string | null } })));
   });
   afterEach(() => {
@@ -145,6 +153,62 @@ describe("engine pack download lifecycle", () => {
     await pack.deleteEnginePack();
     expect(pack.enginePackSnapshot().state).toBeNull();
     expect(await pack.ensureEnginePackUrl()).toBeNull();
+  });
+
+  it("retains received bytes when resuming an interrupted range", async () => {
+    const pack = await loadModule();
+    let interrupted = false;
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === "HEAD") return { ok: true, headers: new Headers({ "content-length": String(pack.ENGINE_PACK_SIZE), "accept-ranges": "bytes" }) };
+      const range = new Headers(init?.headers).get("range");
+      if (!range) throw new Error("must resume, not restart the whole transfer");
+      const [start, end] = range.replace("bytes=", "").split("-").map(Number);
+      const bytes = new Uint8Array(end - start + 1).fill(7);
+      if (!interrupted && start === 0) {
+        interrupted = true;
+        let sent = false;
+        return new Response(new ReadableStream<Uint8Array>({
+          pull(controller) {
+            if (!sent) { sent = true; controller.enqueue(bytes.subarray(0, 300)); }
+            else controller.error(new Error("connection reset"));
+          },
+        }), { status: 206, headers: { "content-range": `bytes ${start}-${end}/${pack.ENGINE_PACK_SIZE}` } });
+      }
+      return new Response(bytes, { status: 206, headers: { "content-range": `bytes ${start}-${end}/${pack.ENGINE_PACK_SIZE}` } });
+    }));
+    await pack.downloadEnginePack();
+    const url = await pack.ensureEnginePackUrl();
+    const database = await new Promise<IDBDatabase>((resolve) => { const request = indexedDB.open("banbu-engine-pack-v1", 1); request.onsuccess = () => resolve(request.result); });
+    try {
+      const blob = await new Promise<Blob>((resolve) => { const request = database.transaction("packs", "readonly").objectStore("packs").get(pack.ENGINE_PACK_FILENAME); request.onsuccess = () => resolve(request.result as Blob); });
+      expect(url).toMatch(/^blob:/);
+      const prefix = new Uint8Array(await blob.slice(0, 300).arrayBuffer());
+      expect(prefix.every((byte) => byte === 7)).toBe(true);
+    } finally { database.close(); }
+  });
+
+  // 2026-09-18 用户报「本来就有模型，界面却让我下载引擎」：localStorage 里那行标记
+  // 丢一次（被清、写坏、或版本号对不上——readStoredState 只要 version 不等于当前版本
+  // 就返回 null），旧实现就再也不看 IndexedDB，界面与所有判定都当成「没装引擎包」并
+  // 引导去下载 38.4MB，而 40MB 的包本体其实还躺在库里。
+  it("标记丢了但库里还有包：自愈回「已生效」，不把界面判成没装引擎", async () => {
+    const first = await loadModule();
+    await first.downloadEnginePack();
+    localStorage.removeItem("banbu-engine-pack-state-v1");
+
+    const second = await loadModule();
+    expect(second.enginePackSnapshot().state).toBeNull(); // 标记确实丢了
+    const url = await second.ensureEnginePackUrl();
+    expect(url).toMatch(/^blob:/); // 仍然能读出来用
+    expect(second.enginePackSnapshot().state).not.toBeNull(); // 状态被补回来
+    expect(JSON.parse(localStorage.getItem("banbu-engine-pack-state-v1") ?? "{}").size).toBe(second.ENGINE_PACK_SIZE);
+  });
+
+  it("库里没有包时（真没装）依然返回 null，不会凭空造出状态", async () => {
+    const pack = await loadModule();
+    expect(pack.enginePackSnapshot().state).toBeNull();
+    expect(await pack.ensureEnginePackUrl()).toBeNull();
+    expect(pack.enginePackSnapshot().state).toBeNull();
   });
 });
 

@@ -1,0 +1,122 @@
+/* 识谱「叠图核对」屏（用户 09-17）。
+   全屏浮层：原图上叠识别结果（彩色圆圈 + 识别到的网格线），可切换叠图/只看原图/
+   只看识别/闪烁对比，点交叉点改子。颜色全部走语义 token，7 主题通用。 */
+.image-verify {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: calc(10px + var(--safe-area-top, env(safe-area-inset-top))) 12px calc(10px + var(--safe-area-bottom, env(safe-area-inset-bottom)));
+  background: var(--surface, var(--paper));
+  color: var(--ink);
+}
+.image-verify-head { display: flex; flex-direction: column; gap: 2px; }
+.image-verify-head b { font-size: calc(15px * var(--ui-font-scale, 1)); }
+.image-verify-head span { color: var(--muted); font-size: calc(11px * var(--ui-font-scale, 1)); }
+.image-verify-stage { flex: 1 1 auto; min-height: 96px; display: grid; place-items: center; overflow: auto; overscroll-behavior: contain; }
+/* 棋盘（stage）固定留在屏幕上半；核对屏其余内容全部收进这块固定高度的区域，
+   内容再多也只在本区域内滚动，不会再往上把棋盘挤小（2026-10-02 用户：
+   「下面那一堆按钮以及繁复的介绍如果都展开，棋盘会被覆盖，只有一小部分存在」）。
+   常规内容（说明+看法+复原按钮）自然高度低于上限，不出现滚动条；特大字/矮屏才滚。
+
+   2026-10-09：「复原未完整」时多出的两颗续做按钮把这栏推高了一行，而这一栏原本是
+   `flex: 0 1 auto`（**可被压缩**）——压缩时连栏内每个子项也一起被压扁，提示文字
+   只剩半行、被下一条按钮盖住（真机截图实测）。两处修：
+   ① 本栏改成 `flex: 0 0 auto`：要么按自然高度完整显示，要么到上限后**栏内**滚动；
+   ② 栏内各块 `flex: none`，任何情况下都不许把它们压到内容高度以下。
+   代价是棋盘区（stage）让出一行的高度——它本来就带滚动，是正确的交换。 */
+.image-verify-panel { flex: 0 0 auto; min-height: 0; max-height: 52dvh; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 8px; }
+.image-verify-panel > * { flex: none; }
+.image-verify-frame { position: relative; width: 100%; line-height: 0; touch-action: manipulation; }
+.image-verify-frame[data-editable="true"] { cursor: crosshair; }
+.image-verify-photo { display: block; width: 100%; height: auto; border-radius: 10px; user-select: none; }
+.image-verify-photo[data-hidden="true"] { visibility: hidden; }
+.image-verify-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.image-verify-lines line { stroke: color-mix(in srgb, var(--green) 55%, transparent); stroke-width: 1; }
+.image-verify-lines line[data-frame="true"] { stroke: color-mix(in srgb, var(--red) 80%, transparent); stroke-width: 1.6; }
+.image-verify-stone { stroke: var(--red); stroke-width: 1.4; fill-opacity: .55; }
+.image-verify-stone.black { fill: var(--ink); }
+.image-verify-stone.white { fill: var(--surface, #fff); fill-opacity: .8; }
+.image-verify-note, .image-verify-hint { margin: 0; color: var(--muted); font-size: calc(11px * var(--ui-font-scale, 1)); line-height: 1.5; }
+.image-verify-hint { color: var(--green); min-height: 1.5em; }
+.image-verify-modes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.image-verify-modes button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 46px; padding: 4px 2px; border: 1px solid var(--line, #dfdad0); border-radius: 10px; background: var(--surface-2, var(--paper)); color: var(--muted); font-size: calc(11px * var(--ui-font-scale, 1)); }
+.image-verify-modes button svg { width: 15px; height: 15px; }
+.image-verify-modes button.active { background: color-mix(in srgb, var(--jade) 55%, var(--surface, var(--paper))); border-color: var(--green); color: color-mix(in srgb, var(--green) 76%, var(--ink)); font-weight: 700; }
+.image-verify-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.image-verify-actions button { display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 48px; border: 1px solid var(--line, #dfdad0); border-radius: 12px; background: var(--surface-2, var(--paper)); color: var(--ink); font-size: calc(12px * var(--ui-font-scale, 1)); font-weight: 700; }
+.image-verify-actions button svg { width: 16px; height: 16px; }
+/* ⚠ 必须写成 `.image-verify-actions button.image-verify-confirm`：上面那条
+   `.image-verify-actions button`（0,1,1）会把文字压回 --ink，于是「深墨字压深绿底」
+   全主题只有 1.23–2.05:1（09-17 全主题扫描抓到的真问题，7 主题列表正好躲开）。
+   文字色用 --paper 而不是 #fff：--green 在浅色主题偏深、深色主题偏浅，--paper 会跟着翻，
+   两个方向都保证对比（白字压浅绿只有 ~2:1）。 */
+.image-verify-actions button.image-verify-confirm { background: var(--green); border-color: var(--green); color: var(--paper); }
+
+/* ── 编辑模式（用户 09-23：闪烁对比换成显式编辑）────────────────────
+   闪烁每 650ms 翻转整张大图的可见性 = 低端 WebView 上不停全量重绘，是「对比卡」
+   的主要来源；且静态叠图已能看出偏差。编辑改为显式模式：右上角「编辑中」徽标 +
+   退出按钮，底部工具行（黑白切换固定档 / 去子 / 移子），移子选中后有四向微调。
+   颜色全走语义 token，全主题通用（门禁 V9 全主题矩阵覆盖）。 */
+.image-verify-head { position: relative; }
+.image-verify-editing { position: absolute; right: 0; top: 0; display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 999px; background: color-mix(in srgb, var(--red) 16%, var(--surface, var(--paper))); border: 1px solid color-mix(in srgb, var(--red) 55%, transparent); color: color-mix(in srgb, var(--red) 80%, var(--ink)); font-size: calc(11px * var(--ui-font-scale, 1)); font-weight: 700; }
+.image-verify-editing svg { width: 12px; height: 12px; }
+.image-verify-editbar { display: flex; justify-content: flex-end; }
+.image-verify-exit { display: inline-flex; align-items: center; gap: 4px; min-height: 34px; padding: 0 12px; border: 1px solid var(--line, #dfdad0); border-radius: 10px; background: var(--surface-2, var(--paper)); color: var(--ink); font-size: calc(12px * var(--ui-font-scale, 1)); font-weight: 700; }
+.image-verify-exit svg { width: 14px; height: 14px; }
+.image-verify-tools { display: flex; align-items: center; gap: 6px; }
+.image-verify-tools button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 40px; padding: 0 12px; border: 1px solid var(--line, #dfdad0); border-radius: 10px; background: var(--surface-2, var(--paper)); color: var(--ink); font-size: calc(12px * var(--ui-font-scale, 1)); font-weight: 700; }
+.image-verify-tools button svg { width: 14px; height: 14px; }
+.image-verify-tools button.active { background: color-mix(in srgb, var(--jade) 55%, var(--surface, var(--paper))); border-color: var(--green); color: color-mix(in srgb, var(--green) 76%, var(--ink)); }
+.image-verify-player { display: inline-flex; border: 1px solid var(--line, #dfdad0); border-radius: 10px; overflow: hidden; }
+.image-verify-player button { border: 0; border-radius: 0; min-width: 44px; }
+.image-verify-player button + button { border-left: 1px solid var(--line, #dfdad0); }
+.image-verify-player button.active { background: color-mix(in srgb, var(--jade) 55%, var(--surface, var(--paper))); }
+.image-verify-tool-note { color: var(--muted); font-weight: 400; border-style: dashed; cursor: default; }
+/* 整盘位移（用户 09-23 二改）：常驻四向按钮，不用先选子；语义对齐编辑面板的「位移」
+   （出盘即拒绝、不静默裁剪）。 */
+.image-verify-shift { display: flex; align-items: center; gap: 6px; }
+.image-verify-shift > span { color: var(--ink); font-size: calc(12px * var(--ui-font-scale, 1)); font-weight: 700; }
+.image-verify-shift > small { flex: 1 1 auto; color: var(--muted); font-size: calc(11px * var(--ui-font-scale, 1)); }
+.image-verify-shift button { width: 40px; height: 40px; border: 1px solid var(--line, #dfdad0); border-radius: 10px; background: var(--surface-2, var(--paper)); color: var(--ink); font-size: calc(15px * var(--ui-font-scale, 1)); font-weight: 700; }
+/* 复原手序双按钮（09-28 转正）：核对屏底部的显式入口，「复原手序-本地」用本应用
+   识别器重跑序号匹配，「复原手序-云端」发给识图大模型。等宽两栏，下面的说明占整行。 */
+.image-verify-restore { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 2px 0; }
+.image-verify-restore button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 42px; padding: 0 10px; border: 1px solid var(--line, #dfdad0); border-radius: 12px; background: var(--surface-2, var(--paper)); color: var(--ink); font-size: calc(13px * var(--ui-font-scale, 1)); font-weight: 700; }
+.image-verify-restore button svg { width: 16px; height: 16px; }
+.image-verify-restore button:disabled { opacity: 0.6; }
+.image-verify-restore small { grid-column: 1 / -1; color: var(--muted); font-size: calc(11px * var(--ui-font-scale, 1)); line-height: 1.5; }
+/* 复原没凑齐时的续做按钮（用户 2026-10-09）：整行两块，与上面的复原按钮区分开——
+   这两颗是针对**漏读的少数棋子**的后续动作，不是重来一遍。说明文案走 App 的 hint
+   （面板高度有限，多一行说明会把提示区挤掉），这里只留按钮本身。 */
+.image-verify-followup { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-top: 4px; border-top: 1px dashed var(--line, #dfdad0); }
+/* 复原成功后画在叠图棋子上的手序数字：黑子圆浅字、白子圆深字，
+   配一圈对色描边（paint-order 先描边再填字）压住底下的照片纹理。 */
+.image-verify-number { text-anchor: middle; dominant-baseline: central; font-weight: 800; pointer-events: none; paint-order: stroke fill; stroke-width: 2.4; }
+.image-verify-number.black { fill: #f7f4ec; stroke: rgba(12, 12, 10, 0.35); }
+.image-verify-number.white { fill: #17150f; stroke: rgba(252, 250, 244, 0.4); }
+
+/* ── 矮横屏适配（2026-10-15 用户报「识谱后横屏有 bug」）────────────────────
+   核对屏的 board 原本 `.image-verify-frame { width: 100% }`，而叠图是**方形**的
+   （原图 + 绝对定位的 SVG 覆盖层），于是高度 = 视口宽度：740×360 的横屏上棋盘
+   变成 716×716，把底部那排「返回对齐 / 取消 / 确认导入」顶到视口外
+   （`qa/diag-landscape-check.mjs` 实测按钮 y=356、视口只有 360 高 → 点不到确认）。
+   这里**只在矮屏**（max-height 560px，即横屏）改成「按可用高度定尺寸」：框保持正方形、
+   由 stage 的高度决定边长，图片用 object-fit: contain 缩进去；panel 不再内部滚动，
+   整屏一屏装完。竖屏（高 700+）不触发，行为与原来完全一致。 */
+@media (max-height: 560px) {
+  /* 矮横屏（max-height 560px）：让 **stage 自己保持正方形**——高度由 flex 分配得到
+     （确定高度），宽度由 aspect-ratio 反推，于是棋盘永远完整落在可用空间里。
+     为什么不用「给 frame 写 height:100%」：frame 是块级、width:auto 会被拉满容器宽
+     （实测 716），纵横比又把高度顶成 716，最后只能靠 overflow 裁——棋盘只露两条边。
+     也不用「宽度写死 calc(100dvh - N)」：N 随字号/安全区/面板行数浮动，估小了就被裁。 */
+  .image-verify-stage { flex: 1 1 0; min-height: 0; overflow: hidden; aspect-ratio: 1 / 1; align-self: center; width: auto; }
+  .image-verify-frame { width: 100%; height: 100%; }
+  .image-verify-photo { width: 100%; height: 100%; object-fit: contain; }
+  .image-verify-panel { max-height: none; gap: 4px; }
+  /* 矮屏先把说明文字让位给棋盘与按钮（这两行只是解释性文案） */
+  .image-verify-note, .image-verify-hint { display: none; }
+  .image-verify-modes button { min-height: 36px; padding: 2px; }
+}

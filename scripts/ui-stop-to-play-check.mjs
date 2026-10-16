@@ -24,7 +24,9 @@ const clickPoint = async (n) => { await page.evaluate((pt) => { const c = [...do
 const clickStop = async () => page.evaluate(() => { document.querySelector(".board-thinking-indicator")?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
 
 // 开局：大师强度、默认自由规则
-await page.evaluate(() => { [...document.querySelectorAll("nav.bottom-nav button")].find((x) => (x.textContent || "").includes("AI"))?.click(); });
+await page.evaluate(() => { [...document.querySelectorAll("nav.bottom-nav button")].find((b) => (b.textContent || "").includes("对弈"))?.click(); });
+await page.waitForTimeout(700);
+await page.locator('[data-duel-entry="ai"] .duel-entry-action').click();
 await page.waitForTimeout(900);
 await page.evaluate(() => { const cell = [...document.querySelectorAll(".ai-game-setup .ai-setup-cell.single")].find((b) => /思考|难度|初级|中级|高级|大师|自由/.test(b.textContent || "") || b.getAttribute("aria-expanded") !== null); cell?.click(); });
 await page.waitForTimeout(400);

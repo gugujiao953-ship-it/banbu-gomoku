@@ -4,6 +4,9 @@ import { resolve } from "node:path";
 
 const output = resolve("artifacts");
 const baseURL = process.env.QA_BASE_URL || "http://127.0.0.1:5173/";
+// 欢迎页现在按**版本号**记（onboarding.ts）：老脚本写的 "true" 已不表示「这一版看过了」，
+// 抑制它的官方办法是 URL 带 ?qa=1（该参数只关欢迎页，不改界面）。不带就会卡在欢迎层上点不动。
+const qaURL = new URL(baseURL); qaURL.searchParams.set("qa", "1");
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const results = [];
@@ -21,7 +24,7 @@ try {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
-    await page.goto(baseURL, { waitUntil: "commit" });
+    await page.goto(qaURL.href, { waitUntil: "commit" });
     await page.getByText("新建棋谱", { exact: true }).waitFor();
 
     const board = page.locator(".renju-board");
@@ -105,22 +108,55 @@ try {
     const puzzleBoardAfter = await page.locator(".renju-board").boundingBox();
     if (Math.abs((puzzleBoardAfter?.width || 0) - (puzzleBoardBefore?.width || 0)) > 0.5 || Math.abs((puzzleBoardAfter?.y || 0) - (puzzleBoardBefore?.y || 0)) > 0.5) throw new Error("题目选择器关闭后棋盘尺寸或位置发生变化");
 
-    await page.locator(".dock-tabs").getByRole("button", { name: "更多" }).click();
+    // 「更多」同样归布局槽位（puzzle.bottom 里的 "view"），不假定轨。
+    const puzzleMore = () => page
+      .locator(".action-top-row, .dock-tabs, .moves-row")
+      .getByRole("button", { name: "更多", exact: true });
+    await puzzleMore().click();
     if (await page.locator(".dock-panel").getByRole("button", { name: "查找", exact: true }).count()) throw new Error("做题更多菜单仍显示查找");
     if (await page.locator(".dock-panel").getByRole("button", { name: "跨谱查找", exact: true }).count()) throw new Error("做题更多菜单仍显示跨谱查找");
-    await page.locator(".dock-tabs").getByRole("button", { name: "更多" }).click();
+    await puzzleMore().click();
 
-    await page.locator(".dock-tabs").getByRole("button", { name: "应战" }).click();
-    await page.locator(".dock-panel").getByRole("button", { name: "下一题" }).click();
+    // 做题的「上一题/下一题」在**常驻走棋区**（.moves-row.puzzle-nav-row，App.tsx 的
+    // puzzleNavRow，固定五键、不进布局池），不在 .dock-tabs / .dock-panel 里——这是
+    // 2026-09-10 的 T36 布局改版（commit a91770a）之后的行为。本门禁原写成
+    // 「点 .dock-tabs 的『应战』→ 在 .dock-panel 里点下一题」，而 T36 之后
+    // 应战/摆棋是**同一枚按钮的互斥两态**（默认显示摆棋，进入摆棋才显示应战），
+    // 应战存在时根本不存在「下一题」。按现行 UI 改写：先做摆棋切换的往返校验，
+    // 再用常驻走棋区翻题。
+    const puzzleNav = page.locator(".moves-row.puzzle-nav-row");
+    await puzzleNav.getByRole("button", { name: "下一题" }).click();
     await page.locator(".workspace-current").filter({ hasText: "第 16 题" }).waitFor();
-    await page.locator(".dock-tabs").getByRole("button", { name: "应战" }).click();
-    await page.locator(".dock-panel").getByRole("button", { name: "上一题" }).click();
+    await puzzleNav.getByRole("button", { name: "上一题" }).click();
     await page.locator(".workspace-current").filter({ hasText: "第 15 题" }).waitFor();
+
+    // 摆棋 ⇄ 应战 是同一枚首行按钮的两态：默认「摆棋」，点开后翻成「应战」，
+    // 再点回「摆棋」。同时校验摆棋面板出的是局面导航（起点/上一手/下一手/终点）。
+    //
+    // ⚠ 不能再写 `.dock-tabs`：自「我的布局」改版（enhancementSettings.buttonOverflow，
+    //    原先叫 actionRails）
+    // 起，功能区每一枚动作按钮都归用户配置的槽位管（localStorage
+    // banbu-action-layout-v1 的 modes.puzzle.top / bottom），应战/摆棋默认落在
+    // 底部轨 `.dock-tabs.action-bottom-row`，但用户把它们拖到顶部轨后就在
+    // `.action-top-row` 里，`.dock-tabs` 里一个都没有（本机实测：puzzle.top =
+    // ["play","setup","vcf"] 时 `.dock-tabs` 只剩「分析/规则/更多」）。
+    // 所以按**可访问名在整个工作区动作区里找**，不假定哪条轨——两条轨合起来就是
+    // 动作区的全集，按钮的可见名/aria-label 才是稳定契约。
+    const workspaceAction = (name) => page
+      .locator(".action-top-row, .dock-tabs, .moves-row")
+      .getByRole("button", { name, exact: true });
+    await workspaceAction("摆棋").click();
+    await page.locator(".dock-panel").getByRole("button", { name: "摆棋下一手" }).waitFor();
+    await workspaceAction("应战").click();
+    await workspaceAction("摆棋").waitFor();
 
     await page.locator('input[accept=".json,.zip,application/json,application/zip"]').first().setInputFiles({ name: "兼容题集.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify([["★", "H8,1", "H9,2"]])) });
     await page.locator(".workspace-current").filter({ hasText: "兼容题集" }).waitFor();
     await page.reload({ waitUntil: "commit" });
-    await page.getByText("半步五子棋打谱", { exact: true }).waitFor();
+    // 顶栏的「半步五子棋打谱」品牌文字在 T40（commit 116d7d3）已下架（品牌只留 logo，
+    // 模式切换上移顶栏）——该字符串现在只出现在「关于」页/诊断文件名/异常页，工作界面
+    // 上不再渲染。这里真正要等的是应用外壳重新挂载出来（底部主导航可用），不是品牌文字。
+    await page.locator(".bottom-nav").getByRole("button", { name: "棋谱库" }).waitFor();
     await page.getByRole("button", { name: "棋谱库" }).click();
     await page.getByRole("tab", { name: /题库/ }).click();
     await page.locator(".library-folder-head").filter({ hasText: "我的题库" }).click();

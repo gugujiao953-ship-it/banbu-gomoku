@@ -30,7 +30,11 @@ describe("appearance material contracts", () => {
   });
   it("keeps pale strata below stones and coupled to board opacity", () => {
     expect(source).toContain('fill="url(#paleStrata)" opacity={boardOpacity} pointerEvents="none"');
-    expect(source.indexOf('fill="url(#paleStrata)"')).toBeLessThan(source.indexOf('const jewelMaterial'));
+    // 比对的必须是**决定 SVG 里谁先谁后的使用处**：棋子标记在 10-15 抽进了 `stoneLayer` memo
+    // （每次重渲染少建 ~1500 个元素），`const jewelMaterial` 的定义位置因此前移，
+    // 拿它当「棋子在哪儿」的代理就不再代表渲染顺序了（源码顺序变了、画出**来**的顺序没变：
+    // 实测 rect 在 115980、{stoneLayer} 在 119025）。
+    expect(source.indexOf('fill="url(#paleStrata)"')).toBeLessThan(source.indexOf("{stoneLayer}"));
   });
   it("leaves the face area clear when move numbers are shown", () => {
     expect(source).toContain('{!showNumbers && <><ellipse');

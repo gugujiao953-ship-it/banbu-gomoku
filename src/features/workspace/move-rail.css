@@ -1,0 +1,68 @@
+/* 棋盘手数滑轨（用户 09-17 第二批③；09-23 改版：横向条 + 轨道内嵌手数读数）。
+ * 位置：棋盘正下方、首行功能区之上。
+ * 只用语义 token（--surface/--ink/--muted/--green/--jade/--line），七套主题自动跟随；
+ * 读数用 var(--surface) 底 + var(--ink) 字，保证任何主题下都压得住。 */
+.board-move-rail {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 4px 10px 2px;
+  box-sizing: border-box;
+  touch-action: none;
+}
+.board-move-rail-track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 16%, transparent);
+  cursor: pointer;
+  transition: background .16s;
+}
+.board-move-rail-track:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.board-move-rail-track:hover { background: color-mix(in srgb, var(--muted) 24%, transparent); }
+.board-move-rail[data-active="true"] .board-move-rail-track { background: color-mix(in srgb, var(--jade) 30%, transparent); }
+.board-move-rail-fill {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--green) 40%, transparent);
+}
+/* 手数读数：贴在滑块上，用主题表面色打底确保在任何棋盘/主题上都清晰。 */
+.board-move-rail-readout {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.board-move-rail-readout b { font-size: 11px; }
+.board-move-rail-readout i { font-style: normal; color: var(--muted); }
+.board-move-rail-thumb {
+  position: absolute;
+  top: 50%;
+  width: 4px;
+  height: 22px;
+  margin-left: -2px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: var(--green);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--ink) 30%, transparent);
+  transition: transform .12s;
+}
+.board-move-rail[data-active="true"] .board-move-rail-thumb { transform: translateY(-50%) scaleY(1.08); }
+@media (prefers-reduced-motion: reduce) {
+  .board-move-rail-track, .board-move-rail-thumb { transition: none; }
+}

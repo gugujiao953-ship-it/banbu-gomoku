@@ -1,4 +1,4 @@
-param(
+﻿param(
   [switch]$SkipWebBuild
 )
 
@@ -98,7 +98,59 @@ Write-Host "Signing: reusing banbu-release-v2.p12 (password is not printed)"
 if (-not $SkipWebBuild) {
   Invoke-Checked "npm.cmd" @("run", "build") $ProjectRoot
 }
+# 手机 App 内不带网页版那份 40MB 引擎包（2026-10-07 用户要求：**只限手机 App 去掉，
+# 网页版保留**）：安卓算力走 jniLibs 原生引擎 + assets/engine-native 权重，该包在
+# APK 里是多余的一份。剥离动作交给 scripts/strip-android-engine-pack.mjs——它只删
+# Capacitor 的拷贝目标、不碰 dist（此前这里直接删 dist/engine-packs，连网页版那份
+# 也删了），且同一脚本已挂在 npm run android:sync 上，覆盖 Android Studio 手动打包。
+# ⚠ 必须在 cap sync 之后调用（sync 会按 dist 原样重拷）。
+if (-not (Test-Path (Join-Path $ProjectRoot "android/app/src/main/assets/engine-native/config.toml"))) {
+  throw "缺少原生引擎权重：先跑 node scripts/build-android-engine.mjs 生成 assets/engine-native 与 jniLibs"
+}
+# **载荷字节和硬拦**（2026-10-13）：设备上 `NativeEnginePlugin.isPayloadComplete()` 拿这 9 件资产的
+# 字节和当完整性标记，对不上就**根本不启动原生引擎**（用户看到的症状是"选了 Rapfi 却没反应/一直转"）。
+# 这一条以前只在装好之后才暴露：数据包里的两个经典模型是 0.43.01 旧格式，而引擎已是 0.43.02（读不了旧模型），
+# 谁手滑重跑一次旧版 build-android-engine.mjs 就会把模型退回旧版——包能装上、字节和差 24,693、引擎起不来。
+# 生成脚本现在自己也会核对，但打包这一步是最后一道闸，别省。
+$engineAssetsDir = Join-Path $ProjectRoot "android/app/src/main/assets/engine-native"
+$engineAssetBytes = 0
+foreach ($asset in @(
+  "config.toml", "classical210901.toml", "classical220723.toml",
+  "model210901.bin", "model220723.bin",
+  "mix9svqfreestyle_bsmix.bin.lz4", "mix9svqstandard_bs15.bin.lz4",
+  "mix9svqrenju_bs15_black.bin.lz4", "mix9svqrenju_bs15_white.bin.lz4"
+)) {
+  $assetPath = Join-Path $engineAssetsDir $asset
+  if (-not (Test-Path $assetPath)) { throw "缺少原生引擎资产 $asset：先跑 node scripts/build-android-engine.mjs" }
+  $engineAssetBytes += (Get-Item $assetPath).Length
+}
+$nativePluginPath = Join-Path $ProjectRoot "android/app/src/main/java/cn/renjunote/mobile/NativeEnginePlugin.java"
+$payloadMatch = [regex]::Match((Get-Content -Raw -Encoding UTF8 $nativePluginPath), "ENGINE_PAYLOAD_BYTES = (\d+)L")
+if (-not $payloadMatch.Success) { throw "读不到 NativeEnginePlugin.ENGINE_PAYLOAD_BYTES，没法校验原生引擎载荷" }
+$payloadBytes = [int64]$payloadMatch.Groups[1].Value
+if ($engineAssetBytes -ne $payloadBytes) {
+  throw ("原生引擎资产字节和 $engineAssetBytes ≠ NativeEnginePlugin.ENGINE_PAYLOAD_BYTES $payloadBytes（差 " + ($engineAssetBytes - $payloadBytes) + "）。" +
+    "装到手机上 isPayloadComplete() 会判非法、原生引擎不启动。别改 Java 里的常量迁就资产——把资产摆回配套的那套（见改造表 R194/R195）。")
+}
+Write-Host "原生引擎载荷字节和 $engineAssetBytes = 常量 ✓"
+# KataGo 旗舰引擎（可选功能，但资产必须成套——二进制都不入库，靠脚本铺）：
+# 缺二进制时 check() 会如实报不可用、设置页显示「当前设备不可用」，功能静默消失；
+# 与其让用户装出一个「没有旗舰档」的包，不如在这里拦住。
+# 三个引擎都必须在 jniLibs（Android 10+ 只有 nativeLibraryDir 里的文件允许 exec：
+# 曾把智子两档铺到 assets → files/ 再 chmod，真机必然 EACCES，见插件头注释）。
+foreach ($binary in @("libkatago-engine.so", "libkatago_zz.so")) {
+  if (-not (Test-Path (Join-Path $ProjectRoot "android/app/src/main/jniLibs/arm64-v8a/$binary"))) {
+    throw "缺少 KataGo 引擎二进制 $binary：先跑 node scripts/build-android-katago.mjs"
+  }
+}
+foreach ($model in @("distill-fp16.onnx", "kata.cfg", "zhizi-b24-int8.onnx")) {
+  if (-not (Test-Path (Join-Path $ProjectRoot "android/app/src/main/assets/engine-katago/$model"))) {
+    throw "缺少 KataGo 资产：assets/engine-katago/$model（版本化输入，应从仓库取到）"
+  }
+}
 Invoke-Checked "npx.cmd" @("cap", "sync", "android") $ProjectRoot
+# cap sync 会按 dist 原样重拷，所以剥离必须紧跟其后（脚本只删 assets 侧副本、不碰 dist）。
+Invoke-Checked "node.exe" @("scripts/strip-android-engine-pack.mjs") $ProjectRoot
 Invoke-Checked (Join-Path $ProjectRoot "android/gradlew.bat") @("--no-daemon", "assembleRelease") (Join-Path $ProjectRoot "android")
 
 $BuiltApk = Join-Path $ProjectRoot "android/app/build/outputs/apk/release/app-release.apk"

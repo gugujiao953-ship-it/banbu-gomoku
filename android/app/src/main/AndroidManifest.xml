@@ -19,11 +19,69 @@
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="true"
             android:exported="true">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+              文件关联（用户 2026-09-23）：从文件管理器 / 微信 / QQ 点一个棋谱时，
+              系统的「打开方式」列表里出现本应用；也出现在「分享」面板里。
+
+              为什么 mimeType 写这么多：安卓只对 scheme="file" 的 URI 可靠地按
+              pathPattern 过滤扩展名，而微信/QQ 分享过来的是 content:// —— 那种情况下
+              系统按 mimeType 匹配，且各路应用给的类型五花八门。于是这里**宁可多接一点**：
+              真收到不支持的格式时应用内会明确说不支持，而不是静默失败。反过来
+              （只声明少数类型）会把真实棋谱漏掉，那才是更糟的错。
+
+              三组分工：VIEW 用 file（pathPattern 认扩展名）+ content（认类型）；
+              SEND 收单份；SEND_MULTIPLE 必须声明 */* 才收得到多份。
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.sgf" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.SGF" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.fgf" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.ren" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.renjs" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.wzq" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.psq" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.pos" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.txt" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.json" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.renju" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.lib" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.dp" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.db" />
+                <data android:scheme="file" android:mimeType="*/*" android:pathPattern=".*\\.zip" />
+                <data android:scheme="content" android:mimeType="application/octet-stream" />
+                <data android:scheme="content" android:mimeType="application/x-go-sgf" />
+                <data android:scheme="content" android:mimeType="application/zip" />
+                <data android:scheme="content" android:mimeType="application/json" />
+                <data android:scheme="content" android:mimeType="text/plain" />
+                <data android:scheme="content" android:mimeType="image/*" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/json" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
             </intent-filter>
 
         </activity>
@@ -42,4 +100,11 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 触觉反馈（用户 09-29 真机反馈「没生效」）：应用此前完全没有这条权限，
+         所以即便走原生 Vibrator 也会在 targetSdk 31+ 上被 SecurityException 挡掉。
+         安装期权限，不会弹框。 -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 震动不是必需硬件：没有马达的机器（部分平板/模拟器）照常安装，
+         网页层拿到 hasVibrator=false 就静默不震。 -->
+    <uses-feature android:name="android.hardware.vibration" android:required="false" />
 </manifest>

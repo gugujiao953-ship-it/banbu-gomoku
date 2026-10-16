@@ -1,0 +1,282 @@
+/* 线下比赛计时器（用户 2026-09-23）。
+   **独立功能**：占满整屏、上下各一半、没有棋盘、除时钟与控制外没有任何东西。
+   只用语义 token（--ink/--muted/--surface/--line/--green/--red），20 套主题自动跟随；
+   数字用等宽字型，否则每秒跳动时宽度会抖。
+   「点自己那半边换手」是核心交互，所以整个半屏都是按钮、整块可点。 */
+
+.clock-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  background: var(--surface);
+  /* 平放桌上当实体钟用：别让系统的手势/选中干扰拍键。 */
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+/* ── 上下两半：各自是一个大按钮，**互为镜像**（用户 09-24 定） ──────────
+   摆法照抄阿Q棋钟（cn.ezandroid.aq.clock，反编译 layout/fragment_clock 确认）：
+   上半屏（白方）**整块** rotation=180，下半屏不转。因为设备平放桌上、两人对坐时，
+   上半屏正对着坐在对面那个人——整块倒过来，他读到的就是正向。
+   这不是开关，是这张屏幕的默认摆法：一个按钮只能让一种朝向生效，而两人对坐是对称的，
+   总有人得歪着头读。
+
+   实现上必须转**半屏本身**（而不是里面某一层），这是关键：整块转 180° 时，
+   这半屏的「上边」在视觉上跑到了中间分界线的另一侧，于是两半各自的文字都是
+   从分界线往外正的——这正是实体双面棋钟的两面朝向。
+   如果只转内层、外层还按正常方式居中/内边距，两半就只是各自倒过来，接缝处对不上。 */
+.clock-half {
+  min-height: 0;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: color-mix(in srgb, var(--ink) 4%, var(--surface));
+  color: var(--muted);
+  display: block;
+  /* 等待方整体压暗：一眼看出「现在该谁走」。 */
+  opacity: .55;
+  transition: opacity .16s, background .16s;
+  -webkit-tap-highlight-color: transparent;
+}
+/* 白方那半整块转 180°（默认，不可关）。 */
+.clock-half--white { transform: rotate(180deg); }
+/* 轮走方：提亮 + 主题色描边。这是全屏里唯一的视觉重点。 */
+.clock-half.is-active {
+  opacity: 1;
+  background: color-mix(in srgb, var(--green) 12%, var(--surface));
+  box-shadow: inset 0 0 0 4px var(--green);
+}
+.clock-half.is-winner { opacity: 1; background: color-mix(in srgb, var(--green) 16%, var(--surface)); }
+
+/* ── 读数层：撑满整个半屏并在其中居中 ─────────────────────
+   因为旋转施加在半屏本身（见 .clock-half--white），这层必须自己吃内边距——
+   内边距留在被转的那块上才是「从屏幕边往里留」，留错了会在接缝处露白。 */
+.clock-half-readout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 0;
+  height: 100%;
+  padding: 14px max(14px, env(safe-area-inset-right)) 14px max(14px, env(safe-area-inset-left));
+  box-sizing: border-box;
+}
+
+.clock-half-name { color: var(--muted); font-size: 13px; font-weight: 700; letter-spacing: .08em; display: inline-flex; align-items: baseline; gap: 7px; }
+
+/* ── 半屏两角的小字：左下读秒次数 / 右下本手数（照阿Q棋钟的安排） ──────
+   「读秒 N 次」用金色系。这是小字压浅底，70% 金的中文字面对比度只有 kawaii 3.20、
+   plum 3.69、rice 3.71、baroque 3.83（实测 20 套里 7 套不到 4.5:1）；
+   把金的比例降到 45%（其余混 --ink）后最低 4.71:1，仍看得出是金色而不变成灰字。
+   「N 手」是中性信息，用 --muted 即可（它本来就是为次要文字定的色）。
+   绝对值定位：这层是撑满半屏的 flex 容器，角落用 absolute 才不会被居中内容挤走。 */
+.clock-half-readout { position: relative; }
+.clock-half-corner {
+  position: absolute;
+  bottom: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 9px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+.clock-half-corner--start { left: 14px; background: color-mix(in srgb, var(--gold) 22%, var(--surface)); color: color-mix(in srgb, var(--gold) 45%, var(--ink)); }
+.clock-half-corner--end { right: 14px; background: color-mix(in srgb, var(--ink) 8%, var(--surface)); color: var(--muted); }
+
+/* 数字大小由 JS 按「这一档可能出现的最长字符串」算好后用内联 style 给（见 useFitFontSize）：
+   写死字号时 5 分钟档看着正好、切到 2 小时就会横向撑爆自己的半屏。
+   这里只留等宽与紧凑字距——两者都是「宽度可预测」的前提，字号算得准要靠它们。 */
+.clock-half-time {
+  color: var(--ink);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -.03em;
+  white-space: nowrap;
+}
+.clock-half.is-active .clock-half-time { color: var(--ink); }
+
+.clock-half-hint { color: var(--muted); font-size: 12px; font-weight: 700; min-height: 16px; }
+
+/* 「还没按下开始」这行字是**这一屏唯一要读的东西**（用户 09-23 的要求），
+   所以它不能再是 12px 灰字：给足字号、加粗、用主题绿，并配一枚胶囊底让它从背景里跳出来。
+   下面 `.is-idle` 再叠一层呼吸，等于「这半屏在等你动手」。 */
+.clock-half.is-idle .clock-half-hint {
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--green) 20%, var(--surface));
+  box-shadow: inset 0 0 0 2px var(--green);
+  color: color-mix(in srgb, var(--green) 72%, var(--ink));
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .clock-half.is-idle { animation: clock-idle-breath 1.8s ease-in-out infinite; }
+}
+@keyframes clock-idle-breath {
+  0%, 100% { background: color-mix(in srgb, var(--green) 12%, var(--surface)); }
+  50% { background: color-mix(in srgb, var(--green) 24%, var(--surface)); }
+}
+
+/* 低时间：整半屏转红（数字 + 底色 + 描边），并每秒闪一次。任何主题都必须刺眼。 */
+.clock-half.is-low { background: color-mix(in srgb, var(--red) 20%, var(--surface)); box-shadow: inset 0 0 0 4px var(--red); }
+/* 大数字用 --red 就够：186px 属于 WCAG 的「大号文本」，门槛是 3:1，全 20 套主题都过。
+   下面这行 12px 的提示行不行——小字号要 4.5:1，而 --red 压红底在 14 套主题上只有
+   3.08~4.32（kawaii 最低），所以改用派生出来的 --red-2（详见 design-tokens.css 的注释）。 */
+.clock-half.is-low .clock-half-time { color: var(--red); }
+.clock-half.is-low .clock-half-hint { color: var(--red-2, var(--red)); }
+@media (prefers-reduced-motion: no-preference) {
+  .clock-half.is-low.is-active .clock-half-time { animation: clock-pulse 1s steps(2, end) infinite; }
+}
+@keyframes clock-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+/* ── 正中：唯一的控制区（暂停 / 设置 / 退出） ───────────── */
+.clock-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 92%, var(--ink));
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--ink) 18%, transparent);
+}
+.clock-center-button {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.clock-center-button:disabled { opacity: .4; }
+.clock-center-button.is-paused { background: color-mix(in srgb, var(--gold) 22%, transparent); }
+.clock-center-button--ghost { color: var(--muted); }
+/* 退出：整个界面唯一的出口，单独一枚，不与暂停/设置混在一起。
+   图标是唯一的提示（40×40 图标按钮属 WCAG 的「非文本控件」，门槛 3:1），
+   但 --red 压 14% 红底在 dark 2.99 / kawaii 2.90 连 3:1 都不到，所以文字用 --red-2；
+   底色也提到 22%，让这枚按钮在浅色主题里也有个看得见的轮廓。 */
+.clock-exit {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--red) 22%, transparent);
+  color: var(--red-2, var(--red));
+  display: grid;
+  place-items: center;
+}
+
+/* ── 终局遮罩 ──────────────────────────────────────────── */
+.clock-over { position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--ink) 55%, transparent); }
+.clock-over-card { padding: 22px 26px; border-radius: 18px; background: var(--surface); text-align: center; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 12px 40px color-mix(in srgb, var(--ink) 30%, transparent); }
+.clock-over-card b { color: var(--ink); font-size: 26px; }
+.clock-over-card small { color: var(--muted); font-size: 13px; }
+.clock-over-actions { margin-top: 12px; display: flex; gap: 8px; justify-content: center; }
+.clock-over-actions button { min-height: 42px; padding: 0 16px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); color: var(--ink); display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
+.clock-over-actions .clock-over-exit { background: color-mix(in srgb, var(--red) 22%, transparent); color: var(--red-2, var(--red)); border-color: transparent; }
+
+/* ── 设置浮层（用户 2026-10-01：要「一屏看完」，照人机对战设置浮层那个密度）────
+   旧版按 88vh + 两列预设铺开，392×852 实测内容 1446px / 可视 750px，得滚 696px。
+   现在：卡片撑满可视高度、预设改成「组名在左 + 一行横向滑」，段间距与说明都收紧。
+   overflow:auto 仍留着当保险（小屏横放、系统字号放大时不至于把「知道了」顶掉）。 */
+.clock-setup-overlay { position: absolute; inset: 0; background: color-mix(in srgb, var(--ink) 55%, transparent); display: grid; place-items: center; padding: 10px; }
+.clock-setup-card { width: min(540px, 100%); max-height: 100%; overflow: auto; padding: 12px; border-radius: 18px; background: var(--surface); display: flex; flex-direction: column; gap: 10px; }
+.clock-setup-head { display: flex; align-items: center; justify-content: space-between; position: sticky; top: -14px; padding: 4px 0; background: var(--surface); z-index: 1; }
+.clock-setup-head b { color: var(--ink); font-size: 16px; }
+.clock-setup-head button { width: 34px; height: 34px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); display: grid; place-items: center; }
+
+/* 每个设置块：标题 + 控件 + 说明。块与块之间留白，让「方式 / 时限 / 预设」三段分得开。 */
+.clock-setup-section { display: flex; flex-direction: column; gap: 6px; }
+.clock-setup-label { color: var(--muted); font-size: 11.5px; font-weight: 800; letter-spacing: .06em; }
+
+/* ── 计时方式：三格分段控件（每格第二行是**该制式当前的数值**，
+      这样三种设置一眼就看全，不用来回点） ─────────────────── */
+.clock-modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.clock-mode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 60px;
+  padding: 7px 5px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface);
+  text-align: center;
+}
+.clock-mode.selected { border-color: var(--green); background: color-mix(in srgb, var(--green) 13%, var(--surface)); box-shadow: inset 0 0 0 1px var(--green); }
+.clock-mode-icon { font-size: 15px; line-height: 1; }
+.clock-mode b { color: var(--ink); font-size: 12.5px; }
+.clock-mode-value { color: var(--ink); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* 选中格的说明文字压在绿色底上：--muted 在 mono 那套主题里只有 4.26:1（不够 4.5），
+   所以这里改用 --ink 加一点透明度——它是每套主题都保证可读的主文字色，
+   压在任何主题色底上都稳。 */
+.clock-mode small { color: color-mix(in srgb, var(--ink) 78%, transparent); font-size: 10.5px; line-height: 1.35; }
+.clock-mode.selected small { color: color-mix(in srgb, var(--ink) 88%, transparent); }
+
+/* ── 带单位的数字输入（分 / 秒 分开填） ──────────────────── */
+.clock-duration-row { display: flex; flex-wrap: wrap; gap: 9px; }
+.clock-unit { position: relative; display: inline-flex; align-items: center; }
+.clock-unit input {
+  width: 92px;
+  height: 42px;
+  padding: 0 40px 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.clock-unit-suffix { position: absolute; right: 12px; color: var(--muted); font-size: 12px; font-weight: 700; pointer-events: none; }
+
+/* ── 预设：组名在左、档位一行横向滑（一屏装得下 5 组 17 档）────────
+   两列铺开时 17 档要 9 行 ≈ 700px，光这一块就吃掉一整屏；改成每组一行后约 300px。
+   最后一颗故意露出半截，作为「还能往右滑」的视觉线索。 */
+/* 组名列 72px：66px 时「快棋 / 超快棋」会折成「快棋 / 超快 + 棋」那种难看断行。 */
+.clock-preset-group { display: grid; grid-template-columns: 72px minmax(0, 1fr); align-items: center; gap: 8px; }
+.clock-preset-group-name { color: var(--muted); font-size: 10px; font-weight: 700; line-height: 1.25; }
+.clock-presets { display: flex; gap: 7px; overflow-x: auto; scroll-snap-type: x proximity; padding: 2px 0 4px; scrollbar-width: thin; }
+.clock-preset { position: relative; flex: 0 0 auto; width: 126px; min-height: 50px; padding: 6px 9px; scroll-snap-align: start; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); text-align: left; }
+.clock-preset.selected { border-color: var(--green); background: color-mix(in srgb, var(--green) 12%, var(--surface)); }
+.clock-preset b, .clock-preset small { display: block; }
+.clock-preset b { color: var(--ink); font-size: 13px; }
+/* 选中态的说明行压在绿色浅底上：--muted 在 mono 只有 4.34:1（不够 4.5），
+   与上面 .clock-mode small 同一个坑，用同一套解法（--ink 是每套主题都保证可读的主文字色）。 */
+.clock-preset small { margin-top: 3px; color: var(--muted); font-size: 11px; }
+.clock-preset.selected small { color: color-mix(in srgb, var(--ink) 88%, transparent); }
+/* 对勾用 --green-2：它是 14px 图标（门槛 3:1，本来就过），但 baroque 的 --green 只有
+   4.13:1，与选中框描边同色会显得「淡」；换成强强调色与描边区分开、也更清晰。 */
+.clock-preset-check { position: absolute; top: 8px; right: 8px; color: var(--green-2, var(--green)); }
+
+.clock-setup-help { margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+.clock-setup-help b { color: var(--ink); }
+.clock-setup-done { min-height: 46px; border: 0; border-radius: 12px; background: var(--green); color: var(--surface); font-size: 14px; font-weight: 700; }
+
+/* 12px 红字压 16% 红底，与低时间提示行同一个坑：用 --red-2（--red 在 kawaii 只有 3.23:1）。 */
+.clock-low-note { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; padding: 5px 12px; border-radius: 999px; background: color-mix(in srgb, var(--red) 16%, var(--surface)); color: var(--red-2, var(--red)); font-size: 12px; font-weight: 700; pointer-events: none; }
+
+/* 横屏：改成左右各一半（设备横放时两人分坐两侧）。
+   字号不在这里改——它是 JS 按当前方向算的（useFitFontSize 会读方向），
+   CSS 再覆盖一遍会跟 JS 算出来的值打架。 */
+@media (orientation: landscape) and (max-height: 560px) {
+  .clock-fullscreen { grid-template-rows: none; grid-template-columns: 1fr 1fr; }
+}

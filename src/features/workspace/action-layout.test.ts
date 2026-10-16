@@ -1,8 +1,30 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ACTION_LAYOUT_KEY, LAYOUT_MODES, compactModeLayout, defaultModeLayout, isZoneHidden, loadActionLayouts, moveAction, normalizeActionLayouts, normalizeModeLayout, presetModeLayout, saveActionLayouts, setZoneHidden, visibleModeLayout } from "./action-layout";
+import { ACTION_LAYOUT_KEY, LAYOUT_MODES, MAX_SAVED_LAYOUTS, SAVED_LAYOUTS_KEY, compactModeLayout, defaultModeLayout, isZoneHidden, loadActionLayouts, loadSavedLayoutPresets, moveAction, normalizeActionLayouts, normalizeModeLayout, normalizeSavedLayoutPresets, presetModeLayout, saveActionLayouts, saveSavedLayoutPresets, savedLayoutSummary, setZoneHidden, visibleModeLayout } from "./action-layout";
+import { withAnalysisToggle } from "./action-layout";
 
 afterEach(() => vi.unstubAllGlobals());
 describe("workspace action layouts", () => {
+  it("preserves the optional analysis switch and its hidden position through storage normalization", () => {
+    const layouts = withAnalysisToggle(normalizeActionLayouts(null), true);
+    layouts.modes.record = moveAction(layouts.modes.record, "analysisToggle", "top", 0);
+    layouts.modes.record.hidden = ["analysisToggle"];
+    expect(normalizeActionLayouts(JSON.parse(JSON.stringify(layouts)))).toEqual(layouts);
+    expect(withAnalysisToggle(layouts, true)).toBe(layouts);
+    for (const mode of LAYOUT_MODES) {
+      const all = [...layouts.modes[mode].top, ...layouts.modes[mode].moves, ...layouts.modes[mode].bottom];
+      expect(all.filter((id) => id === "analysisToggle")).toHaveLength(1);
+    }
+  });
+  it("removes hidden analysis switches when disabled and enables them visibly again", () => {
+    const defaults = normalizeActionLayouts(null);
+    expect(withAnalysisToggle(defaults, false)).toBe(defaults);
+    const enabled = withAnalysisToggle(defaults, true);
+    enabled.modes.review.hidden = ["analysisToggle"];
+    const disabled = withAnalysisToggle(enabled, false);
+    expect(disabled).toEqual(defaults);
+    const reenabled = withAnalysisToggle(disabled, true);
+    expect(visibleModeLayout(reenabled.modes.review).bottom.slice(0, 2)).toEqual(["analysisToggle", "analysis"]);
+  });
   it.each(LAYOUT_MODES)("preserves hidden positions and enables new actions in %s", (mode) => {
     const defaults = defaultModeLayout(mode);
     const id = defaults.bottom[0];
@@ -102,6 +124,10 @@ describe("workspace action layouts", () => {
       }
       const sized = { ...compact, size: "large" as const };
       expect(saveRoundTrip(sized, mode).size).toBe("large");
+      // 默认档已改成紧凑（用户 10-02 要「比较窄、比较不高」），但**显式存过的「标准」不能**
+      // 被兜底分支吞回紧凑——否则设置里那一项选了等于没选。
+      expect(defaultModeLayout(mode).size).toBe("compact");
+      expect(saveRoundTrip({ ...defaultModeLayout(mode), size: "standard" }, mode).size).toBe("standard");
     }
     // a saved compact layout reloads still-hidden (persistence round trip)。
     // 做题常驻操作区默认为空（只两行），故用首行功能区做往返。
@@ -127,8 +153,8 @@ describe("workspace action layouts", () => {
     expect(puzzle.top).toEqual([]);
     expect(puzzle.moves).toEqual([]);
     // 应战与摆棋是同一枚按钮的两种状态（App 渲染层互斥显示），两个 id 都要在池子里，
-    // 加上 VCF 生成器，共 6 个 id / 屏上 5 格一行（用户 09-10 复选 + 反馈）。
-    expect(puzzle.bottom).toEqual(["analysis", "play", "setup", "vcf", "rule", "view"]);
+    // 棋题生成器在“对弈”里独立承载，做题首行只保留当前页面里的功能按钮。
+    expect(puzzle.bottom).toEqual(["analysis", "play", "setup", "rule", "view"]);
     expect(puzzle.bottom).not.toContain("color");
     expect(puzzle.bottom).not.toContain("annotation");
     expect(puzzle.bottom).not.toContain("notes");
@@ -151,9 +177,9 @@ describe("workspace action layouts", () => {
   });
   it("keeps a v3 save as-is (current format round-trips)", () => {
     const layouts = normalizeActionLayouts(null);
-    layouts.modes.puzzle = { ...defaultModeLayout("puzzle"), hidden: ["vcf"] };
+    layouts.modes.puzzle = { ...defaultModeLayout("puzzle"), hidden: ["analysis"] };
     const restored = normalizeActionLayouts(JSON.parse(JSON.stringify(layouts)));
-    expect(restored.modes.puzzle.hidden).toEqual(["vcf"]);
+    expect(restored.modes.puzzle.hidden).toEqual(["analysis"]);
     expect(restored.modes.puzzle.bottom).toEqual(defaultModeLayout("puzzle").bottom);
   });
   function saveRoundTrip(layout: ReturnType<typeof defaultModeLayout>, mode: typeof LAYOUT_MODES[number]) {
@@ -161,6 +187,12 @@ describe("workspace action layouts", () => {
     layouts.modes[mode] = layout;
     return normalizeModeLayout(JSON.parse(JSON.stringify(layout)), mode);
   }
+  it('drops the retired VCF entry from saved layouts without disturbing other choices', () => {
+    const value = { version: 3, modes: { puzzle: { ...defaultModeLayout('puzzle'), bottom: ['view','vcf','analysis','play','setup','rule'], hidden: ['vcf','rule'] } } };
+    const migrated = normalizeActionLayouts(value).modes.puzzle;
+    expect(migrated.bottom).toEqual(['view','analysis','play','setup','rule']);
+    expect(migrated.hidden).toEqual(['rule']);
+  });
   it("reports storage failure, and writes only the layout key", () => {
     const setItem = vi.fn();
     vi.stubGlobal("localStorage", { setItem });
@@ -170,5 +202,62 @@ describe("workspace action layouts", () => {
     expect(saveActionLayouts(normalizeActionLayouts(null))).toBe(false);
     vi.stubGlobal("localStorage", { getItem: () => { throw new Error("SecurityError"); } });
     expect(loadActionLayouts()).toEqual(normalizeActionLayouts(null));
+  });
+
+});
+
+// 槽位（用户 09-17：保存自定义布局，最多 5 套，一键切换）
+describe("saved layout presets", () => {
+  it("drops unusable entries instead of half-keeping them", () => {
+    const layouts = normalizeActionLayouts(null);
+    const kept = normalizeSavedLayoutPresets([
+      { name: "缺 id" },
+      "垃圾",
+      null,
+      { id: "", name: "空 id", layouts },
+      { id: "ok-1", name: "  我的   布局  ", savedAt: 5, layouts },
+    ]);
+    expect(kept).toHaveLength(1);
+    expect(kept[0].id).toBe("ok-1");
+    // 名字折叠空白并截断，避免槽位标题把行撑破
+    expect(kept[0].name).toBe("我的 布局");
+    expect(kept[0].savedAt).toBe(5);
+    expect(kept[0].layouts).toEqual(layouts);
+  });
+
+  it("caps the list at MAX_SAVED_LAYOUTS and normalizes each snapshot", () => {
+    const layouts = normalizeActionLayouts(null);
+    const many = Array.from({ length: 9 }, (_, index) => ({ id: `s${index}`, name: `布局 ${index}`, savedAt: index, layouts }));
+    expect(normalizeSavedLayoutPresets(many)).toHaveLength(MAX_SAVED_LAYOUTS);
+    // 快照进槽位前也要过一遍归一化：手工改坏过的存档不能把槽位变成坏布局
+    const broken = normalizeSavedLayoutPresets([{ id: "x", name: "坏", savedAt: 1, layouts: { version: 3, modes: { record: { top: ["不存在的按钮"], moves: [], bottom: [] } } } }]);
+    expect(broken[0].layouts.modes.record.top).toEqual(defaultModeLayout("record").top);
+  });
+
+  it("summarizes each mode's visible button count", () => {
+    const layouts = normalizeActionLayouts(null);
+    const summary = savedLayoutSummary(layouts);
+    const record = visibleModeLayout(layouts.modes.record);
+    expect(summary).toContain(`打谱 ${record.top.length + record.moves.length + record.bottom.length}`);
+    expect(summary).toContain("读谱");
+    expect(summary).toContain("做题");
+  });
+
+  it("round-trips through storage and survives a broken read", () => {
+    const layouts = normalizeActionLayouts(null);
+    const stored: Record<string, string> = {};
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => stored[key] ?? null,
+      setItem: (key: string, value: string) => { stored[key] = value; },
+    });
+    expect(loadSavedLayoutPresets()).toEqual([]);
+    const slot = { id: "a", name: "布局 1", savedAt: 1, layouts };
+    expect(saveSavedLayoutPresets([slot])).toBe(true);
+    expect(stored[SAVED_LAYOUTS_KEY]).toBe(JSON.stringify([slot]));
+    expect(loadSavedLayoutPresets()).toEqual([slot]);
+    stored[SAVED_LAYOUTS_KEY] = "{ 不是 JSON";
+    expect(loadSavedLayoutPresets()).toEqual([]);
+    vi.stubGlobal("localStorage", { setItem: () => { throw new Error("QuotaExceededError"); } });
+    expect(saveSavedLayoutPresets([slot])).toBe(false);
   });
 });

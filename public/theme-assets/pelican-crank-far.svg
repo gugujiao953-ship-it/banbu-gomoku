@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 66 430 264" fill="none">
+  <!-- 远侧（左）曲柄 + 踏板。相位差 180° 由 CSS 的 animation-delay:-.75s 给出，
+       不重复画牙盘：一台车只有一个牙盘，它在近侧那一层（pelican-crank.svg）。
+       曲柄同样画成半径 22；相位 180° 时踏板中心＝(186,250)＝远侧 IK 的踝
+       （qa/gen-pelican-leg.mjs 自检会打印这个值）。
+       本层在 DOM 里排在车架层之前＝画在车架后面，所以腿和曲柄该被车架挡掉一部分，
+       这就是侧视图里「远侧那套在阴影里」的观感来源。 -->
+  <path d="M208 250h-22" stroke="#2a2438" stroke-width="4" stroke-linecap="round"/>
+  <path d="M179 248h14" stroke="#211d2c" stroke-width="4.5" stroke-linecap="round"/>
+</svg>

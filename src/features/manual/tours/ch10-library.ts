@@ -8,7 +8,7 @@ import type { TourStep } from "../../onboarding/tour-steps";
 export const ch10: TourStep[] = [
   { id: "lib-tab",
     title: "棋谱库入口",
-    lead: "点底部导航进入棋谱库，棋谱和题库分两个分区。",
+    lead: "点底部导航进入棋谱库，棋谱和题库分两个分区；「在线」面里是棋谱、题库、其他三页，入口常驻（不用先在设置里打开）。",
     tab: "library",
     tips: [
       { sel: ".library-segment", name: "棋谱 / 题库分区", desc: "左边是棋谱，右边是题库，各自独立管理；上面那排「继续上次研究 / 最近棋谱 / 状态筛选」只在棋谱分区显示。", icon: Library },

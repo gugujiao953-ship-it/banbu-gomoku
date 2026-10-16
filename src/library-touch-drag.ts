@@ -4,10 +4,13 @@
 // a steady pace. Auto-scroll and finger scrolling are clamped to the dragged
 // item's container: an item never scrolls out of its folder, a folder only to
 // its parent's bottom, a top-level folder to the page bottom.
+import { playHapticCue } from "./haptics";
 import type { LibraryOrderKind } from "./library-order";
 
 export interface LibraryTouchDragOptions {
   enabled: () => boolean;
+  /** 触觉开关：起拖那一下的轻震要跟随设置里的「触觉反馈」，不能自己直调 vibrate。 */
+  hapticsEnabled: () => boolean;
   performDrop: (kind: LibraryOrderKind, key: string, draggedId: string, targetId: string, placeBefore: boolean) => void;
 }
 
@@ -46,9 +49,10 @@ interface ActiveDrag {
 }
 
 const cssEscape = (value: string) => (window.CSS && CSS.escape ? CSS.escape(value) : value.replace(/[^a-zA-Z0-9_-]/g, "\\$&"));
-const scrollElement = () => document.scrollingElement as HTMLElement;
+// jsdom 等环境里 scrollingElement 可能缺席；返回 null 让自动滚动安静跳过，不要抛。
+const scrollElement = () => (document.scrollingElement as HTMLElement | null) ?? null;
 
-export const attachLibraryTouchDrag = ({ enabled, performDrop }: LibraryTouchDragOptions) => {
+export const attachLibraryTouchDrag = ({ enabled, hapticsEnabled, performDrop }: LibraryTouchDragOptions) => {
   let candidate: DragCandidate | null = null;
   let active: ActiveDrag | null = null;
 
@@ -77,6 +81,7 @@ export const attachLibraryTouchDrag = ({ enabled, performDrop }: LibraryTouchDra
     const dt = active.lastFrame ? Math.min(48, timestamp - active.lastFrame) : 16;
     active.lastFrame = timestamp;
     const element = scrollElement();
+    if (!element) return;
     const viewHeight = window.innerHeight;
     const pointerY = active.lastY;
     const scope = scopeRectFor();
@@ -104,7 +109,9 @@ export const attachLibraryTouchDrag = ({ enabled, performDrop }: LibraryTouchDra
     ghost.querySelectorAll("[data-drag-kind]").forEach((node) => node.removeAttribute("data-drag-kind"));
     document.body.appendChild(ghost);
     entry.element.classList.add("touch-drag-source");
-    navigator.vibrate?.(12);
+    // 起拖反馈走统一触觉通道（navigate = 6ms 轻震，比落子更轻）：这样设置里的
+    // 「触觉反馈」关掉后，拖拽列表也不会再震。
+    playHapticCue("navigate", hapticsEnabled());
     active = {
       kind: entry.kind,
       key: entry.key,
@@ -202,6 +209,7 @@ export const attachLibraryTouchDrag = ({ enabled, performDrop }: LibraryTouchDra
           active.scrollFinger.lastY = touch.clientY;
           if (!delta) continue;
           const element = scrollElement();
+          if (!element) continue;
           const previous = element.scrollTop;
           const pointerY = active.lastY;
           element.scrollTop += delta;

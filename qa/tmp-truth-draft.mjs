@@ -1,0 +1,13 @@
+import { chromium } from "playwright";
+import { writeFileSync } from "node:fs";
+const base = process.env.QA_BASE_URL || "http://localhost:5173/";
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({ serviceWorkers: "block" });
+const page = await context.newPage();
+const q = new URLSearchParams({ cv: "/qa/tmp-cv-remote-image2.json", image: "/qa/fixtures/materials/remote-image2.png", threads: "4" });
+await page.goto(new URL(`qa/ort-truth-draft.html?${q}`, base).toString(), { waitUntil: "domcontentloaded" });
+await page.waitForFunction(() => globalThis.__truthResult && globalThis.__truthResult.ok === true, null, { timeout: 600000 });
+const r = await page.evaluate(() => globalThis.__truthResult);
+writeFileSync("qa/tmp-truth-cells.json", JSON.stringify(r, null, 1));
+console.log("totalMs:", r.totalMs, "cells:", (r.cells || []).length);
+await browser.close();

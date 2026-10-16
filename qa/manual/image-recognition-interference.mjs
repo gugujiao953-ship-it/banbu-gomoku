@@ -112,6 +112,13 @@ try {
       let toast = "";
       try {
         await page.locator(".app-toast-message").waitFor({ timeout: 45_000 });
+        // 识谱「叠图核对」（用户 09-17）：识别完先停在核对屏，点「确认导入」才建谱。
+        // 这一屏默认开着，所以任何走真实 UI 的识谱门禁都必须先确认，否则读到的是空盘。
+        {
+          const confirmVerify = page.locator(".image-verify-confirm");
+          try { await confirmVerify.waitFor({ timeout: 15_000 }); await confirmVerify.click(); } catch { /* 旧路径没有核对屏时保持原行为 */ }
+          await page.waitForTimeout(500);
+        }
         toast = (await page.locator(".app-toast-message").textContent()) || "";
       } catch {
         errors.push("图片识谱没有产生提示");

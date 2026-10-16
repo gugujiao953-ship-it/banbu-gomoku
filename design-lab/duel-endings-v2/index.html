@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- 设计稿迭代频繁，最容易被"浏览器缓存了旧页面"坑到（看到的是上一版、以为改动没生效）。
+     这里禁掉缓存；另外每次改完记得 Ctrl+F5 硬刷新一次。 -->
+<meta http-equiv="Cache-Control" content="no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<title>墨玉玻璃 · 终局弹窗（★ 选定 = A 印 × C 流 × D 光）</title>
+<style>
+/* ══ 基础 ══════════════════════════════════════════════════════════════ */
+:root{
+  --bg:#0e1216;--panel:#171d24;--panel2:#1f272f;--line:#2b3540;--ink:#eaeff4;--muted:#8fa0af;
+  --win:#c0392b;--win2:#e8b44a;      /* 胜：朱红 + 金 */
+  --lose:#5a6875;--lose2:#9fb2c2;    /* 负：青灰 + 冷白 */
+  --draw:#a8873f;--draw2:#7c9a86;    /* 和：赭金 + 青碧 */
+  --paper:#faf6ec;--paper2:#efe7d6;--paperink:#26221b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+header.lab{padding:18px 22px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#0e1216f2;backdrop-filter:blur(14px);z-index:60}
+header.lab h1{margin:0 0 6px;font-size:16px;letter-spacing:.01em}
+header.lab p{margin:0;color:var(--muted);font-size:12px;max-width:960px}
+header.lab .legend{margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+header.lab .legend b{color:var(--ink)}
+header.lab .legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:20px;padding:20px}
+/* 只显示选定版时（JS 里 SHOW_OTHERS=false 会给 #grid 打上 data-solo）：
+   单卡居中、限宽，别让它孤零零贴在左上角。 */
+.grid[data-solo]{grid-template-columns:1fr;max-width:720px;margin:0 auto;padding:20px 20px 48px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column}
+.card>header{padding:12px 14px 10px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
+.card>header .idx{flex:0 0 auto;min-width:28px;height:28px;padding:0 8px;border-radius:9px;background:linear-gradient(150deg,#6fd1a8,#3f9d78);color:#08120e;display:grid;place-items:center;font-weight:800;font-size:12px}
+.card>header h2{margin:0;font-size:13.5px}
+.card>header p{margin:3px 0 0;color:var(--muted);font-size:11.5px;line-height:1.55}
+.stage{position:relative;flex:1 1 auto;min-height:520px;background:radial-gradient(120% 90% at 50% 0%,#141b22,#0a0e12 70%);overflow:hidden}
+.bwrap{position:absolute;inset:0;padding:16px;display:flex;flex-direction:column;gap:9px}
+.brow{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#7f909f;letter-spacing:.02em}
+.bbar{display:flex;gap:6px;flex-wrap:wrap}
+.bbar .pill{padding:3px 9px;border:1px solid #26313c;border-radius:99px;font-size:10px;color:#93a5b4;background:#141a20}
+.bbar .pill.on{border-color:#3f7f68;color:#6fd1a8}
+.mini{flex:1 1 auto;display:grid;place-items:center;min-height:0}
+.mini canvas{display:block;border-radius:10px;box-shadow:0 16px 40px #000000a6}
+.tools{padding:8px 14px;border-top:1px solid var(--line);display:flex;gap:7px;flex-wrap:wrap;align-items:center;background:#141a20}
+.tools button{min-height:30px;padding:0 11px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--ink);font:inherit;font-size:11.5px;cursor:pointer;transition:border-color .15s,color .15s,transform .12s}
+.tools button:hover{border-color:#6fd1a8;color:#6fd1a8}
+.tools button[aria-pressed="true"]{border-color:#6fd1a8;color:#6fd1a8;background:#16261f}
+.tools span{color:var(--muted);font-size:11.5px}
+.note{padding:9px 14px;border-top:1px solid var(--line);color:var(--muted);font-size:11.5px;display:flex;gap:14px;flex-wrap:wrap}
+.note b{color:var(--ink)}
+.note .dot{color:#6fd1a8}
+/* 结局三色标 */
+.o-won{color:#e0705c}.o-lost{color:#93a5b4}.o-draw{color:#c2a25c}
+
+/* ══ 弹窗公用壳 ═══════════════════════════════════════════════════════ */
+.pop{position:absolute;inset:0;display:grid;place-items:center;padding:20px;perspective:900px}
+.pop::before{content:"";position:absolute;inset:0;background:radial-gradient(80% 70% at 50% 45%,#05070899,#050708d9);backdrop-filter:blur(3px);animation:fade .32s ease-out}
+@keyframes fade{from{opacity:0}}
+.pp-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.pp-actions button{position:relative;min-height:34px;padding:0 13px;border:1px solid #0000001f;border-radius:10px;background:#ffffffa8;color:#3a342a;font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;overflow:hidden;transition:transform .15s cubic-bezier(.2,.8,.3,1),box-shadow .15s}
+.pp-actions button:hover{transform:translateY(-1.5px);box-shadow:0 8px 18px #00000024}
+.pp-actions button:active{transform:translateY(0)}
+.pp-actions button.primary{border-color:transparent;color:#fff6ea}
+.pp-stats{display:flex;gap:9px;margin-top:14px}
+.pp-stats>div{flex:1 1 0;display:flex;align-items:baseline;justify-content:center;gap:3px;padding:9px 6px;border-radius:12px;background:#ffffff5e;border:1px solid #00000012;font-variant-numeric:tabular-nums}
+.pp-stats small{font-size:10px;color:#7a7263}
+.pp-stats b{font-size:15.5px;font-weight:800;color:#26221b}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* ══ A · 印（印章压轴）═══════════════════════════════════════════════
+   胜：朱红大印压下 + 朱砂飞溅 + 金粉升腾 + 画面一震
+   负：青灰印压下（无飞溅），墨痕从上沿淌下，卡片下沉半格
+   和：对半双色印（朱红 × 赭金），无飞溅，一圈平静涟漪 */
+.vA{position:relative;z-index:2;width:min(342px,94%)}
+.vA-card{position:relative;margin-top:42px;padding:16px 20px 16px;border-radius:22px;
+  background:linear-gradient(154deg,#fbf8f0f0,#eee6d4e0);backdrop-filter:blur(18px) saturate(1.1);
+  border:1px solid #ffffffb8;
+  box-shadow:0 28px 64px #00000073, inset 0 1px 0 #ffffffef, inset 0 0 60px #b9a88818;
+  animation:vA-rise .55s cubic-bezier(.2,.82,.24,1) backwards}
+@keyframes vA-rise{from{opacity:0;transform:translateY(22px) scale(.94)}}
+.vA-card>*:not(.vA-drip){position:relative;z-index:1}
+.vA-card::before,.vA-card::after{content:"";position:absolute;top:0;height:2px;border-radius:2px;background:#2b2620;opacity:.13}
+.vA-card::before{left:18px;width:calc(50% - 68px)}
+.vA-card::after{right:18px;width:calc(50% - 68px)}
+.vA--lost .vA-card{animation:vA-sink .7s cubic-bezier(.3,.9,.3,1) backwards}
+@keyframes vA-sink{from{opacity:0;transform:translateY(14px) scale(.96) rotate(-.6deg)}to{opacity:1;transform:translateY(6px) scale(1) rotate(0)}}
+.vA-stampwrap{display:flex;justify-content:center;margin:-44px 0 13px}
+.vA-stamp{position:relative;width:70px;height:70px;display:grid;place-items:center;border-radius:16px;
+  color:#fff4e2;font:800 33px/1 "Songti SC",STSong,serif;
+  box-shadow:0 16px 34px #0000005c, inset 0 0 0 3px #ffffff30;
+  animation:vA-stamp .6s .28s cubic-bezier(.18,.9,.28,1.35) backwards}
+@keyframes vA-stamp{0%{opacity:0;transform:scale(2.6) rotate(-10deg)}60%{opacity:1;transform:scale(.93) rotate(1.5deg)}80%{transform:scale(1.05) rotate(-2deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+.vA--won .vA-stamp{background:linear-gradient(158deg,#cf4534,#94271c)}
+.vA--lost .vA-stamp{background:linear-gradient(158deg,#63707d,#414b56);animation:vA-stamp .5s .22s cubic-bezier(.2,.9,.3,1.2) backwards}
+.vA--draw .vA-stamp{background:linear-gradient(112deg,#c04234 0 49.6%,#a8873f 50.4% 100%)}
+.vA-stamp::after{content:"";position:absolute;left:8%;right:8%;bottom:-7px;height:10px;border-radius:50%;
+  background:radial-gradient(ellipse at center,#0000004d,transparent 72%);filter:blur(3px)}
+.vA-stamp i{position:absolute;inset:-6px;border-radius:21px;border:2px solid currentColor;opacity:0}
+.vA-stamp i::after{content:"";position:absolute;inset:-9px;border-radius:26px;border:1.5px solid currentColor;opacity:.55}
+.vA--won .vA-stamp i{border-color:#c0423470;animation:vA-splash .8s .46s ease-out forwards}
+.vA--draw .vA-stamp i{border-color:#a8873f70;animation:vA-splash .9s .4s ease-out forwards}
+.vA--lost .vA-stamp i{border-color:#63707d66;animation:vA-splashIn .7s .3s ease-out forwards}
+@keyframes vA-splash{0%{transform:scale(.72);opacity:.85}100%{transform:scale(2.05);opacity:0}}
+@keyframes vA-splashIn{0%{transform:scale(2.1);opacity:.7}100%{transform:scale(.9);opacity:0}}
+/* 金粉升腾（只在胜局） */
+.vA-dust{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.vA-dust i{position:absolute;bottom:6%;width:4px;height:4px;border-radius:50%;background:linear-gradient(180deg,#ffe9a8,#e0a93c);
+  opacity:0;animation:vA-rise2 2.4s ease-out infinite}
+.vA-dust i:nth-child(1){left:12%;animation-delay:.5s}
+.vA-dust i:nth-child(2){left:26%;width:3px;height:3px;animation-delay:1.1s}
+.vA-dust i:nth-child(3){left:44%;animation-delay:1.7s}
+.vA-dust i:nth-child(4){left:63%;width:5px;height:5px;animation-delay:.85s}
+.vA-dust i:nth-child(5){left:78%;animation-delay:1.45s}
+.vA-dust i:nth-child(6){left:90%;width:3px;height:3px;animation-delay:2.05s}
+@keyframes vA-rise2{0%{opacity:0;transform:translateY(0) scale(.6)}18%{opacity:.95}100%{opacity:0;transform:translateY(-230px) scale(1.15)}}
+/* 墨痕下淌（只在负局） */
+.vA-drip{position:absolute;inset:0;overflow:hidden;pointer-events:none;border-radius:22px}
+/* 墨痕下淌：等宽直线在浅色卡上像划痕（截图里就是两根脏线），所以做成**墨滴**——
+   上宽下窄的锥形 + 尾端圆头，从卡片上沿缓缓淌下来再淡出。 */
+.vA-drip i{position:absolute;top:0;width:5px;
+  background:linear-gradient(180deg,#5a6875d6,#5a6875a6 62%,#5a687552);
+  clip-path:polygon(0 0,100% 0,74% 78%,50% 100%,26% 78%);
+  opacity:0;animation:vA-drip 3.6s cubic-bezier(.35,.15,.5,.9) infinite}
+/* 只走两侧边缘（19%/46%/73% 那种会穿过标题与数据格，看着像卡上裂了道缝）；
+   再压到内容之下（z-index:0），保证任何情况下都不糊住文字。 */
+.vA-drip{z-index:0}
+.vA-drip i:nth-child(1){left:7.5%;height:30px;animation-delay:.5s}
+.vA-drip i:nth-child(2){left:92%;height:44px;width:6px;animation-delay:1.4s}
+.vA-drip i:nth-child(3){left:11%;height:38px;animation-delay:2.3s}
+@keyframes vA-drip{0%{opacity:0;transform:translateY(-14px) scaleY(.25)}22%{opacity:.85}70%{opacity:.55}100%{opacity:0;transform:translateY(190px) scaleY(1.5)}}
+.vA-poem{display:block;text-align:center;font:700 19.5px/1.55 "Songti SC",STSong,serif;color:var(--paperink);letter-spacing:.07em}
+.vA-poem i{display:inline-block;font-style:normal;opacity:0;animation:vA-char .44s cubic-bezier(.2,.8,.3,1) forwards;animation-delay:calc(340ms + var(--i) * 56ms)}
+@keyframes vA-char{from{opacity:0;transform:translateY(8px) scale(.88);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+.vA-stroke{display:block;height:3px;margin:10px auto 7px;width:min(76%,214px);border-radius:3px;
+  background:linear-gradient(90deg,transparent,#332d24 8%,#332d24 92%,transparent);
+  transform:scaleX(0);transform-origin:center;animation:vA-stroke .66s .96s cubic-bezier(.3,.8,.3,1) forwards;opacity:.7}
+@keyframes vA-stroke{to{transform:scaleX(1)}}
+.vA-sub{display:block;text-align:center;font-size:11.5px;color:#6d6555;animation:vA-fade .5s 1.08s ease-out backwards}
+@keyframes vA-fade{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+.vA .pp-stats>div{animation:vA-fade .45s ease-out backwards}
+.vA .pp-stats>div:nth-child(1){animation-delay:1.14s}
+.vA .pp-stats>div:nth-child(2){animation-delay:1.22s}
+.vA .pp-stats>div:nth-child(3){animation-delay:1.3s}
+.vA .pp-actions{animation:vA-fade .45s 1.4s ease-out backwards}
+.vA--won .pp-actions button.primary{background:linear-gradient(158deg,#cf4534,#94271c)}
+.vA--lost .pp-actions button.primary{background:linear-gradient(158deg,#63707d,#414b56)}
+.vA--draw .pp-actions button.primary{background:linear-gradient(112deg,#c04234 0 49.6%,#a8873f 50.4% 100%)}
+
+/* ══ H · 本轮选定：A 的印 × C 的流 × D 的光 ═══════════════════════════
+   用户要求（09-29 追加）：
+     · 底色用 **C 的色流**（胜：金从底部漫上来 / 负：墨从顶部压下来 / 和：双色）；
+     · 进场动画用 **D 的光环**（胜外扩 / 负内收 / 和平缓呼吸）+ 负局四周收暗；
+     · **A 的负局不要"下雨"** —— 即不生成 `.vA-drip` 那三滴淌下来的墨。
+       负局的味道改由「C 的墨流下压 + D 的收暗 + 光环内收」三件事表达，比淌墨干净。
+     · 和棋颜色**改了**：C 原来是「左深灰蓝 / 右赭金」的硬对分，那半边深灰读起来像"输"；
+       改成 赭金 ↔ 青玉 的柔和过渡（中间留一条宽的混色带），才配得上"平分秋色"。
+   内容结构照 A（印压轴：印在卡顶正中、逐字题诗、墨线、数据格、动作条）。
+   实现上直接复用 A 的类（vA / vA-card / vA-stamp / vA-poem / vA-stroke …），
+   只把「色流」和「光环」两件新东西加进来 —— 所以状态类要同时挂 vA--x 和 vH--x。 */
+
+/* 色流的裁切框：单独一层 overflow:hidden，**卡本身不裁** ——
+   否则 A 那枚压出卡片上沿的印章会被切掉（上一轮就是因为 clip-path 缺口把印章逼回卡内）。
+   ⚠ 选择器要压过 A 的 `.vA-card>*:not(.vA-drip){position:relative;z-index:1}`（同权重取后者），
+     所以写成 `.vH .vA-card>.vH-flowclip` 三个类，且本块必须写在 A 之后。 */
+.vH .vA-card>.vH-flowclip{position:absolute;inset:0;overflow:hidden;border-radius:22px;pointer-events:none;z-index:0}
+.vH-flow{position:absolute;left:0;right:0;height:120%}
+/* 胜：金色从底部漫上来（波浪边）——**进场之后波浪边还要一直缓缓起伏**。
+   注意：进场动的是 transform（vC-rise），这个动的是 clip-path，两者是不同属性，
+   可以并列写、互不覆盖；如果两个都动 transform，写在后面的会把进场效果顶掉。
+   （用户反馈「看不到它在动」——原来只有进场那 1.5s 动过，之后是死图。） */
+.vH--won .vH-flow{bottom:-2px;background:linear-gradient(180deg,#e8b44a00,#e8b44a55 45%,#d69a2e8c);
+  clip-path:path("M0,120 C60,86 120,132 190,104 C250,80 300,116 344,92 L344,400 L0,400 Z");
+  transform-origin:bottom;
+  animation:vC-rise 1.5s .35s cubic-bezier(.25,.8,.3,1) backwards,
+            vH-wave-won 5s .5s ease-in-out infinite alternate}
+@keyframes vH-wave-won{
+  0%{clip-path:path("M0,120 C60,86 120,132 190,104 C250,80 300,116 344,92 L344,400 L0,400 Z")}
+  100%{clip-path:path("M0,98 C62,134 122,78 192,126 C252,152 302,88 344,118 L344,400 L0,400 Z")}
+}
+/* 负：墨从顶部压下来，波浪边同样持续起伏 */
+.vH--lost .vH-flow{top:-2px;background:linear-gradient(180deg,#3b4a578c,#5a687500 62%);
+  clip-path:path("M0,0 L344,0 L344,120 C292,146 242,104 182,132 C122,160 62,120 0,142 Z");
+  transform-origin:top;
+  animation:vC-fall 1.5s .35s cubic-bezier(.25,.8,.3,1) backwards,
+            vH-wave-lost 5.6s .5s ease-in-out infinite alternate}
+@keyframes vH-wave-lost{
+  0%{clip-path:path("M0,0 L344,0 L344,120 C292,146 242,104 182,132 C122,160 62,120 0,142 Z")}
+  100%{clip-path:path("M0,0 L344,0 L344,142 C296,110 240,158 180,124 C120,94 60,142 0,112 Z")}
+}
+/* 和：赭金 ↔ 青玉 柔和过渡（改过配色，见下）。
+   两色交界**缓缓横扫**（动 background-position，不改 transform），
+   加上中间那条竖着的分界一起流动，才看得出这是"流动的双色"。 */
+.vH--draw .vH-flow{inset:0;height:100%;
+  background:linear-gradient(104deg,#b08a3f5c 0 32%,#cfb28333 45% 55%,#6f8f9e5c 68% 100%);
+  background-size:165% 100%;
+  animation:vA-fade 1s .3s ease-out backwards, vH-sweep 7.5s ease-in-out infinite alternate}
+@keyframes vH-sweep{from{background-position:0% 50%}to{background-position:100% 50%}}
+.vH--draw .vH-flow::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;
+  background:linear-gradient(180deg,#b08a3f00,#cfb283cc,#6f8f9e00);
+  animation:vH-seam 3.4s ease-in-out infinite}
+@keyframes vH-seam{0%,100%{opacity:.35;transform:translateY(-7%) scaleY(.94)}50%{opacity:.85;transform:translateY(7%) scaleY(1.06)}}
+
+/* D 的光环（摆在卡外，卡后） */
+.vH-halo{position:absolute;left:50%;top:50%;width:132px;height:132px;margin:-66px 0 0 -66px;border-radius:50%;pointer-events:none}
+.vH-halo i{position:absolute;inset:0;border-radius:50%;border:2px solid transparent}
+.vH--won .vH-halo i{border-color:#e8b44a9e;animation:vD-ring 2s ease-out infinite}
+.vH--won .vH-halo i:nth-child(2){animation-delay:.85s}
+.vH--won .vH-halo i:nth-child(3){animation-delay:1.7s}
+.vH--lost .vH-halo i{border-color:#8fa3b46e;animation:vD-in 1.3s ease-in forwards}
+.vH--lost .vH-halo i:nth-child(2){animation-delay:.2s}
+.vH--lost .vH-halo i:nth-child(3){animation-delay:.4s}
+.vH--draw .vH-halo i{border-color:#b08a3f7a;animation:vD-breathe 2.9s ease-in-out infinite}
+.vH--draw .vH-halo i:nth-child(2){animation-delay:1.25s}
+.vH--draw .vH-halo i:nth-child(3){animation-delay:2.5s}
+/* 负局：四周收暗（视野收窄），落在卡外一圈，不压住文字 */
+.vH-vignette{position:absolute;inset:-28px;border-radius:36px;pointer-events:none;opacity:0}
+.vH--lost .vH-vignette{background:radial-gradient(circle at 50% 46%,transparent 38%,#05070a99 82%);
+  animation:vA-fade 1.1s .34s ease-out backwards;opacity:1}
+/* 胜局：卡自带一层暖辉（D 的胜局特征） */
+.vH--won .vA-card{box-shadow:0 28px 64px #00000073, 0 0 56px #e8b44a3a,
+  inset 0 1px 0 #ffffffef, inset 0 0 60px #b9a88818}
+
+/* ══ B · 裂（金缮 / 裂玉 / 冰裂）═════════════════════════════════════
+   胜：金缮——裂纹里流出金线，越裂越亮（修复之美）
+   负：裂玉——卡片从中间裂开、两半分离倾斜，冷白裂口
+   和：冰裂——细密均匀的裂纹，不偏不倚 */
+.vB{position:relative;z-index:2;width:min(346px,94%)}
+.vB-card{position:relative;padding:22px 20px 16px;border-radius:20px;
+  background:linear-gradient(154deg,#fbf8f0ee,#ebe3d1de);backdrop-filter:blur(16px);
+  border:1px solid #ffffffb0;box-shadow:0 26px 60px #00000070, inset 0 1px 0 #ffffffef;
+  animation:vB-in .5s cubic-bezier(.2,.82,.24,1) backwards;transform-style:preserve-3d}
+@keyframes vB-in{from{opacity:0;transform:translateY(18px) scale(.95)}}
+/* 裂纹压在**内容之下**（z-index:0）：题诗与数字浮在它上面，才不会被裂缝糊住。
+   z-index 只在定位元素上生效，所以卡片内的内容块都加了 position:relative + z-index:1。 */
+.vB-crack{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:0}
+.vB-crack path{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.vB--won .vB-crack path{stroke:#d9a63c;stroke-width:1.7;filter:drop-shadow(0 0 5px #e8b44a88);
+  stroke-dasharray:var(--len,240);stroke-dashoffset:var(--len,240);animation:vB-draw 1.05s cubic-bezier(.3,.7,.3,1) forwards;animation-delay:calc(.42s + var(--k,0) * .13s)}
+@keyframes vB-draw{to{stroke-dashoffset:0}}
+.vB--draw .vB-crack path{stroke:#6b7f74;stroke-width:1.1;opacity:.55;
+  stroke-dasharray:var(--len,240);stroke-dashoffset:var(--len,240);animation:vB-draw .9s ease-out forwards;animation-delay:calc(.3s + var(--k,0) * .07s)}
+/* 负局：整张卡从中间裂开——用两个半片各自位移 */
+/* 负局裂开：中缝一道亮线（裂口） + 两半各自微微外移错位 + 缝里透出的冷光 */
+.vB-split{position:absolute;inset:0;pointer-events:none;z-index:2}
+.vB-split i{position:absolute;top:7%;bottom:7%;left:50%;width:1.4px;margin-left:-.7px;opacity:0;
+  background:linear-gradient(180deg,transparent,#c9d8e4b8 18%,#eef4f9c9 50%,#c9d8e4a8 82%,transparent);
+  box-shadow:0 0 6px #cfe0ee8c}
+.vB--lost .vB-split i{animation:vB-seam .9s .34s ease-out forwards}
+@keyframes vB-seam{0%{opacity:0;transform:scaleY(.1)}45%{opacity:.9}100%{opacity:.55;transform:scaleY(1)}}
+/* 中缝只在中间一小段发亮（贯穿整卡会像刀疤），两端淡出 */
+.vB--lost .vB-card::after{content:"";position:absolute;top:16%;bottom:16%;left:50%;width:24px;margin-left:-12px;
+  pointer-events:none;border-radius:12px;opacity:0;
+  background:linear-gradient(90deg,transparent,#ffffff40 50%,transparent);
+  animation:vA-fade .8s .34s ease-out backwards;z-index:1}
+.vB--lost .vB-card{animation:vB-break 1.15s .3s cubic-bezier(.2,.9,.3,1) backwards}
+@keyframes vB-break{0%{opacity:0;transform:translateY(16px) scale(.97)}35%{opacity:1;transform:translateY(0) scale(1.015)}55%{transform:translate(0,0) scale(1)}70%{transform:translate(-3px,1px) rotate(-.5deg)}100%{transform:translate(0,0) rotate(0)}}
+.vB--lost .vB-crack path{stroke:#8fa3b4;stroke-width:1.5;opacity:.85;
+  stroke-dasharray:var(--len,240);stroke-dashoffset:var(--len,240);animation:vB-draw .5s cubic-bezier(.5,.1,.9,.4) forwards;animation-delay:calc(.34s + var(--k,0) * .05s)}
+.vB-card>*:not(.vB-crack):not(.vB-split){position:relative;z-index:1}
+.vB-stampwrap{display:flex;justify-content:center;margin-bottom:12px}
+.vB-stamp{width:58px;height:58px;display:grid;place-items:center;border-radius:15px;color:#fff4e2;font:800 27px/1 "Songti SC",serif;
+  box-shadow:0 14px 30px #00000054, inset 0 0 0 3px #ffffff2e;animation:vA-stamp .55s .2s cubic-bezier(.2,.9,.3,1.25) backwards}
+.vB--won .vB-stamp{background:linear-gradient(158deg,#cf4534,#94271c)}
+.vB--lost .vB-stamp{background:linear-gradient(158deg,#63707d,#414b56)}
+.vB--draw .vB-stamp{background:linear-gradient(112deg,#c04234 0 49.6%,#a8873f 50.4% 100%)}
+.vB-poem{display:block;text-align:center;font:700 19.5px/1.55 "Songti SC",serif;color:var(--paperink);letter-spacing:.07em;
+  animation:vA-fade .5s .3s ease-out backwards}
+.vB-sub{display:block;text-align:center;margin-top:7px;font-size:11.5px;color:#6d6555;animation:vA-fade .5s .42s ease-out backwards}
+.vB .pp-stats>div{animation:vA-fade .45s ease-out backwards}
+.vB .pp-stats>div:nth-child(1){animation-delay:.48s}
+.vB .pp-stats>div:nth-child(2){animation-delay:.56s}
+.vB .pp-stats>div:nth-child(3){animation-delay:.64s}
+.vB .pp-actions{animation:vA-fade .45s .74s ease-out backwards}
+.vB--won .pp-actions button.primary{background:linear-gradient(158deg,#cf4534,#94271c)}
+.vB--lost .pp-actions button.primary{background:linear-gradient(158deg,#63707d,#414b56)}
+.vB--draw .pp-actions button.primary{background:linear-gradient(112deg,#c04234 0 49.6%,#a8873f 50.4% 100%)}
+/* 负局裂口处飘出的细尘 */
+.vB-ash{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.vB-ash i{position:absolute;top:50%;left:50%;width:3px;height:3px;border-radius:50%;background:#9fb2c2;opacity:0}
+.vB--lost .vB-ash i{animation:vB-ash 2.6s ease-out infinite}
+.vB--lost .vB-ash i:nth-child(1){animation-delay:.6s;--dx:-40px;--dy:-26px}
+.vB--lost .vB-ash i:nth-child(2){animation-delay:1.2s;--dx:34px;--dy:-34px}
+.vB--lost .vB-ash i:nth-child(3){animation-delay:1.8s;--dx:-18px;--dy:30px}
+@keyframes vB-ash{0%{opacity:0;transform:translate(0,0) scale(.7)}20%{opacity:.7}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3)}}
+
+/* ══ C · 流（墨流：金升 / 墨降 / 双色对分）═════════════════════════════ */
+.vC{position:relative;z-index:2;width:min(342px,94%)}
+.vC-card{position:relative;overflow:hidden;padding:24px 20px 16px;border-radius:22px;
+  background:linear-gradient(154deg,#fbf8f0f2,#ece4d2e2);backdrop-filter:blur(16px);
+  border:1px solid #ffffffb8;box-shadow:0 26px 60px #00000073, inset 0 1px 0 #ffffffef;
+  animation:vA-rise .55s cubic-bezier(.2,.82,.24,1) backwards}
+.vC-flow{position:absolute;left:0;right:0;height:120%;pointer-events:none}
+.vC--won .vC-flow{bottom:-2px;background:linear-gradient(180deg,#e8b44a00,#e8b44a55 45%,#d69a2e8c);
+  clip-path:path("M0,120 C60,86 120,132 190,104 C250,80 300,116 342,92 L342,400 L0,400 Z");
+  animation:vC-rise 1.5s .35s cubic-bezier(.25,.8,.3,1) backwards;transform-origin:bottom}
+@keyframes vC-rise{from{transform:translateY(60%) scaleY(.5);opacity:.2}}
+.vC--lost .vC-flow{top:-2px;background:linear-gradient(180deg,#3b4a578c,#5a687500 62%);
+  clip-path:path("M0,0 L342,0 L342,120 C290,146 240,104 180,132 C120,160 60,120 0,142 Z");
+  animation:vC-fall 1.5s .35s cubic-bezier(.25,.8,.3,1) backwards;transform-origin:top}
+@keyframes vC-fall{from{transform:translateY(-60%) scaleY(.5);opacity:.2}}
+.vC--draw .vC-flow{inset:0;height:100%;background:linear-gradient(90deg,#2f3a4499 0 49.5%,#e8b44a66 50.5% 100%);
+  clip-path:path("M0,0 L171,0 C150,60 190,120 168,180 C150,240 186,300 171,400 L0,400 Z");
+  animation:vA-fade 1s .3s ease-out backwards}
+.vC-head{position:relative;text-align:center}
+.vC-stamp{width:56px;height:56px;margin:0 auto 11px;display:grid;place-items:center;border-radius:15px;color:#fff4e2;font:800 26px/1 "Songti SC",serif;
+  box-shadow:0 14px 30px #00000054, inset 0 0 0 3px #ffffff2e;animation:vA-stamp .55s .3s cubic-bezier(.2,.9,.3,1.25) backwards}
+.vC--won .vC-stamp{background:linear-gradient(158deg,#cf4534,#94271c)}
+.vC--lost .vC-stamp{background:linear-gradient(158deg,#63707d,#414b56)}
+.vC--draw .vC-stamp{background:linear-gradient(112deg,#c04234 0 49.6%,#a8873f 50.4% 100%)}
+.vC-poem{display:block;font:700 19.5px/1.55 "Songti SC",serif;color:var(--paperink);letter-spacing:.07em;animation:vA-fade .5s .42s ease-out backwards}
+.vC-sub{display:block;margin-top:7px;font-size:11.5px;color:#6d6555;animation:vA-fade .5s .52s ease-out backwards}
+.vC-body{position:relative}
+.vC .pp-stats>div{animation:vA-fade .45s ease-out backwards;background:#ffffffa6}
+.vC .pp-stats>div:nth-child(1){animation-delay:.58s}
+.vC .pp-stats>div:nth-child(2){animation-delay:.66s}
+.vC .pp-stats>div:nth-child(3){animation-delay:.74s}
+.vC .pp-actions{animation:vA-fade .45s .84s ease-out backwards}
+.vC .pp-actions button{background:#ffffffcc}
+.vC--won .pp-actions button.primary{background:linear-gradient(158deg,#cf4534,#94271c)}
+.vC--lost .pp-actions button.primary{background:linear-gradient(158deg,#63707d,#414b56)}
+.vC--draw .pp-actions button.primary{background:linear-gradient(112deg,#c04234 0 49.6%,#a8873f 50.4% 100%)}
+
+/* ══ D · 光（光环 / 收暗 / 平稳呼吸）═════════════════════════════════ */
+.vD{position:relative;z-index:2;width:min(340px,94%);display:grid;place-items:center}
+.vD-halo{position:absolute;left:50%;top:50%;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;pointer-events:none}
+.vD-halo i{position:absolute;inset:0;border-radius:50%;border:2px solid transparent}
+.vD--won .vD-halo i{border-color:#e8b44a9e;animation:vD-ring 2.6s ease-out infinite}
+.vD--won .vD-halo i:nth-child(2){animation-delay:.85s}
+.vD--won .vD-halo i:nth-child(3){animation-delay:1.7s}
+@keyframes vD-ring{0%{transform:scale(.42);opacity:.95}100%{transform:scale(3.4);opacity:0}}
+.vD--lost .vD-halo i{border-color:#8fa3b46e;animation:vD-in 1.5s ease-in forwards}
+.vD--lost .vD-halo i:nth-child(2){animation-delay:.18s}
+.vD--lost .vD-halo i:nth-child(3){animation-delay:.36s}
+@keyframes vD-in{0%{transform:scale(3.2);opacity:.75}100%{transform:scale(.5);opacity:0}}
+.vD--draw .vD-halo i{border-color:#a8873f78;animation:vD-breathe 3.6s ease-in-out infinite}
+.vD--draw .vD-halo i:nth-child(2){animation-delay:1.2s}
+.vD--draw .vD-halo i:nth-child(3){animation-delay:2.4s}
+@keyframes vD-breathe{0%,100%{transform:scale(1.1);opacity:.18}50%{transform:scale(1.9);opacity:.5}}
+.vD-card{position:relative;width:100%;padding:22px 20px 16px;border-radius:22px;text-align:center;
+  background:linear-gradient(154deg,#fbf8f0f0,#ece4d2e0);backdrop-filter:blur(16px);
+  border:1px solid #ffffffb8;box-shadow:0 26px 60px #00000073, inset 0 1px 0 #ffffffef;
+  animation:vA-rise .5s cubic-bezier(.2,.82,.24,1) backwards}
+.vD--won .vD-card{box-shadow:0 26px 60px #00000073, 0 0 60px #e8b44a3d, inset 0 1px 0 #ffffffef}
+.vD--lost .vD-card{box-shadow:0 22px 50px #00000080, inset 0 1px 0 #ffffffc9;filter:saturate(.82)}
+.vD-stamp{width:58px;height:58px;margin:0 auto 12px;display:grid;place-items:center;border-radius:15px;color:#fff4e2;font:800 27px/1 "Songti SC",serif;
+  box-shadow:0 14px 30px #00000054, inset 0 0 0 3px #ffffff2e;animation:vA-stamp .55s .22s cubic-bezier(.2,.9,.3,1.25) backwards}
+.vD--won .vD-stamp{background:linear-gradient(158deg,#cf4534,#94271c)}
+.vD--lost .vD-stamp{background:linear-gradient(158deg,#63707d,#414b56)}
+.vD--draw .vD-stamp{background:linear-gradient(112deg,#c04234 0 49.6%,#a8873f 50.4% 100%)}
+.vD-poem{display:block;font:700 19.5px/1.55 "Songti SC",serif;color:var(--paperink);letter-spacing:.07em;animation:vA-fade .5s .34s ease-out backwards}
+.vD-sub{display:block;margin-top:7px;font-size:11.5px;color:#6d6555;animation:vA-fade .5s .44s ease-out backwards}
+.vD .pp-stats>div{animation:vA-fade .45s ease-out backwards}
+.vD .pp-stats>div:nth-child(1){animation-delay:.5s}
+.vD .pp-stats>div:nth-child(2){animation-delay:.58s}
+.vD .pp-stats>div:nth-child(3){animation-delay:.66s}
+.vD .pp-actions{animation:vA-fade .45s .76s ease-out backwards}
+.vD--won .pp-actions button.primary{background:linear-gradient(158deg,#cf4534,#94271c)}
+.vD--lost .pp-actions button.primary{background:linear-gradient(158deg,#63707d,#414b56)}
+.vD--draw .pp-actions button.primary{background:linear-gradient(112deg,#c04234 0 49.6%,#a8873f 50.4% 100%)}
+.vD-vignette{position:absolute;inset:0;pointer-events:none;opacity:0}
+.vD--lost .vD-vignette{background:radial-gradient(circle at 50% 45%,transparent 34%,#05070aa8 78%);animation:vA-fade 1.1s .3s ease-out backwards;opacity:1}
+
+/* ══ E · 子（五子归位 / 对手五子 / 黑白相间）═══════════════════════════ */
+.vE{position:relative;z-index:2;width:min(344px,94%)}
+.vE-line{display:flex;justify-content:center;gap:9px;margin-bottom:14px;height:38px}
+.vE-line i{position:relative;width:36px;height:36px;border-radius:50%;box-shadow:0 10px 22px #00000070, inset 0 2px 4px #ffffff2e;
+  opacity:0;animation:vE-fly .5s cubic-bezier(.18,.86,.28,1.15) forwards;animation-delay:calc(.24s + var(--i) * 105ms)}
+@keyframes vE-fly{0%{opacity:0;transform:translateY(-46px) scale(1.45) rotate(-14deg)}100%{opacity:1;transform:none}}
+.vE--won .vE-line i{background:radial-gradient(circle at 34% 28%,#5f5f5f,#121212 74%)}
+.vE--lost .vE-line i{background:radial-gradient(circle at 34% 28%,#ffffff,#d9d2c3 74%);box-shadow:0 10px 22px #0000005c, inset 0 2px 4px #ffffffb8}
+.vE--draw .vE-line i:nth-child(odd){background:radial-gradient(circle at 34% 28%,#5f5f5f,#121212 74%)}
+.vE--draw .vE-line i:nth-child(even){background:radial-gradient(circle at 34% 28%,#ffffff,#d9d2c3 74%);box-shadow:0 10px 22px #0000005c, inset 0 2px 4px #ffffffb8}
+/* 落定后的一圈回响 */
+.vE-line i::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid #e8b44a99;opacity:0;
+  animation:vA-splash .75s ease-out forwards;animation-delay:calc(.68s + var(--i) * 105ms)}
+.vE--lost .vE-line i::after{border-color:#8fa3b499}
+.vE--draw .vE-line i::after{border-color:#a8873f99}
+.vE-card{position:relative;padding:20px;border-radius:22px;text-align:center;
+  background:linear-gradient(154deg,#fbf8f0f0,#ece4d2e0);backdrop-filter:blur(16px);
+  border:1px solid #ffffffb8;box-shadow:0 26px 60px #00000073, inset 0 1px 0 #ffffffef;
+  animation:vA-fade .5s .74s ease-out backwards}
+.vE-poem{display:block;font:700 19.5px/1.55 "Songti SC",serif;color:var(--paperink);letter-spacing:.07em}
+.vE-sub{display:block;margin-top:7px;font-size:11.5px;color:#6d6555}
+.vE .pp-stats>div{animation:vA-fade .4s ease-out backwards}
+.vE .pp-stats>div:nth-child(1){animation-delay:.84s}
+.vE .pp-stats>div:nth-child(2){animation-delay:.9s}
+.vE .pp-stats>div:nth-child(3){animation-delay:.96s}
+.vE .pp-actions{animation:vA-fade .4s 1.04s ease-out backwards}
+.vE--won .pp-actions button.primary{background:linear-gradient(158deg,#cf4534,#94271c)}
+.vE--lost .pp-actions button.primary{background:linear-gradient(158deg,#63707d,#414b56)}
+.vE--draw .pp-actions button.primary{background:linear-gradient(112deg,#c04234 0 49.6%,#a8873f 50.4% 100%)}
+
+/* ══ F · 玉（暖玉 / 冷玉缺口 / 双色玉）════════════════════════════════ */
+.vF{position:relative;z-index:2;width:min(342px,94%)}
+.vF-card{position:relative;padding:24px 20px 16px;text-align:center;
+  border-radius:24px;backdrop-filter:blur(18px) saturate(1.15);
+  box-shadow:0 28px 64px #00000078, inset 0 1px 0 #ffffffd9;
+  animation:vA-rise .55s cubic-bezier(.2,.82,.24,1) backwards;overflow:hidden}
+.vF--won .vF-card{background:linear-gradient(154deg,#fdf6e6f5,#f0dfb8e8);border:1px solid #f3e2b6}
+.vF--lost .vF-card{background:linear-gradient(154deg,#eef2f5f2,#dbe3e9e6);border:1px solid #e2e9ee;
+  clip-path:polygon(0 0,12% 2%,26% 0,41% 2.4%,58% 0,73% 2.2%,88% 0,100% 2%,100% 100%,86% 98%,70% 100%,55% 97.6%,39% 100%,24% 97.8%,10% 100%,0 98%)}
+.vF--draw .vF-card{background:linear-gradient(112deg,#fdf6e6f2 0 49.6%,#eef2f5f0 50.4% 100%);border:1px solid #e8e2d2}
+/* 玉的丝光：一道缓慢扫过的柔光（胜局最强） */
+.vF-sheen{position:absolute;inset:-40% -60%;pointer-events:none;
+  background:linear-gradient(104deg,transparent 38%,#ffffff8c 48%,#ffffff26 54%,transparent 64%);
+  animation:vF-sheen 3.4s cubic-bezier(.4,0,.5,1) infinite;opacity:.5}
+.vF--lost .vF-sheen{animation-duration:6.5s;opacity:.22}
+.vF--draw .vF-sheen{animation-duration:4.6s;opacity:.34}
+@keyframes vF-sheen{0%{transform:translateX(-62%)}100%{transform:translateX(62%)}}
+.vF-stamp{position:relative;width:58px;height:58px;margin:0 auto 12px;display:grid;place-items:center;border-radius:15px;color:#fff4e2;font:800 27px/1 "Songti SC",serif;
+  box-shadow:0 14px 30px #0000004a, inset 0 0 0 3px #ffffff30;animation:vA-stamp .55s .22s cubic-bezier(.2,.9,.3,1.25) backwards}
+.vF--won .vF-stamp{background:linear-gradient(158deg,#cf4534,#94271c)}
+.vF--lost .vF-stamp{background:linear-gradient(158deg,#63707d,#414b56)}
+.vF--draw .vF-stamp{background:linear-gradient(112deg,#c04234 0 49.6%,#a8873f 50.4% 100%)}
+.vF-poem{position:relative;display:block;font:700 19.5px/1.55 "Songti SC",serif;color:var(--paperink);letter-spacing:.07em;animation:vA-fade .5s .34s ease-out backwards}
+.vF-sub{position:relative;display:block;margin-top:7px;font-size:11.5px;color:#6d6555;animation:vA-fade .5s .44s ease-out backwards}
+.vF .pp-stats>div{position:relative;animation:vA-fade .45s ease-out backwards;background:#ffffff8c}
+.vF .pp-stats>div:nth-child(1){animation-delay:.5s}
+.vF .pp-stats>div:nth-child(2){animation-delay:.58s}
+.vF .pp-stats>div:nth-child(3){animation-delay:.66s}
+.vF .pp-actions{position:relative;animation:vA-fade .45s .76s ease-out backwards}
+.vF--won .pp-actions button.primary{background:linear-gradient(158deg,#cf4534,#94271c)}
+.vF--lost .pp-actions button.primary{background:linear-gradient(158deg,#63707d,#414b56)}
+.vF--draw .pp-actions button.primary{background:linear-gradient(112deg,#c04234 0 49.6%,#a8873f 50.4% 100%)}
+/* 暖玉的飘雪式金屑 */
+.vF-spark{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.vF-spark i{position:absolute;width:5px;height:5px;border-radius:50%;background:radial-gradient(circle,#fff3cf,#dfa93a);
+  opacity:0;animation:vF-spark 3.4s ease-in-out infinite}
+.vF-spark i:nth-child(1){left:14%;top:18%;animation-delay:.4s}
+.vF-spark i:nth-child(2){left:76%;top:26%;width:4px;height:4px;animation-delay:1.3s}
+.vF-spark i:nth-child(3){left:34%;top:74%;animation-delay:2.2s}
+.vF-spark i:nth-child(4){left:88%;top:66%;width:3px;height:3px;animation-delay:2.9s}
+@keyframes vF-spark{0%,100%{opacity:0;transform:translateY(0) scale(.6)}40%{opacity:.9;transform:translateY(-16px) scale(1.15)}}
+
+/* ── ★ 选定版的负局：冷玉底 + 缺口边缘 + 丝光 ────────────────────────────
+   缺口用 clip-path 切上下边缘（0/2%/2.4% 的轻微起伏），四角斜切一点像玉片。
+   ⚠ 用了 clip-path 就不能让印章压出卡片上沿——超出部分会被裁掉，
+     所以负局把印章收进卡内（见 .vG--lost .vA-stampwrap）。 */
+.vG--lost .vA-card{
+  background:linear-gradient(154deg,#eef2f5f4,#dbe3e9ea);
+  border-color:#e2e9ee;
+  clip-path:polygon(3% 0,12% 2%,26% 0,41% 2.4%,58% 0,73% 2.2%,88% 0,97% 2%,100% 6%,
+                    100% 94%,97% 98%,86% 98%,70% 100%,55% 97.6%,39% 100%,24% 97.8%,10% 100%,3% 98%,0 94%,0 6%);
+  box-shadow:0 22px 50px #00000080, inset 0 1px 0 #ffffffd9;
+}
+/* 印章**完全收进卡内**（负局专属）：clip-path 会把超出卡片的部分裁掉，
+   所以负局不能沿用「印章压出上沿」的摆法——收进来也顺带成了「输了就收起来」的意思。 */
+.vG--lost .vA-card{margin-top:0;padding-top:18px}
+.vG--lost .vA-stampwrap{margin:0 0 13px}
+/* 冷玉上**不要**那两道墨痕装饰：白底上它们不像墨迹，像划痕（截图里就是两根脏线）。 */
+.vG--lost .vA-card::before,.vG--lost .vA-card::after{display:none}
+/* 缺口要真的看得见：底部那几个数据格会把下边缘盖住，所以负局把卡片的下内边距加大、
+   并让数据格与按钮整体上移一点，把切出来的缺口露出来。 */
+.vG--lost .vA-card{padding-bottom:26px}
+.vG--lost .vA-card>.pp-actions{margin-bottom:2px}
+/* 丝光：冷玉上一道很慢很淡的光扫过（比胜局弱得多） */
+.vG-sheen{position:absolute;inset:-40% -60%;pointer-events:none;border-radius:22px;
+  background:linear-gradient(104deg,transparent 38%,#ffffff78 48%,#ffffff1c 54%,transparent 64%);
+  animation:vF-sheen 6.5s cubic-bezier(.4,0,.5,1) infinite;opacity:.22}
+/* 冷玉底上的文字保持原墨色（对比度够），只把数据格调冷一点 */
+.vG--lost .pp-stats>div{background:#ffffff6e;border-color:#00000010}
+
+</style>
+</head><body>
+<header class="lab">
+  <h1>终局弹窗 · 定稿（印 × 流 × 光）</h1>
+  <p>结构用 A（印压轴：印在卡顶正中、逐字题诗、墨线、数据格）；**底色用 C 的色流**
+  ——胜局金色从底部漫上来、负局墨色从顶部压下来、和局赭金↔青玉柔过渡，**波浪边持续流动**；
+  **进场用 D 的三圈光环**——胜外扩、负内收、和呼吸，负局另加四周收暗。**负局不做淌墨**。
+  切「胜 / 负 / 和」看三种结局，点「重播」重看入场 —— 文案每次随机取一句。</p>
+  <div class="legend">
+    <span><i style="background:#c0392b"></i><b>胜</b> 朱红印 + 金粉升腾 + 金流上涌 + 光环外扩</span>
+    <span><i style="background:#5a6875"></i><b>负</b> 灰印 + 墨流下压 + 光环内收 + 四周收暗（无淌墨）</span>
+    <span><i style="background:#b08a3f"></i><b>和</b> 双色印 + 赭金↔青玉柔过渡 + 缓慢呼吸</span>
+  </div>
+</header>
+<div class="grid" id="grid"></div>
+<script>
+/* ══ 共用：棋盘底 + 卡片装配 ══════════════════════════════════════════ */
+const SIZE = 15;
+function paintBoard(canvas, line) {
+  const size = 306, dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = size * dpr; canvas.height = size * dpr;
+  canvas.style.width = size + "px"; canvas.style.height = size + "px";
+  const ctx = canvas.getContext("2d"); ctx.scale(dpr, dpr);
+  const pad = size * 0.055, cell = (size - pad * 2) / (SIZE - 1);
+  const g = ctx.createLinearGradient(0, 0, size, size);
+  g.addColorStop(0, "#e2bd85"); g.addColorStop(1, "#c99b5c");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+  ctx.strokeStyle = "rgba(66,48,26,.48)"; ctx.lineWidth = 1;
+  for (let i = 0; i < SIZE; i += 1) { const p = pad + i * cell;
+    ctx.beginPath(); ctx.moveTo(pad, p); ctx.lineTo(size - pad, p); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p, pad); ctx.lineTo(p, size - pad); ctx.stroke(); }
+  const put = (r, c, player) => {
+    const x = pad + c * cell, y = pad + r * cell, rad = cell * 0.44;
+    ctx.beginPath(); ctx.arc(x, y + rad * 0.12, rad, 0, Math.PI * 2); ctx.fillStyle = "rgba(0,0,0,.2)"; ctx.fill();
+    const rg = ctx.createRadialGradient(x - rad * .34, y - rad * .38, rad * .12, x, y, rad);
+    if (player === "b") { rg.addColorStop(0, "#5d5d5d"); rg.addColorStop(.55, "#232323"); rg.addColorStop(1, "#0c0c0c"); }
+    else { rg.addColorStop(0, "#ffffff"); rg.addColorStop(.6, "#f4f1e8"); rg.addColorStop(1, "#d8d2c4"); }
+    ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fillStyle = rg; ctx.fill();
+  };
+  const blacks = [[7,7],[7,8],[7,9],[7,10],[7,11],[6,7],[8,9],[5,8]];
+  const whites = [[6,8],[8,8],[6,9],[8,10],[6,10],[9,9],[5,9],[7,6]];
+  whites.forEach(([r,c]) => put(r,c,"w")); blacks.forEach(([r,c]) => put(r,c,"b"));
+  if (line) { ctx.save(); ctx.strokeStyle = "#caa24c"; ctx.globalAlpha = .82; ctx.lineWidth = cell * 0.15; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(pad + 7 * cell, pad + 7 * cell); ctx.lineTo(pad + 11 * cell, pad + 7 * cell); ctx.stroke(); ctx.restore(); }
+}
+/* 文案：每种结局 3 句，随机取，不重复看腻 */
+/* 文案池：每次渲染（切结局 / 点重播）随机取一句 —— 故意的，不是"确定性随机"那条规矩的例外。
+   那条规矩管的是棋盘/棋子的 SVG 形状（同一局面必须每次画得一样）；
+   这里是文案，**每次换一句才是想要的**。池子按用户要求扩到每态 8 句，
+   格式也放开：七言、对句、白话短句都收，只要调子统一（不照抄五林那套）。 */
+const COPY = {
+  won: [
+    { poem: "一子落定乾坤朗", sub: "五连既成，此局归你" },
+    { poem: "五连如虹贯中天", sub: "好棋——这一局从头到尾都在你手里" },
+    { poem: "落子成局定山河", sub: "赢在第七手那步扳，之后一路顺" },
+    { poem: "连珠落定势已成", sub: "五子相连，收得干净" },
+    { poem: "半目不让成五连", sub: "该抢的点一个没漏" },
+    { poem: "手筋既出局已定", sub: "那步先手很关键，之后没再给机会" },
+    { poem: "五子成行如落款", sub: "一局终了，收势漂亮" },
+    { poem: "算尽机关终得手", sub: "中盘那步转主动，之后一直压着" },
+  ],
+  lost: [
+    { poem: "胜负兵家常有事", sub: "此局暂负，再战可期" },
+    { poem: "一着之差天地远", sub: "复盘一遍，下局赢回来" },
+    { poem: "棋差半子未为输", sub: "记下这一手，下次避开" },
+    { poem: "五连成处悔已迟", sub: "早三步就该补那一手" },
+    { poem: "算漏一着满盘输", sub: "这盘输在细节，不在局面" },
+    { poem: "势去难回莫强争", sub: "中盘那步缓手是转折" },
+    { poem: "此局欠君一招棋", sub: "换个下法，未必是这个结果" },
+    { poem: "输赢未足挂心怀", sub: "记谱继续，长棋才是本意" },
+  ],
+  draw: [
+    { poem: "势均力敌两相持", sub: "平分秋色，各留一手" },
+    { poem: "黑白相持未有期", sub: "谁也奈何不了谁" },
+    { poem: "一局未分高下", sub: "棋逢对手，值得再战" },
+    { poem: "满盘皆子未成行", sub: "下到棋盘见底，仍是平手" },
+    { poem: "我攻你守两不让", sub: "谁也没多占一格" },
+    { poem: "棋到中盘势均分", sub: "各有胜机，各未成局" },
+    { poem: "平分秋色各一方", sub: "这局算握手言和" },
+    { poem: "五连难成两不亏", sub: "都不肯让，也都没能赢" },
+  ],
+};
+const TAG = { won: "胜", lost: "负", draw: "和" };
+const META = { won: { moves: 47, mine: "12:04", theirs: "10:31" }, lost: { moves: 38, mine: "8:12", theirs: "9:40" }, draw: { moves: 62, mine: "15:20", theirs: "15:22" } };
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const ACTIONS = (outcome) => `<div class="pp-actions">${[["保存本局", "primary"], ["复盘这局"], ["再来一局"], ["完成"]]
+  .map(([text, kind]) => `<button class="${kind || ""}">${text}</button>`).join("")}</div>`;
+const statsBlock = (meta) => `<div class="pp-stats">
+  <div><small>共</small><b>${meta.moves}</b><small>手</small></div>
+  <div><small>我方</small><b>${meta.mine}</b></div>
+  <div><small>AI</small><b>${meta.theirs}</b></div></div>`;
+
+function buildCard({ index, title, desc, note, popup, selected }) {
+  const card = document.createElement("article");
+  card.className = "card";
+  // 「选定版」钩子：显式给 selected，不再靠 index ==="★" 判定 ——
+  // 现在有两张「选定」类卡片（本轮 A×C×D 与上一轮 印×冷玉），
+  // 按字面量认会两张都抢到钩子，负局底色就串了。
+  if (selected) card.dataset.variant = "selected";
+  card.innerHTML = `<header><span class="idx">${index}</span><div><h2>${title}</h2><p>${desc}</p></div></header>
+    <div class="stage"><div class="bwrap">
+      <div class="brow"><span>人机对局 · 无禁手</span><span>第 47 手 · 已结束</span></div>
+      <div class="bbar"><span class="pill on">初级 · 0.6s</span><span class="pill">rapfi</span><span class="pill">我方 5 分 + 30 秒读秒</span></div>
+      <div class="mini"></div>
+    </div><div class="layer"></div></div>
+    <div class="note">${note}</div>`;
+  const canvas = document.createElement("canvas");
+  card.querySelector(".mini").appendChild(canvas);
+  const layer = card.querySelector(".layer");
+  let outcome = "won";
+  const render = () => {
+    paintBoard(canvas, outcome === "won");
+    const copy = COPY[outcome][Math.floor(Math.random() * COPY[outcome].length)];
+    layer.innerHTML = "";
+    const host = document.createElement("div");
+    // vG--<outcome> 是「选定版」的钩子：负局换冷玉底、印章收进卡内都由它触发。
+    host.className = `pop vX--${outcome}${card.dataset.variant === "selected" ? ` vG--${outcome}` : ""}`;
+    layer.appendChild(host);
+    popup(outcome, host, META[outcome], copy, TAG[outcome]);
+  };
+  const bar = document.createElement("div"); bar.className = "tools";
+  bar.innerHTML = `<span>结局：</span>
+    <button data-o="won">胜</button><button data-o="lost">负</button><button data-o="draw">和</button>
+    <button data-replay>重播</button><span style="margin-left:auto">文案每次随机取一句</span>`;
+  bar.addEventListener("click", (event) => {
+    const o = event.target?.dataset?.o;
+    if (o) {
+      outcome = o;
+      [...bar.querySelectorAll("[data-o]")].forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.o === o)));
+      render(); return;
+    }
+    if (event.target?.hasAttribute?.("data-replay")) render();
+  });
+  card.appendChild(bar);
+  [...bar.querySelectorAll("[data-o]")].forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.o === "won")));
+  requestAnimationFrame(render);
+  return card;
+}
+
+const grid = document.getElementById("grid");
+
+/* ══ ★ 本轮选定：A × C × D ═════════════════════════════════════════════
+   印（A 的结构）＋ 色流（C 的底色，和棋配色改暖）＋ 光环（D 的进场）。
+   负局**不做淌墨**（A 的 .vA-drip 不生成）。 */
+grid.appendChild(buildCard({
+  index: "★", title: "选定 · 印 × 流 × 光（A 的印 + C 的底色 + D 的进场）",
+  desc: "结构照 A（印压轴：印在卡顶正中、逐字题诗、墨线、数据格）；**底色用 C 的色流**——胜局金色从底部漫上来、负局墨色从顶部压下来、和局双色柔和过渡；**进场用 D 的三圈光环**——胜局外扩、负局向内收拢、和局缓慢呼吸，负局另加四周收暗。**负局不做淌墨**：输的味道交给「墨流下压 + 光环内收 + 四周收暗」，比挂几滴墨干净。和棋配色已从 C 的「左深灰右赭金」改成 **赭金 ↔ 青玉的柔和过渡**——原来那半边深灰读起来像输。",
+  note: `<span><b>胜</b> 朱红印 + 金粉升腾 + 金流上涌 + 光环外扩</span><span><b>负</b> 灰印 + 墨流下压 + 光环内收 + 四周收暗（<b>无淌墨</b>）</span><span><b>和</b> 双色印 + 赭金↔青玉柔过渡 + 缓慢呼吸</span>`,
+  popup(outcome, host, meta, copy, tag) {
+    const chars = [...copy.poem].map((ch, i) => `<i style="--i:${i}">${esc(ch)}</i>`).join("");
+    host.innerHTML = `<div class="vA vA--${outcome} vH vH--${outcome}">
+      <div class="vH-vignette"></div>
+      <div class="vH-halo"><i></i><i></i><i></i></div>
+      <div class="vA-card">
+        <div class="vH-flowclip"><div class="vH-flow"></div></div>
+        ${outcome === "won" ? `<div class="vA-dust"><i></i><i></i><i></i><i></i><i></i><i></i></div>` : ""}
+        <div class="vA-stampwrap"><span class="vA-stamp">${tag}<i></i></span></div>
+        <b class="vA-poem">${chars}</b>
+        <span class="vA-stroke"></span>
+        <small class="vA-sub">${esc(copy.sub)}</small>
+        ${statsBlock(meta)}
+        ${ACTIONS(outcome)}
+      </div></div>`;
+  },
+}));
+
+/* ── 只显示选定版 ─────────────────────────────────────────────────────
+   用户 09-29：「就这一版了，其他的不用显示」。把下面的 ☆ 与 A–F 六套参考
+   和页脚一起关掉（代码都留着，把 SHOW_OTHERS 改回 true 就全套回来）。
+   关掉时给 #grid 打 solo 标记，让这唯一一张卡居中、别贴着左边。 */
+const SHOW_OTHERS = false;
+if (SHOW_OTHERS) {
+
+/* ☆ 上一轮的选定：A（印）为基础，**负局的卡片背景换成 F 的冷玉** ───────────
+   保留作对照。为什么那样合：A 的胜/负/和本来共用同一张宣纸玻璃卡，只换印章颜色与墨痕，
+   输了的那一屏跟赢了太像。F 的负局是青白冷玉 + 上下边缘细碎缺口 + 丝光转淡，
+   「凉了」的感觉一眼就有——所以取它当负局的底。
+   注意：卡片加了 clip-path 缺口后，印章不能再压出卡片上沿（会被裁掉），
+   负局时把印章收进卡内——正好也成了「输了就收起来」的意思。 */
+grid.appendChild(buildCard({
+  selected: true,
+  index: "☆", title: "上一轮选定 · 印 × 冷玉（A 的印 + F 的负局背景）",
+  desc: "以 A（印 · 压轴）为准：胜局朱红印 + 朱砂双圈飞溅 + 金粉升腾；和局对半双色印、平静无溅。**负局换成 F 的冷玉底**——青白玻璃、上下边缘细碎缺口、丝光转淡，再叠上 A 的青灰印与墨痕下淌，输的味道比宣纸底明确得多。",
+  note: `<span><b>胜</b> 朱红印 + 金粉升腾</span><span><b>负</b> 冷玉底 + 缺口边缘 + 灰印收进卡内 + 墨痕下淌</span><span><b>和</b> 对半双色印</span>`,
+  popup(outcome, host, meta, copy, tag) {
+    const chars = [...copy.poem].map((ch, i) => `<i style="--i:${i}">${esc(ch)}</i>`).join("");
+    host.innerHTML = `<div class="vA vA--${outcome} vG--${outcome}">
+      ${outcome === "won" ? `<div class="vA-dust"><i></i><i></i><i></i><i></i><i></i><i></i></div>` : ""}
+      <div class="vA-card">
+        ${outcome === "lost" ? `<div class="vG-sheen"></div><div class="vA-drip"><i></i><i></i><i></i></div>` : ""}
+        <div class="vA-stampwrap"><span class="vA-stamp">${tag}<i></i></span></div>
+        <b class="vA-poem">${chars}</b>
+        <span class="vA-stroke"></span>
+        <small class="vA-sub">${esc(copy.sub)}</small>
+        ${statsBlock(meta)}
+        ${ACTIONS(outcome)}
+      </div></div>`;
+  },
+}));
+
+/* ══ A · 印 ═══════════════════════════════════════════════════════════ */
+grid.appendChild(buildCard({
+  index: "A", title: "印 · 压轴（胜：金粉升腾 / 负：墨痕下淌 / 和：对半双色）",
+  desc: "朱红大印压在卡片顶部正中。胜局印下有朱砂飞溅、卡内金粉缓缓升腾；负局换成青灰印、墨痕从上沿淌下、整卡下沉半格；和局是一枚对半双色的印，平静无溅。",
+  note: `<span><b>胜</b> 印压 + 朱砂飞溅 + 金粉升腾</span><span><b>负</b> 灰印 + 墨痕下淌 + 卡片下沉</span><span><b>和</b> 双色印 + 平静</span>`,
+  popup(outcome, host, meta, copy, tag) {
+    const chars = [...copy.poem].map((ch, i) => `<i style="--i:${i}">${esc(ch)}</i>`).join("");
+    host.innerHTML = `<div class="vA vA--${outcome}">
+      ${outcome === "won" ? `<div class="vA-dust"><i></i><i></i><i></i><i></i><i></i><i></i></div>` : ""}
+      <div class="vA-card">
+        ${outcome === "lost" ? `<div class="vA-drip"><i></i><i></i><i></i></div>` : ""}
+        <div class="vA-stampwrap"><span class="vA-stamp">${tag}<i></i></span></div>
+        <b class="vA-poem">${chars}</b>
+        <span class="vA-stroke"></span>
+        <small class="vA-sub">${esc(copy.sub)}</small>
+        ${statsBlock(meta)}
+        ${ACTIONS(outcome)}
+      </div></div>`;
+  },
+}));
+
+/* ══ B · 裂 ═══════════════════════════════════════════════════════════ */
+const CRACKS = [
+  { d: "M171 0 L166 34 L178 62 L164 92 L172 118 L158 146", len: 210, k: 0 },
+  { d: "M172 118 L140 128 L118 116 L94 134 L72 126 L48 148", len: 200, k: 1 },
+  { d: "M172 118 L200 130 L222 118 L248 136 L272 128 L298 150", len: 200, k: 1 },
+  { d: "M158 146 L166 176 L152 200 L160 228 L148 252", len: 150, k: 2 },
+  { d: "M94 134 L86 158 L98 176 L84 198", len: 110, k: 2 },
+  { d: "M248 136 L258 160 L244 178 L256 200", len: 110, k: 2 },
+  { d: "M48 148 L42 170 L54 186", len: 80, k: 3 },
+  { d: "M298 150 L304 172 L292 190", len: 80, k: 3 },
+];
+grid.appendChild(buildCard({
+  index: "B", title: "裂 · 金缮 / 裂玉 / 冰裂（负局整卡裂开）",
+  desc: "同一张卡，三种裂法：胜局是**金缮**——裂纹里流出金线，越裂越亮；负局是**裂玉**——卡片从中缝裂开、两半错位倾斜、裂口飘出细尘（像奕客那种碎裂感）；和局是均匀的**冰裂**，不偏不倚。",
+  note: `<span><b>胜</b> 金线沿裂纹流动（金缮）</span><span><b>负</b> 裂开 + 错位 + 冷白裂口 + 细尘</span><span><b>和</b> 均匀冰裂</span>`,
+  popup(outcome, host, meta, copy, tag) {
+    const paths = CRACKS.map((c) => `<path d="${c.d}" style="--len:${c.len};--k:${c.k}"/>`).join("");
+    host.innerHTML = `<div class="vB vB--${outcome}">
+      <div class="vB-card">
+        <svg class="vB-crack" viewBox="0 0 342 300" preserveAspectRatio="none" aria-hidden="true">${paths}</svg>
+        ${outcome === "lost" ? `<div class="vB-split"><i></i><i></i></div>` : ""}
+        <div class="vB-stampwrap"><span class="vB-stamp">${tag}</span></div>
+        <b class="vB-poem">${esc(copy.poem)}</b>
+        <small class="vB-sub">${esc(copy.sub)}</small>
+        ${statsBlock(meta)}
+        ${ACTIONS(outcome)}
+      </div>
+      ${outcome === "lost" ? `<div class="vB-ash"><i></i><i></i><i></i></div>` : ""}
+    </div>`;
+  },
+}));
+
+/* ══ C · 流 ═══════════════════════════════════════════════════════════ */
+grid.appendChild(buildCard({
+  index: "C", title: "流 · 金升 / 墨降 / 双色对分",
+  desc: "卡内有一道会动的色流：胜局是金色从底部漫上来（波浪边缘），负局是深墨从顶部压下来，和局是左右对分、中间一条流动的分界线。颜色只在卡内流，不糊住文字。",
+  note: `<span><b>胜</b> 金流上涌 + 波浪边</span><span><b>负</b> 墨流下压</span><span><b>和</b> 双色对分 + 分界流动</span>`,
+  popup(outcome, host, meta, copy, tag) {
+    host.innerHTML = `<div class="vC vC--${outcome}">
+      <div class="vC-card">
+        <div class="vC-flow"></div>
+        <div class="vC-head">
+          <div class="vC-stamp">${tag}</div>
+          <b class="vC-poem">${esc(copy.poem)}</b>
+          <small class="vC-sub">${esc(copy.sub)}</small>
+        </div>
+        <div class="vC-body">${statsBlock(meta)}${ACTIONS(outcome)}</div>
+      </div></div>`;
+  },
+}));
+
+/* ══ D · 光 ═══════════════════════════════════════════════════════════ */
+grid.appendChild(buildCard({
+  index: "D", title: "光 · 光环扩散 / 收暗 / 平稳呼吸",
+  desc: "胜局：三圈金色光环从卡后不断扩散出去，卡片自带一层暖辉。负局：光环向内收拢、四周渐渐压暗（视野收窄的感觉）。和局：一圈光环缓慢呼吸，不急不缓。",
+  note: `<span><b>胜</b> 三圈光环外扩 + 暖辉</span><span><b>负</b> 光环内收 + 四周压暗</span><span><b>和</b> 缓慢呼吸</span>`,
+  popup(outcome, host, meta, copy, tag) {
+    host.innerHTML = `<div class="vD vD--${outcome}">
+      <div class="vD-vignette"></div>
+      <div class="vD-halo"><i></i><i></i><i></i></div>
+      <div class="vD-card">
+        <div class="vD-stamp">${tag}</div>
+        <b class="vD-poem">${esc(copy.poem)}</b>
+        <small class="vD-sub">${esc(copy.sub)}</small>
+        ${statsBlock(meta)}
+        ${ACTIONS(outcome)}
+      </div></div>`;
+  },
+}));
+
+/* ══ E · 子 ═══════════════════════════════════════════════════════════ */
+grid.appendChild(buildCard({
+  index: "E", title: "子 · 五子归位（黑子 / 白子 / 黑白相间）",
+  desc: "终局时五颗棋子依次飞入排成一行：胜局是**黑子**（你的），负局是**白子**（AI 的），和局黑白相间。每颗落定时有一圈回响，之后才浮出结果卡。",
+  note: `<span><b>胜</b> 黑子依次飞入 + 落定回响</span><span><b>负</b> 白子飞入</span><span><b>和</b> 黑白相间</span>`,
+  popup(outcome, host, meta, copy, tag) {
+    const stones = Array.from({ length: 5 }, (_, i) => `<i style="--i:${i}"></i>`).join("");
+    host.innerHTML = `<div class="vE vE--${outcome}">
+      <div class="vE-line">${stones}</div>
+      <div class="vE-card">
+        <b class="vE-poem">${esc(copy.poem)}</b>
+        <small class="vE-sub">${esc(copy.sub)}</small>
+        ${statsBlock(meta)}
+        ${ACTIONS(outcome)}
+      </div></div>`;
+  },
+}));
+
+/* ══ F · 玉 ═══════════════════════════════════════════════════════════ */
+grid.appendChild(buildCard({
+  index: "F", title: "玉 · 暖玉丝光 / 冷玉缺口 / 双色玉",
+  desc: "整张卡是一块玉：胜局是**暖玉**（米黄底 + 一道丝光缓慢扫过 + 金屑浮动），负局是**冷玉**（青白底 + 上下边缘切成细碎缺口 + 丝光变慢变淡），和局是左右双色玉。",
+  note: `<span><b>胜</b> 暖玉 + 丝光扫过 + 金屑</span><span><b>负</b> 冷玉 + 细碎缺口 + 丝光转淡</span><span><b>和</b> 左右双色玉</span>`,
+  popup(outcome, host, meta, copy, tag) {
+    host.innerHTML = `<div class="vF vF--${outcome}">
+      <div class="vF-card">
+        <div class="vF-sheen"></div>
+        ${outcome === "won" ? `<div class="vF-spark"><i></i><i></i><i></i><i></i></div>` : ""}
+        <div class="vF-stamp">${tag}</div>
+        <b class="vF-poem">${esc(copy.poem)}</b>
+        <small class="vF-sub">${esc(copy.sub)}</small>
+        ${statsBlock(meta)}
+        ${ACTIONS(outcome)}
+      </div></div>`;
+  },
+}));
+
+/* ══ 收尾 ════════════════════════════════════════════════════════════ */
+{
+  const foot = document.createElement("article");
+  foot.className = "card";
+  foot.innerHTML = `<header><span class="idx">✓</span><div><h2>怎么挑 / 我建议的落地方式</h2>
+    <p>现在共 8 张：★ 本轮选定（A 印 × C 流 × D 光）、☆ 上一轮选定（印 × 冷玉），以及 A–F 六套参考。同一族（宣纸玻璃 + 墨 + 印），差别在「结局怎么演」：A 印最稳、B 裂最像商业大厂、C 流最有动感、D 光最耐看、E 子最扣题（五子棋）、F 玉最有质感。</p></div></header>
+    <div class="note" style="border-top:0">
+      <span><b>可以混搭</b>：比如「B 的胜局金缮 + B 的负局裂开 + D 的和局呼吸」——我按结局分别接，不冲突。</span>
+      <span><b>文案</b>：每种结局 3 句随机取；你说一声我按你的口味再写几句。</span>
+      <span><b>落地</b>：选中后做进真对局，四种主题（浅色 / 深色 / 国风 / 高对比）各校一遍对比度与玻璃透明度。</span>
+    </div>`;
+  grid.appendChild(foot);
+}
+
+}   /* ← if (SHOW_OTHERS) 收口 */
+if (!SHOW_OTHERS) grid.dataset.solo = "1";
+</script>
+</body></html>

@@ -1,0 +1,148 @@
+/* ══ 横向开关芯片（用户 2026-10-09：「搞成几个板块，是横向排布的按钮，分好类别」）═══════
+   配套模块是 SettingChips.tsx，那里写了「为什么需要它」与必须保住的结构约定
+   （外壳带 .setting-row、内含真 checkbox、说明不能 display:none、ⓘ 放在 label 外面）。
+   这里只管版式与观感。 */
+
+/* ── 板块：一个小标题 + 一行横向芯片 ───────────────────────────────────────── */
+.setting-chip-group{padding:10px 12px;border-top:1px solid var(--surface-border,#f0ece5)}
+.setting-chip-group:first-of-type{border-top:0}
+.setting-chip-group-head{display:flex;align-items:baseline;gap:8px;margin:0 1px 7px}
+.setting-chip-group-head>b{font-size:11px;letter-spacing:.06em;color:var(--green)}
+.setting-chip-group-head>small{font-size:11px;color:var(--muted);min-width:0}
+
+/* 芯片横排：能放下就一行，放不下自动换行（不横向滚动——这些不是高频操作，
+   横滑会藏住后面的项、也更难发现；换行在这里比横滑更好用）。 */
+.setting-chip-row{display:flex;flex-wrap:wrap;gap:6px}
+
+/* ── 芯片外壳 ────────────────────────────────────────────────────────────────
+   它就是换了版式的 .setting-row（保留类名是为了 `qa/recognition-parallel-parity.mjs`
+   的选择器 `.enhancement-settings .setting-row:has-text("识谱多核加速")` → `input[type=checkbox]`
+   继续成立）。外壳本身不再包 label，而是「label 主体 + ⓘ 按钮」两个兄弟（见 TSX 头注）。
+   ⚠ 用 3 个类名压过全应用的 `.setting-row>i`（(0,1,1)）与 `.setting-row input:checked+i`（(0,2,2)），
+     不然会继承来 43×25 的拨杆底 + 白色圆钮，芯片右边会挂出一颗偏出去的"月牙"（实测踩过）。 */
+.setting-row.setting-chip{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  min-height:34px;
+  max-width:100%;
+  padding:0 5px 0 11px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:var(--surface,var(--paper));
+  color:var(--ink);
+  font-size:11px;
+  line-height:1;
+  transition:border-color .16s ease,background .16s ease,color .16s ease;
+}
+
+/* 选中态：主色描边 + 浅底（沿用全应用「选中＝绿边绿字」的语言）。
+   深浅由主题令牌决定，所以 21 套主题下都成立，不写死颜色。 */
+.setting-row.setting-chip.on{border-color:var(--green);background:var(--jade);color:var(--green)}
+.setting-row.setting-chip.disabled{opacity:.45;cursor:default}
+
+/* label 主体：标题 + 圆点，整块可点（点哪都切换开关，与以前的整行手感一致） */
+.setting-chip-main{display:inline-flex;align-items:center;gap:6px;min-width:0;padding:9px 4px 9px 0;cursor:pointer}
+
+/* 标题：整串留在 DOM，只做视觉省略。`min-width:0` 让 flex 子项真的能被压缩。 */
+.setting-chip-title{
+  display:block;
+  min-width:0;
+  font-size:11px;
+  font-weight:600;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* 说明：**视觉隐藏**而不是 display:none —— display:none 会让 innerText 读不到它，
+   于是 `qa/recognition-parallel-parity.mjs` 那条「说明文案 ≥12 字」会失配，
+   屏幕阅读器也念不出这枚开关是干什么的。
+   人要看这条文字走 ⓘ 浮层（同一段文字在浮层里显式显示）。 */
+.setting-chip-note{
+  position:absolute;
+  width:1px;height:1px;
+  padding:0;margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
+}
+
+/* 真 input 视觉隐藏：键盘仍能 Tab 到它、空格仍能切换（保留可访问性）。
+   ⚠ 与全应用既有的 `.setting-row input{position:absolute;opacity:0}` **逐字一致**，别加料：
+     · 不要加 `width/height:1px` + `pointer-events:none` —— 那样 Playwright 的
+       `.check()` 会判定「元素收不到事件」而超时（实测把 verify-ai-rules 整条门禁挂掉）。
+       该门禁的写法是 `page.getByLabel("AI 棋盘提示点").check()`，靠的正是
+       「input 可命中」这件事。position:absolute 让它脱离文档流、不占芯片宽度，
+       默认尺寸（约 13px）保证能被命中——这就是旧版十几行开关一直用的写法。 */
+.setting-row.setting-chip input{position:absolute;opacity:0}
+
+/* 右侧小圆点：选中实心环、未选中空心。状态同时由底色与描边表达，
+   所以色觉异常下也能分辨（颜色不是唯一载体）。 */
+.setting-row.setting-chip .setting-chip-mark{
+  position:relative;
+  flex:0 0 auto;
+  width:13px;height:13px;
+  border:1.5px solid color-mix(in srgb,var(--muted) 62%,transparent);
+  border-radius:50%;
+  background:none;
+  transition:border-color .16s ease,background .16s ease,box-shadow .16s ease;
+}
+/* 把 .setting-row>i:after 那个白圆钮彻底收掉（它是 (0,1,1)+伪元素，必须 !important） */
+.setting-row.setting-chip .setting-chip-mark::after{display:none!important;content:none!important}
+.setting-row.setting-chip.on .setting-chip-mark{
+  border-color:var(--green);
+  background:var(--green);
+  box-shadow:inset 0 0 0 3px var(--surface,var(--paper));
+}
+
+/* ⓘ 说明按钮：一枚安静的小图标，点开显示这条的完整说明（用户 10-09：
+   「长按的说明我咋没看到」——说明不该藏起来，但也不该把芯片撑高）。 */
+.setting-chip-info{
+  flex:0 0 auto;
+  display:grid;
+  place-items:center;
+  width:22px;height:22px;
+  padding:0;
+  border:0;
+  border-radius:50%;
+  background:transparent;
+  color:var(--muted);
+  cursor:pointer;
+}
+.setting-row.setting-chip.on .setting-chip-info{color:color-mix(in srgb,var(--green) 78%,var(--muted))}
+.setting-chip-info:hover{background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--ink)}
+.setting-chip-info:active{background:color-mix(in srgb,var(--ink) 14%,transparent)}
+
+/* 键盘焦点环：input 视觉隐藏后，焦点环要画在能看见的地方（否则键盘用户看不到焦点在哪）。
+   input 聚焦 → 整枚芯片描边；ⓘ 聚焦 → 自己一圈。 */
+.setting-row.setting-chip:has(input:focus-visible){outline:3px solid #88a798;outline-offset:2px}
+.setting-chip-info:focus-visible{outline:3px solid #88a798;outline-offset:2px}
+
+/* 按下反馈（触摸设备） */
+.setting-row.setting-chip:active{transform:scale(.985)}
+
+/* 动效降级：不位移、不做过渡 */
+@media (prefers-reduced-motion:reduce){
+  .setting-row.setting-chip,
+  .setting-chip-mark{transition:none}
+  .setting-row.setting-chip:active{transform:none}
+}
+
+/* ── ⓘ 弹层里的排版 ─────────────────────────────────────────────────────────
+   说明原文可能很长（「长按环形菜单」那条 432 字，含菜单三页的逐项清单），
+   所以按可读行高排、并允许滚动（BottomSheet 自己 max-height + overflow:auto）。 */
+.chip-note-sheet{display:flex;flex-direction:column;gap:10px}
+.chip-note-text{margin:0;color:var(--ink);font-size:13px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
+.chip-note-state{margin:0;color:var(--muted);font-size:12px}
+.chip-note-state>b{color:var(--ink)}
+.chip-note-sheet .primary-button,
+.chip-note-sheet .secondary-button{min-height:46px}
+
+/* 大字号（用户要在特大字下也读得清）：芯片按内容自高，
+   长标题靠 ellipsis，行高跟着字号走，不会把文字压扁。 */
+@media(max-width:360px){
+  .setting-row.setting-chip{padding:0 4px 0 9px}
+  .setting-chip-info{width:20px;height:20px}
+}

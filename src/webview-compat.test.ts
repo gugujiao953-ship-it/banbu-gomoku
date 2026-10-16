@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { applyWebViewCompatibilityClass, needsLegacyWebViewCss, type CssSupportProbe } from "./webview-compat";
+import { applyFlexGapCompatibilityClass, applyWebViewCompatibilityClass, needsLegacyWebViewCss, type CssSupportProbe } from "./webview-compat";
 
 describe("WebView CSS compatibility", () => {
   it("keeps modern browsers on the primary CSS path", () => {
@@ -22,5 +22,14 @@ describe("WebView CSS compatibility", () => {
   it("fails safe when selector feature detection throws", () => {
     const throwingProbe: CssSupportProbe = { supports: vi.fn(() => { throw new Error("unsupported"); }) };
     expect(needsLegacyWebViewCss(throwingProbe)).toBe(true);
+  });
+
+  it("marks runtimes whose Flexbox gap is parsed but ignored", () => {
+    const classList = { contains: vi.fn(() => false), toggle: vi.fn(), remove: vi.fn() };
+    const probe = { style: {}, scrollHeight: 0, appendChild: vi.fn(), remove: vi.fn() };
+    const doc = { createElement: vi.fn(() => probe), body: { appendChild: vi.fn() }, documentElement: {} };
+    const root = { ownerDocument: doc, classList } as unknown as HTMLElement;
+    applyFlexGapCompatibilityClass(root);
+    expect(classList.toggle).toHaveBeenCalledWith("no-flex-gap", true);
   });
 });

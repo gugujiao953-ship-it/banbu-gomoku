@@ -18,8 +18,9 @@ import { ch16 } from "./ch16-appearance";
 import { ch17 } from "./ch17-accessibility";
 import { ch18 } from "./ch18-formats";
 import { ch19 } from "./ch19-about";
+import { ch20 } from "./ch20-vcf-challenge";
 
 /** 手册章节。顺序 = 目录编号 = 引导下标（App.tsx 的 MANUAL_TOURS[index]），勿调整。 */
 export const manualSections: ManualSection[] = [
-  ch01, ch02, ch03, ch04, ch05, ch06, ch07, ch08, ch09, ch10, ch11, ch12, ch13, ch14, ch15, ch16, ch17, ch18, ch19,
+  ch01, ch02, ch03, ch04, ch05, ch06, ch07, ch08, ch09, ch10, ch11, ch12, ch13, ch14, ch15, ch16, ch17, ch18, ch19, ch20,
 ];

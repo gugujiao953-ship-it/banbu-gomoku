@@ -43,7 +43,9 @@ try {
   await shot("01-record-board.png");
 
   // 02 · AI 人机对战设置。
-  await page.getByRole("button", { name: "AI", exact: true }).click();
+  await page.getByRole("button", { name: "对弈", exact: true }).click();
+  await page.waitForTimeout(700);
+  await page.locator('[data-duel-entry="ai"] .duel-entry-action').click();
   await page.getByRole("dialog", { name: "AI 人机对战" }).waitFor();
   await page.locator(".bottom-sheet").evaluate(async (element) => {
     await Promise.all(element.getAnimations({ subtree: true }).map((animation) => animation.finished));

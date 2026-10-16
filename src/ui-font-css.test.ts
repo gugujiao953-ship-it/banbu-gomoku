@@ -13,4 +13,11 @@ describe("全局字号 CSS 转换", () => {
     const source = ".a{font-size:calc(10px * var(--ui-font-scale, 1))}";
     expect(scaleUiFontDeclarations(source)).toBe(source);
   });
+
+  it("带 no-scale 标记的声明保持原样（SVG 用户单位里的文字）", () => {
+    const source = ".a text{font-size:10px /* no-scale */;font:700 12px serif /* no-scale */}.b{font-size:11px}";
+    expect(scaleUiFontDeclarations(source)).toBe(
+      ".a text{font-size:10px /* no-scale */;font:700 12px serif /* no-scale */}.b{font-size:calc(11px * var(--ui-font-scale, 1))}",
+    );
+  });
 });

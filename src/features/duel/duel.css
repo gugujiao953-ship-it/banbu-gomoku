@@ -1,0 +1,103 @@
+/* 「对弈」页（底部导航第四格）。只使用 design-tokens 里确实定义过的语义 token
+ * （--surface / --surface-2 / --surface-border / --line / --ink / --muted / --green /
+ * --jade / --gold），不写死颜色——22 套主题都要能看。主操作按钮直接复用
+ * .primary-button 的主题配色，只覆盖宽度与高度。 */
+
+.duel-page { padding-top: 12px; padding-bottom: calc(96px + var(--safe-area-bottom, env(safe-area-inset-bottom))); }
+.duel-title h1 { font: 700 29px serif; margin: 5px 0 4px; color: var(--ink); }
+
+/* 标题行右侧的徽章组：棋魂（最左）→ 战绩 → 成就。三个都是"我的进度"，
+   挨在一起右对齐（用户 2026-10-09 指定棋魂在更左边）。
+   `align-items:center` 让棋魂徽章（36px 高、带数字更宽）与两枚方按钮在同一基线上。 */
+.duel-title-badges { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+
+.duel-entries { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+
+.duel-entry {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px 13px;
+  border: 1px solid var(--surface-border, var(--line));
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm, 0 3px 10px #0000000d);
+}
+.duel-entry--ai {
+  /* 渐变之下仍给一个不透明底色：否则 backgroundColor 是 transparent，对比度会被
+   * 量成「文字压页面背景」，而文字其实压在渐变上——量出来的数就不是真实读数。 */
+  background-color: var(--surface);
+  background-image: linear-gradient(135deg, var(--jade), var(--surface));
+}
+.duel-entry-index {
+  flex: 0 0 auto;
+  font: 700 12px ui-monospace, monospace;
+  letter-spacing: .06em;
+  /* 序号是文字，必须过 4.5:1。--green 在 baroque 这类「浅金强调色」主题上压浅底只有
+   * 3.9:1（实测 20 套主题跑出来的），所以文字一律走 --ink / --muted。 */
+  color: var(--muted);
+}
+.duel-entry-icon {
+  width: 42px; height: 42px; flex: 0 0 42px;
+  display: grid; place-items: center;
+  border-radius: 13px;
+  background: var(--jade);
+  color: var(--green);
+}
+.duel-entry-copy { min-width: 0; flex: 1; }
+.duel-entry-copy b { display: block; font-size: 14px; color: var(--ink); }
+.duel-entry-copy small { display: block; margin-top: 4px; font-size: 11px; line-height: 1.5; color: var(--muted); }
+.duel-daily-name { color: var(--ink); font-weight: 700; }
+.duel-daily-collection { color: var(--muted); font-weight: 400; }
+/* 动作按钮：jade 底 + **--ink** 字。刻意不用「jade 底 + green 字」——那是应用里
+ * 既有的强调配对，但它把两个强调色叠在一起，浅金/粉/青那几套主题（baroque 3.62、
+ * kawaii 4.29、jiangnan 4.42、rice 4.45、rain 4.47）文字对比不够 4.5:1。
+ * --ink 与 --surface 有对比契约，而 --jade 只是向 --surface 靠拢的淡色，
+ * 所以 ink 压 jade 在 20 套主题下都安全（门禁逐套量过）。 */
+.duel-entry-action {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 42px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
+  border-radius: 12px;
+  background: var(--jade);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.duel-entry-action:active { background: color-mix(in srgb, var(--jade) 78%, var(--green)); }
+.duel-entry-action svg { width: 14px; height: 14px; color: var(--green); }
+
+.duel-review {
+  width: 100%;
+  min-height: 62px;
+  margin-top: 12px;
+  padding: 11px 13px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  text-align: left;
+  border: 1px solid var(--surface-border, var(--line));
+  border-radius: 16px;
+  background: var(--surface);
+}
+.duel-review:active { background: var(--jade); }
+.duel-review-icon { width: 38px; height: 38px; flex: 0 0 38px; display: grid; place-items: center; border-radius: 12px; background: var(--jade); color: var(--green); }
+.duel-review-copy { min-width: 0; flex: 1; }
+.duel-review-copy b { display: block; font-size: 13px; color: var(--ink); }
+.duel-review-copy small { display: block; margin-top: 3px; font-size: 11px; line-height: 1.5; color: var(--muted); }
+.duel-review > svg { flex: 0 0 auto; color: var(--muted); }
+
+@media (min-width: 700px) {
+  .duel-page { max-width: 760px; width: 100%; margin-left: auto; margin-right: auto; }
+}
+
+/* 错题本的样式（2026-09-19 起只保留列表本身；「今日重温」区与排期徽标已随
+ * 打卡/重温一起去掉）。 */
+

@@ -5,6 +5,8 @@
  * no restart, no manual configuration.
  */
 
+import { assertPublicHttpUrl as assertPublicHttpUrlShared } from "../../url-safety";
+
 export const ENGINE_PACK_VERSION = 3;
 export const ENGINE_PACK_FILENAME = `rapfi-full-v${ENGINE_PACK_VERSION}.data`;
 // Exact byte length of the official package; downloads are rejected on mismatch
@@ -207,30 +209,9 @@ const deletePackBlob = async () => {
 };
 
 // Downloads must target a public http(s) host: block localhost, loopback,
-// private and reserved ranges before any request leaves the app.
-export const assertPublicHttpUrl = (rawUrl: string) => {
-  let parsed: URL;
-  try {
-    parsed = new URL(rawUrl);
-  } catch {
-    throw new Error("引擎包地址无效");
-  }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("引擎包地址必须是 http/https");
-  const hostname = parsed.hostname.toLowerCase();
-  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]" || hostname.endsWith(".local") || hostname.endsWith(".localhost")) {
-    throw new Error("引擎包地址不允许指向本机");
-  }
-  const ipv4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (ipv4) {
-    const octets = ipv4.slice(1).map(Number);
-    if (octets.some((value) => value > 255)) throw new Error("引擎包地址无效");
-    const [a, b] = octets;
-    if (a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || a >= 224) {
-      throw new Error("引擎包地址不允许指向内网或保留地址");
-    }
-  }
-  return parsed.toString();
-};
+// private and reserved ranges before any request leaves the app. The shared
+// guard lives in src/url-safety.ts so every outbound fetch uses one rule set.
+export const assertPublicHttpUrl = (rawUrl: string) => assertPublicHttpUrlShared(rawUrl, "引擎包");
 
 export const enginePackSnapshot = (): EnginePackSnapshot => cachedSnapshot;
 
@@ -299,10 +280,16 @@ export const subscribeEnginePack = (listener: Listener) => {
   return () => listeners.delete(listener);
 };
 
-/** Resolves to a same-origin object URL for the downloaded pack, or null. */
+/** Resolves to a same-origin object URL for the downloaded pack, or null.
+ *
+ * 标记缺失时也要**去库里看一眼**（2026-09-18 用户报「本来就有模型，界面却让我
+ * 下载引擎」）：`banbu-engine-pack-state-v1` 只是 localStorage 里的一行标记，
+ * 而 40MB 的包本体在 IndexedDB。标记可能被清掉/写坏/版本号对不上（readStoredState
+ * 只要 version 不等于当前版本就返回 null），旧实现这时直接 return null → 界面与
+ * 所有判定都当成「没装引擎包」并引导去下载 38.4MB，而模型其实还在本机。
+ * 现在：没有标记也读一次库，blob 大小对得上就把标记补回来（自愈）。 */
 export const ensureEnginePackUrl = async (): Promise<string | null> => {
   if (cachedSnapshot.objectUrl) return cachedSnapshot.objectUrl;
-  if (!cachedSnapshot.state) return null;
   if (!warming) {
     warming = (async () => {
       const blob = await loadPackBlob();
@@ -315,8 +302,10 @@ export const ensureEnginePackUrl = async (): Promise<string | null> => {
         }
         return null;
       }
+      const state = cachedSnapshot.state ?? { version: ENGINE_PACK_VERSION, size: ENGINE_PACK_SIZE, downloadedAt: Date.now() };
       const objectUrl = URL.createObjectURL(await tunePackBlob(blob));
-      cachedSnapshot = { state: cachedSnapshot.state, objectUrl };
+      cachedSnapshot = { state, objectUrl };
+      if (!readStoredState()) writeStoredState(state);
       notify();
       return objectUrl;
     })();
@@ -393,6 +382,14 @@ const fetchChunkResumable = async (url: string, start: number, end: number, sign
   const status = response.status;
   if (status !== 200 && status !== 206) return { status, bytes: null, received: 0 };
   const expected = end - start + 1;
+  const contentRange = response.headers?.get?.("content-range");
+  if (status === 206 && contentRange) {
+    const range = /^bytes (\d+)-(\d+)\/(\d+|\*)$/i.exec(contentRange);
+    if (!range || Number(range[1]) !== start || Number(range[2]) !== end || (range[3] !== "*" && Number(range[3]) !== ENGINE_PACK_SIZE)) {
+      try { await response.body?.cancel?.(); } catch { /* best effort */ }
+      return { status, bytes: null, received: 0, fatal: true };
+    }
+  }
   const reader = response.body?.getReader();
   if (!reader) {
     const bytes = new Uint8Array(await response.arrayBuffer());
@@ -411,18 +408,18 @@ const fetchChunkResumable = async (url: string, start: number, end: number, sign
     }
   } catch (error) {
     // 传输中被打断：把已收到的部分交回上层（本轮算「部分成功」），下轮从断点续。
-    if (received === 0) throw error;
+    if (received === 0 || signal?.aborted) throw error;
+  } finally {
+    reader.releaseLock?.();
   }
   if (received === 0) return { status, bytes: new Uint8Array(0), received: 0 };
-  if (received === expected) {
-    const merged = new Uint8Array(received);
-    let offset = 0;
-    for (const part of parts) { merged.set(part, offset); offset += part.byteLength; }
-    return { status, bytes: merged, received };
-  }
+  if (status === 206 && received > expected) return { status, bytes: null, received, fatal: true };
   const declared = Number(response.headers?.get?.("content-length"));
-  if (Number.isFinite(declared) && declared > 0 && received >= declared) return { status, bytes: null, received, fatal: true };
-  return { status, bytes: null, received };
+  if (status === 206 && received !== expected && Number.isFinite(declared) && declared > 0 && received >= declared) return { status, bytes: null, received, fatal: true };
+  const merged = new Uint8Array(received);
+  let offset = 0;
+  for (const part of parts) { merged.set(part, offset); offset += part.byteLength; }
+  return { status, bytes: merged, received };
 };
 
 // 把一块（chunkStart..chunkEnd）完整拉下来：循环「续传 → 断点推进」，直到取满
@@ -442,16 +439,14 @@ const fetchWholeChunk = async (url: string, chunkStart: number, chunkEnd: number
       continue;
     }
     if (result.status === 200 && result.bytes) return { wholeFile: result.bytes }; // 服务器不支持 Range
-    if (result.bytes) {
-      buffer.set(result.bytes, cursor - chunkStart);
-      return { full: buffer };
-    }
     // 服务器把区间截短：这一块不可能靠续传补齐（见 fetchChunkResumable 注释）。
     if (result.fatal) return null;
     if (result.received > 0) {
       // 部分收到：把这一段先落到缓冲区，再从未完成处继续（进度由上层按块计数）。
+      if (!result.bytes || result.received !== result.bytes.length || result.received > chunkEnd - cursor + 1) return null;
+      buffer.set(result.bytes, cursor - chunkStart);
       cursor += result.received;
-      if (cursor > chunkEnd) return { full: buffer.slice(0, cursor - chunkStart) };
+      if (cursor === chunkEnd + 1) return { full: buffer };
       continue;
     }
     if (attempt === CHUNK_MAX_ATTEMPTS - 1) return null;

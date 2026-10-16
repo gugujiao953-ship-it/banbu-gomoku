@@ -135,7 +135,10 @@ async function newPage() {
   check("V4 空文字点已有标注=仍可删除", removed === "(none)" && removeToast.includes("已移除标注"), `labels=${removed} toast=${removeToast}`);
   await ui.clickPoint("F5");
   const placed = await ui.labels(); const placeToast = await ui.toast();
-  check("V4 空文字点空位=提示输入文字且不放置", placed === "(none)" && placeToast.includes("输入自定义文字"), `labels=${placed} toast=${placeToast}`);
+  // 只断言「没有落下标注 + 提示了要输入文字」：文案被细化过（文字类走的是
+  //「请先在标注面板输入文字，或把「内容」切到「无」只放图案」，另一条分支才是
+  //「请先在标注面板输入自定义文字」），钉死整句会让门禁因为改文案而假红。
+  check("V4 空文字点空位=提示输入文字且不放置", placed === "(none)" && /输入.{0,4}文字/.test(placeToast), `labels=${placed} toast=${placeToast}`);
   check("V4 无页面错误", ui.errors.length === 0, ui.errors.slice(0, 2).join(";"));
   await context.close();
 }

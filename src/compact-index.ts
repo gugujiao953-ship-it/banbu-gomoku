@@ -1,4 +1,5 @@
 import type { BoardMark, BoardSetup, CompactRenLibDraft, CompactRenLibIndex, GameDocument, NativeAnnotation, NodeEvaluation, Player, RecordNode } from "./types";
+import { markStyleLabel } from "./annotation-presets";
 
 type NumericArray = Int8Array | Uint8Array | Uint16Array | Int32Array | Uint32Array;
 type NumericArrayConstructor<T extends NumericArray> = { new(length: number): T };
@@ -130,12 +131,15 @@ const lazyDocumentInfo = new WeakMap<object, LazyDocumentInfo>();
 export const buildCompactRenLibIndex = (document: GameDocument): CompactRenLibIndex => {
   const ids: string[] = [];
   const indexById = new Map<string, number>();
-  const visit = (id: string) => {
-    if (indexById.has(id)) return;
+  // Keep the same preorder without consuming the call stack on deep imported records.
+  const stack = [document.rootId];
+  while (stack.length) {
+    const id = stack.pop()!;
+    if (indexById.has(id)) continue;
     indexById.set(id, ids.length); ids.push(id);
-    document.nodes[id]?.children.forEach(visit);
-  };
-  visit(document.rootId);
+    const children = document.nodes[id]?.children ?? [];
+    for (let child = children.length - 1; child >= 0; child -= 1) stack.push(children[child]);
+  }
   const parent = new Int32Array(ids.length).fill(-1);
   const firstChild = new Int32Array(ids.length).fill(-1);
   const nextSibling = new Int32Array(ids.length).fill(-1);
@@ -425,7 +429,7 @@ export const compactSearch = (document: GameDocument, query: string, limit = 20)
     const markText = marks.flatMap((mark) => [
       `${String.fromCharCode(65 + mark.col)}${boardSize - mark.row}`,
       mark.label || "",
-      mark.kind === "label" ? "文字标注" : mark.kind === "circle" ? "圆圈" : mark.kind === "triangle" ? "三角" : "叉号",
+      markStyleLabel(mark),
     ]).join(" ");
     if ([coordinate, comment, boardText, evaluation, markText, String(nodeIndex)].some((value) => value.toLowerCase().includes(needle))) results.push(compactNodeId(index, nodeIndex));
   }

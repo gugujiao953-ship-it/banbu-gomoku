@@ -1,0 +1,17 @@
+{
+  "checked": "2026-09-26",
+  "method": "本项目 2026-09-26 用浏览器逐页打开励精连珠教室（ljrenju.com）的连珠史记页面核实：每局的两名对手都来自该页面上的原文（资格赛页是「黑:/白:」表格，决赛页是「wc18rat, rN, 黑 - 白」的题注，两处顺序都是黑方在前）。只登记姓名与页面地址，不复制任何走子内容。",
+  "event": "第18届世界连珠锦标赛",
+  "year": "2025",
+  "pages": [
+    { "url": "https://www.ljrenju.com/news/rif2025/wc18atr1.htm", "stage": "决赛 第一轮", "games": ["Mei Fan - Cao Dong", "Li Xiaoqing - Mesila Villem", "Ni Zhongxing - Gromov Danila", "Kamiya Shunsuke - Lu Hai", "Okabe Hiroshi - He Shujun", "Nakayama Tomoharu - Oll Aivo"] },
+    { "url": "https://www.ljrenju.com/news/rif2025/wc18atr2.htm", "stage": "决赛 第二轮", "games": ["Nakayama Tomoharu - Cao Dong", "Oll Aivo - Okabe Hiroshi", "Kamiya Shunsuke - He Shujun", "Lu Hai - Gromov Danila", "Li Xiaoqing - Mei Fan"] },
+    { "url": "https://www.ljrenju.com/news/rif2025/wc18atr3.htm", "stage": "决赛 第三轮", "games": ["Li Xiaoqing - Cao Dong", "Mei Fan - Ni Zhongxing", "Lu Hai - Mesila Villem", "He Shujun - Gromov Danila", "Kamiya Shunsuke - Oll Aivo", "Nakayama Tomoharu - Okabe Hiroshi"] },
+    { "url": "https://www.ljrenju.com/news/rif2025/wc18atr4.htm", "stage": "决赛 第四轮", "games": ["Cao Dong - Okabe Hiroshi", "Nakayama Tomoharu - Kamiya Shunsuke", "Gromov Danila - Oll Aivo", "Mesila Villem - He Shujun", "Lu Hai - Mei Fan", "Li Xiaoqing - Ni Zhongxing"] },
+    { "url": "https://www.ljrenju.com/news/rif2025/wc18atr5.htm", "stage": "决赛 第五轮", "games": ["Ni Zhongxing - Cao Dong", "Li Xiaoqing - Lu Hai", "He Shujun - Mei Fan", "Oll Aivo - Mesila Villem", "Gromov Danila - Nakayama Tomoharu", "Okabe Hiroshi - Kamiya Shunsuke"] },
+    { "url": "https://www.ljrenju.com/news/rif2025/wc18qtr1.htm", "stage": "资格赛 第一轮", "games": ["Wai Chan Keong - Mesila Villem", "Lents Johann - Pajuste Renee", "Wang Qingqing - Heo Jeong-bin", "Katsev Ilya - Mei Fan", "Li Xiaoqing - Jonsson Peter", "Epifanov Dmitry - Kirkan Alp Ali", "Kolk Kuno - Oll Aivo", "Gardström Petter - Park Do Young", "Poghosyan Vahe - Gromov Danila"] },
+    { "url": "https://www.ljrenju.com/news/rif2025/wc18qtr2.htm", "stage": "资格赛 第二轮", "games": ["Wai Chan Keong - Epifanov Dmitry", "Lents Johann - Oll Aivo", "Gromov Danila - Mei Fan", "Li Xiaoqing - Gardström Petter", "Heo Jeong-bin - Pajuste Renee", "Wang Qingqing - Kolk Kuno", "Kirkan Alp Ali - Mesila Villem", "Katsev Ilya - Poghosyan Vahe", "Jonsson Peter - Park Do Young"] },
+    { "url": "https://www.ljrenju.com/news/rif2025/wc18qtr3.htm", "stage": "资格赛 第三轮", "games": ["Mei Fan - Gardström Petter", "Heo Jeong-bin - Oll Aivo", "Wai Chan Keong - Lents Johann", "Wang Qingqing - Epifanov Dmitry", "Li Xiaoqing - Mesila Villem", "Katsev Ilya - Gromov Danila", "Poghosyan Albert - Jonsson Peter", "Park Do Young - Kolk Kuno", "Poghosyan Vahe - Pajuste Renee", "Kirkan Alp Ali - Poghosyan Davit"] }
+  ],
+  "notes": "决赛第二轮页面上「Lu Hai - Gromov Danila」这一对出现了两次（两局的步数不同，页面题注却一样），无法从原文区分是哪两盘，故该页只保留一条，另一条待复核。决赛页不给胜负分数，因此这些条目的结果留空，不猜。"
+}

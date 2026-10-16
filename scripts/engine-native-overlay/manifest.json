@@ -1,0 +1,9 @@
+{
+  "why": "官方数据包 public/engine-packs/rapfi-full-v3.data 里的两个经典模型是 0.43.01 旧格式（23,204 / 59,730），而 APK 打的 arm64 引擎是 0.43.02（master 3c94c2a，2026-10-01 升级，见 MainActivity 的 v11819）。新引擎读不了旧模型、旧引擎读不了新模型 ⇒ 光从数据包切片会把设备上的模型退回旧格式，原生引擎直接起不来。本目录是**唯一入库的新格式模型来源**，scripts/build-android-engine.mjs 切完包后用这里的双模型覆盖，并核对 rapfiDescribe。",
+  "rapfiDescribe": "250615-42-g3c94c2a",
+  "engineVersion": "0.43.02",
+  "files": {
+    "model210901.bin": 30109,
+    "model220723.bin": 77518
+  }
+}

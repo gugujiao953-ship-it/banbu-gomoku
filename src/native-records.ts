@@ -52,7 +52,8 @@ const stableNativeDocument = (document: GameDocument, gameIndex: number): GameDo
 
 /** Load the bundled five-game Yixin/Qi Guan match as ordinary read/write records. */
 export async function loadNativeMatchRecords(): Promise<GameDocument[]> {
-  const response = await fetch(`/${NATIVE_MATCH_ASSET}`);
+  // 路径按构建 base 取（见 asset-url 注释）：站点根写法在网页版子路径部署下会 404。
+  const response = await fetch(`${import.meta.env.BASE_URL}${NATIVE_MATCH_ASSET}`);
   if (!response.ok) throw new Error(`内置棋谱加载失败：${NATIVE_MATCH_FOLDER}`);
   const text = await response.text();
   const imported = await importRecordFile(new File([text], NATIVE_MATCH_ASSET, { type: "application/x-go-sgf" }));
@@ -62,7 +63,7 @@ export async function loadNativeMatchRecords(): Promise<GameDocument[]> {
 }
 
 export async function loadNativeDatabaseFile(): Promise<File> {
-  const response = await fetch(`/${NATIVE_DATABASE_ASSET}`);
+  const response = await fetch(`${import.meta.env.BASE_URL}${NATIVE_DATABASE_ASSET}`);
   if (!response.ok) throw new Error(`内置棋谱加载失败：${NATIVE_DATABASE_TITLE}`);
   return new File([await response.arrayBuffer()], NATIVE_DATABASE_FILE_NAME, { type: "application/octet-stream" });
 }

@@ -18,15 +18,19 @@ export interface TourStep {
   lead: string;
   tips: TourTip[];
   /** 进入该步前需要切换的底部标签（默认停在当前页不动）。 */
-  tab?: "record" | "library" | "settings";
+  tab?: "record" | "library" | "duel" | "settings";
   /** 进入该步时由 App 打开快捷中心（该步的锚点在快捷中心面板内）。 */
   openQuickDrawer?: boolean;
   /** 进入该步时由 App 打开的功能面板（dock-panel，如分析/标注/编辑）。 */
-  panel?: "analysis" | "annotation" | "notes" | "vcf" | "view";
+  panel?: "analysis" | "annotation" | "notes" | "view";
   /** 进入该步时由 App 打开的底部弹窗（导入、AI 对战等；关闭会由宿主统一处理）。 */
   sheet?: "import" | "aiGame" | "export" | "tree" | "folder" | "dataSafety" | "trash" | "wrongbook";
   /** 进入该步时切换的工作模式（打谱/读谱/做题）。 */
   mode?: "record" | "review" | "puzzle";
+  /** Standalone generator page inside the Duel tab. */
+  generator?: boolean;
+  /** 独立的 VCF 挑战页（也在对弈页里）。 */
+  vcfChallenge?: boolean;
   /** 最后一步用完成语义按钮。 */
   final?: boolean;
 }
@@ -83,7 +87,7 @@ export const TOUR_STEPS: TourStep[] = [
     title: "快捷中心",
     lead: "左上角应用图标按钮，汇总高频开关。",
     tips: [
-      { sel: ".brand-trigger", name: "快捷中心", desc: "分析模式与思考时限、AI 引擎（轻量随包 / 冠军网络包下载）、主题材质、声音动效，都在这里。", icon: Zap },
+      { sel: ".brand-trigger", name: "快捷中心", desc: "分析模式与思考时限、AI 引擎（内存与线程可调；网页版引擎包下载）、主题材质、声音动效，都在这里。", icon: Zap },
     ],
   },
   {
@@ -116,10 +120,10 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "ai",
-    title: "AI 对战与陪练",
-    lead: "底部导航的 AI 按钮。",
+    title: "对弈页：AI 对战与每日一题",
+    lead: "底部导航第四格「对弈」是一个完整页面。",
     tips: [
-      { sel: "nav.bottom-nav button:nth-child(4)", name: "AI", desc: "人机对战五档强度，开局规则含索索夫-8、山口、五手两打等职业规则；开局库开启后 AI 按谱秒应。", icon: Bot },
+      { sel: "nav.bottom-nav button:nth-child(4)", name: "对弈", desc: "页面上第一条是 AI 对战（开局规则含索索夫-8、山口、五手两打等职业规则；开局库开启后 AI 按谱秒应），第二条是每日一题；下面还有打卡记录与错题重温入口。", icon: Bot },
     ],
   },
   {
@@ -129,7 +133,7 @@ export const TOUR_STEPS: TourStep[] = [
     final: true,
     tips: [
       { sel: "nav.bottom-nav button:nth-child(5)", name: "设置", desc: "外观、数据备份与恢复、使用手册；本引导可随时重播。", icon: Settings },
-      { sel: ".bottom-nav", name: "底部导航", desc: "打谱 / 棋谱库 / 导入 / AI / 设置五个页面入口。", icon: Home },
+      { sel: ".bottom-nav", name: "底部导航", desc: "打谱 / 棋谱库 / 导入 / 对弈 / 设置五个页面入口。", icon: Home },
     ],
   },
 ];

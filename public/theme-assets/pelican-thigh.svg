@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-215 -132 430 264" fill="none">
+  <!-- 鹈鹕近侧大腿（原点＝髋＝元素中心，指向 +x，长 44）。角度由 IK 关键帧给，不手工画姿势。 -->
+  <path d="M0 0 44 0" stroke="#e08030" stroke-width="12" stroke-linecap="round"/>
+</svg>

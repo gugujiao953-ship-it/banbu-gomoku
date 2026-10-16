@@ -19,7 +19,7 @@ export const ch19: TourStep[] = [
     lead: "自动与手动检查都会依次尝试多个更新源。",
     tab: "settings",
     tips: [
-      { sel: ".settings-order-100", name: "检查更新", desc: "发现新版本会弹窗提示一次：点「立即更新到 vX」前往下载页；点「以后再说」会记住该版本，之后同一版本不再打扰，出更新版本时仍会提示一次。手动检查在关于页和快捷中心底部都有。", icon: RefreshCw },
+      { sel: ".settings-order-100", name: "检查更新", desc: "发现新版本会弹窗提示一次：点「下载并安装 vX」前往下载页；点「以后再说」会记住该版本，之后同一版本不再打扰，出更新版本时仍会提示一次。手动检查在关于页和快捷中心底部都有。", icon: RefreshCw },
     ],
   },
   { id: "about-manual",

@@ -1,4 +1,4 @@
-import { BOARD_SIZE, forbiddenReason, otherPlayer } from "./game";
+import { forbiddenReason, otherPlayer } from "./game";
 import type { Cell, Player, Position } from "./types";
 
 export interface CandidateScore {
@@ -11,7 +11,10 @@ export interface CandidateScore {
 }
 
 const DIRECTIONS: Array<[number, number]> = [[1, 0], [0, 1], [1, 1], [1, -1]];
-const inBoard = (row: number, col: number) => row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE;
+// 盘面尺寸一律取自 board 本身：引擎已支持 22 路以内的任意路数（见
+// features/ai/board-size-support.ts），分析候选也必须跟着路数走。
+const inBoard = (board: Cell[][], row: number, col: number) =>
+  row >= 0 && row < board.length && col >= 0 && col < (board[row]?.length ?? 0);
 
 function lineStats(board: Cell[][], position: Position, player: Player, dr: number, dc: number) {
   let contiguous = 1;
@@ -21,7 +24,7 @@ function lineStats(board: Cell[][], position: Position, player: Player, dr: numb
     while (true) {
       const row = position.row + dr * step * sign;
       const col = position.col + dc * step * sign;
-      if (!inBoard(row, col)) break;
+      if (!inBoard(board, row, col)) break;
       if (board[row][col] === player) { contiguous += 1; step += 1; continue; }
       if (board[row][col] === null) openEnds += 1;
       break;
@@ -55,7 +58,10 @@ function scoreThreats(threats: ReturnType<typeof threatValue>) {
 export function analyzeCandidates(board: Cell[][], player: Player, limit = 8): CandidateScore[] {
   const opponent = otherPlayer(player);
   const result: CandidateScore[] = [];
-  for (let row = 0; row < BOARD_SIZE; row += 1) for (let col = 0; col < BOARD_SIZE; col += 1) {
+  const size = board.length;
+  const mid = (size - 1) / 2;
+  const centerRadius = Math.floor(size / 2);
+  for (let row = 0; row < size; row += 1) for (let col = 0; col < (board[row]?.length ?? 0); col += 1) {
     if (board[row][col]) continue;
     const position = { row, col };
     const ownBoard = board.map((line) => [...line]);
@@ -74,7 +80,9 @@ export function analyzeCandidates(board: Cell[][], player: Player, limit = 8): C
     else if (defenseThreat.liveThree) reasons.push("防守对方活三");
     if (attackThreat.links >= 2) reasons.push("形成连接");
     if (forbidden) reasons.push(forbidden);
-    const center = 7 - Math.min(7, Math.abs(row - 7), Math.abs(col - 7));
+    // 15 路下等价于原先的 7 - min(7, |row-7|, |col-7|)：离天元越近权重越高，
+    // 出中心区归零。路数变了就按新的天元与半径折算。
+    const center = Math.max(0, centerRadius - Math.min(Math.abs(row - mid), Math.abs(col - mid)));
     const score = scoreThreats(attackThreat) + scoreThreats(defenseThreat) * 0.82 + center * 2 - (forbidden ? 120000 : 0);
     if (reasons.length || score > 20) result.push({ position, score, reasons: reasons.length ? reasons : ["靠近现有棋形"], attack: scoreThreats(attackThreat), defense: scoreThreats(defenseThreat), forbidden: forbidden || undefined });
   }

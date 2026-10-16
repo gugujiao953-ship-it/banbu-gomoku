@@ -11,7 +11,7 @@ const DISMISS_RE = /先自己试试|我知道了/;
 const MANUAL_RE = /带我看看怎么用|使用手册/;
 
 try {
-  const acknowledgement = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const acknowledgement = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
   const page = await acknowledgement.newPage();
   page.on("pageerror", (error) => errors.push(error.stack || String(error)));
   await page.goto(onboardingUrl.href, { waitUntil: "commit" });
@@ -23,7 +23,7 @@ try {
   assert(await page.getByRole("dialog").count() === 0, "已读欢迎弹窗重复出现");
   await acknowledgement.close();
 
-  const manualContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const manualContext = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
   const manualPage = await manualContext.newPage();
   await manualPage.goto(onboardingUrl.href, { waitUntil: "commit" });
   await manualPage.evaluate(() => localStorage.clear());
@@ -33,14 +33,20 @@ try {
   assert(await manualPage.getByRole("heading", { name: "使用手册" }).count() === 1, "使用手册按钮没有打开手册");
   await manualContext.close();
 
-  const restoreContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const restoreContext = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
   const restorePage = await restoreContext.newPage();
   await restorePage.goto(onboardingUrl.href, { waitUntil: "commit" });
   await restorePage.getByRole("dialog").waitFor();
   await restorePage.getByRole("button", { name: DISMISS_RE }).click();
   await restorePage.getByRole("gridcell", { name: /^H8空位$/ }).click();
   await restorePage.getByRole("gridcell", { name: /^H8已有棋子$/ }).waitFor();
-  await restorePage.waitForFunction(() => JSON.parse(localStorage.getItem("banbu-last-session-v1") || "{}").nodeId?.startsWith("node-"));
+  await restorePage.waitForFunction(() => {
+    const session = JSON.parse(localStorage.getItem("banbu-last-session-v1") || "{}");
+    if (!session.documentId || !session.nodeId || session.mode !== "record") return false;
+    const draft = JSON.parse(localStorage.getItem(`renju-note-draft-v2:${session.documentId}`) || "{}");
+    return draft.operations?.some((operation) => operation.type === "add-move" && operation.node?.id === session.nodeId
+      && operation.node.move?.row === 7 && operation.node.move?.col === 7);
+  });
   await restorePage.reload({ waitUntil: "commit" });
   await restorePage.getByRole("gridcell", { name: /^H8已有棋子$/ }).waitFor();
   assert(await restorePage.getByRole("gridcell", { name: /^H8已有棋子$/ }).count() === 1, "开启恢复时没有恢复具体局面");
@@ -54,7 +60,7 @@ try {
   assert(await restorePage.getByRole("gridcell", { name: /^H8空位$/ }).count() === 1, "关闭恢复后没有进入空白棋局");
   await restoreContext.close();
 
-  const puzzleContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const puzzleContext = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
   const puzzlePage = await puzzleContext.newPage();
   await puzzlePage.goto(onboardingUrl.href, { waitUntil: "commit" });
   await puzzlePage.evaluate(() => {
@@ -75,7 +81,7 @@ try {
   // 版本更新后首运行页重新出现（用户 09-14）。存档里存的是「上次看过的版本号」：
   // 旧版本号（含 v1.1.7 及更早写的字面量 "true"）对当前版本都算没看过。
   for (const [label, stored] of [["旧版本号", "1.1.7"], ["旧版字面量 true", "true"]]) {
-    const upgradeContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const upgradeContext = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
     await upgradeContext.addInitScript((value) => localStorage.setItem("banbu-first-run-welcome-v1", value), stored);
     const upgradePage = await upgradeContext.newPage();
     await upgradePage.goto(onboardingUrl.href, { waitUntil: "commit" });
@@ -95,4 +101,3 @@ try {
 } finally {
   await browser.close();
 }
-

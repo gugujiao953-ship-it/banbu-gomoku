@@ -1,0 +1,386 @@
+/* 成就与棋魂面板（2026-10-09）。挂在 BottomSheet 里，所以只负责内容排版，
+   不重复 sheet 自己的定位/背板/圆角。 */
+
+.achievements-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 4px;
+}
+
+/* ── 棋魂卡 ───────────────────────────────────────────────────────── */
+
+.achievements-soul {
+  padding: 13px 14px;
+  border: 1px solid #e0d3ab;
+  border-radius: 16px;
+  background: linear-gradient(150deg, #fffdf3, #fbf4e2);
+}
+
+.achievements-soul-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.achievements-soul-gem {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #6b4c17;
+  background: linear-gradient(150deg, #ffe9a8, #e6b955 58%, #cfa14a);
+  box-shadow: 0 4px 12px #a97f2740, 0 1px 0 #fff6d9cc inset;
+}
+
+.achievements-soul-head b {
+  display: block;
+  font: 700 25px/1 Georgia, serif;
+  color: var(--progress-soul-ink-strong, #6b4c17);
+}
+
+.achievements-soul-head small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.achievements-soul-stats {
+  display: flex;
+  gap: 14px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid #eadfc2;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.achievements-soul-stats b { color: var(--progress-soul-ink, #6b4c17); }
+
+.achievements-soul-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.achievements-soul-reasons li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 9px;
+  background: #f4e4bd;
+  color: var(--progress-soul-ink, #6b4c17);
+  font-size: 11px;
+}
+
+.achievements-soul-reasons li b { font-weight: 700; }
+
+.achievements-soul-spend {
+  margin-top: 11px;
+  padding-top: 9px;
+  border-top: 1px solid #eadfc2;
+}
+
+.achievements-soul-spend summary {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--progress-soul-ink, #6b4c17);
+  cursor: pointer;
+  list-style: none;
+}
+
+.achievements-soul-spend summary::-webkit-details-marker { display: none; }
+
+.achievements-soul-spend summary::before {
+  content: "▸ ";
+  color: #b39a63;
+}
+
+.achievements-soul-spend[open] summary::before { content: "▾ "; }
+
+.achievements-soul-spend ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.achievements-soul-spend li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid #ece0c4;
+  border-radius: 11px;
+  background: #fffdf7;
+}
+
+.achievements-soul-spend li.pending { opacity: .72; }
+
+.achievements-soul-spend li span { min-width: 0; }
+
+.achievements-soul-spend li b {
+  display: block;
+  font-size: 11px;
+  color: var(--ink);
+}
+
+.achievements-soul-spend li small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.achievements-soul-spend li em {
+  flex: 0 0 auto;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--progress-soul-ink, #6b4c17);
+}
+
+.achievements-soul-note {
+  margin: 9px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ── 成就进度 ─────────────────────────────────────────────────────── */
+
+.achievements-progress { padding: 0 2px; }
+
+.achievements-progress-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.achievements-progress-icon {
+  display: inline-grid;
+  place-items: center;
+  color: var(--green-2, var(--green));
+}
+
+.achievements-progress-head b {
+  font: 700 21px/1 Georgia, serif;
+  /* baroque 的 --green(#8a641b) 压它的 --paper(#f5e7bf) 只有 4.22:1（实测）→
+     这个数字走和棋魂一致的深金令牌（本来是"进度/所得"语义，配色统一更顺）。 */
+  color: var(--progress-soul-ink-strong, #6b4c17);
+}
+
+.achievements-progress-head small { font-size: 11px; color: var(--muted); }
+
+.achievements-progress-head strong {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--green-2, var(--green));
+}
+
+.achievements-progress-bar {
+  height: 7px;
+  margin-top: 7px;
+  border-radius: 6px;
+  background: var(--jade, #e5eee8);
+  overflow: hidden;
+}
+
+.achievements-progress-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #4f8168, #365e4b);
+  transition: width .4s var(--ease-enter, ease);
+}
+
+/* ── 分组 ─────────────────────────────────────────────────────────── */
+
+.achievements-group > header {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 0 2px 7px;
+}
+
+.achievements-group > header b { font-size: 12px; color: var(--ink); }
+
+.achievements-group > header small { font-size: 11px; color: var(--muted); }
+
+.achievements-group > header em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--green-2, var(--green));
+}
+
+.achievements-group ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.achievement-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 54px;
+  padding: 9px 10px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 13px;
+  background: var(--surface, #fff);
+}
+
+.achievement-row.locked {
+  background: color-mix(in srgb, var(--surface, #fff) 60%, transparent);
+  opacity: .74;
+}
+
+.achievement-row.secret.locked { opacity: .56; }
+
+.achievement-row-medal {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #6b4c17;
+  background: linear-gradient(150deg, #ffe9a8, #e6b955 58%, #cfa14a);
+}
+
+.achievement-row.locked .achievement-row-medal {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--line, #dfdad0) 60%, transparent);
+}
+
+.achievement-row-copy { min-width: 0; }
+
+.achievement-row-copy b {
+  display: block;
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.achievement-row-copy small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.achievement-row-at {
+  display: block;
+  margin-top: 4px;
+  font-style: normal;
+  font-size: 10px;
+  color: #a2946f;
+}
+
+.achievement-row-soul {
+  font-size: 11px;
+  font-weight: 700;
+  /* 走令牌：浅色主题深金、深色主题亮金（见文件末尾的深色覆盖块）。
+     写死 #7a5a1c 在深色底只有 2.12:1（实测被门禁抓到）。 */
+  color: var(--progress-soul-ink, #6b4c17);
+  white-space: nowrap;
+}
+
+.achievements-foot {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+/* ── 深色主题 ─────────────────────────────────────────────────────── */
+
+/* 深色底上棋魂色必须换成亮金：写死的深金 #7a5a1c 压深色底只有 2.12:1
+   （实测被 qa/achievements-contrast.mjs 抓到 7 套主题）。
+   在面板根上重定义令牌，下面几十处用 var() 的地方一次到位。 */
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievements-panel {
+  --progress-soul-ink: #e0c17d;
+  --progress-soul-ink-strong: #e8cd8a;
+}
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievements-soul {
+  border-color: #4a4028;
+  background: linear-gradient(150deg, #2a2620, #242018);
+}
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievements-soul-head b { color: #e8cd8a; }
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievements-soul-stats,
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievements-soul-spend {
+  border-color: #3f3722;
+}
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievements-soul-reasons li,
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievements-soul-spend li {
+  border-color: #3f3722;
+  background: #322b1d;
+  color: #e0c17d;
+}
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievement-row {
+  background: #26312d;
+  border-color: #3b4842;
+}
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievement-row-at { color: #97896a; }
+
+@media (max-width: 380px) {
+  .achievement-row { grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; padding: 8px 9px; }
+  .achievement-row-medal { width: 28px; height: 28px; }
+}

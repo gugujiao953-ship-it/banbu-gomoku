@@ -1,0 +1,216 @@
+/* Keep the native sticky toolbar on a stable surface while overlays mount.
+   On the tested WebView it otherwise shared a painted layer with page content.
+   Retaining this small opacity layer removed the remaining toolbar flash,
+   without changing layout or creating a containing block for fixed children. */
+html[data-native="true"] .topbar { will-change: opacity; }
+
+/* Opening a modal is a one-frame compositor boundary on older Android
+   WebViews.  Keep decorative motion on the page behind that boundary paused
+   for the lifetime of the shared scroll lock; otherwise an animated theme
+   can submit a second full-screen frame while the scrim is being attached.
+   The board, controls, and the overlay itself remain interactive. */
+html[data-native="true"].overlay-open .theme-scene,
+html[data-native="true"].overlay-open .theme-scene *,
+html[data-native="true"].overlay-open .snow-layer,
+html[data-native="true"].overlay-open .preview-page-glow,
+html[data-native="true"].overlay-open .preview-board-lines {
+  animation-play-state: paused !important;
+}
+
+/* Match the native top/bottom bar fallback: opening an overlay should not
+   resample the entire animated page through a new backdrop-filter surface.
+   Keep these selectors free of :is() for older Android WebViews. */
+html[data-native="true"] .sheet-backdrop,
+html[data-native="true"] .first-run-backdrop,
+html[data-native="true"] .ai-float-backdrop,
+html[data-native="true"] .quick-drawer-scrim,
+html[data-native="true"] .clock-setup-overlay,
+html[data-native="true"] .duel-confirm-scrim,
+html[data-native="true"] .engine-switch-backdrop {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: transparent;
+  animation: none;
+  isolation: isolate;
+}
+
+/* Keep dimming on its own surface. Animating the full-screen background color
+   made the app toolbar flash on the tested WebView. The pseudo-element fades
+   independently of the panel and cannot intercept its pointer events.
+   Isolation keeps its negative z-index inside the overlay's stacking context. */
+html[data-native="true"] .sheet-backdrop,
+html[data-native="true"] .first-run-backdrop { --native-scrim-color: #11171466; }
+html[data-native="true"] .ai-float-backdrop,
+html[data-native="true"] .clock-setup-overlay,
+html[data-native="true"] .duel-confirm-scrim { --native-scrim-color: #11171455; }
+html[data-native="true"] .quick-drawer-scrim { --native-scrim-color: #171a1770; }
+html[data-native="true"] .engine-switch-backdrop { --native-scrim-color: rgba(16, 21, 19, .56); }
+html[data-native="true"] .wait-overlay { --native-scrim-color: #18171373; }
+html[data-native="true"] .manual-lightbox { --native-scrim-color: #0d0f10d9; }
+html[data-native="true"] .soul-buy-backdrop { --native-scrim-color: #00000052; }
+html[data-native="true"] .board-fs { --native-scrim-color: #0a0b0a; }
+
+html[data-native="true"] .sheet-backdrop::before,
+html[data-native="true"] .first-run-backdrop::before,
+html[data-native="true"] .ai-float-backdrop::before,
+html[data-native="true"] .quick-drawer-scrim::before,
+html[data-native="true"] .clock-setup-overlay::before,
+html[data-native="true"] .duel-confirm-scrim::before,
+html[data-native="true"] .engine-switch-backdrop::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--native-scrim-color);
+}
+
+html[data-native="true"] .wait-overlay,
+html[data-native="true"] .manual-lightbox,
+html[data-native="true"] .soul-buy-backdrop,
+html[data-native="true"] .board-fs {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: transparent;
+  animation: none;
+  isolation: isolate;
+}
+html[data-native="true"] .wait-overlay::before,
+html[data-native="true"] .manual-lightbox::before,
+html[data-native="true"] .soul-buy-backdrop::before,
+html[data-native="true"] .board-fs::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--native-scrim-color);
+}
+
+/* These popovers already need a static translateX(-50%) for positioning. An
+   opacity-only entrance leaves that positioning intact while avoiding a
+   transform animation on the WebView page surface. */
+html[data-native="true"] .mark-studio-popover,
+html[data-native="true"] .soul-buy-card,
+html[data-native="true"] .achievement-unlock {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html[data-native="true"] .sheet-backdrop::before,
+  html[data-native="true"] .first-run-backdrop::before,
+  html[data-native="true"] .ai-float-backdrop::before,
+  html[data-native="true"] .quick-drawer-scrim::before,
+  html[data-native="true"] .clock-setup-overlay::before,
+  html[data-native="true"] .duel-confirm-scrim::before,
+  html[data-native="true"] .engine-switch-backdrop::before {
+    will-change: opacity;
+    animation: native-overlay-scrim-in 160ms ease-out backwards;
+  }
+  html[data-native="true"] .wait-overlay::before,
+  html[data-native="true"] .manual-lightbox::before,
+  html[data-native="true"] .soul-buy-backdrop::before,
+  html[data-native="true"] .board-fs::before {
+    will-change: opacity;
+    animation: native-overlay-scrim-in 160ms ease-out backwards;
+  }
+  html[data-native="true"] .mark-studio-popover,
+  html[data-native="true"] .soul-buy-card,
+  html[data-native="true"] .achievement-unlock {
+    will-change: opacity;
+    animation: native-overlay-panel-in 160ms ease-out backwards;
+  }
+  html[data-native="true"] .achievement-unlock.is-leaving {
+    animation: native-overlay-panel-out 160ms ease-in both;
+  }
+}
+
+@keyframes native-overlay-scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* On the tested Android WebView, the sheet briefly lost its surface when its
+   transform/scale entrance animation ended. Fade the panel on a stable opacity
+   layer instead. Unlike a retained transform (or will-change: transform), this
+   does not make nested fixed dialogs position relative to the parent sheet.
+   The layer lives only as long as the mounted overlay; board motion is intact. */
+html[data-native="true"] .sheet-backdrop > .bottom-sheet,
+html[data-native="true"] .first-run-dialog,
+html[data-native="true"] .ai-float-panel,
+html[data-native="true"] .quick-drawer-panel,
+html[data-native="true"] .clock-setup-card,
+html[data-native="true"] .duel-confirm,
+html[data-native="true"] .engine-switch-dialog,
+html[data-native="true"] .panel-select-menu,
+html[data-native="true"] .library-sort-menu {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html[data-native="true"] .sheet-backdrop > .bottom-sheet,
+  html[data-native="true"] .first-run-dialog,
+  html[data-native="true"] .ai-float-panel,
+  html[data-native="true"] .quick-drawer-panel,
+  html[data-native="true"] .clock-setup-card,
+  html[data-native="true"] .duel-confirm,
+  html[data-native="true"] .engine-switch-dialog,
+  html[data-native="true"] .panel-select-menu,
+  html[data-native="true"] .library-sort-menu {
+    will-change: opacity;
+    animation: native-overlay-panel-in 160ms ease-out backwards;
+  }
+}
+
+@keyframes native-overlay-panel-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes native-overlay-panel-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Do not rely on the shared :is() motion rule on older WebViews. */
+html[data-native="true"][data-motion="off"] .sheet-backdrop::before,
+html[data-native="true"][data-motion="off"] .first-run-backdrop::before,
+html[data-native="true"][data-motion="off"] .ai-float-backdrop::before,
+html[data-native="true"][data-motion="off"] .quick-drawer-scrim::before,
+html[data-native="true"][data-motion="off"] .clock-setup-overlay::before,
+html[data-native="true"][data-motion="off"] .duel-confirm-scrim::before,
+html[data-native="true"][data-motion="off"] .engine-switch-backdrop::before {
+  animation: none;
+  will-change: auto;
+}
+html[data-native="true"][data-motion="off"] .wait-overlay::before,
+html[data-native="true"][data-motion="off"] .manual-lightbox::before,
+html[data-native="true"][data-motion="off"] .soul-buy-backdrop::before,
+html[data-native="true"][data-motion="off"] .board-fs::before {
+  animation: none;
+  will-change: auto;
+}
+
+html[data-native="true"][data-motion="off"] .sheet-backdrop > .bottom-sheet,
+html[data-native="true"][data-motion="off"] .first-run-dialog,
+html[data-native="true"][data-motion="off"] .ai-float-panel,
+html[data-native="true"][data-motion="off"] .quick-drawer-panel,
+html[data-native="true"][data-motion="off"] .clock-setup-card,
+html[data-native="true"][data-motion="off"] .duel-confirm,
+html[data-native="true"][data-motion="off"] .engine-switch-dialog,
+html[data-native="true"][data-motion="off"] .panel-select-menu,
+html[data-native="true"][data-motion="off"] .library-sort-menu {
+  animation: none;
+  will-change: auto;
+}
+html[data-native="true"][data-motion="off"] .mark-studio-popover,
+html[data-native="true"][data-motion="off"] .soul-buy-card,
+html[data-native="true"][data-motion="off"] .achievement-unlock {
+  animation: none;
+  will-change: auto;
+}

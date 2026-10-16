@@ -45,14 +45,16 @@ export const QUICK_DRAWER_ITEMS: ReadonlyArray<QuickDrawerItem> = [
   { id: "playback.loop", section: "playback", label: "循环当前变化", hint: "到末尾后回到本次播放起点继续", settingsLabel: ["循环当前变化"], defaultVisible: true },
 
   // ── 分析（默认全显）──
-  { id: "analysis.engine", section: "analysis", label: "分析引擎", hint: "轻量快速 / 强力深度", settingsLabel: ["分析引擎"], defaultVisible: true },
+  { id: "analysis.engine", section: "analysis", label: "分析引擎", hint: "单档引擎：内存与线程可调", settingsLabel: ["分析引擎"], defaultVisible: true },
   { id: "analysis.indicator", section: "analysis", label: "思考显示位置", hint: "棋盘右上角 / 棋盘下方", settingsLabel: ["思考显示位置"], defaultVisible: true },
   { id: "analysis.candidates", section: "analysis", label: "棋盘显示实时选点", hint: "只显示在空位上，不会落子或写入棋谱", settingsLabel: ["棋盘显示实时选点"], defaultVisible: true },
   { id: "analysis.metric", section: "analysis", label: "候选点显示内容", hint: "胜率、评估分、计算量或深度", settingsLabel: ["候选点显示内容"], defaultVisible: true },
   { id: "analysis.count", section: "analysis", label: "候选点数量", hint: "默认只显示最佳点，最多 10 选", settingsLabel: ["候选点数量"], defaultVisible: true },
   { id: "analysis.mode", section: "analysis", label: "分析模式", hint: "持续 / 自对弈 / 提示", settingsLabel: ["分析模式"], defaultVisible: true },
   { id: "analysis.selfplayTime", section: "analysis", label: "自对弈每步时限", hint: "到点即落子，五连或满盘自动结束", settingsLabel: ["自对弈每步时限"], defaultVisible: true },
-  { id: "analysis.memory", section: "analysis", label: "分析内存档", hint: "自动 / 256M / 512M / 1G / 2G，档位越高长分析越深", settingsLabel: ["分析内存档"], defaultVisible: true },
+  { id: "analysis.memory", section: "analysis", label: "分析内存", hint: "64–2048MB 连续可调，默认 128MB；越高长分析通常越深但更吃内存", settingsLabel: ["分析内存"], defaultVisible: true },
+  { id: "analysis.multiThread", section: "analysis", label: "多线程", hint: "内嵌在「分析内存」行右侧的小开关；网页版需跨源隔离，安卓原生引擎用真线程", settingsLabel: ["多线程"], defaultVisible: true },
+  { id: "analysis.threads", section: "analysis", label: "线程数", hint: "自动 = 一半核心 / 全核 / 1 线程省电；开了多线程才出现", settingsLabel: ["线程数"], defaultVisible: true },
 
   // ── 外观与声音（默认全显）──
   { id: "visual.theme", section: "visual", label: "应用主题", hint: "页面颜色与氛围", settingsLabel: ["主题"], defaultVisible: true },
@@ -63,15 +65,21 @@ export const QUICK_DRAWER_ITEMS: ReadonlyArray<QuickDrawerItem> = [
 
   // ── 棋盘显示（默认显示，用户 09-13）──
   { id: "board.numbers", section: "board", label: "显示手数", hint: "在棋子上显示落子序号", settingsLabel: ["显示手数"], defaultVisible: true },
-  { id: "board.coordinates", section: "board", label: "显示坐标", hint: "棋盘边缘显示 A–O / 1–15", settingsLabel: ["显示坐标"], defaultVisible: true },
+  { id: "board.coordinates", section: "board", label: "显示坐标", hint: "棋盘边缘按当前路数显示列名与行号", settingsLabel: ["显示坐标"], defaultVisible: true },
   { id: "board.forbidden", section: "board", label: "禁手辅助", hint: "提示黑方常见三三、四四与长连", settingsLabel: ["禁手辅助"], defaultVisible: true },
   { id: "board.lastMove", section: "board", label: "最后一手标记", hint: "最新一手显示红点", settingsLabel: ["最后一手标记"], defaultVisible: true },
+  { id: "board.stoneSize", section: "board", label: "棋子大小", hint: "在当前自动大小上缩放，上限为相邻棋子相切", settingsLabel: ["棋子大小"] },
   { id: "board.numberScale", section: "board", label: "棋子序号大小", hint: "0.7×–1.8× 缩放序号", settingsLabel: ["棋子序号大小"] },
   { id: "board.gridWidth", section: "board", label: "棋盘画线粗细", hint: "0.6–3px 线宽", settingsLabel: ["棋盘画线粗细"] },
   { id: "board.coordFont", section: "board", label: "坐标字体大小", hint: "6–14px", settingsLabel: ["坐标字体大小"] },
+  { id: "board.margin", section: "board", label: "棋盘侧边", hint: "压缩四边坐标空间，棋盘随之变大", settingsLabel: ["棋盘侧边"] },
+  // 2026-09-23：以下四项在设置页一直可见，却从未进过快捷池子。
+  { id: "board.annotationHighlight", section: "board", label: "标注高亮", hint: "给棋盘标注加白色 / 金色 / 蓝色轮廓", settingsLabel: ["标注高亮"] },
 
   // ── 无障碍（新增，默认隐藏）──
   { id: "accessibility.font", section: "accessibility", label: "界面字号", hint: "正常 / 大字 / 特大字", settingsLabel: ["界面字号", "大字", "特大字"] },
+  { id: "accessibility.motion", section: "accessibility", label: "界面动效", hint: "关闭落子、导航、胜线与界面过渡", settingsLabel: ["界面动效"] },
+  { id: "accessibility.haptics", section: "accessibility", label: "触觉反馈", hint: "落子、导航、禁手与胜负时轻微震动（仅安卓）", settingsLabel: ["触觉反馈"] },
 
   // ── 数据（新增，默认隐藏）──
   { id: "data.restore", section: "data", label: "退出后恢复上次局面", hint: "下次进入时恢复上次棋谱与节点", settingsLabel: ["退出后恢复上次局面"] },
@@ -80,6 +88,24 @@ export const QUICK_DRAWER_ITEMS: ReadonlyArray<QuickDrawerItem> = [
   { id: "data.backup", section: "data", label: "一键备份", hint: "棋谱库、题库、进度、草稿与设置", settingsLabel: ["一键备份"] },
   { id: "data.restoreBackup", section: "data", label: "恢复备份", hint: "导入前完整校验，失败自动回滚", settingsLabel: ["恢复备份"] },
   { id: "data.help", section: "data", label: "格式兼容说明", hint: "各格式的可写能力与保真范围", settingsLabel: ["格式兼容说明"] },
+  // 「在线棋谱库」「在线题库（自建题源）」两条快捷项随实验开关一起删除（用户 09-26：在线入口
+  // 常驻，设置里已没有对应开关行）。旧存档布局里的未知 id 会被 KNOWN_IDS 过滤掉，不会留死按钮。
+  { id: "data.importShelf", section: "data", label: "最近导入", hint: "导入过的文件留在应用里，下次在导入面板直接点开（最多 8 个）", settingsLabel: ["最近导入"] },
+  { id: "data.autoSaveGame", section: "data", label: "终局自动存档", hint: "人机对局结束后自动连同结果存进棋谱库", settingsLabel: ["终局自动存档"] },
+
+  // ── 可选增强功能（2026-09-23 补齐）：以前整组都不在池子里，导致设置页能开、
+  // 快捷中心却找不到——而快捷中心正是「不用进设置页翻找」的那个入口。──
+  { id: "enhance.pinchZoom", section: "board", label: "双指缩放棋盘", hint: "放大缩小棋盘，最大 6 倍", settingsLabel: ["双指缩放棋盘"] },
+  { id: "enhance.gestureSwipe", section: "board", label: "双指滑动切手", hint: "双指左右滑动切换上一手或下一手", settingsLabel: ["双指滑动切手"] },
+  { id: "enhance.boardRotate", section: "board", label: "双指旋转棋盘", hint: "双指拧一下即旋转 90°（只改显示方向）", settingsLabel: ["双指旋转棋盘"] },
+  { id: "enhance.moveRail", section: "board", label: "棋盘手数滑轨", hint: "棋盘下方的手数条，拖动连续跳手", settingsLabel: ["棋盘手数滑轨"] },
+  { id: "enhance.radialMenu", section: "board", label: "长按环形菜单", hint: "长按已有棋子呼出去子、加书签、复制局面、跳到此手", settingsLabel: ["长按环形菜单"] },
+  { id: "enhance.keyboard", section: "accessibility", label: "键盘快捷键", hint: "方向键前后一手、数字键跳手、空格播放", settingsLabel: ["键盘快捷键"] },
+  { id: "enhance.fastRecognition", section: "misc", label: "识谱多核加速", hint: "图片识谱按核心数并行，更快且不卡界面", settingsLabel: ["识谱多核加速"] },
+  { id: "enhance.aiBoardHints", section: "analysis", label: "AI 棋盘提示点", hint: "在棋盘上显示 AI 推荐落点与开局候选编号", settingsLabel: ["AI 棋盘提示点"] },
+  { id: "enhance.openingBook", section: "analysis", label: "开局库（打点簿）", hint: "人机对局优先查内置打点簿，命中即秒落", settingsLabel: ["开局库（打点簿）"] },
+  { id: "enhance.analysisCache", section: "analysis", label: "分析结果沉淀", hint: "评估与候选点存本机缓存，可一键载入上次结果", settingsLabel: ["分析结果沉淀"] },
+  { id: "enhance.coachMarks", section: "misc", label: "操作引导卡片", hint: "在记录、棋谱库与设置页显示轻量使用提示", settingsLabel: ["操作引导卡片"] },
 
   // ── 手册与其他（新增，默认隐藏）──
   { id: "misc.tour", section: "misc", label: "新手引导", hint: "spotlight 再走一遍核心功能", settingsLabel: ["新手引导"] },
@@ -88,7 +114,7 @@ export const QUICK_DRAWER_ITEMS: ReadonlyArray<QuickDrawerItem> = [
   { id: "misc.about", section: "misc", label: "关于与更新", hint: "版本、检查更新与项目说明", settingsLabel: ["关于半步五子棋打谱"] },
 ];
 
-const QUICK_DRAWER_STORAGE_KEY = "banbu-quick-drawer-v1";
+export const QUICK_DRAWER_STORAGE_KEY = "banbu-quick-drawer-v1";
 
 export interface QuickDrawerPrefs {
   /** 被隐藏的条目 id；空数组 = 全部显示（默认） */

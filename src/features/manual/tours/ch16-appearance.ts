@@ -27,7 +27,7 @@ export const ch16: TourStep[] = [
     lead: "棋盘材质与棋子材质各自独立选择。",
     tab: "settings",
     tips: [
-      { sel: ".settings-order-0 > summary", name: "外观与音效", desc: "点开「外观与音效」，在「棋盘」子目录里选棋盘材质（14 种）、在「棋子」子目录里选棋子材质（16 种），每项都带预览图。", icon: Grid },
+      { sel: ".settings-order-0 > summary", name: "外观与音效", desc: "点开「外观与音效」，在「棋盘」子目录里选棋盘材质、在「棋子」子目录里选棋子材质（两处各有几十种，具体数量以清单里显示为准），每项都带预览图。", icon: Grid },
     ],
   },
   { id: "theme-board-opacity",
@@ -35,7 +35,7 @@ export const ch16: TourStep[] = [
     lead: "调低透明度，让页面背景主题透出。",
     tab: "settings",
     tips: [
-      { sel: ".settings-order-0 > summary", name: "外观与音效", desc: "点开「外观与音效 → 棋盘」，最下方的「棋盘透明度」滑杆只改棋面底色和边框，网格、坐标与提示保持清晰；最低 35%，预览会同时显示当前棋盘与棋子材质。", icon: Layers3 },
+      { sel: ".settings-order-10 > summary", name: "棋盘显示", desc: "2026-10-08 起透明度两项在「棋盘显示」区（用户从「外观与音效」挪过来）。「棋盘透明度」滑杆只改棋面底色和边框，网格、坐标与提示保持清晰；最低 35%。那块「棋盘 + 棋子」真实材质预览留在「外观与音效 → 棋盘」，两处的值同一份，拖这里的滑杆它即时跟着变。", icon: Layers3 },
     ],
   },
   { id: "theme-stone",
@@ -43,7 +43,7 @@ export const ch16: TourStep[] = [
     lead: "棋子本体也能调透明度。",
     tab: "settings",
     tips: [
-      { sel: ".settings-order-0 > summary", name: "外观与音效", desc: "点开「外观与音效 → 棋子」，最下方的「棋子透明度」滑杆只改黑白棋子本体，手数、最后一手、禁手和候选点保持清晰；最低 40%。", icon: Layers3 },
+      { sel: ".settings-order-10 > summary", name: "棋盘显示", desc: "同上一区：「棋子透明度」滑杆只改黑白棋子本体，手数、最后一手、禁手和候选点保持清晰；最低 40%。", icon: Layers3 },
     ],
   },
   { id: "theme-quick",

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" fill="none">
+  <!-- 极光·星空瓦片（400×600，四边无缝）：疏密不均的星点，含少量亮星
+       只在四角/边缘附近加密，避免明显重复感。 -->
+  <g fill="#dfe9ff">
+    <circle cx="18" cy="34" r="1" opacity=".55"/>
+    <circle cx="64" cy="12" r="1.4" opacity=".75"/>
+    <circle cx="112" cy="58" r=".9" opacity=".45"/>
+    <circle cx="158" cy="26" r="1.2" opacity=".62"/>
+    <circle cx="204" cy="76" r="1" opacity=".5"/>
+    <circle cx="248" cy="18" r="1.6" opacity=".82"/>
+    <circle cx="296" cy="62" r="1" opacity=".48"/>
+    <circle cx="344" cy="30" r="1.3" opacity=".68"/>
+    <circle cx="386" cy="70" r=".9" opacity=".42"/>
+
+    <circle cx="36" cy="126" r="1.1" opacity=".58"/>
+    <circle cx="96" cy="158" r="1.5" opacity=".8"/>
+    <circle cx="150" cy="118" r=".9" opacity=".4"/>
+    <circle cx="214" cy="146" r="1.1" opacity=".55"/>
+    <circle cx="272" cy="112" r="1.3" opacity=".7"/>
+    <circle cx="330" cy="152" r="1" opacity=".46"/>
+    <circle cx="376" cy="128" r="1.5" opacity=".76"/>
+
+    <circle cx="24" cy="228" r="1.2" opacity=".6"/>
+    <circle cx="78" cy="262" r=".9" opacity=".42"/>
+    <circle cx="136" cy="216" r="1.4" opacity=".74"/>
+    <circle cx="196" cy="254" r="1" opacity=".5"/>
+    <circle cx="252" cy="222" r=".9" opacity=".38"/>
+    <circle cx="308" cy="268" r="1.3" opacity=".66"/>
+    <circle cx="362" cy="232" r="1.1" opacity=".56"/>
+
+    <circle cx="44" cy="336" r="1" opacity=".44"/>
+    <circle cx="104" cy="372" r="1.5" opacity=".78"/>
+    <circle cx="162" cy="326" r="1.1" opacity=".54"/>
+    <circle cx="222" cy="368" r=".9" opacity=".4"/>
+    <circle cx="280" cy="334" r="1.2" opacity=".6"/>
+    <circle cx="338" cy="378" r="1" opacity=".48"/>
+    <circle cx="390" cy="342" r="1.4" opacity=".72"/>
+
+    <circle cx="30" cy="446" r="1.3" opacity=".66"/>
+    <circle cx="88" cy="482" r="1" opacity=".46"/>
+    <circle cx="146" cy="438" r="1.5" opacity=".76"/>
+    <circle cx="206" cy="478" r=".9" opacity=".4"/>
+    <circle cx="264" cy="444" r="1.1" opacity=".54"/>
+    <circle cx="322" cy="488" r="1.3" opacity=".68"/>
+    <circle cx="376" cy="452" r="1" opacity=".5"/>
+
+    <circle cx="52" cy="552" r="1.1" opacity=".5"/>
+    <circle cx="112" cy="584" r="1.4" opacity=".7"/>
+    <circle cx="170" cy="546" r=".9" opacity=".4"/>
+    <circle cx="230" cy="588" r="1.2" opacity=".58"/>
+    <circle cx="288" cy="552" r="1" opacity=".46"/>
+    <circle cx="346" cy="592" r="1.5" opacity=".74"/>
+  </g>
+  <!-- 几颗亮星（带十字光芒） -->
+  <g fill="#ffffff" opacity=".9">
+    <circle cx="150" cy="118" r="2"/>
+    <circle cx="308" cy="268" r="2.2"/>
+    <circle cx="88" cy="482" r="1.9"/>
+  </g>
+  <g stroke="#ffffff" stroke-width="1.1" opacity=".55">
+    <path d="M150 108v20M140 118h20"/>
+    <path d="M308 257v22M297 268h22"/>
+    <path d="M88 472v20M78 482h20"/>
+  </g>
+</svg>

@@ -33,7 +33,7 @@ try {
     localStorage.setItem("renju-note-active-v1", JSON.stringify(activeRecord));
     localStorage.setItem("renju-note-library-v1", JSON.stringify([activeRecord, ...library]));
     localStorage.setItem("renju-note-library-folders-v1", JSON.stringify({ recordFolders: folderNames, puzzleFolders: ["内置题库", "我的题库"], recordAssignments, puzzleAssignments: {} }));
-    localStorage.setItem("banbu-enhancement-settings-v1", JSON.stringify({ tabletSplit: false, gestureZoom: false, gestureSwipe: false, recentImports: false, aiBoardHints: false, coachMarks: false }));
+    localStorage.setItem("banbu-enhancement-settings-v1", JSON.stringify({ gestureZoom: false, gestureSwipe: false, recentImports: false, aiBoardHints: false, coachMarks: false }));
   }, { activeRecord: active, library: records, folderNames: folders, recordAssignments: assignments });
   await page.goto(qaURL.href, { waitUntil: "domcontentloaded" });
 
@@ -79,7 +79,9 @@ try {
   await page.goBack();
   await puzzleDialog.waitFor({ state: "detached" });
 
-  await page.getByRole("button", { name: "AI", exact: true }).click();
+  await page.getByRole("button", { name: "对弈", exact: true }).click();
+  await page.waitForTimeout(700);
+  await page.locator('[data-duel-entry="ai"] .duel-entry-action').click();
   const aiDialog = page.getByRole("dialog", { name: "AI 人机对战" });
   await aiDialog.waitFor();
   await aiDialog.evaluate(async (element) => { await Promise.all(element.getAnimations().map((animation) => animation.finished)); });
@@ -91,9 +93,26 @@ try {
     scrollHeight: element.scrollHeight,
   }));
   assert(aiMetrics.top >= -1 && aiMetrics.bottom <= aiMetrics.viewportHeight + 1, `AI 设置弹层越界：${JSON.stringify(aiMetrics)}`);
-  assert(aiMetrics.scrollHeight > aiMetrics.clientHeight, "AI 设置弹层没有可滚动区");
+  // 弹层是 max-height 型 bottom-sheet：内容装得下就不该有滚动条（844 高的屏上就是装得下的），
+  // 装不下才必须能滚。所以这里不能无条件断言「一定有可滚动区」——那是把视口高度当规范。
+  // 真正要守的是两件事：① 绝不越出视口；② **一旦内容溢出，就必须真的能滚到底**。
+  if (aiMetrics.scrollHeight > aiMetrics.clientHeight + 1) {
+    await aiDialog.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+    const reachable = await aiDialog.evaluate((element) => element.scrollTop + element.clientHeight >= element.scrollHeight - 2);
+    assert(reachable, `AI 设置弹层内容溢出却滚不到底：${JSON.stringify(aiMetrics)}`);
+  } else {
+    // 没有可滚动区也不算缺陷，但滚动位置必须没有被顶到别处（否则说明外层错位了）。
+    assert(await aiDialog.evaluate((element) => element.scrollTop) === 0, "AI 设置弹层无溢出却带着滚动偏移");
+  }
+  // 另用一档矮屏（内容必然溢出）钉住「该滚的时候真的能滚」，不受当前设备高度影响。
+  await page.setViewportSize({ width: 390, height: 560 });
+  await page.waitForTimeout(500);
+  const shortMetrics = await aiDialog.evaluate((element) => ({ clientHeight: element.clientHeight, scrollHeight: element.scrollHeight, top: element.getBoundingClientRect().top, viewportHeight: innerHeight }));
+  assert(shortMetrics.scrollHeight > shortMetrics.clientHeight, `矮屏下 AI 设置弹层仍无滚动区：${JSON.stringify(shortMetrics)}`);
   await aiDialog.evaluate((element) => { element.scrollTop = element.scrollHeight; });
-  assert(await aiDialog.evaluate((element) => element.scrollTop) > 0, "AI 设置弹层无法向下滚动");
+  assert(await aiDialog.evaluate((element) => element.scrollTop) > 0, "矮屏下 AI 设置弹层无法向下滚动");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(400);
   await page.goBack();
   await aiDialog.waitFor({ state: "detached" });
   assert(await page.locator(".app-shell").isVisible(), "返回关闭 AI 后应用主界面消失");

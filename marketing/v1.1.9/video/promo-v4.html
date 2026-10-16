@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>半步五子棋打谱 1.2.0 · 宣传片 v4</title>
+<style>
+  :root{
+    --bg:#05060a; --gold:#e8cb92; --gold-2:#c8a468; --jade:#5ee0b6;
+    --ink:#f6f3ee; --muted:rgba(246,243,238,.64); --dim:rgba(246,243,238,.34);
+    --line:rgba(255,255,255,.10); --pw:400px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);}
+  body{font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC","Source Han Sans SC",sans-serif;
+       color:var(--ink);-webkit-font-smoothing:antialiased;}
+  .serif{font-family:"Source Han Serif SC","Noto Serif SC","Songti SC","SimSun",serif;}
+  .mono{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;}
+
+  /* ---------- 背景 ---------- */
+  #stage{position:absolute;inset:0;overflow:hidden;}
+  .bg-base{position:absolute;inset:0;background:
+    radial-gradient(125% 92% at 16% 6%, #111726 0%, transparent 56%),
+    radial-gradient(105% 82% at 94% 98%, #0c1d1c 0%, transparent 60%),
+    linear-gradient(180deg,#05060a 0%,#070a12 52%,#04050a 100%);}
+  .bg-grid{position:absolute;inset:-12%;opacity:.55;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(232,203,146,.06) 0 1px, transparent 1px 76px),
+      repeating-linear-gradient(90deg, rgba(232,203,146,.06) 0 1px, transparent 1px 76px);}
+  .bg-glow{position:absolute;inset:0;background:radial-gradient(56% 56% at 26% 50%, rgba(232,203,146,.10), transparent 66%);}
+  .blob{position:absolute;border-radius:50%;}
+  .b1{width:1400px;height:1400px;left:-560px;top:-620px;
+    background:radial-gradient(circle,rgba(200,164,104,.30) 0%,rgba(200,164,104,.12) 26%,rgba(200,164,104,.04) 48%,transparent 68%);}
+  .b2{width:1600px;height:1600px;right:-620px;bottom:-760px;
+    background:radial-gradient(circle,rgba(94,224,182,.20) 0%,rgba(94,224,182,.08) 26%,rgba(94,224,182,.03) 48%,transparent 68%);}
+  .b3{width:1200px;height:1200px;left:46%;top:24%;
+    background:radial-gradient(circle,rgba(122,142,255,.13) 0%,rgba(122,142,255,.05) 28%,transparent 66%);}
+  .vignette{position:absolute;inset:0;background:radial-gradient(80% 80% at 50% 48%, transparent 40%, rgba(0,0,0,.66) 100%);}
+  .grain{position:absolute;inset:0;opacity:.045;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='150'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='150' height='150' filter='url(%23n)' opacity='.6'/></svg>");}
+
+  /* ---------- 顶栏 ---------- */
+  #topbar{position:absolute;left:84px;right:84px;top:50px;display:flex;align-items:center;justify-content:space-between;z-index:70;}
+  .brand{display:flex;align-items:center;gap:15px;}
+  .brand-icon{width:42px;height:42px;border-radius:48px;object-fit:cover;flex:none;box-shadow:0 6px 20px rgba(0,0,0,.5);}
+  .brand-icon.big{width:150px;height:150px;border-radius:50%;margin-bottom:30px;
+    box-shadow:0 20px 60px rgba(0,0,0,.6), 0 0 70px rgba(232,203,146,.22);}
+  .brand-text{font-size:18px;letter-spacing:.18em;color:rgba(246,243,238,.9);}
+  .brand-text b{color:var(--gold);font-weight:600;}
+  .ver-chip{font-size:13px;letter-spacing:.18em;color:var(--gold);border:1px solid rgba(232,203,146,.36);
+    border-radius:999px;padding:7px 16px;background:rgba(232,203,146,.08);}
+
+  /* ---------- 字幕 / 进度 ---------- */
+  #subtitle{position:absolute;left:0;right:0;bottom:26px;display:flex;justify-content:center;z-index:80;}
+  .sub-pill{max-width:1420px;padding:16px 40px;border-radius:999px;background:rgba(8,10,15,.86);
+    border:1px solid rgba(255,255,255,.10);box-shadow:0 20px 60px rgba(0,0,0,.6);}
+  .sub-pill span{font-size:28px;line-height:1.34;letter-spacing:.03em;color:rgba(255,255,255,.95);}
+  .sub-pill em{font-style:normal;color:var(--gold);font-weight:600;}
+  #progress{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.07);z-index:80;}
+  #progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold-2),var(--gold),var(--jade));}
+  #chapter{position:absolute;right:84px;bottom:34px;font-size:13px;letter-spacing:.24em;color:var(--dim);z-index:80;}
+
+  /* ---------- 手机 ---------- */
+  .phone{position:absolute;width:var(--pw);z-index:30;}
+  .phone-frame{position:relative;width:100%;aspect-ratio:390/844;border-radius:58px;padding:12px;
+    background:linear-gradient(158deg,#2b303b,#0a0c11 44%,#151922);
+    box-shadow:0 56px 130px rgba(0,0,0,.78), 0 0 0 1px rgba(255,255,255,.075);}
+  .phone-screen{position:relative;width:100%;height:100%;border-radius:46px;overflow:hidden;background:#12141a;}
+  .phone-screen img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+  .phone-screen img.layer{opacity:0;}
+  .island{position:absolute;left:50%;top:13px;transform:translateX(-50%);width:104px;height:24px;border-radius:999px;background:#04050a;z-index:5;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);}
+  .gloss{position:absolute;inset:0;z-index:6;pointer-events:none;
+    background:linear-gradient(116deg, rgba(255,255,255,.15) 0%, rgba(255,255,255,.03) 27%, transparent 45%, transparent 100%);}
+  .phone-glow{position:absolute;inset:-40%;z-index:-1;border-radius:50%;
+    background:radial-gradient(circle at 50% 42%, rgba(232,203,146,.20) 0%, rgba(232,203,146,.07) 30%, transparent 62%);}
+  .sweep{position:absolute;left:-30%;right:-30%;height:190px;z-index:7;pointer-events:none;opacity:0;
+    background:linear-gradient(180deg,transparent,rgba(255,255,255,.17),transparent);}
+  .cursor{position:absolute;z-index:40;width:44px;height:44px;margin:-22px 0 0 -22px;pointer-events:none;}
+  .cursor .dot{position:absolute;inset:10px;border-radius:50%;background:rgba(255,255,255,.94);
+    box-shadow:0 0 0 2px rgba(8,10,15,.6), 0 6px 18px rgba(0,0,0,.55);}
+  .cursor .ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(232,203,146,.95);opacity:0;}
+  .captag{position:absolute;left:6px;top:-36px;font-size:15px;letter-spacing:.22em;color:var(--dim);white-space:nowrap;}
+
+  /* ---------- 段落 ---------- */
+  .seg{position:absolute;inset:0;display:none;z-index:20;}
+  .seg.on{display:block;}
+  .kicker{font-size:18px;letter-spacing:.36em;color:var(--gold);}
+  .kicker::before{content:"";display:inline-block;width:32px;height:1px;background:var(--gold);vertical-align:middle;margin-right:13px;opacity:.85;}
+  h2.head{font-size:58px;line-height:1.18;letter-spacing:.02em;font-weight:600;}
+  .lead{font-size:23px;line-height:1.7;color:var(--muted);letter-spacing:.02em;}
+  .gold{color:var(--gold);}
+  .pills{display:flex;flex-wrap:wrap;gap:11px;}
+  .pill{font-size:18px;padding:10px 19px;border-radius:11px;color:rgba(246,243,238,.88);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);letter-spacing:.03em;}
+  .pill.hi{color:#11141b;background:linear-gradient(140deg,var(--gold),#dcbc7c);border-color:transparent;font-weight:600;}
+  .fmt{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .fmt .f{padding:14px 19px;border-radius:13px;color:rgba(246,243,238,.92);
+    background:linear-gradient(150deg,rgba(232,203,146,.14),rgba(232,203,146,.03));
+    border:1px solid rgba(232,203,146,.30);font-size:20px;letter-spacing:.09em;}
+  .fmt .f small{display:block;font-size:12.5px;color:var(--dim);margin-top:4px;}
+  .stats{display:flex;gap:52px;}
+  .stat .v{font-size:52px;font-weight:700;line-height:1;color:var(--gold);}
+  .stat .v small{font-size:22px;}
+  .stat .l{font-size:15.5px;color:var(--dim);margin-top:10px;letter-spacing:.16em;}
+  .foot{margin-top:26px;font-size:14px;color:rgba(246,243,238,.42);letter-spacing:.04em;}
+
+  /* ---------- S1 片头（三段式） ---------- */
+  #s1 .layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+  #s1 .typing{font-size:58px;font-weight:600;letter-spacing:.03em;line-height:1.34;max-width:1760px;}
+  #s1 .typing i{font-style:normal;display:inline-block;position:relative;white-space:pre;}
+  #s1 .typing i.is-caret::after{content:"";position:absolute;right:-5px;top:6%;width:4px;height:88%;
+    background:var(--gold);border-radius:2px;box-shadow:0 0 16px rgba(232,203,146,.9);}
+  #s1 .typing i.is-caret.blink::after{opacity:.12;}
+  /* 功能流：字号刻意大于上面那行宣言，用来凸显本版更新的内容 */
+  #s1 .favlist{display:flex;flex-wrap:wrap;gap:20px;justify-content:center;margin-top:46px;max-width:1680px;}
+  #s1 .favlist .pill{font-size:64px;line-height:1.1;padding:0 30px;height:98px;display:inline-flex;align-items:center;justify-content:center;
+    font-weight:600;letter-spacing:.01em;border-radius:18px;
+    background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.16);}
+  #s1 .favlist .pill.hi{color:#11141b;background:linear-gradient(140deg,#f0d6a0,#e8cb92 42%,#cfae6f);
+    border-color:transparent;box-shadow:0 16px 48px rgba(232,203,146,.26);}
+  #s1 .bl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+  #s1 .brand-title{font-size:104px;font-weight:600;letter-spacing:.05em;line-height:1.12;}
+  #s1 .brand-title i{font-style:normal;display:inline-block;}
+  #s1 .brand-ver{margin-top:22px;font-family:ui-monospace,Consolas,monospace;font-size:86px;font-weight:700;letter-spacing:.04em;
+    color:var(--gold);line-height:1;text-shadow:0 0 46px rgba(232,203,146,.34);}
+  #s1 .brand-ver small{font-size:34px;color:rgba(232,203,146,.7);letter-spacing:.16em;margin-left:16px;vertical-align:middle;}
+  #s1 .brand-rule{width:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:30px auto;}
+  #s1 .brand-sub{font-size:30px;color:var(--muted);letter-spacing:.04em;}
+  #s1 .brand-sub b{color:var(--gold);font-weight:600;}
+  #s1 .brand-en{margin-top:18px;font-family:ui-monospace,Consolas,monospace;font-size:13px;letter-spacing:.34em;color:var(--dim);}
+
+  /* ---------- 三卡片主题墙 ---------- */
+  #twHead{position:absolute;left:112px;top:150px;width:620px;}
+  #twWrap{position:absolute;right:60px;top:112px;width:1180px;bottom:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  #twRow{display:flex;align-items:center;justify-content:center;gap:52px;will-change:transform;}
+  .tw-card{position:relative;width:296px;flex:none;}
+  .tw-card .tw-frame{position:relative;width:100%;aspect-ratio:390/844;border-radius:44px;padding:10px;
+    background:linear-gradient(158deg,#2b303b,#0a0c11 44%,#151922);
+    box-shadow:0 34px 80px rgba(0,0,0,.72), 0 0 0 1px rgba(255,255,255,.06);}
+  .tw-card .tw-screen{position:relative;width:100%;height:100%;border-radius:35px;overflow:hidden;background:#11131a;}
+  .tw-card .tw-screen img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  .tw-card .tw-mask{position:absolute;inset:0;background:rgba(5,6,10,.42);pointer-events:none;}
+  .tw-card .tw-name{margin-top:16px;text-align:center;font-size:18px;letter-spacing:.12em;color:var(--dim);height:26px;}
+  .tw-card.side{width:246px;filter:blur(7px) brightness(.58) saturate(.65);opacity:.72;}
+  .tw-card.side .tw-mask{background:rgba(5,6,10,.28);}
+  .tw-card.main .tw-frame{box-shadow:0 46px 110px rgba(0,0,0,.85), 0 0 0 1px rgba(232,203,146,.36), 0 0 90px rgba(232,203,146,.18);}
+  .tw-card.main .tw-name{color:var(--gold);font-weight:600;font-size:23px;}
+  #twDots{display:flex;gap:9px;margin-top:30px;}
+  #twDots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.18);}
+  #twDots i.on{background:var(--gold);box-shadow:0 0 12px rgba(232,203,146,.8);transform:scale(1.35);}
+
+  .wipe{position:absolute;inset:0;z-index:90;pointer-events:none;
+    background:linear-gradient(104deg,transparent 30%,rgba(232,203,146,.14) 46%,rgba(255,255,255,.30) 50%,rgba(232,203,146,.14) 54%,transparent 70%);}
+  .flash{position:absolute;inset:0;z-index:91;pointer-events:none;opacity:0;
+    background:radial-gradient(60% 60% at 50% 46%, rgba(232,203,146,.45), transparent 70%);}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="bg-base"></div>
+  <div class="bg-grid" id="bgGrid"></div>
+  <div class="bg-glow"></div>
+  <div class="blob b1" id="blob1"></div>
+  <div class="blob b2" id="blob2"></div>
+  <div class="blob b3" id="blob3"></div>
+  <div class="vignette"></div>
+  <div class="grain"></div>
+
+  <div id="topbar">
+    <div class="brand"><img class="brand-icon" src="app-icon.png" alt=""><div class="brand-text">半步五子棋<b>打谱</b></div></div>
+    <div class="ver-chip">v1.2.0 · 开源免费</div>
+  </div>
+
+  <!-- ===== S1 片头：宣言 → 功能流 → 版本名 ===== -->
+  <section class="seg" id="s1">
+    <div class="layer" id="s1TypingLayer">
+      <p class="typing" id="claimLine"></p>
+      <div class="favlist" id="favList"></div>
+    </div>
+    <div class="bl" id="s1BrandLayer">
+      <img class="brand-icon big" src="app-icon.png" alt="">
+      <h1 class="brand-title serif" id="brandTitle"></h1>
+      <div class="brand-ver" id="brandVer">1.2.0<small>大版本</small></div>
+      <div class="brand-rule" id="brandRule"></div>
+      <p class="brand-sub" id="brandSub"><b>开源免费</b>的手机端五子棋打谱软件</p>
+      <p class="brand-en" id="brandEn">LOCAL KATAGO · VCF CHALLENGE · PUZZLE GENERATOR</p>
+    </div>
+  </section>
+
+  <!-- ===== S2 本地 KataGo（深挖一） ===== -->
+  <section class="seg" id="s2">
+    <div class="phone" style="left:112px;top:104px;">
+      <div class="phone-glow"></div>
+      <div class="phone-frame"><div class="phone-screen">
+        <img id="p2a" src="../current-stills/16-engine-model-info.png">
+        <img id="p2b" class="layer" src="../current-stills/17-analysis-compute-running.png">
+        <div class="island"></div><div class="gloss"></div><div class="sweep" id="sw2"></div>
+      </div></div>
+      <div class="captag" id="cap2">引擎与模型 · 关于页</div>
+    </div>
+    <div style="position:absolute;left:672px;top:150px;width:1150px;">
+      <div class="kicker" data-anim>本地引擎</div>
+      <h2 class="head" data-anim style="margin-top:18px">旗舰 KataGo，<span class="gold">随包自带</span></h2>
+      <p class="lead" data-anim style="margin-top:20px">KataGo 原生跑在手机上，不用下载任何东西：b10c128 小网 3.2MB 边看边算，b24c256 大网换成 int8 权重 21.9MB。内置 Rapfi 同步升到 0.43.02。</p>
+      <div class="stats" style="margin-top:34px;">
+        <div class="stat" data-anim><div class="v">3.2<small>MB</small></div><div class="l">小网随包</div></div>
+        <div class="stat" data-anim><div class="v">21.9<small>MB</small></div><div class="l">大网 int8</div></div>
+        <div class="stat" data-anim><div class="v">0.43.02</div><div class="l">Rapfi 版本</div></div>
+        <div class="stat" data-anim><div class="v">2.15<small>×</small></div><div class="l">旗舰档实测</div></div>
+      </div>
+      <div class="pills" style="margin-top:24px;">
+        <span class="pill" data-anim>完全离线</span>
+        <span class="pill" data-anim>线程 16</span>
+        <span class="pill" data-anim>缓存 400M – 1.6G</span>
+        <span class="pill" data-anim>iKataGo 只接管分析</span>
+      </div>
+      <p class="foot" data-anim>速度实测口径：同一台测试机、同局面、限预算；你的设备会不同。大网更慢也更耗电，KataGo 支持 15 路以内。</p>
+    </div>
+  </section>
+
+  <!-- ===== S3 VCF 挑战（深挖二） ===== -->
+  <section class="seg" id="s3">
+    <div class="phone" style="left:112px;top:104px;">
+      <div class="phone-glow"></div>
+      <div class="phone-frame"><div class="phone-screen">
+        <img id="p3a" src="../current-stills/04-vcf-setup.png">
+        <img id="p3b" class="layer" src="../current-stills/05-vcf-challenge.png">
+        <div class="island"></div><div class="gloss"></div><div class="sweep" id="sw3"></div>
+      </div></div>
+      <div class="captag" id="cap3">VCF 挑战 · 等级分 1000 起</div>
+    </div>
+    <div style="position:absolute;left:672px;top:150px;width:1150px;">
+      <div class="kicker" data-anim>做题</div>
+      <h2 class="head" data-anim style="margin-top:18px">VCF 挑战，<span class="gold">每手必须形成四</span></h2>
+      <p class="lead" data-anim style="margin-top:20px">限时 45 秒一题，每一手都要形成四；路线走错就退回去重算。等级分从 1000 起，每多一手 +200，封顶 9100，最高 23 级。</p>
+      <div class="stats" style="margin-top:34px;">
+        <div class="stat" data-anim><div class="v">45<small>s</small></div><div class="l">每题限时</div></div>
+        <div class="stat" data-anim><div class="v">1000</div><div class="l">等级分起点</div></div>
+        <div class="stat" data-anim><div class="v">9100</div><div class="l">封顶</div></div>
+        <div class="stat" data-anim><div class="v">+30<small> / −10</small></div><div class="l">赢 / 输收益</div></div>
+      </div>
+      <div class="pills" style="margin-top:24px;">
+        <span class="pill" data-anim>每手成四</span>
+        <span class="pill" data-anim>退回重算</span>
+        <span class="pill" data-anim>一键换边</span>
+        <span class="pill" data-anim>战绩留在本机</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== S4 题目生成器（深挖三） ===== -->
+  <section class="seg" id="s4">
+    <div class="phone" style="left:112px;top:104px;">
+      <div class="phone-glow"></div>
+      <div class="phone-frame"><div class="phone-screen">
+        <img id="p4a" src="../current-stills/06-vcf-generator.png">
+        <img id="p4b" class="layer" src="../current-stills/07-vcf-generated.png">
+        <div class="island"></div><div class="gloss"></div><div class="sweep" id="sw4"></div>
+      </div></div>
+      <div class="captag" id="cap4">棋题生成器 · 生成设置</div>
+    </div>
+    <div style="position:absolute;left:672px;top:150px;width:1150px;">
+      <div class="kicker" data-anim>出题</div>
+      <h2 class="head" data-anim style="margin-top:18px">题目生成器，<span class="gold">按你的水平出题</span></h2>
+      <p class="lead" data-anim style="margin-top:20px">生成设置里选好档位与数量，一键出新题；每道题都独立验题，通过才进题库。题池 8025 道，等级上去以后按你的水平出 14–40 手的题。</p>
+      <div class="stats" style="margin-top:34px;">
+        <div class="stat" data-anim><div class="v">8025</div><div class="l">题池题量</div></div>
+        <div class="stat" data-anim><div class="v">14–40<small> 手</small></div><div class="l">按水平出题</div></div>
+        <div class="stat" data-anim><div class="v">1</div><div class="l">键生成</div></div>
+      </div>
+      <div class="pills" style="margin-top:24px;">
+        <span class="pill" data-anim>生成新题</span>
+        <span class="pill" data-anim>独立验题</span>
+        <span class="pill" data-anim>保存到题库</span>
+        <span class="pill" data-anim>开始做题</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== S5b 棋魂 · 成就（本次新增） ===== -->
+  <section class="seg" id="s5b">
+    <div class="phone" style="left:112px;top:104px;">
+      <div class="phone-glow"></div>
+      <div class="phone-frame"><div class="phone-screen">
+        <img id="p5ba" src="../current-stills/43-achievements.png">
+        <img id="p5bb" class="layer" src="../current-stills/41-soul-shop-items.png">
+        <img id="p5bc" class="layer" src="../current-stills/42-soul-shop-skins.png">
+        <div class="island"></div><div class="gloss"></div><div class="sweep" id="sw5b"></div>
+      </div></div>
+      <div class="captag" id="cap5b">成就 · 分六类可查进度</div>
+    </div>
+    <div style="position:absolute;left:672px;top:150px;width:1150px;">
+      <div class="kicker" data-anim>本版新增</div>
+      <h2 class="head" data-anim style="margin-top:18px">认真下过的每一手，<span class="gold">都算数</span></h2>
+      <p class="lead" data-anim style="margin-top:20px">下棋、做题、复盘、识谱、批注、解锁成就都会攒棋魂。棋魂不去衡量你多强，只记你做了多少 —— 攒下来能在商店里换外观，也能买道具卡：加时、提示、悔棋。</p>
+      <div class="stats" style="margin-top:32px;">
+        <div class="stat" data-anim><div class="v">89</div><div class="l">项成就</div></div>
+        <div class="stat" data-anim><div class="v">6<small> 类</small></div><div class="l">对弈 · 做题 · 研究…</div></div>
+        <div class="stat" data-anim><div class="v">3<small> 种</small></div><div class="l">道具卡</div></div>
+      </div>
+      <div class="pills" style="margin-top:24px;">
+        <span class="pill" data-anim>成就目录与进度</span>
+        <span class="pill hi" data-anim>道具卡：加时 / 提示 / 悔棋</span>
+        <span class="pill" data-anim>棋魂换外观</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== S5c 人机 · 自定义开局（本版新增） ===== -->
+  <section class="seg" id="s5c">
+    <div class="phone" style="left:112px;top:104px;">
+      <div class="phone-glow"></div>
+      <div class="phone-frame"><div class="phone-screen">
+        <img id="p5ca" src="../current-stills/45-custom-opening.png">
+        <img id="p5cb" class="layer" src="../current-stills/40-duel-home.png">
+        <div class="island"></div><div class="gloss"></div><div class="sweep" id="sw5c"></div>
+      </div></div>
+      <div class="captag" id="cap5c">自定义开局 · 自己摆子</div>
+    </div>
+    <div style="position:absolute;left:672px;top:150px;width:1150px;">
+      <div class="kicker" data-anim>本版新增</div>
+      <h2 class="head" data-anim style="margin-top:18px">人机对弈，<span class="gold">开局自己摆</span></h2>
+      <p class="lead" data-anim style="margin-top:20px">自己摆子、随时点开始；摆好的一套固定开局能存进本机局面库，下次直接载入接着下。也能从棋谱库或题库里挑一份当开局，分支照常在盘上显示。这一局不计棋魂、不计战绩，怎么试都不脏数据。</p>
+      <div class="pills" style="margin-top:26px;">
+        <span class="pill" data-anim>自己摆子</span>
+        <span class="pill hi" data-anim>存进局面库</span>
+        <span class="pill" data-anim>棋库挑起手</span>
+        <span class="pill" data-anim>不记棋魂战绩</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== S5 多格式导入（基础略述） ===== -->
+  <section class="seg" id="s5">
+    <div style="position:absolute;left:112px;top:150px;width:820px;">
+      <div class="kicker" data-anim>导入</div>
+      <h2 class="head" data-anim style="margin-top:18px">各种棋谱，<span class="gold">一个入口</span></h2>
+      <p class="lead" data-anim style="margin-top:20px">识别原始格式直接导出，或转为完整 SGF / JSON；安卓上在微信、QQ、文件管理器里选「用半步打开」，还能一次导入多份。</p>
+      <div class="fmt" style="margin-top:26px;">
+        <div class="f" data-anim>SGF<small>标准棋谱 · 含变与评注</small></div>
+        <div class="f" data-anim>LIB<small>RenLib 大型开局库</small></div>
+        <div class="f" data-anim>DP<small>分页谱 · 超深变化</small></div>
+        <div class="f" data-anim>DB<small>数据库索引</small></div>
+        <div class="f" data-anim>JSON<small>完整保真交换格式</small></div>
+        <div class="f" data-anim>POS<small>单一局面</small></div>
+      </div>
+    </div>
+    <div class="phone" style="left:1160px;top:104px;">
+      <div class="phone-glow"></div>
+      <div class="phone-frame"><div class="phone-screen">
+        <img id="p5a" src="../current-stills/08-import-formats.png">
+        <div class="island"></div><div class="gloss"></div>
+      </div></div>
+      <div class="cursor" id="c5"><div class="ring"></div><div class="dot"></div></div>
+      <div class="captag" id="cap5">选择导入方式</div>
+    </div>
+  </section>
+
+  <!-- ===== S6 图片识谱（基础略述） ===== -->
+  <section class="seg" id="s6">
+    <div class="phone" style="left:112px;top:104px;">
+      <div class="phone-glow"></div>
+      <div class="phone-frame"><div class="phone-screen">
+        <img id="p6a" src="../current-stills/09-image-align.png">
+        <img id="p6b" class="layer" src="../current-stills/10-image-verify.png">
+        <div class="island"></div><div class="gloss"></div><div class="sweep" id="sw6"></div>
+      </div></div>
+      <div class="captag" id="cap6">对齐棋盘 · 待识别</div>
+    </div>
+    <div style="position:absolute;left:672px;top:160px;width:1150px;">
+      <div class="kicker" data-anim>图片识谱</div>
+      <h2 class="head" data-anim style="margin-top:18px">照片进来，<span class="gold">棋谱出去</span></h2>
+      <p class="lead" data-anim style="margin-top:20px">对齐、识别、叠图、核对、编辑、复原手序；点交叉点就能改黑改白、删子补子，确认之前原谱不会被改。</p>
+      <div class="pills" style="margin-top:26px;">
+        <span class="pill" data-anim>网格对齐</span>
+        <span class="pill" data-anim>叠图核对</span>
+        <span class="pill" data-anim>显式编辑</span>
+        <span class="pill hi" data-anim>复原手序</span>
+      </div>
+      <div class="stats" style="margin-top:34px;">
+        <div class="stat" data-anim><div class="v">4</div><div class="l">种查看方式</div></div>
+        <div class="stat" data-anim><div class="v">0</div><div class="l">确认前的改动</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== S7 主题与棋盘棋子（三卡片轮播，基础略述） ===== -->
+  <section class="seg" id="s7">
+    <div id="twHead">
+      <div class="kicker" data-anim>新外观</div>
+      <h2 class="head" data-anim style="margin-top:18px">新一批棋盘，<span class="gold">都能换上</span></h2>
+      <div class="stats" style="margin-top:38px;gap:44px;">
+        <div class="stat" data-anim><div class="v">14</div><div class="l">棋盘材质</div></div>
+        <div class="stat" data-anim><div class="v">16</div><div class="l">棋子材质</div></div>
+        <div class="stat" data-anim><div class="v">20</div><div class="l">配色方案</div></div>
+      </div>
+      <p class="lead" data-anim style="margin-top:30px;max-width:600px">古风、铁线白描、水波、彩铅、蓝调…… 新一批棋盘材质随包更新，选一套立刻生效，每个都带自己的动效。</p>
+    </div>
+    <div id="twWrap">
+      <div id="twRow">
+        <div class="tw-card side" id="twL"><div class="tw-frame"><div class="tw-screen"><img id="twImgL" src="../seq/board-v4/13.png"><div class="tw-mask"></div></div></div><div class="tw-name" id="twNameL"></div></div>
+        <div class="tw-card main" id="twC"><div class="tw-frame"><div class="tw-screen"><img id="twImgC" src="../seq/board-v4/12.png"><div class="island" style="height:20px;width:88px"></div><div class="tw-mask"></div></div></div><div class="tw-name" id="twNameC">古风 · 陈年宣纸墨竹</div></div>
+        <div class="tw-card side" id="twR"><div class="tw-frame"><div class="tw-screen"><img id="twImgR" src="../seq/board-v4/14.png"><div class="tw-mask"></div></div></div><div class="tw-name" id="twNameR"></div></div>
+      </div>
+      <div id="twDots"></div>
+    </div>
+  </section>
+
+  <!-- ===== S8 分析 · 对弈 · 棋钟 · 棋谱库（快切，基础略述） ===== -->
+  <section class="seg" id="s8">
+    <div class="phone" style="left:112px;top:104px;">
+      <div class="phone-glow"></div>
+      <div class="phone-frame"><div class="phone-screen">
+        <img id="p8a" src="../current-stills/17b-analysis-readout.png">
+        <div class="island"></div><div class="gloss"></div>
+      </div></div>
+      <div class="captag" id="cap8">分析 · 计算 / 复盘 / 胜率</div>
+    </div>
+    <div style="position:absolute;left:672px;top:160px;width:1150px;">
+      <div class="kicker" data-anim>还有</div>
+      <h2 class="head" data-anim style="margin-top:18px">分析、对弈、棋钟，<span class="gold">顶栏也能收起</span></h2>
+      <p class="lead" data-anim style="margin-top:20px">分析面板分计算 / 复盘 / 胜率三页签，逐手看得懂；四档 AI 对弈随时开局；比赛棋钟支持菲舍尔、布龙斯坦、包干、读秒；看盘时按一下，顶栏、状态栏、底栏逐档让位。</p>
+      <div class="pills" style="margin-top:26px;">
+        <span class="pill" data-anim>三页分析</span>
+        <span class="pill" data-anim>四档 AI</span>
+        <span class="pill" data-anim>比赛棋钟</span>
+        <span class="pill hi" data-anim>顶部四档折叠</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== S9 收尾 ===== -->
+  <section class="seg" id="s9">
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+      <img class="brand-icon" src="app-icon.png" alt="" style="width:132px;height:132px;border-radius:50%;margin-bottom:30px;box-shadow:0 20px 60px rgba(0,0,0,.6), 0 0 70px rgba(232,203,146,.22);">
+      <h1 class="serif" style="font-size:84px;font-weight:600;letter-spacing:.05em;" data-anim>半步五子棋打谱</h1>
+      <div class="brand-ver" id="endVer" style="font-family:ui-monospace,Consolas,monospace;font-size:82px;font-weight:700;color:var(--gold);margin-top:16px;text-shadow:0 0 46px rgba(232,203,146,.34);" data-anim>1.2.0</div>
+      <p class="lead" style="margin-top:20px;font-size:25px" data-anim>本地 KataGomo，功能丰富的五子棋手机打谱软件</p>
+      <div style="display:flex;gap:13px;flex-wrap:wrap;justify-content:center;margin-top:30px;">
+        <span class="pill" data-anim>本地 KataGo</span><span class="pill" data-anim>Rapfi</span>
+        <span class="pill" data-anim>VCF 挑战</span><span class="pill" data-anim>题目生成器</span>
+        <span class="pill" data-anim>图片识谱</span><span class="pill" data-anim>复原手序</span>
+        <span class="pill" data-anim>导入六格式</span><span class="pill" data-anim>主题与棋盘棋子</span>
+      </div>
+      <div class="ver-chip" style="margin-top:32px;font-size:15px" data-anim>v1.2.0 · 开源免费 · Web 与 Android</div>
+    </div>
+  </section>
+
+  <div class="wipe" id="wipe"></div>
+  <div class="flash" id="flash"></div>
+</div>
+
+<div id="subtitle"><div class="sub-pill"><span id="subText"></span></div></div>
+<div id="progress"><i id="progBar"></i></div>
+<div id="chapter"></div>
+
+<script>
+/* =========================================================
+   确定性渲染 renderFrame(t) —— t 的纯函数
+   ========================================================= */
+const FPS = 30;
+const EASE = { out:t=>1-Math.pow(1-t,3), inOut:t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2 };
+const c01=v=>v<0?0:v>1?1:v;
+const s01=(t,a,b)=>c01((t-a)/(b-a));
+
+const SEGS = [
+  { id:'s1', t0:0,    t1:8.0,  label:'片头',            sub:'本地 KataGomo，功能丰富的五子棋手机打谱软件 —— <em>本地引擎 · VCF 挑战 · 题目生成器</em>。' },
+  { id:'s2', t0:8.0,  t1:16.5, label:'本地 KataGo',      sub:'KataGo 随包自带、原生运行：小网 3.2MB、int8 大网 21.9MB，<em>Rapfi 升到 0.43.02</em>。' },
+  { id:'s3', t0:16.5, t1:24.5, label:'VCF 挑战',         sub:'限时 45 秒，每手必须形成四；等级分 1000 起、每多一手 +200，<em>封顶 9100</em>。' },
+  { id:'s4', t0:24.5, t1:32.5, label:'题目生成器',        sub:'档位与数量自选，一键出新题；<em>独立验题通过才入题库</em>，题池 8025 道。' },
+  { id:'s5b', t0:32.5, t1:39.5, label:'棋魂 · 成就 · 道具卡', sub:'认真下过的每一手都攒棋魂；<em>成就分六类</em>，攒下的棋魂能换外观与道具卡。' },
+  { id:'s5c', t0:39.5, t1:45.5, label:'人机 · 自定义开局',  sub:'自己摆子、随时开始；摆好的开局<em>存进局面库</em>，也能从棋谱库挑一份来打。' },
+  { id:'s5', t0:45.5, t1:50.5, label:'多格式导入',        sub:'SGF、LIB、DP、DB、JSON、POS，六种格式一个入口；安卓还能<em>一次导入多份</em>。' },
+  { id:'s6', t0:50.5, t1:56.0, label:'图片识谱',          sub:'对齐、识别、叠图、核对、编辑、复原手序；<em>确认之前原谱不会被改</em>。' },
+  { id:'s7', t0:56.0, t1:63.6, label:'新外观 · 棋盘材质',   sub:'古风、铁线白描、水波、彩铅…… <em>新一批棋盘材质</em>随包更新。' },
+  { id:'s8', t0:63.6, t1:69.1, label:'分析 · 对弈 · 棋钟', sub:'计算 / 复盘 / 胜率三页签、四档 AI 对弈、比赛棋钟，<em>顶栏还能一键折叠</em>。' },
+  { id:'s9', t0:69.1, t1:75.5, label:'半步五子棋打谱 1.2.0', sub:'半步五子棋打谱 <em>1.2.0</em> —— 本地 KataGomo，功能丰富的五子棋手机打谱软件。' },
+];
+const DURATION = SEGS[SEGS.length-1].t1;
+
+const $ = s => document.querySelector(s);
+const setSrc=(img,src)=>{ if(img && img.src.indexOf(src)<0) img.src = src; };
+
+function anim(el, lt, o){
+  const {delay=0,dur=.5,y=30,sc=0}=o||{};
+  const p=EASE.out(s01(lt,delay,delay+dur));
+  el.style.opacity=p;
+  el.style.transform=`translate3d(0,${(1-p)*y}px,0) scale(${1-(1-p)*sc})`;
+}
+const DELAYS=[.08,.16,.24,.32,.40,.48,.56,.64,.72,.80,.88,.96,1.04,1.12];
+function renderSeg(seg,lt){
+  const root=document.getElementById(seg.id); if(!root)return;
+  root.querySelectorAll('[data-anim]').forEach((el,i)=>anim(el,lt,{delay:DELAYS[Math.min(i,DELAYS.length-1)]}));
+}
+
+/* 光标：只在有真实坐标的场景使用 */
+const phonePt=(el,sx,sy)=>{const r=el.querySelector('.phone-frame').getBoundingClientRect();return{x:r.left+r.width*(sx/390),y:r.top+r.height*(sy/844)};};
+function renderCursor(cur,phoneEl,lt,keys){
+  if(!cur)return;
+  if(lt<keys[0].t-.3||lt>keys[keys.length-1].t+.7){cur.style.opacity=0;return;}
+  cur.style.opacity=1;
+  let i=0;while(i<keys.length-1&&lt>keys[i+1].t)i++;
+  const a=keys[i],b=keys[Math.min(i+1,keys.length-1)];
+  const k=b.t===a.t?1:EASE.inOut(c01((lt-a.t)/(b.t-a.t)));
+  const pt=phonePt(phoneEl,a.x+(b.x-a.x)*k,a.y+(b.y-a.y)*k);
+  const st=phoneEl.getBoundingClientRect();
+  cur.style.left=(pt.x-st.left)+'px';cur.style.top=(pt.y-st.top)+'px';
+  let ripple=0;
+  for(const kk of keys)if(kk.tap&&lt>=kk.t){const d=lt-kk.t;if(d<.42)ripple=Math.max(ripple,1-d/.42);}
+  const ring=cur.querySelector('.ring');
+  ring.style.opacity=ripple*.95;ring.style.transform=`scale(${.45+(1-ripple)*1.75})`;
+  cur.querySelector('.dot').style.transform=`scale(${keys.some(k=>k.tap&&Math.abs(lt-k.t)<.1)?.72:1})`;
+}
+
+/* ========== S1 片头：宣言打字机 → 功能流 → 版本名 ========== */
+const CLAIM_TEXT = "本地 KataGomo，功能丰富的五子棋手机打谱软件";
+const FEATS = [["本地 KataGo","hi"],["Rapfi 引擎",""],["VCF 挑战","hi"],["题目生成器","hi"],["棋魂 · 成就","hi"],["图片识谱",""],["复原手序",""],["……",""]];
+const BRAND_TEXT = "半步五子棋打谱";
+function buildChars(el, text){
+  el.innerHTML = [...text].map(c=>`<i>${c===" "?"&nbsp;":c}</i>`).join("");
+  return [...el.children];
+}
+const claimChars = buildChars($("#claimLine"), CLAIM_TEXT);
+const brandChars = buildChars($("#brandTitle"), BRAND_TEXT);
+const featEls = (function(){
+  const box=$("#favList");
+  FEATS.forEach(([t,c])=>{
+    const s=document.createElement("span");
+    s.className="pill"+(c?" "+c:"");
+    s.textContent=t;
+    box.appendChild(s);
+  });
+  return [...box.children];
+})();
+
+function renderS1(lt){
+  const T_START=0.45, CPS=15.5;          // 宣言打字机（26 字，约 1.7s 打完）
+  const F_IN=2.30, F_STEP=0.10;          // 功能流逐项落位（放大后多留一点时间）
+  const OUT=3.80, OUT_DUR=0.55;          // 宣言 + 功能流一起散开
+  const B_IN=4.55, B_STEP=0.075;         // 品牌逐字进场
+
+  /* 宣言 */
+  const n = Math.max(0, Math.min(claimChars.length, Math.floor((lt - T_START) * CPS)));
+  const caretOn = lt > T_START && lt < OUT + 0.2 && n < claimChars.length;
+  claimChars.forEach((c,i)=>{
+    const shown = i < n ? 1 : 0;
+    const sp = EASE.out(s01(lt, OUT + i*0.013, OUT + i*0.013 + OUT_DUR));
+    c.style.opacity = shown * (1 - sp);
+    c.style.transform = `translate3d(${(i%3-1)*sp*34}px, ${-sp*46}px, 0) rotate(${sp*(i%2?9:-9)}deg)`;
+    const isCaret = caretOn && i === n-1;
+    c.className = isCaret ? "is-caret" + (Math.floor(lt*5)%2 ? " blink" : "") : "";
+  });
+  /* 功能流 */
+  featEls.forEach((el,i)=>{
+    const p = EASE.out(s01(lt, F_IN + i*F_STEP, F_IN + i*F_STEP + 0.46));
+    const sp = EASE.out(s01(lt, OUT + i*0.02, OUT + i*0.02 + OUT_DUR));
+    el.style.opacity = p * (1 - sp);
+    el.style.transform = `translate3d(0, ${(1-p)*26 - sp*34}px, 0) rotate(${sp*(i%2?-7:7)}deg)`;
+  });
+  $("#s1TypingLayer").style.opacity = lt < 5.15 ? 1 : 0;
+
+  /* 品牌：图标 + 名称 + 版本号（大字） */
+  const ic = document.querySelector("#s1BrandLayer .brand-icon");
+  if (ic) {
+    const pi = EASE.out(s01(lt, 4.10, 4.75));
+    ic.style.opacity = pi;
+    ic.style.transform = `scale(${0.62 + pi*0.38})`;
+  }
+  brandChars.forEach((c,i)=>{
+    const p = EASE.out(s01(lt, B_IN + i*B_STEP, B_IN + i*B_STEP + 0.56));
+    c.style.opacity = p;
+    c.style.transform = `translate3d(0, ${(1-p)*52}px, 0) scale(${0.82+p*0.18})`;
+    c.style.filter = p < 1 ? `blur(${(1-p)*9}px)` : "none";
+  });
+  /* 版本号：稍后弹出，带一次回弹 */
+  const vIn = s01(lt, 5.35, 5.95);
+  const vp = EASE.out(vIn);
+  const vb = document.getElementById("brandVer");
+  if (vb) {
+    vb.style.opacity = vp;
+    const over = 1 + Math.sin(vIn*Math.PI)*0.10;
+    vb.style.transform = `translate3d(0,${(1-vp)*30}px,0) scale(${(0.86+vp*0.14)*over})`;
+  }
+  $("#brandRule").style.width = (EASE.out(s01(lt,5.85,6.45)) * 520) + "px";
+  const pSub=EASE.out(s01(lt,6.05,6.65));
+  const sub=$("#brandSub"); sub.style.opacity=pSub; sub.style.transform=`translateY(${(1-pSub)*22}px)`;
+  const pEn=EASE.out(s01(lt,6.25,6.85));
+  const en=$("#brandEn"); en.style.opacity=pEn; en.style.transform=`translateY(${(1-pEn)*16}px)`;
+}
+
+/* ========== 通用微动 ========== */
+function floatPhone(sel, t, phase){
+  const el=document.querySelector(sel); if(!el)return;
+  el.style.transform=`translate3d(0,${Math.sin(t*0.85+phase)*7}px,0)`;
+}
+function sweep(el, lt, a, b){
+  if(!el)return;
+  const p=s01(lt,a,b);
+  if(p<=0||p>=1){el.style.opacity=0;return;}
+  el.style.opacity=Math.sin(Math.PI*p)*.9;
+  el.style.top=(-190 + p*1020)+"px";
+}
+
+/* ========== S7 三卡片主题墙 ========== */
+/* 棋盘材质（本轮抓自 外观 → 棋盘，格子索引即文件名）：
+   12 古风·陈年宣纸墨竹 / 13 古风·梅花词笺 / 14 铁线白描·朱砂线 / 15 逐帧硬线·纯黑 / 11 水波·温泉水汽 */
+const TH_DIR = "../seq/board-v4/";
+const TWL=[["12","古风 · 陈年宣纸墨竹"],["13","古风 · 梅花词笺"],["14","铁线白描 · 朱砂线"],["15","逐帧硬线 · 纯黑"],["11","水波 · 温泉水汽"]];
+const twDots=[];
+(function(){ const box=$("#twDots"); TWL.forEach(()=>{const i=document.createElement("i");box.appendChild(i);twDots.push(i);}); })();
+
+let twKey="";
+function renderThemeWall(lt){
+  /* 首套多留一点看清，之后固定 1.25s/套；到最后一格就停住，不再切走 */
+  const START=0.35, FIRST_HOLD=1.90, PERIOD=1.25, OUT=0.42;
+  const t = lt - START;
+  const pos = t < FIRST_HOLD ? 0 : (t - FIRST_HOLD) / PERIOD;
+  const k=Math.min(TWL.length-1, Math.max(0, Math.floor(pos)));
+  const ph=pos-Math.floor(pos);
+  const showIdx = ph<OUT ? k : Math.min(TWL.length-1,k+1);
+  const p = ph<OUT ? EASE.inOut(ph/OUT) : EASE.out((ph-OUT)/(1-OUT));
+  const shift = ph<OUT ? -(p*56) : (1-p)*56;
+  const alpha = ph<OUT ? (1-p) : p;
+
+  const li=Math.max(0,showIdx-1), ci=showIdx, ri=Math.min(TWL.length-1,showIdx+1);
+  const key=li+"|"+ci+"|"+ri;
+  if(key!==twKey){
+    twKey=key;
+    setSrc($("#twImgL"),`${TH_DIR}${TWL[li][0]}.png`);
+    setSrc($("#twImgC"),`${TH_DIR}${TWL[ci][0]}.png`);
+    setSrc($("#twImgR"),`${TH_DIR}${TWL[ri][0]}.png`);
+    $("#twNameC").textContent=TWL[ci][1];
+    $("#twNameL").textContent = li===ci ? "" : TWL[li][1];
+    $("#twNameR").textContent = ri===ci ? "" : TWL[ri][1];
+    twDots.forEach((d,i)=>d.classList.toggle("on", i===ci));
+  }
+  const row=$("#twRow");
+  row.style.transform=`translate3d(${shift}px,0,0)`;
+  row.style.opacity=0.20 + alpha*0.80;
+  const pulse = 1 - 0.016*Math.sin(Math.PI*p);
+  $("#twC").style.transform=`scale(${pulse})`;
+  $("#twL").style.transform=`scale(${.90 - p*0.02})`;
+  $("#twR").style.transform=`scale(${.90 - p*0.02})`;
+}
+
+/* =========================================================
+   主渲染
+   ========================================================= */
+function renderFrame(t){
+  t = Math.max(0, Math.min(DURATION, t));
+  let cur = SEGS[0];
+  for(const s of SEGS) if(t>=s.t0 && t<s.t1){ cur=s; break; }
+  if(t>=DURATION) cur = SEGS[SEGS.length-1];
+  const lt = t - cur.t0;
+
+  SEGS.forEach(s=>{const el=document.getElementById(s.id); if(el) el.classList.toggle('on', s.id===cur.id);});
+  renderSeg(cur, lt);
+
+  const c5 = $("#c5");
+  if (c5) c5.style.opacity = 0;
+
+  const g=$("#bgGrid");
+  g.style.transform=`rotate(${-4+Math.sin(t*.18)*1.6}deg) scale(1.13) translate3d(${Math.sin(t*.1)*14}px,${Math.cos(t*.13)*12}px,0)`;
+  $("#blob1").style.transform=`translate3d(${Math.sin(t*.22)*40}px,${Math.cos(t*.17)*34}px,0)`;
+  $("#blob2").style.transform=`translate3d(${Math.cos(t*.19)*-46}px,${Math.sin(t*.15)*-30}px,0)`;
+  $("#blob3").style.transform=`translate3d(${Math.sin(t*.26)*34}px,${Math.cos(t*.21)*-26}px,0)`;
+
+  if(cur.id==='s1') renderS1(lt);
+
+  /* S2 本地 KataGo：引擎与模型 → 分析计算中 */
+  if(cur.id==='s2'){
+    const e=EASE.out(s01(lt,3.4,4.3));
+    $("#p2a").style.opacity=1-e*0.0;
+    $("#p2b").style.opacity=e;
+    const cap=$("#cap2"); if(cap) cap.textContent = e>.5 ? '分析 · KataGo 正在计算' : '引擎与模型 · 关于页';
+    floatPhone("#s2 .phone", t, 0.4);
+    sweep($("#sw2"), lt, 1.4, 5.2);
+  }
+
+  /* S3 VCF 挑战：设置 → 应战中 */
+  if(cur.id==='s3'){
+    const e=EASE.out(s01(lt,3.2,4.1));
+    $("#p3a").style.opacity=1-e*0.0;
+    $("#p3b").style.opacity=e;
+    const cap=$("#cap3"); if(cap) cap.textContent = e>.5 ? '应战中 · 45 秒一题' : 'VCF 挑战 · 等级分 1000 起';
+    floatPhone("#s3 .phone", t, 1.5);
+    sweep($("#sw3"), lt, 1.3, 5.0);
+  }
+
+  /* S4 题目生成器：生成设置 → 新题入题库 */
+  if(cur.id==='s4'){
+    const e=EASE.out(s01(lt,3.1,4.0));
+    $("#p4a").style.opacity=1-e*0.0;
+    $("#p4b").style.opacity=e;
+    const cap=$("#cap4"); if(cap) cap.textContent = e>.5 ? '生成完成 · 验题通过' : '棋题生成器 · 生成设置';
+    floatPhone("#s4 .phone", t, 2.6);
+    sweep($("#sw4"), lt, 1.3, 5.0);
+  }
+
+  /* S5b 棋魂 · 成就 · 道具卡：成就页 → 棋魂商店（道具卡）→ 外观解锁 */
+  if(cur.id==='s5b'){
+    const e1=EASE.out(s01(lt,2.2,3.0));
+    const e2=EASE.out(s01(lt,4.6,5.4));
+    $("#p5ba").style.opacity=1;
+    $("#p5bb").style.opacity=e1;
+    $("#p5bc").style.opacity=e2;
+    const cap=$("#cap5b"); if(cap) cap.textContent = e2>.5 ? '棋魂商店 · 外观解锁' : (e1>.5 ? '棋魂商店 · 道具卡' : '成就 · 分六类可查进度');
+    floatPhone("#s5b .phone", t, 1.2);
+    sweep($("#sw5b"), lt, 1.0, 4.6);
+  }
+
+  /* S5c 人机 · 自定义开局：先给对弈页入口，再揭到摆子界面 */
+  if(cur.id==='s5c'){
+    const e=EASE.out(s01(lt,2.2,3.1));
+    $("#p5ca").style.opacity=1;
+    $("#p5cb").style.opacity=1-e;
+    const cap=$("#cap5c"); if(cap) cap.textContent = e>.5 ? 'AI 人机对战 · 自定义开局' : '对弈 · 01 AI 对战';
+    floatPhone("#s5c .phone", t, 2.0);
+    sweep($("#sw5c"), lt, 1.2, 5.0);
+  }
+
+  /* S5 导入：光标真的点到「图片识谱」 */
+  if(cur.id==='s5'){
+    floatPhone("#s5 .phone", t, 3.7);
+    renderCursor($("#c5"), $("#p5a").closest('.phone'), lt, IMPORT_TAPS);
+  }
+
+  /* S6 图片识谱：对齐 → 核对 */
+  if(cur.id==='s6'){
+    const e=EASE.out(s01(lt,2.5,3.4));
+    $("#p6a").style.opacity=1-e*0.0;
+    $("#p6b").style.opacity=e;
+    const cap=$("#cap6"); if(cap) cap.textContent = e>.5 ? '核对屏 · 四种看法可编辑' : '对齐棋盘 · 待识别';
+    floatPhone("#s6 .phone", t, 4.8);
+    sweep($("#sw6"), lt, 1.0, 4.4);
+  }
+
+  /* S7 主题墙 */
+  if(cur.id==='s7'){
+    renderThemeWall(lt);
+  }
+
+  /* S8 分析 / 对弈 / 棋钟 / 棋谱库 快切 */
+  if(cur.id==='s8'){
+    const STEPS=[
+      { t:0,   src:'../current-stills/17b-analysis-readout.png', cap:'分析 · 计算 / 复盘 / 胜率' },
+      { t:1.4, src:'../current-stills/03b-ai-thinking.png',      cap:'对弈 · AI 正在思考' },
+      { t:2.8, src:'../current-stills/20-clock-panel.png',       cap:'棋钟 · 独立全屏计时' },
+      { t:4.2, src:'../current-stills/34-chrome-level3.png',     cap:'顶部折叠 · 一键收起顶栏' },
+    ];
+    let si=0; while(si<STEPS.length-1 && lt>=STEPS[si+1].t) si++;
+    setSrc($("#p8a"), STEPS[si].src);
+    const cap=$("#cap8"); if(cap) cap.textContent = STEPS[si].cap;
+    floatPhone("#s8 .phone", t, 5.9);
+  }
+
+  const subEl=$("#subText");
+  const span=cur.t1-cur.t0;
+  const sp=s01(lt,.22,.62)*(1-s01(lt,span-.62,span-.24));
+  subEl.innerHTML=cur.sub;
+  const pill=subEl.closest('.sub-pill');
+  pill.style.opacity=sp;
+  pill.style.transform=`translateY(${(1-sp)*18}px)`;
+
+  $("#chapter").textContent=cur.label;
+  $("#progBar").style.width=(t/DURATION*100)+'%';
+
+  const tt=t-cur.t0;
+  const wp=tt<.55?(1-tt/.55):0;
+  const w=$("#wipe");
+  w.style.opacity=wp*.85;
+  w.style.transform=`translateX(${(tt/.55)*2600-1300}px)`;
+  const fp=tt<.42?(1-tt/.42):0;
+  $("#flash").style.opacity=fp*.5;
+}
+
+/* 导入弹窗按钮真实坐标（390×844 视口，采集自 capture-v4-extra.mjs：
+   导入棋谱文件 (195,434) · 粘贴坐标代码 (195,544) · 图片识谱 (195,672)） */
+const IMPORT_TAPS = [
+  { t:0.50, x:195, y:434 },
+  { t:1.20, x:195, y:434, tap:1 },
+  { t:2.60, x:195, y:672 },
+  { t:3.40, x:195, y:672, tap:1 },
+  { t:4.60, x:195, y:672 },
+];
+
+window.__promo={renderFrame,DURATION,FPS,SEGS};
+renderFrame(0);
+</script>
+</body>
+</html>

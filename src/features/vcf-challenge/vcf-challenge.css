@@ -1,0 +1,920 @@
+/* vcf-challenge.css — VCF 挑战页。
+   配色一律照应用既有规范（styles.css / duel.css 的写法）：面板 --surface + --surface-border、
+   正文 --ink、次要 --muted、主色 --green + 其上的文字 --on-accent（随主题翻转）、
+   浅主色 --jade、警示 --red。不要再自造变量名（曾撞上 --surface 的深色定义导致黑底黑字）。 */
+
+/* 挑战页挂在 App 里、切到别的 tab 时整块隐藏（但保持挂载：题目/局面/计时不重建）。
+   显式写死 display:none——只靠 [hidden] 的 UA 规则，将来谁给容器加一条 display 就会被顶掉。 */
+.duel-subview[hidden] { display: none; }
+
+.vcfch-page {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 8px 12px 14px;
+  color: var(--ink, #292620);
+}
+
+/* 顶部：第一行「返回 + 等级分 + 等级徽章 + 设置」，第二行统计（手机上不挤、不截断） */
+.vcfch-top { display: flex; flex-direction: column; gap: 3px; }
+.vcfch-top-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.vcfch-top-row > button {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 9px;
+  border-radius: 11px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface, var(--paper, #f8f6f1));
+  color: var(--ink, #292620);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.vcfch-rating-inline { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 auto; }
+.vcfch-rating-inline span { font-size: 12px; color: var(--muted, #68635b); }
+.vcfch-rating-inline b { font-size: 24px; line-height: 1.05; font-variant-numeric: tabular-nums; color: var(--ink, #292620); }
+.vcfch-top-info { font-size: 11px; line-height: 1.25; color: var(--muted, #68635b); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 等级徽章 + 本级进度条（每级 300 分，满级满条） */
+.vcfch-level-chip {
+  display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto;
+  font-style: normal; font-size: 11px; font-weight: 600; color: var(--jade, #3f6f5a);
+  padding: 2px 7px; border-radius: 999px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface-2, rgba(63, 111, 90, 0.08));
+  font-variant-numeric: tabular-nums;
+}
+.vcfch-level-chip i { display: block; width: 34px; height: 4px; border-radius: 999px; background: var(--surface-3, rgba(0, 0, 0, 0.12)); overflow: hidden; }
+.vcfch-level-chip i u { display: block; height: 100%; background: var(--jade, #3f6f5a); border-radius: 999px; transition: width 0.25s ease; }
+.vcfch-top-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+.vcfch-top-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 11px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface, var(--paper, #f8f6f1));
+  color: var(--ink, #292620);
+  cursor: pointer;
+}
+.vcfch-top-actions button i { font-style: normal; font-size: 10px; color: var(--muted, #68635b); }
+
+/* 状态行（亲密性：你执子+题目信息同组；对齐：一行两端对齐，进度条通栏；对比：倒计时最大） */
+.vcfch-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px;
+}
+.vcfch-status-left { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.vcfch-side-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface, var(--paper, #f8f6f1));
+}
+.vcfch-side-chip .stone { width: 16px; height: 16px; border-radius: 50%; flex: 0 0 auto; background: #1c1b18; box-shadow: inset 0 1px 2px #fff3; }
+.vcfch-side-chip.white-side .stone { background: #fbf8ef; border: 1px solid #a39c90; box-shadow: inset 0 1px #fff; }
+.vcfch-side-chip em { font-style: normal; font-size: 12px; color: var(--muted, #68635b); }
+.vcfch-side-chip b { font-size: 22px; line-height: 1.05; font-weight: 800; color: var(--ink, #292620); }
+.vcfch-side-chip.white-side b { color: var(--gold, #c79c4a); }
+.vcfch-meta { font-size: 12px; color: var(--muted, #68635b); }
+/* 摆棋的「下一手」：复盘式自动交替，颜色必须一眼看得见 */
+.vcfch-setup-turn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--jade, #eef4ef);
+  color: var(--green, #365e4b);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.vcfch-setup-turn b { font-size: 13px; font-weight: 800; }
+.vcfch-clock { display: flex; align-items: baseline; gap: 3px; flex: 0 0 auto; }
+.vcfch-clock b { font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: var(--ink, #292620); }
+.vcfch-clock span { font-size: 12px; color: var(--muted, #68635b); }
+/* 最后 1 秒转红：只有一瞬，所以再闪一下（动效关闭时由全局规则压掉） */
+.vcfch-clock.warn b { color: var(--red, #b94b3f); animation: vcfch-clock-blink 0.4s steps(2, end) infinite; }
+.vcfch-clock.warn span { color: var(--red, #b94b3f); }
+@keyframes vcfch-clock-blink { 50% { opacity: 0.40; } }
+.vcfch-progress { height: 6px; border-radius: 999px; background: var(--surface-3, #f0eee8); overflow: hidden; margin: 0 4px; }
+.vcfch-progress i { display: block; height: 100%; border-radius: 999px; background: var(--green, #365e4b); transition: width 0.9s linear; }
+.vcfch-progress.warn i { background: var(--red, #b94b3f); }
+
+/* 棋盘 */
+.vcfch-board {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 10px 26px #513a1b28;
+  touch-action: manipulation;
+}
+
+/* 竖屏：棋盘与打谱页**同宽**（用户 10-08：「挑战里的棋盘…能不能搞得像正常打谱那个界面一样大，
+   这样的话棋盘大了，棋子也就大了，就更好点击了」）。
+   页壳的 `padding: 8px 12px 14px` 原本把棋盘左右各吃掉 12px（390 屏：棋盘 366 vs 打谱 388），
+   这 22px 直接等于格子与棋子的大小。做法是把页壳左右内边距压到 1px、只让棋盘吃到边，
+   其余各行（顶栏/状态/进度/底栏/解答条）各自补回 11px，视觉边距与改造前一致。
+   ⚠ 不写 `.vcfch-board` 的 width —— 竖屏矮机与横屏那几条「按高度反推宽度」的上限要照旧生效。 */
+@media (orientation: portrait) {
+  .vcfch-page { padding-inline: 1px; }
+  /* ⚠ 2026-10-12 横屏改造把棋盘之后那几行包进了 `.vcfch-rail`（竖屏该层是 `display:contents`，
+     视觉顺序与以前逐字相同），所以这里的补边距从 `>` 改成两种深度都吃得到。 */
+  .vcfch-page > .vcfch-top,
+  .vcfch-page .vcfch-status,
+  .vcfch-page .vcfch-progress,
+  .vcfch-page .vcfch-bottom,
+  .vcfch-page .vcfch-solution-bar { margin-inline: 11px; }
+}
+
+/* 结果行：胜利/失败 + 等级分加减 + 手数，压在**一行**里（手机上不再折成三行） */
+.vcfch-outcome {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  padding: 7px 10px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+.vcfch-outcome b { font-size: 17px; font-weight: 800; flex: 0 0 auto; }
+.vcfch-outcome .vcfch-delta { font-size: 13px; font-weight: 700; flex: 0 0 auto; }
+/* 结算行中间的「怎么赢/输的」说明（用户 10-06 两行合一后这里是主文案）：随行色、超长省略 */
+.vcfch-outcome small { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; opacity: 0.82; }
+.vcfch-outcome.win { border-color: color-mix(in srgb, var(--green, #365e4b) 35%, transparent); background: var(--jade, #e5eee8); }
+.vcfch-outcome.win b, .vcfch-outcome.win .vcfch-delta, .vcfch-outcome.win small { color: var(--green, #365e4b); }
+.vcfch-outcome.lose { border-color: color-mix(in srgb, var(--red, #b94b3f) 32%, transparent); background: color-mix(in srgb, var(--red, #b94b3f) 10%, transparent); }
+.vcfch-outcome.lose b, .vcfch-outcome.lose .vcfch-delta, .vcfch-outcome.lose small { color: var(--red, #b94b3f); }
+
+/* 棋子手数：字号/基线由 BoardSvg 按主盘 .move-number 的度量算（r×0.64 / r×0.28），
+   这里只钉字体与颜色 —— 主盘用等宽字体，sans-serif 会看着歪。 */
+.vcfch-num { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 700; text-anchor: middle; }
+.vcfch-num.dark { fill: #eee9dd; }
+.vcfch-num.light { fill: #3a3731; }
+
+/* 解答步进提示（只在进行"查看解答"时出现一行） */
+.vcfch-solution-bar {
+  display: flex; align-items: baseline; justify-content: center; gap: 8px;
+  font-size: 12px; line-height: 1.3; color: var(--muted, #68635b);
+}
+.vcfch-solution-bar span b { font-size: 14px; color: var(--ink, #292620); font-variant-numeric: tabular-nums; }
+.vcfch-solution-bar em { font-style: normal; color: var(--green, #365e4b); font-weight: 600; }
+/* 「只列攻方冲四」这类如实说明：用次要色，别和当前手的坐标抢眼 */
+.vcfch-solution-bar .vcfch-solution-side { color: var(--muted, #68635b); font-weight: 400; }
+
+/* 提示行与次要操作：提示最多两行、四个按钮压一行，别把「下一题」顶下去（用户 10-05） */
+.vcfch-message {
+  min-height: 18px; font-size: 12.5px; line-height: 1.35; font-weight: 600; text-align: center;
+  color: var(--ink, #292620);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.vcfch-message.bad { color: var(--red, #b94b3f); }
+.vcfch-message.ok { color: var(--green, #365e4b); }
+.vcfch-actions { display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; justify-content: center; }
+.vcfch-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface, var(--paper, #f8f6f1));
+  color: var(--ink, #292620);
+  font-size: 11.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.vcfch-actions button:disabled { opacity: 0.42; cursor: default; }
+.vcfch-actions button.active {
+  border-color: var(--green, #365e4b);
+  background: var(--jade, #e5eee8);
+  color: var(--green, #365e4b);
+  font-weight: 700;
+}
+/* 摆棋工具条：颜色（小棋子 + 锁定/自动换色）+ 上一步/下一步/清空/退出 */
+.vcfch-setup-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 13px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface, var(--paper, #f8f6f1));
+}
+.vcfch-setup-nav { display: flex; gap: 6px; flex-wrap: wrap; }
+.vcfch-setup-nav button {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 38px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface-2, #fbfaf7);
+  color: var(--ink, #292620);
+  font-size: 12px;
+  cursor: pointer;
+}
+.vcfch-setup-nav button em { font-style: normal; }
+.vcfch-setup-nav button:disabled { opacity: 0.38; cursor: default; }
+
+.vcfch-delta { font-size: 13px; font-weight: 700; }
+.vcfch-delta.up { color: var(--green, #365e4b); }
+.vcfch-delta.down { color: var(--red, #b94b3f); }
+
+/* 底部主按钮：跟随内容排布（固定在屏底会留一大截空白；用户 10-04 反馈"中间空空的"） */
+.vcfch-bottom { margin-top: 2px; }
+.vcfch-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 46px;
+  padding: 11px;
+  border-radius: 14px;
+  border: none;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--on-accent, #fff);
+  background: var(--green, #365e4b);
+  box-shadow: 0 8px 20px #365e4b38;
+  cursor: pointer;
+}
+.vcfch-primary.secondary {
+  background: var(--surface, var(--paper, #f8f6f1));
+  color: var(--red, #b94b3f);
+  border: 1px solid color-mix(in srgb, var(--red, #b94b3f) 45%, transparent);
+  box-shadow: none;
+}
+.vcfch-primary:disabled { opacity: 0.5; }
+
+/* 面板（调试 / 记录）：居中弹出的浮层（用户 10-04：不要底部弹） */
+.vcfch-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #18171370;
+}
+.vcfch-sheet {
+  width: min(94vw, 480px);
+  max-height: min(80dvh, 700px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 18px;
+  border-radius: 20px;
+  background: var(--surface, var(--paper, #f8f6f1));
+  color: var(--ink, #292620);
+  box-shadow: 0 18px 48px #0003;
+}
+.vcfch-sheet > header { display: flex; align-items: center; justify-content: space-between; min-height: 40px; gap: 6px; }
+.vcfch-sheet > header b { font: 700 19px serif; color: var(--ink, #292620); margin-right: auto; }
+.vcfch-sheet > header button { border: none; background: transparent; color: var(--muted, #68635b); cursor: pointer; padding: 5px; }
+/* 右上角那枚小按钮：重置等级分（原来占满一整行，太抢眼） */
+.vcfch-sheet > header .vcfch-sheet-mini {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  border-radius: 999px;
+  background: var(--surface-2, #fbfaf7);
+  color: var(--muted, #68635b);
+  font-size: 11px;
+  line-height: 1.2;
+}
+/* 头部那枚「?」说明按钮：与「重置等级分」同一套胶囊样式，只是中间一个问号 */
+.vcfch-sheet > header .vcfch-sheet-help-btn {
+  min-width: 32px;
+  justify-content: center;
+  padding: 3px 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.vcfch-sheet > header .vcfch-sheet-help-btn[aria-pressed="true"] {
+  border-color: var(--green, #365e4b);
+  background: var(--jade, #e5eee8);
+  color: var(--green, #365e4b);
+}
+
+/* 设置说明面板（「?」展开）：面板占满一屏高度，**说明区自己滚**，
+   底部「取消 / 确定」永远留在原位、不被滚走（用户 10-06：手机上单屏可读可滚）。 */
+.vcfch-sheet--help { height: min(80dvh, 700px); overflow: hidden; }
+.vcfch-help {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 2px;
+}
+.vcfch-help section { display: flex; flex-direction: column; gap: 4px; }
+.vcfch-help h4 { margin: 0; font: 700 14px/1.4 system-ui, "Noto Sans SC", sans-serif; color: var(--ink, #292620); }
+.vcfch-help p { margin: 0; font-size: 12px; line-height: 1.7; color: var(--muted, #68635b); }
+.vcfch-help p b { color: var(--ink, #292620); }
+.vcfch-help-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px dashed var(--surface-border, var(--line, #dfdad0));
+  border-radius: 10px;
+  background: var(--surface-2, #fbfaf7);
+}
+.vcfch-help-back {
+  flex: 0 0 auto;
+  min-height: 40px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  border-radius: 12px;
+  background: var(--surface-2, #fbfaf7);
+  color: var(--ink, #292620);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* 展开后的重置小面板 */
+.vcfch-sheet-reset {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed var(--surface-border, var(--line, #dfdad0));
+  border-radius: 12px;
+  background: var(--surface-2, #fbfaf7);
+}
+/* 底部「取消 / 确定」：只有点确定才落地 */
+.vcfch-sheet-actions { display: flex; gap: 8px; margin-top: 2px; }
+.vcfch-sheet-actions > button { flex: 1 1 0; min-height: 42px; }
+.vcfch-sheet-actions .vcfch-sheet-cancel {
+  border-radius: 12px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface-2, #fbfaf7);
+  color: var(--muted, #68635b);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.vcfch-sheet-row { display: flex; flex-direction: column; gap: 7px; font-size: 12px; }
+.vcfch-sheet-row > span { color: var(--muted, #68635b); }
+.vcfch-picker-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.vcfch-picker-row .chip {
+  flex: 1 1 auto;
+  min-width: 64px;
+  min-height: 40px;
+  padding: 8px 6px;
+  font-size: 12px;
+  border-radius: 11px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface-2, #fbfaf7);
+  color: var(--ink, #292620);
+  cursor: pointer;
+}
+.vcfch-picker-row .chip.selected {
+  border-color: var(--green, #365e4b);
+  background: var(--jade, #e5eee8);
+  color: var(--green, #365e4b);
+  font-weight: 700;
+}
+.vcfch-sheet-check { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink, #292620); }
+.vcfch-sheet-check input { accent-color: var(--green, #365e4b); }
+.vcfch-sheet-note { font-size: 11px; line-height: 1.5; color: var(--muted, #68635b); margin: 0; }
+
+/* 设置面板的两个分区 */
+.vcfch-sheet-tabs { display: flex; gap: 6px; }
+.vcfch-sheet-tabs button {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 38px;
+  border-radius: 11px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface-2, #fbfaf7);
+  color: var(--muted, #68635b);
+  font-size: 13px;
+  cursor: pointer;
+}
+.vcfch-sheet-tabs button small { font-size: 11px; opacity: 0.75; }
+.vcfch-sheet-tabs button.active {
+  border-color: var(--green, #365e4b);
+  background: var(--jade, #e5eee8);
+  color: var(--green, #365e4b);
+  font-weight: 700;
+}
+
+/* 记录列表：翻页头 + 每条一行（缩略棋盘 + 信息 + 涨跌 + 箭头），整条可点 */
+.vcfch-records-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted, #68635b);
+}
+.vcfch-pager { display: inline-flex; gap: 6px; }
+.vcfch-pager button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface-2, #fbfaf7);
+  color: var(--ink, #292620);
+  cursor: pointer;
+}
+.vcfch-pager button:disabled { opacity: 0.38; cursor: default; }
+.vcfch-records { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.vcfch-records li > button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface-2, #fbfaf7);
+  color: var(--ink, #292620);
+  text-align: left;
+  cursor: pointer;
+}
+.vcfch-records li > button:disabled { cursor: default; opacity: 0.72; }
+.vcfch-mini { width: 44px; height: 44px; flex: 0 0 auto; border-radius: 6px; }
+.vcfch-rec-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.vcfch-rec-info b { font-size: 13px; }
+.vcfch-rec-info small { font-size: 11px; color: var(--muted, #68635b); }
+.vcfch-rec-delta { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.vcfch-rec-delta.up { color: var(--green, #365e4b); }
+.vcfch-rec-delta.down { color: var(--red, #b94b3f); }
+.vcfch-records li.win .vcfch-rec-info b { color: var(--green, #365e4b); }
+.vcfch-records li.lose .vcfch-rec-info b { color: var(--red, #b94b3f); }
+.vcfch-rec-nopos { color: var(--muted, #68635b); }
+
+/* 早期记录没有局面：给一个明确占位，别画成"空棋盘"让人以为是真题 */
+.vcfch-mini--none {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  border: 1px dashed var(--surface-border, var(--line, #dfdad0));
+  color: var(--muted, #68635b);
+  font-size: 10px;
+}
+
+/* ══ 结算弹窗 · 印 × 流 × 光（借人机对战的终局动画，用户 10-06） ═══════════════
+   输赢都弹：动画 + 胜负/等级分说明 + 原本底部排版里的按钮。与 duel-end 的差异：
+     · **没有题诗**（用户点名不要「绝艺如君天下少」这类句子）——题诗的位置由
+       「怎么赢/输的」说明（.vcfch-end-sub）顶上；
+     · 只有胜/负两态（VCF 没有和棋），负局同样弹、同样给数据；
+     · 数据格是「等级分 / 本题 / 用时」三格，等级分带涨跌色。
+   主题映射沿用 duel-end 的结论：卡面 `--surface`（跟随主题），印/色流/光环从语义
+   token 派生（胜=红印金粉、负=冷灰），不写死颜色。动效两道闸（data-motion 与
+   prefers-reduced-motion）同样生效；基态一律「看得见」，动画只描述进场。 */
+.vcfch-endbackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 55;   /* 设置面板(60)之下：结算时还能打开设置查说明 */
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: #18171352;
+}
+.vcfch-end {
+  position: relative;
+  display: grid;
+  place-items: center;
+  --end-seal: var(--red, #b94b3f);
+  --end-cold: color-mix(in srgb, var(--muted, #68635b) 76%, var(--ink, #292620));
+}
+.vcfch-end--lost { --end-seal: var(--end-cold); }
+.vcfch-end-card {
+  position: relative;
+  width: min(344px, 94%);
+  margin-top: 34px;
+  padding: 15px 18px 14px;
+  border: 1px solid var(--line, #dfdad0);
+  border-radius: 22px;
+  background: var(--surface, var(--paper, #f8f6f1));
+  box-shadow: 0 24px 56px #2c2a2340, inset 0 1px 0 #ffffff5c;
+  animation: vcfch-end-rise .5s cubic-bezier(.2, .82, .24, 1) backwards;
+  text-align: center;
+}
+.vcfch-end--lost .vcfch-end-card { animation-name: vcfch-end-sink; box-shadow: 0 20px 46px #2c2a2340, inset 0 1px 0 #ffffff4a; }
+.vcfch-end--won .vcfch-end-card { box-shadow: 0 24px 56px #2c2a2340, 0 0 46px color-mix(in srgb, var(--gold, #c9a34e) 22%, transparent), inset 0 1px 0 #ffffff5c; }
+.vcfch-end-card > * { position: relative; z-index: 1; }
+@keyframes vcfch-end-rise { from { opacity: 0; transform: translateY(20px) scale(.95); } }
+@keyframes vcfch-end-sink { from { opacity: 0; transform: translateY(12px) scale(.96) rotate(-.6deg); } }
+
+/* 色流：胜局金浪从卡底涌起、负局冷墨从卡沿压下（duel-end 同款 wave） */
+.vcfch-end-flowclip { position: absolute; inset: 0; overflow: hidden; border-radius: 22px; pointer-events: none; z-index: 0; }
+.vcfch-end-flow { position: absolute; left: 0; right: 0; height: 120%; }
+/* 2026-10-07 性能修复：原实现用 clip-path: path() 的无限动画做波浪——path 动画
+   每帧都要重新解析路径并重绘一整块半透明渐变，**无法 GPU 合成**，还会把同元素的
+   transform 入场动画一起拖进主线程；胜局又叠了金晕与金粉，于是「赢的结算一出来就
+   卡」（用户实测，负局因渐变更淡无明显感知）。改为：形状固定、摆动用 transform
+   translateY（GPU 合成、零重绘，实测持续期 Paint 从每 5.8s 234 次降到 0 次）。
+   ⚠ 不用 scaleY：那会把渐变一起拉伸——整片金底都在变色（对局页像素级实测平均差
+   31.6/255），而旧波浪只让浪沿那条细带走动（1.8/255）。translateY 只平移不拉伸，
+   局部 alpha 变化 ≈1.7%、与旧波浪同量级。 */
+.vcfch-end--won .vcfch-end-flow {
+  bottom: -2px;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--gold, #c9a34e) 34%, transparent) 45%, color-mix(in srgb, var(--gold, #c9a34e) 56%, transparent));
+  clip-path: path("M0,120 C60,86 120,132 190,104 C250,80 300,116 344,92 L344,400 L0,400 Z");
+  will-change: transform;
+  /* sway 的 delay 必须 ≥ 入场结束时刻（.35s + 1.5s = 1.85s）：两个动画都动 transform，
+     后声明的会在重叠期接管，提前起摆会把入场截断成跳变。 */
+  animation: vcfch-end-riseflow 1.5s .35s cubic-bezier(.25, .8, .3, 1) backwards,
+             vcfch-end-sway 6s 1.9s ease-in-out infinite alternate;
+}
+.vcfch-end--lost .vcfch-end-flow {
+  top: -2px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--end-cold) 52%, transparent), transparent 62%);
+  clip-path: path("M0,0 L344,0 L344,120 C292,146 242,104 182,132 C122,160 62,120 0,142 Z");
+  will-change: transform;
+  animation: vcfch-end-fallflow 1.5s .35s cubic-bezier(.25, .8, .3, 1) backwards,
+             vcfch-end-sway-up 6.4s 1.9s ease-in-out infinite alternate;
+}
+@keyframes vcfch-end-riseflow { from { transform: translateY(60%) scaleY(.5); opacity: .2; } }
+@keyframes vcfch-end-fallflow { from { transform: translateY(-60%) scaleY(.5); opacity: .2; } }
+/* 起摆：色流缓慢起伏 12px。方向朝「有溢出余量」的一侧——胜局色流锚底、往下沉
+   （底部本就多出 2px，沉 12px 仍盖满，不会在卡底露缝）；负局锚顶、往上退
+   （下沿离可视底还有 60px+）。不用 translateX：满宽元素左右平移会在卡沿露竖缝。 */
+@keyframes vcfch-end-sway {
+  from { transform: translateY(0); }
+  to { transform: translateY(12px); }
+}
+@keyframes vcfch-end-sway-up {
+  from { transform: translateY(0); }
+  to { transform: translateY(-12px); }
+}
+@supports not (clip-path: path("M0 0")) {
+  .vcfch-end-flow { clip-path: none !important; height: 72% !important; }
+  .vcfch-end--lost .vcfch-end-flow { top: 0; bottom: auto; }
+}
+
+/* 光环（进场）+ 胜局金粉 */
+/* 与对局页同一处理（2026-10-07）：容器放大到 448×448 = 128×3.5（刚好装下最大 3.4× 的环）
+   并加 `contain:paint` —— 环每放大一档都要重栅格化图层，paint 隔离后这份持续开销归零；
+   容器不放大就会被 `contain:paint` 把放大的环整个裁掉（对局页实测过）。 */
+.vcfch-end-halo { position: absolute; left: 50%; top: 46%; width: 448px; height: 448px; margin: -224px 0 0 -224px; border-radius: 50%; pointer-events: none; contain: paint; }
+.vcfch-end-halo i { position: absolute; left: 50%; top: 50%; width: 128px; height: 128px; margin: -64px 0 0 -64px; border-radius: 50%; border: 2px solid transparent; opacity: 0; }
+.vcfch-end--won .vcfch-end-halo i { border-color: color-mix(in srgb, var(--gold, #c9a34e) 62%, transparent); animation: vcfch-end-ring 2s ease-out infinite; }
+.vcfch-end--won .vcfch-end-halo i:nth-child(2) { animation-delay: .66s; }
+.vcfch-end--won .vcfch-end-halo i:nth-child(3) { animation-delay: 1.32s; }
+.vcfch-end--lost .vcfch-end-halo i { border-color: color-mix(in srgb, var(--end-cold) 55%, transparent); animation: vcfch-end-ringin 1.3s ease-in forwards; }
+.vcfch-end--lost .vcfch-end-halo i:nth-child(2) { animation-delay: .18s; }
+.vcfch-end--lost .vcfch-end-halo i:nth-child(3) { animation-delay: .36s; }
+@keyframes vcfch-end-ring { 0% { transform: scale(.42); opacity: .95; } 100% { transform: scale(3.4); opacity: 0; } }
+@keyframes vcfch-end-ringin { 0% { transform: scale(3.2); opacity: .7; } 100% { transform: scale(.5); opacity: 0; } }
+/* duel-end 负局原有一圈 inset:-26px 的暗色 vignette（四周收暗）——它在 VCF 的浅色页面上
+   就是用户看到的「黑色部分溢出弹窗」（10-06），当时这里没搬；2026-10-07 对局页那边也因
+   「灰色溢出把屏幕弄灰」删掉了（见 game-screen.css 的说明），两边从此一致：不做溢出蒙层。 */
+.vcfch-end-dust { position: absolute; inset: 0; overflow: hidden; border-radius: 22px; pointer-events: none; z-index: 0; }
+.vcfch-end-dust i { position: absolute; bottom: 6%; width: 4px; height: 4px; border-radius: 50%; background: var(--gold, #c9a34e); opacity: 0; animation: vcfch-end-rise2 2.4s ease-out infinite; }
+.vcfch-end-dust i:nth-child(1) { left: 12%; animation-delay: .5s; }
+.vcfch-end-dust i:nth-child(2) { left: 28%; width: 3px; height: 3px; animation-delay: 1.1s; }
+.vcfch-end-dust i:nth-child(3) { left: 45%; animation-delay: 1.7s; }
+.vcfch-end-dust i:nth-child(4) { left: 63%; width: 5px; height: 5px; animation-delay: .85s; }
+.vcfch-end-dust i:nth-child(5) { left: 79%; animation-delay: 1.45s; }
+.vcfch-end-dust i:nth-child(6) { left: 91%; width: 3px; height: 3px; animation-delay: 2.05s; }
+@keyframes vcfch-end-rise2 { 0% { opacity: 0; transform: translateY(0) scale(.6); } 18% { opacity: .85; } 100% { opacity: 0; transform: translateY(-200px) scale(1.15); } }
+@keyframes vcfch-end-fade { from { opacity: 0; transform: translateY(8px); } }
+
+/* 印（压出卡沿）+ 墨线 + 说明。印面以近黑为锚只借主题色相（duel-end 实测过的结论）。 */
+.vcfch-end-stampwrap { display: flex; justify-content: center; margin: -40px 0 10px; }
+.vcfch-end-stamp {
+  position: relative; width: 66px; height: 66px; display: grid; place-items: center; border-radius: 16px;
+  color: #fff4e2; font: 800 30px/1 "Songti SC", STSong, serif;
+  background: linear-gradient(158deg, color-mix(in srgb, var(--end-seal) 44%, #1a1310), color-mix(in srgb, var(--end-seal) 30%, #0d0908));
+  box-shadow: 0 14px 30px #0000004d, inset 0 0 0 3px #ffffff2e;
+  animation: vcfch-end-stamp .6s .26s cubic-bezier(.18, .9, .28, 1.35) backwards;
+}
+@keyframes vcfch-end-stamp { 0% { opacity: 0; transform: scale(2.6) rotate(-10deg); } 60% { opacity: 1; transform: scale(.93) rotate(1.5deg); } 80% { transform: scale(1.05) rotate(-2deg); } 100% { opacity: 1; transform: scale(1) rotate(0); } }
+.vcfch-end-stamp i { position: absolute; inset: -6px; border-radius: 21px; border: 2px solid currentColor; opacity: 0; }
+.vcfch-end--won .vcfch-end-stamp i { border-color: color-mix(in srgb, var(--end-seal) 45%, transparent); animation: vcfch-end-splash .8s .44s ease-out forwards; }
+.vcfch-end--lost .vcfch-end-stamp i { border-color: color-mix(in srgb, var(--end-cold) 45%, transparent); animation: vcfch-end-splashin .7s .3s ease-out forwards; }
+@keyframes vcfch-end-splash { 0% { transform: scale(.72); opacity: .85; } 100% { transform: scale(2.05); opacity: 0; } }
+@keyframes vcfch-end-splashin { 0% { transform: scale(2.1); opacity: .7; } 100% { transform: scale(.9); opacity: 0; } }
+/* ⚠ 基态 scaleX(1)（看得见），scaleX(0) 只进 keyframes 的 from、fill 用 both（duel-end 踩过的坑） */
+.vcfch-end-stroke {
+  display: block; height: 3px; margin: 2px auto 7px; width: min(76%, 200px); border-radius: 3px; opacity: .55;
+  background: linear-gradient(90deg, transparent, var(--ink, #292620) 8%, var(--ink, #292620) 92%, transparent);
+  transform: scaleX(1); transform-origin: center;
+  animation: vcfch-end-stroke .66s .8s cubic-bezier(.3, .8, .3, 1) both;
+}
+@keyframes vcfch-end-stroke { from { transform: scaleX(0); } }
+.vcfch-end-sub { display: block; font-size: 12px; line-height: 1.5; color: var(--muted, #68635b); animation: vcfch-end-fade .5s .92s ease-out backwards; }
+.vcfch-end-stats { display: flex; gap: 6px; margin: 11px 0 12px; }
+.vcfch-end-stats > div {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 7px 6px; border: 1px solid var(--line, #dfdad0); border-radius: 12px;
+  background: var(--surface-2, var(--paper, #f8f6f1));
+  animation: vcfch-end-fade .45s ease-out backwards;
+}
+.vcfch-end-stats > div:nth-child(1) { animation-delay: .98s; }
+.vcfch-end-stats > div:nth-child(2) { animation-delay: 1.06s; }
+.vcfch-end-stats > div:nth-child(3) { animation-delay: 1.14s; }
+.vcfch-end-stats small { font-size: 10px; color: var(--muted, #68635b); }
+.vcfch-end-stats b { font-size: 14px; color: var(--ink, #292620); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.vcfch-end-stats b.up { color: var(--green, #365e4b); }
+.vcfch-end-stats b.down { color: var(--red, #b94b3f); }
+.vcfch-end-stats b.flat { color: var(--muted, #68635b); }
+
+/* 棋魂那一行的样式**已删**（用户 10-09 第六轮：「我发现获得棋魂时右上角会有弹窗，
+   那这样的话，我们原本在 vcf 挑战里面或者什么其他弹窗里面加入的这种文本就可以去掉了」）。
+ *
+ * 上一轮我在这里补过一整套（动画延迟 1.22s + 上下居中 margin）——那是在解决
+ * "这行显示得不对"；这一轮用户直接判定**这一行不该存在**，所以连同 JSX 一起删掉。
+ * 经验记一条：当用户开始反复调某个元素的**表现细节**（位置/动画/间距）时，
+ * 值得回问一句"这个元素本身还需要吗"——右上角那个应用级提示条已经承担了同一件事，
+ * 这里的文本从一开始就是重复的，调它其实是在优化一个不该有的东西。
+ *
+ * 保留 `.soul-gain-tag` 本体（在 soul-panel.css 里，应用级提示条仍在用它）。 */
+
+.vcfch-end-actions { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; animation: vcfch-end-fade .45s 1.2s ease-out backwards; }
+/* 「返回 | 下一题」一行两个（用户 10-06）：平分宽度，比上面三个小按钮更好按 */
+.vcfch-end-actions--last { margin-top: 6px; }
+.vcfch-end-actions--last button { flex: 1 1 0; justify-content: center; }
+.vcfch-end-actions button {
+  min-height: 40px; padding: 0 14px; border: 1px solid var(--line, #dfdad0); border-radius: 11px;
+  background: var(--surface, var(--paper, #f8f6f1)); color: var(--ink, #292620);
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.vcfch-end-actions button svg { width: 14px; height: 14px; }
+.vcfch-end-actions .primary { border-color: var(--green, #365e4b); }
+.vcfch-end-hint { display: block; margin-top: 9px; color: var(--muted, #68635b); font-size: 10px; line-height: 1.6; animation: vcfch-end-fade .45s 1.28s ease-out backwards; }
+/* 两道闸：全局「动效」开关 + 系统减少动态（与 duel-end 同款口径） */
+html[data-motion="off"] .vcfch-end, html[data-motion="off"] .vcfch-end * { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .vcfch-end, .vcfch-end * { animation: none !important; }
+}
+
+/* ── 横屏一屏看完，但**棋盘仍在正中**（用户 10-07：「横屏这样的一屏感觉还是有点别扭呀，
+   因为棋盘不在中心了，这个挑战是很需要参与的，不像打谱可以慢吞吞，你还是在原来的那个布局
+   的基础上优化吧」——我先做的双栏版（棋盘贴左、信息在右）被否了，这里是单列居中版）──────
+   根因：棋盘 `width:100%` 由页面宽度撑满（横屏 536px 宽 → 也是 536px 高），390 高的横屏必然溢出。
+   改法：**宽度上限由可用高度反推**（正方形棋盘宽=高）：宽 ≤ `100dvh − 顶栏 − 其余各行占位`，
+   于是棋盘自己缩小、页面正好一屏，且仍 `align-self:center` 居中。
+   同时把上面几行压紧（统计行横屏省掉、内边距与行距各收一档），省下的高度全给棋盘。
+   顶栏实高用 `--landscape-chrome`（随四级折叠变化，折叠到第二档起它变 42px、棋盘还能再大 26px）。 */
+@media (orientation: landscape) and (min-width: 640px) {
+  /* 单列、棋盘居中（用户 10-07 二次口径：双栏版棋盘不在正中，挑战要专注，不许搬到左边）。 */
+  .vcfch-page { gap: 5px; padding: 5px 10px 8px; }
+  /* 211 = 其它各行的总占位（顶行 34 + 状态 52 + 进度 6 + 提示 18 + 底行 42 + 行距 4×5
+     + 上下内边距 13 + 余量）。棋盘是「宽度＝高度」，这个数就是留给其它行的总高。
+     ⚠ 实测（932×430）：这只给 172 时棋盘 190、整页溢出 18px —— 正好是用户说的"要滑下去一点"；
+     给 194 后棋盘 168、整页 426 ≤ 430 一屏放下；给 160 又溢出 30。
+     ⚠ 194→211：道具改成竖排 52px 小卡（用户 10-12 第三轮）之后，状态行从 35 涨到 52，
+     这 17px 不补回去，横屏就要纵向滚动（实测 844×390 溢出 7px）。 */
+  .vcfch-board { width: min(100%, calc(100dvh - var(--landscape-chrome, 68px) - 211px)); align-self: center; }
+  .vcfch-top { gap: 2px; padding-bottom: 2px; }
+  .vcfch-top-row { min-height: 30px; }
+  /* 统计行（今日 N 对 / 连胜…）横屏省掉：它只是参考信息，状态行与结算行里都有对应数字，
+     留着要多占 18px + 行距，棋盘就少一块。 */
+  .vcfch-top-info { display: none; }
+  .vcfch-status { padding: 4px 8px; }
+  .vcfch-bottom { padding: 2px 0 0; }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  /* 手机横屏：把应用自己那条顶栏也藏掉 —— 本页自带返回键与全部状态行，横屏里那条纯属重复
+     （同对弈界面与生成器页；生成器用 `.topbar.generator-topbar{display:none}`）。
+     实测 844×390：藏掉它之后棋盘从 128 涨到 190（+48%），仍是一屏。
+     ⚠ 藏顶栏后本页自己撑满 100dvh，所以上限里**不能再减 `--landscape-chrome`**（那是顶栏实高），
+     否则会少算 68px、棋盘反而更小。 */
+  body:has(.vcfch-page) .topbar { display: none }
+  /* 200→217：道具改成竖排 52px 小卡后状态行高 17px（实测 844×390 改前 190 棋盘正好一屏、
+     改后溢出 7px），把这 17px 从棋盘里扣掉，横屏仍是一屏。 */
+  .vcfch-board { width: min(100%, calc(100dvh - 217px)); align-self: center; margin-inline: auto; }
+}
+
+/* ── 竖屏矮机（小屏安卓 360×640、iPhone SE 375×667、折叠屏展开 673×841）也要一屏 ────────
+   实测：这三档 VCF 页分别溢出 59 / 47 / 18px —— 竖屏棋盘同样只有 `width:100%`，
+   小屏上把页面顶出视口。与打谱页同一套做法：给棋盘一条**按剩余高度**的上限。
+     可用高 = 100dvh − 顶栏实高 − 其它各行（顶行 53 + 状态 60 + 进度 6 + 提示 18 + 底行 46
+              + 行距 5×7 = 35 + 页面上下内边距 22）− **外壳给金刚页留的 78px**
+   ⚠ 那 78px 是踩过的坑：第一版只减 206（只算了各行），实测 360×640 仍溢出 59px ——
+     外壳 `padding-bottom:78px` 同样占 100dvh 的预算，漏掉它就白算。
+   ⚠ 只在 `max-height:860px` 生效：393×852 这类高屏现状不溢出、棋盘已占满宽度，加上限只会把它
+     缩小；而 841 高的折叠屏必须收（它溢出 18px），所以阈值取 860。
+   ⚠ 296→320（用户 2026-10-12 第三轮把道具改成竖排 52px 小卡）：状态行实测从 35 涨到 60
+     （窄屏上左块的「你执」块与「N 手 · ≈X 分」本来就要折成两行），这 24~25px 不补回去，
+     360×640 / 375×667 就要纵向滚动。改后实测：棋盘 276→252、整页一屏。 */
+@media (orientation: portrait) and (max-height: 860px) {
+  .vcfch-board { width: min(100%, calc(100dvh - var(--landscape-chrome, 68px) - 320px)); align-self: center; margin-inline: auto; }
+}
+
+/* ── 道具栏的样式**不在这里** ───────────────────────────────────────────
+   三颗卡的规则已经搬到 `vcf-item-bar.css`，由 `VcfItemBar.tsx` 自己 import。
+   原因：这个组件同时被 VCF 挑战页（lazy）和人机对弈页用，样式挂在页面 CSS 上
+   会让对弈页拿到一堆裸按钮（实测 70×24 vs 46×52）。2026-10-13 修。 */
+
+.vcfch-status-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+/* ⚠ 道具的**说明 / 购买弹窗**样式不在这里，而在 `src/features/progress/soul-lockable.css`。
+   原因是个真实的坑：那份弹窗有两个落点 —— VCF 页（本文件够用）与**棋魂商店**（在 App 里）。
+   而本文件是随 VCF 页**懒加载**的（App.tsx 里 VcfChallengePage 是 lazy()），
+   所以从对弈页打开商店、再点道具时，这份 CSS **根本还没加载** ⇒ 弹窗没有 position:fixed，
+   表现为"在下面展开"而不是浮起来（用户实测报的就是这个）。
+   搬到常驻加载的 soul-lockable.css 之后两边都对。 */
+
+/* ── 提示卡的建议落点（空心金圈 + 呼吸）────────────────────────────── */
+
+.vcfch-hint-ring {
+  fill: none;
+  /* 金色 + 一点内发光：它是"建议你走这儿"，要在一盘已有十来颗子的棋盘上**跳出来**。
+     ⚠ 第一版只给金色描边（2.4px），实测截图里几乎看不见 —— 棋盘本身就是暖黄木色，
+     金线在它上面根本没有对比。所以加两条：
+     ① 白色外描（在木色上有边），② 呼吸幅度的下限也提到 2.2px（别细到比网格线还细）。 */
+  stroke: #e8543f;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 1.5px #ffffffcc) drop-shadow(0 0 3px #e8543f66);
+  animation: vcfch-hint-breathe 1.2s ease-in-out infinite;
+}
+
+@keyframes vcfch-hint-breathe {
+  0%, 100% { stroke-opacity: 1; stroke-width: 3; }
+  50%      { stroke-opacity: .72; stroke-width: 2.2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vcfch-hint-ring { animation: none; }
+}
+
+/* ══ 横屏：棋盘死居中 ＋ 左右两栏吸收杂项（用户 2026-10-12「手机上感觉棋盘太小了，
+   你再适配一下横屏，双栏什么的，研究一下横屏怎么布局」）══════════════════════
+   门槛取 `min-width:520px`（原来想写 640）：568×320 这类窄横屏走旧单列时实测整页要滚
+   79~98px（遗留问题），换成两栏后棋盘 103 → 188 且不滚，所以放到 520。
+   10-07 否掉「棋盘贴左、信息在右」那条双栏，理由是**棋盘不在正中**——它反对的是"偏"，
+   不是"栏"。所以本轮不推翻那条，而是去解真正压棋盘的另一半：
+   旧单列把 顶行/状态/进度/提示/底行 **竖着叠在棋盘上下**，838×393 实测这些行合计 190px，
+   棋盘被 `100dvh − 217px` 反推成 **176px**（740×360 只有 143），
+   而棋盘两侧空着 **295 / 350px** 没人用——横屏底栏是右缘 56px 竖条（实测），它不占高度。
+   ⇒ 横屏缺的是**高度**不是宽度。把那些行搬进棋盘两侧的等宽竖栏、中间留空，
+     棋盘就能按高度吃满，左右等宽 ⇒ **棋盘仍在正中**。
+     实测（改后）：838×393 棋盘 **350**（原 176，2.0×）、740×360 **298**（原 143，2.1×）、
+     1180×820 **692**（原 541），三档纵向溢出都归 0；竖屏 393×852 与 360×640 一字未变。
+   分工：左栏＝等级分/统计/临时提示/解答步进/摆棋工具，右栏＝你执·手数·道具·计时 → 进度 → 主按钮 → 结算。
+   结算卡与设置面板都在 `position:fixed` 的蒙皮里，不参与这条布局。
+   ⚠ 棋盘是**在去掉右缘 56px 竖条的内容区里居中**，所以相对整块屏幕偏左 28px——
+     这是"给底栏留出等量空间"的必然结果，不是没居中。
+   ⚠ 上面 `min-width:640` 与 `max-height:600` 两条旧规则里的 `.vcfch-board{width:…}` 由本条
+     以 `.vcfch-page > .vcfch-board`（特异性更高）覆盖。它们留着只当**不支持 grid 的极老
+     WebView 退路**，别再往里加常数。 */
+
+/* 默认档（竖屏 + 窄到进不了两栏的横屏）：这层完全不参与布局，DOM 顺序＝视觉顺序，
+   竖屏排版与包一层之前逐字相同。
+   ⚠ 正因为它是 `contents`，棋盘在 DOM 里被挤到了最后，所以**必须**用下面这组 `order`
+     把改造前的排布逐条钉回去（棋盘第 2）。以后往 `.vcfch-rail` 里加行，要同时补一条 order，
+     否则它会掉到竖屏棋盘下面去。横屏那档里这些值不生效（网格是显式放置，不看 order）。 */
+.vcfch-rail { display: contents; }
+.vcfch-page > .vcfch-rail > .vcfch-top { order: 1; }
+.vcfch-page > .vcfch-board { order: 2; }
+.vcfch-page > .vcfch-rail > .vcfch-solution-bar { order: 3; }
+.vcfch-page > .vcfch-rail > .vcfch-status { order: 4; }
+.vcfch-page > .vcfch-rail > .vcfch-progress { order: 5; }
+.vcfch-page > .vcfch-rail > .vcfch-message { order: 6; }
+.vcfch-page > .vcfch-rail > .vcfch-setup-bar { order: 7; }
+.vcfch-page > .vcfch-rail > .vcfch-outcome { order: 8; }
+.vcfch-page > .vcfch-rail > .vcfch-actions { order: 9; }
+.vcfch-page > .vcfch-rail > .vcfch-bottom { order: 10; }
+
+@media (orientation: landscape) and (min-width: 520px) {
+  .vcfch-page {
+    /* ⚠ 这里不许出现底栏宽度那类常数：横屏底栏是右缘竖条（styles.css 的
+       `@media (orientation:landscape){.bottom-nav{width:56px}}`，R109 定的"只要横屏都这样"），
+       而**本页容器的宽度本来就把它扣掉了**（实测 838 视口 → 容器 782）。
+       所以栏宽与棋盘宽一律按 `100%`（＝容器实宽）推，换任何机型/字号都跟着走。 */
+    --vcfch-vchrome: var(--landscape-chrome, 68px); /* 应用自己的顶栏高度令牌（折叠态是 42px） */
+    /* 栏宽：下界 150 是道具栏（实测 146 宽）能放下的最小值，上界 200 是"再宽就要开始吃棋盘"；
+       中间项让棋盘最少还留 330px 见方。 */
+    --vcfch-rail: clamp(150px, (100% - 330px) / 2, 200px);
+    /* 棋盘是正方形，宽度同时受**高度**（视口高减顶栏与上下内边距）和**两侧栏**约束。 */
+    --vcfch-board: min(
+      calc(100dvh - var(--vcfch-vchrome) - 14px),
+      calc(100% - 2 * var(--vcfch-rail) - 24px)
+    );
+    position: relative;
+    /* 给页面一个**确定高度**：栏是 `position:absolute` 铺在页面盒上的，页面不撑满
+       视口时栏的盒子就只有棋盘那么高（实测 568×320 那档屏下还剩 130px 没用、栏已经开始滚）。
+       撑满之后棋盘垂直居中，栏也拿到全部可用高度。 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(100dvh - var(--vcfch-vchrome) - 10px);
+    max-width: none;
+    padding: 4px 4px 6px;
+  }
+  .vcfch-page > .vcfch-board {
+    display: block;
+    margin: 0 auto;                    /* 居中靠这个，栏只占两侧的空隙 */
+    width: var(--vcfch-board);
+  }
+  /* 一根铺满左右空隙的三列网格：中间那列永远空着，正好让给居中的棋盘。
+     顶行也放进网格（左栏第 1 行）：它留在文档流里就会把棋盘往下顶（实测 838×393
+     棋盘 379 + 顶行 50 > 393，底部被裁 40px）；而单独把它绝对定位到左上，就得写死
+     "顶行实高"这个数——窄栏里它折成三行是 137px（实测 740×360），56px 那条带子兜不住。
+     整块交给网格自己排行高，两个坑一起没有。 */
+  .vcfch-rail {
+    position: absolute;
+    inset: 2px 0 4px;
+    display: grid;
+    grid-template-columns: var(--vcfch-rail) minmax(0, 1fr) var(--vcfch-rail);
+    grid-template-rows: repeat(5, min-content);
+    align-content: center;
+    /* 栏内容比屏幕还高时**栏内自己滚**，不许把结算按钮顶到屏幕外面去
+       （机型×字号矩阵实测：838×393 @ xlarge 栏底 413 > 393、640×360 @ large 365 > 360）。 */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    gap: 8px 12px;
+    /* ⚠ 这根网格是**绝对定位铺满整页**的，中间列虽然什么都不放，盒子本身仍然盖在棋盘上，
+       于是横屏点棋盘一下也点不到（0.6 秒就能复现：`elementFromPoint(棋盘中心)` 返回的是
+       `.vcfch-rail` 而不是 `svg.vcfch-board`）。容器让出命中测试、子元素再收回来：
+       两条栏照常可点，中间那块空列把点击交还给底下的棋盘。 */
+    pointer-events: none;
+  }
+  .vcfch-rail > * { pointer-events: auto; }
+  .vcfch-rail > .vcfch-top { grid-column: 1; grid-row: 1; align-self: start; gap: 2px; padding-bottom: 0; }
+  .vcfch-rail > .vcfch-solution-bar { grid-column: 1; grid-row: 2; align-self: start; flex-wrap: wrap; justify-content: flex-start; }
+  .vcfch-rail > .vcfch-message { grid-column: 1; grid-row: 3; align-self: start; }
+  .vcfch-rail > .vcfch-setup-bar { grid-column: 1; grid-row: 4; align-self: start; }
+  .vcfch-rail > .vcfch-status { grid-column: 3; grid-row: 1; align-self: start; }
+  .vcfch-rail > .vcfch-progress { grid-column: 3; grid-row: 2; align-self: start; margin: 0; }
+  .vcfch-rail > .vcfch-bottom { grid-column: 3; grid-row: 3; }
+  .vcfch-rail > .vcfch-outcome { grid-column: 3; grid-row: 4; align-self: start; }
+  .vcfch-rail > .vcfch-actions { grid-column: 3; grid-row: 5; align-self: start; }
+  /* 一行两端对齐的分组进了 200px 窄栏必须改竖排，否则道具栏与计时会互相挤出去 */
+  .vcfch-status { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 5px; padding: 0; }
+  .vcfch-status-right { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .vcfch-actions { flex-wrap: wrap; justify-content: flex-start; }
+  /* 结算行基样式是「失败 · 已认输，本题判负 · 等级分 −x」整行 nowrap＋省略号，
+     窄栏里中间那句会被截掉（实测 838×393 截成「已认输，本题判负」）→ 允许折行。 */
+  .vcfch-outcome { flex-wrap: wrap; }
+  .vcfch-outcome small { white-space: normal; }
+  .vcfch-setup-nav { flex-wrap: wrap; }
+  .vcfch-bottom, .vcfch-primary { width: 100%; }
+  .vcfch-primary { justify-content: center; }
+  .vcfch-message { text-align: start; }
+  /* 顶行在窄栏里会折行：等级分字号收到 18，统计行也不再为省 18px 而藏掉。
+     折行位置要指定，否则齿轮会孤零零掉到第二行（实测 838×393 截图）：
+     第 1 行＝返回 ……… 齿轮（`margin-left:auto` 顶到右端），第 2 行＝等级分＋徽章，第 3 行＝统计。 */
+  .vcfch-top-row { flex-wrap: wrap; min-height: 0; column-gap: 6px; }
+  .vcfch-top-actions { margin-left: auto; }
+  .vcfch-rating-inline { order: 3; flex: 1 1 100%; }
+  .vcfch-rating-inline b { font-size: 18px; }
+  /* ⚠ 统计行基样式带 `nowrap + ellipsis`（为单列那一行设计的），窄栏里必须允许折行，
+     否则 740×360 那档会截成「今日 0 对 / 0 错」（实测）。 */
+  .vcfch-top-info { display: block; white-space: normal; overflow: visible; text-overflow: clip; }
+}
+
+/* 手机横屏（高 ≤600）：上面第 705 行那条已把应用顶栏藏掉，纵向预算整个归棋盘。
+   ⚠ 这里不能再减 `--landscape-chrome`，否则会少算 68px、棋盘反而更小。 */
+@media (orientation: landscape) and (min-width: 520px) and (max-height: 600px) {
+  .vcfch-page { --vcfch-vchrome: 0px; padding-block: 2px; }
+}
+
+/* 矮横屏（高 ≤400：568×320 / 640×360 / 667×375 / 740×360 这一大类）。
+   机型×字号矩阵实测这类机器在 large/xlarge 下右栏会顶出屏幕
+   （640×360 @ large 栏底 365 > 360、667×375 @ xlarge 393 > 375）。
+   三件事一起把右栏压回屏内：① 行距 8→4；② 参考信息（统计行）让位；
+   ③ **结算两排挪去左栏**（左栏此时只有顶行＋临时提示，有余量），右栏只留状态/进度/主按钮。
+   真放不下就落到上面那条栏内滚动，总之按钮不许跑到屏幕外。 */
+@media (orientation: landscape) and (min-width: 520px) and (max-height: 400px) {
+  .vcfch-rail { grid-template-rows: repeat(6, min-content); gap: 4px 12px; }
+  .vcfch-rail > .vcfch-outcome { grid-column: 1; grid-row: 5; }
+  .vcfch-rail > .vcfch-actions { grid-column: 1; grid-row: 6; }
+  .vcfch-top-info { display: none; }
+}

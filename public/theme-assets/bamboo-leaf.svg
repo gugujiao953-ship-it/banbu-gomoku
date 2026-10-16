@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 30" fill="none">
+  <!-- 竹叶（完整叶形，两头尖、带中脉）——用作 CSS mask，颜色由 background-color 给，
+       于是同一张叶形能出深浅好几档（原来用 border-radius 拼的小药片，看着都一样）。 -->
+  <path d="M2 17C28 4 78 1 118 12 80 27 28 28 2 17Z" fill="#000"/>
+  <path d="M6 17C34 12 76 10 112 13" stroke="#000" stroke-opacity=".35" stroke-width="1.6"/>
+</svg>

@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 930" fill="none">
+  <!-- 梅枝映雪 · 主枝（ts-far）。2026-10-08 第六版：给**主体物本身**做设计层级 + 补辅助图形。
+       用户要求：① 主体物的层级（不是背景）② 辅助的视觉图形。
+       做法照国画画理：
+         层级＝**近／中／远三层枝**（实→虚）：近景最粗最黑、带皴纹与雪堆、花开得最细；
+           中景中等；远景最淡最细，只留枝影。三层叠加就有纵深，而不是"一根枝"。
+         辅助图形＝**印章**（右下角的朱文小印）、**苔点**（枝节上的墨点，补枝的质感）、
+           **雪堆**（粗枝上缘的白帽，给体积）、**落瓣**（几片落在地上/枝旁）、**花蕊**（花心的须）。
+       ⚠ 坐标：素材 430×930、元素 390×844，比例几乎相同 ⇒ cover 基本不裁切，
+         所以 **屏幕 y% × 930 ≈ 素材 y**。
+       版式：棋盘＝屏幕 13%–58%（素材 y 120–540，整幅宽，不放东西）；
+             留白带＝74%–88%（y 688–818）＝主花与辅助图形区；
+             桌面/横屏下素材按高度铺满、贴右侧空白区。 -->
+  <defs>
+    <linearGradient id="barkNear" x1="0" y1="1" x2=".6" y2="0">
+      <stop offset="0" stop-color="#5f4744"/>
+      <stop offset=".5" stop-color="#4e3a39"/>
+      <stop offset="1" stop-color="#3f2f30"/>
+    </linearGradient>
+    <linearGradient id="barkMid" x1="0" y1="1" x2=".6" y2="0">
+      <stop offset="0" stop-color="#7a6260"/>
+      <stop offset="1" stop-color="#5e4948"/>
+    </linearGradient>
+    <linearGradient id="barkFar" x1="0" y1="1" x2=".6" y2="0">
+      <stop offset="0" stop-color="#9c8789"/>
+      <stop offset="1" stop-color="#8a7578"/>
+    </linearGradient>
+    <linearGradient id="snowEdge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".96"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity=".28"/>
+    </linearGradient>
+    <!-- 主体花：五瓣 + 花蕊（须用极细线，是"细节层级"的一档） -->
+    <g id="bloom">
+      <g fill="currentColor">
+        <ellipse cx="0" cy="-9.4" rx="6.8" ry="5.6"/><ellipse cx="9.1" cy="-3" rx="6.8" ry="5.6"/>
+        <ellipse cx="5.7" cy="7.8" rx="6.8" ry="5.6"/><ellipse cx="-5.7" cy="7.8" rx="6.8" ry="5.6"/>
+        <ellipse cx="-9.1" cy="-3" rx="6.8" ry="5.6"/>
+      </g>
+      <g stroke="#a84d5d" stroke-width=".55" opacity=".55">
+        <path d="M0 0 4.6 -7.4M0 0 7.6 -1.4M0 0 3.4 7M0 0 -3.4 7M0 0 -7.6 -1.4M0 0 -4.6 -7.4"/>
+      </g>
+      <circle cx="0" cy="0" r="2.8" fill="#f9eef1"/><circle cx="0" cy="0" r="1.2" fill="#b0525f"/>
+    </g>
+    <!-- 简化花（中景：无蕊） -->
+    <g id="bloomMid">
+      <g fill="currentColor">
+        <ellipse cx="0" cy="-8.4" rx="6" ry="5"/><ellipse cx="8.1" cy="-2.7" rx="6" ry="5"/>
+        <ellipse cx="5" cy="6.9" rx="6" ry="5"/><ellipse cx="-5" cy="6.9" rx="6" ry="5"/>
+        <ellipse cx="-8.1" cy="-2.7" rx="6" ry="5"/>
+      </g>
+      <circle cx="0" cy="0" r="2.2" fill="#f6e7ea"/>
+    </g>
+    <!-- 花苞 -->
+    <g id="bud"><g fill="currentColor"><ellipse cx="0" cy="0" rx="3.4" ry="4.6"/><ellipse cx="3.2" cy="1.6" rx="2.6" ry="3.6"/><ellipse cx="-3.2" cy="1.6" rx="2.6" ry="3.6"/></g></g>
+    <!-- 单瓣（落瓣用） -->
+    <path id="petal" d="M0 -6c4 3 6 7 6 11 0 5-3 10-6 14-3-4-6-9-6-14 0-4 2-8 6-11Z"/>
+  </defs>
+
+  <g id="plumFar" transform="translate(6 -196) scale(1.08)">
+  <!-- ═══════════ ① 远景枝（最淡最细：只留枝影，撑出纵深的第一层）═══════════ -->
+  <g fill="none" stroke="url(#barkFar)" stroke-linecap="round" opacity=".26">
+    <path d="M-20 636C40 660 96 694 142 736c28 26 54 58 76 96" stroke-width="3.4"/>
+    <path d="M142 736c-26 8-48 24-66 46" stroke-width="2"/>
+    <path d="M470 592C420 616 372 648 332 686" stroke-width="3"/>
+    <path d="M332 686c28 6 54 22 76 46" stroke-width="1.9"/>
+    <path d="M250 640c-14-26-22-54-24-84" stroke-width="1.8"/>
+  </g>
+
+  <!-- ═══════════ ② 中景枝（中等粗细，与近景交叉）═══════════ -->
+  <g fill="none" stroke="url(#barkMid)" stroke-linecap="round" opacity=".46">
+    <path d="M470 736C414 730 362 714 320 690" stroke-width="5.2"/>
+    <path d="M356 712c-26 18-48 42-64 70" stroke-width="3.2"/>
+    <path d="M300 786c-14 22-24 46-30 74" stroke-width="2"/>
+    <path d="M470 826C420 820 374 802 336 776" stroke-width="4.4"/>
+    <path d="M372 796c-10 24-16 48-18 76" stroke-width="2.1"/>
+    <path d="M210 700c-30 22-54 50-72 82" stroke-width="3.6"/>
+  </g>
+
+  </g>
+  <g id="plumSubject" transform="translate(6 -196) scale(1.08)">
+  <!-- ═══════════ ③ 近景主枝（最粗最黑 + 皴纹 + 雪堆 + 苔点）═══════════ -->
+  <!-- 主干：自左下画外探入，向右上横斜出画（疏影横斜） -->
+  <g fill="none" stroke="url(#barkNear)" stroke-linecap="round" opacity=".72">
+    <path d="M-30 892C70 862 156 812 224 744c56-56 100-116 136-186" stroke-width="11"/>
+    <!-- 近景分枝 1（下垂） -->
+    <path d="M224 744c-46 30-84 66-114 108" stroke-width="6.6"/>
+    <path d="M110 852c-18 22-34 46-48 72" stroke-width="3.4"/>
+    <!-- 近景分枝 2（上扬） -->
+    <path d="M292 664c-16-32-26-66-30-102" stroke-width="5.6"/>
+    <path d="M262 562c-6-26-8-52-6-78" stroke-width="2.6"/>
+    <!-- 近景分枝 3（右下斜出） -->
+    <path d="M326 616c34 20 62 48 86 82" stroke-width="6.4"/>
+    <path d="M412 698c22 18 40 40 54 64" stroke-width="3.2"/>
+    <!-- 近景分枝 4（左下垂） -->
+    <path d="M186 776c-34 20-62 46-86 78" stroke-width="5"/>
+    <path d="M100 854c-12 16-22 34-30 52" stroke-width="2.4"/>
+  </g>
+  <!-- 皴纹：沿主干方向画短笔，给枝"木头"的质感（不是一根塑料管） -->
+  <g fill="none" stroke="#3a2b2c" stroke-linecap="round" opacity=".3">
+    <path d="M18 878l14-8M62 856l13-9M104 830l12-8M146 800l12-8M186 766l11-8M222 726l10-8M252 684l9-7M280 640l8-7M306 596l7-6M330 552l6-6M352 510l5-6"/>
+    <path d="M40 894l12-7M84 870l12-8M126 844l11-8M166 812l11-8M202 776l10-8M234 736l9-7M264 692l8-7M290 648l7-6M314 604l6-6"/>
+  </g>
+  <!-- 雪堆：压在各枝的**上缘**（白帽，给体积；比描一条线更有"积雪"感） -->
+  <g fill="#ffffff" opacity=".82">
+    <path d="M20 876c14-9 28-16 42-22 4 8 2 14-4 18-14 8-28 12-42 12Z"/>
+    <path d="M104 830c14-9 28-16 42-22 4 8 2 14-4 18-14 8-28 12-42 12Z"/>
+    <path d="M188 764c14-9 27-17 40-24 5 8 3 14-3 19-13 9-26 13-39 14Z"/>
+    <path d="M100 852c10-7 20-12 30-17 4 7 2 13-3 16-10 6-20 9-30 9Z"/>
+    <path d="M262 560c8-7 16-13 24-19 4 7 3 12-2 16-9 7-18 10-27 11Z"/>
+    <path d="M412 696c10-7 20-13 30-18 4 7 3 12-2 16-10 7-20 10-29 10Z"/>
+    <path d="M336 772c10-7 20-13 30-18 4 7 3 12-2 16-10 7-20 10-29 10Z"/>
+  </g>
+  <!-- 枝上积雪的亮边（雪堆的上缘高光，光自右上） -->
+  <g fill="none" stroke="url(#snowEdge)" stroke-linecap="round" opacity=".9">
+    <path d="M-28 886C72 856 158 806 226 738c56-56 99-115 135-184" stroke-width="2.8"/>
+    <path d="M226 738c-45 30-82 65-112 106" stroke-width="2"/>
+    <path d="M294 658c-16-32-26-65-30-100" stroke-width="1.8"/>
+    <path d="M328 610c33 20 61 47 84 80" stroke-width="1.9"/>
+    <path d="M188 772c-33 20-60 45-83 76" stroke-width="1.6"/>
+  </g>
+  <!-- 苔点：枝节上的墨点（国画里补枝干质感的一招，也把"节"标出来） -->
+  <g fill="#40302f" opacity=".5">
+    <circle cx="78" cy="858" r="3.4"/><circle cx="150" cy="806" r="3"/><circle cx="216" cy="736" r="3.2"/>
+    <circle cx="276" cy="668" r="2.8"/><circle cx="316" cy="612" r="3"/><circle cx="110" cy="846" r="2.4"/>
+    <circle cx="186" cy="770" r="2.6"/><circle cx="262" cy="566" r="2.3"/><circle cx="404" cy="690" r="2.5"/>
+    <circle cx="340" cy="776" r="2.3"/><circle cx="132" cy="822" r="2.2"/>
+  </g>
+
+  <!-- ═══════════ ④ 主体花：近（大、有蕊）→ 中（中、无蕊）→ 远（小、淡）═══════════ -->
+  <!-- 近：留白带内，最实，带花蕊 -->
+  <use href="#bloom" transform="translate(112 848) scale(1.18)" color="#c9697f"/>
+  <use href="#bloom" transform="translate(150 802) scale(1.14)" color="#c9697f"/>
+  <use href="#bloom" transform="translate(58 890) scale(1.2)" color="#c2607a"/>
+  <use href="#bloom" transform="translate(404 700) scale(1.16)" color="#c9697f"/>
+  <use href="#bloom" transform="translate(438 742) scale(1.1)" color="#c2607a"/>
+  <use href="#bloom" transform="translate(340 772) scale(1.12)" color="#c9697f"/>
+  <use href="#bloom" transform="translate(252 742) scale(1.08)" color="#c2607a"/>
+  <!-- 中：中景枝梢与近枝中段 -->
+  <use href="#bloomMid" transform="translate(228 744) scale(1.02)" color="#cf7d92"/>
+  <use href="#bloomMid" transform="translate(292 662) scale(0.98)" color="#cf7d92"/>
+  <use href="#bloomMid" transform="translate(176 782) scale(1)" color="#cf7d92"/>
+  <use href="#bloomMid" transform="translate(300 784) scale(0.96)" color="#cf7d92"/>
+  <use href="#bloomMid" transform="translate(386 776) scale(0.94)" color="#cf7d92"/>
+  <use href="#bloomMid" transform="translate(146 838) scale(0.92)" color="#cf7d92"/>
+  <!-- 远：远景枝梢（工具区一带，淡，被按钮挡了也不可惜） -->
+  <use href="#bloomMid" transform="translate(248 638) scale(0.8)" color="#d9a4b4"/>
+  <use href="#bloomMid" transform="translate(330 686) scale(0.78)" color="#d9a4b4"/>
+  <use href="#bloomMid" transform="translate(262 558) scale(0.74)" color="#d9a4b4"/>
+  <use href="#bloomMid" transform="translate(408 738) scale(0.72)" color="#d9a4b4"/>
+  <use href="#bloomMid" transform="translate(226 496) scale(0.68)" color="#d9a4b4"/>
+
+  <!-- ═══════════ ⑤ 辅助图形：花苞 / 落瓣 / 雪点 / 印章 ═══════════ -->
+  <!-- 花苞：缀在细梢末端（比花更靠外，做出"枝头"的密度） -->
+  <use href="#bud" transform="translate(110 850) scale(0.94)" color="#b25a70"/>
+  <use href="#bud" transform="translate(438 744) scale(0.92)" color="#b25a70"/>
+  <use href="#bud" transform="translate(300 786) scale(0.9)" color="#b25a70"/>
+  <use href="#bud" transform="translate(386 778) scale(0.88)" color="#b25a70"/>
+  <use href="#bud" transform="translate(228 746) scale(0.9)" color="#b25a70"/>
+  <use href="#bud" transform="translate(146 840) scale(0.86)" color="#b25a70"/>
+  <use href="#bud" transform="translate(262 560) scale(0.88)" color="#b25a70"/>
+  <use href="#bud" transform="translate(252 744) scale(0.84)" color="#b25a70"/>
+  <use href="#bud" transform="translate(40 894) scale(0.9)" color="#b25a70"/>
+  <use href="#bud" transform="translate(292 664) scale(0.84)" color="#b25a70"/>
+  <use href="#bud" transform="translate(226 498) scale(0.86)" color="#b25a70"/>
+  <!-- 落瓣：几片落在枝旁/画面下缘（"落"的叙事，也是辅助图形） -->
+  <g opacity=".8">
+    <use href="#petal" transform="translate(72 916) rotate(26) scale(0.86)" fill="#cf7d92"/>
+    <use href="#petal" transform="translate(196 906) rotate(-38) scale(0.78)" fill="#d99aad"/>
+    <use href="#petal" transform="translate(322 900) rotate(64) scale(0.82)" fill="#c9697f"/>
+    <use href="#petal" transform="translate(140 926) rotate(-12) scale(0.7)" fill="#d9a4b4"/>
+    <use href="#petal" transform="translate(276 926) rotate(38) scale(0.74)" fill="#cf7d92"/>
+  </g>
+  <!-- 雪点：落在瓣边/枝边（静止，给"映雪"碎光） -->
+  <g fill="#ffffff" opacity=".76">
+    <circle cx="118" cy="842" r="2.1"/><circle cx="156" cy="796" r="1.9"/><circle cx="234" cy="738" r="2"/>
+    <circle cx="410" cy="694" r="1.8"/><circle cx="344" cy="766" r="2"/><circle cx="258" cy="736" r="1.7"/>
+    <circle cx="64" cy="884" r="1.9"/><circle cx="298" cy="778" r="1.7"/><circle cx="152" cy="832" r="1.6"/>
+    <circle cx="268" cy="552" r="1.5"/><circle cx="254" cy="632" r="1.5"/><circle cx="390" cy="770" r="1.6"/>
+  </g>
+  <!-- 印章：右下角一枚朱文小印（国画里最典型的辅助图形；不抢主体，只做"落款"的味道） -->
+  <g transform="translate(376 856)" opacity=".9">
+    <rect x="0" y="0" width="38" height="38" rx="3" fill="#b0525f"/>
+    <g stroke="#f6e7ea" stroke-width="1.6" stroke-linecap="square" opacity=".95">
+      <path d="M6 8h26M9 8v22M21 8v22"/>
+      <path d="M6 19h26M27 19v11"/>
+      <path d="M6 30h26"/>
+    </g>
+  </g>
+  </g>
+</svg>

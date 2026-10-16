@@ -25,7 +25,12 @@ import { join } from "node:path";
  *
  * Usage: QA_BASE_URL=http://[::1]:5193/ node qa/manual-tour-targets.mjs
  */
-const baseUrl = process.env.QA_BASE_URL || "http://127.0.0.1:5173/";
+const configuredUrl = new URL(process.env.QA_BASE_URL || "http://127.0.0.1:5173/");
+// 前提①要首运行欢迎页，而 qa runner 给每个门禁统一带 `?qa=1`，应用见它就不弹欢迎页
+// （src/features/onboarding/onboarding.ts），本门禁于是在第一步就点不到「阅读使用手册」。
+// 与 qa/onboarding-session-recent.mjs 同款处理：自己把这个参数摘掉。
+configuredUrl.searchParams.delete("qa");
+const baseUrl = configuredUrl.href;
 const TOURS_DIR = join(process.cwd(), "src/features/manual/tours");
 
 /** 解析一章的引导步骤：id / title / 锚点列表 / 上下文。 */

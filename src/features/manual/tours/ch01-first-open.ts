@@ -50,9 +50,9 @@ export const ch01: TourStep[] = [
   },
   { id: "intro-bottomnav",
     title: "底部导航",
-    lead: "五个页面入口：打谱、棋谱库、导入、AI、设置。",
+    lead: "五个页面入口：打谱、棋谱库、导入、对弈、设置。",
     tips: [
-      { sel: ".bottom-nav", name: "底部导航", desc: "打谱（答题时显示为「做题」）、棋谱库、导入、AI、设置都在页面下方；导入按钮在中间凸起。", icon: Home },
+      { sel: ".bottom-nav", name: "底部导航", desc: "打谱（答题时显示为「做题」）、棋谱库、导入、对弈、设置都在页面下方；导入按钮在中间凸起。", icon: Home },
     ],
   },
   { id: "intro-done",

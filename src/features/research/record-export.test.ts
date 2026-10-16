@@ -33,4 +33,29 @@ describe("record export scopes", () => {
     expect(root.setup?.nextPlayer).toBe("black");
     expect(exported.metadata.sourceFormat).toBeUndefined();
   });
+
+  it("导出范围不丢标注：当前变化只留那条线、当前局面把标注带到静态局面上（2026-09-19 补）", () => {
+    const { document, first, main, branch } = sample();
+    const withMarks = {
+      ...document,
+      nodes: {
+        ...document.nodes,
+        [first]: { ...document.nodes[first], marks: [{ row: 3, col: 3, kind: "circle" as const, style: "circle" as const, color: "#2872b8", label: "主线标注" }] },
+        [branch]: { ...document.nodes[branch], marks: [{ row: 4, col: 4, kind: "triangle" as const, style: "triangle" as const }] },
+      },
+    };
+
+    // 当前变化（从 main 起）：保留这条线上的标注，另一分支的节点不进文件
+    const variation = createVariationExportDocument(withMarks, main, "2026-08-30T00:00:00.000Z");
+    expect(Object.values(variation.nodes).some((node) => node.id === branch)).toBe(false);
+    const firstInVariation = Object.values(variation.nodes).find((node) => node.move?.row === 7 && node.move.col === 7);
+    expect(firstInVariation?.marks?.[0]?.label).toBe("主线标注");
+    expect(firstInVariation?.marks?.[0]?.color).toBe("#2872b8");
+
+    // 当前局面（停在分支那一手）：标注跟着走到静态局面的根节点上
+    const position = createPositionExportDocument(withMarks, branch, "2026-08-30T00:00:00.000Z");
+    const root = position.nodes[position.rootId];
+    expect(root.marks?.map((mark) => `${mark.kind}@${mark.row},${mark.col}`)).toEqual(["triangle@4,4"]);
+    expect(root.setup?.black.length).toBeGreaterThan(0);
+  });
 });

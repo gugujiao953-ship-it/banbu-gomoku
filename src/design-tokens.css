@@ -47,8 +47,15 @@
   --shadow-sm: 0 4px 12px #675d4a12;
   --shadow-md: 0 10px 28px #4e463814;
   --shadow-lg: 0 18px 48px #0002;
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-top: env(safe-area-inset-top, 0px);
+  /* 安全区的**唯一入口**（2026-10-14，一加 13「顶栏往下浮一条」）。
+     `--safe-area-top/bottom` 默认就是 `env()`；安卓原生壳启动时由
+     `src/features/safe-area.ts` 量一次并**覆盖成 0**——当系统已经自己把窗口让开状态栏时，
+     CSS 再算一次 `env()` 就是双重留空。全程不写任何机型尺寸。
+     下面两个旧令牌保留（组件还在用），只是改成转指它们。 */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-bottom: var(--safe-area-bottom, env(safe-area-inset-bottom, 0px));
+  --safe-top: var(--safe-area-top, env(safe-area-inset-top, 0px));
 }
 
 /* Keep legacy names stable while new components use semantic tokens. */
@@ -62,6 +69,27 @@
   --jade: var(--color-accent-soft);
   --gold: var(--color-warning);
   --red: var(--color-danger);
+  /* 「强红」——小字号红字专用别名（audit 2026-09-24）。
+     低时间提示、退出按钮这类 **12px 红字压红底** 的控件，直接用 `--red` 会在 kawaii 3.08、
+     dark 3.37、firefly 3.50、snow 3.62 … 共 14 套主题上掉到 4.5:1 以下（WCAG AA 对小字号
+     的要求）。这是 `--green` 早就暴露过的同一个坑——设计 token 里 `--green-2` 就是为此存在
+     （见下方选中态注释），红却没有对应别名。
+     这里按 `--bookmark-*` 的同一套做法用 color-mix 派生：混向 `--ink` 后，浅色主题的墨色
+     偏黑、红字自动变深，暗色主题的墨色近白、红字自动变浅，两个方向都朝「更对比」走，
+     不必为 20 套主题各手调一遍。52% 是实测选值（修正后最低 4.84:1，见 clock.css）。 */
+  --red-2: color-mix(in srgb, var(--red) 52%, var(--ink));
+  /* 分支书签的标识色（audit 2026-09-17）。
+     面板里一直写着 `var(--bookmark-<accent>, var(--green))`，但这八个变量从来没被定义过，
+     于是四色书签实际全都显示成绿色。用 color-mix 从语义 token 派生，主题换色时跟着走，
+     不必为 20 套主题各写一遍。 */
+  --bookmark-jade: color-mix(in srgb, var(--color-accent) 88%, #0f766e);
+  --bookmark-gold: var(--color-warning);
+  --bookmark-blue: color-mix(in srgb, var(--color-accent) 55%, #1d5688);
+  --bookmark-rose: color-mix(in srgb, var(--color-danger) 70%, #d6336c);
+  --bookmark-violet: color-mix(in srgb, var(--color-accent) 45%, #7c3aed);
+  --bookmark-teal: color-mix(in srgb, var(--color-accent) 60%, #0d9488);
+  --bookmark-orange: color-mix(in srgb, var(--color-warning) 65%, #ea580c);
+  --bookmark-slate: color-mix(in srgb, var(--color-text-muted) 70%, #475569);
 }
 
 /* 青花瓷：瓷白是底、浅蓝是纹样、钴蓝是结构、藏青用于高对比交互。
@@ -99,6 +127,7 @@
   --jade: var(--color-accent-soft);
   --gold: var(--color-warning);
   --red: var(--color-danger);
+  --red-2: color-mix(in srgb, var(--red) 52%, var(--ink));
   --surface: #fffdf8;
   --surface-2: #f1f4f2;
   --surface-3: #e1ebef;
@@ -137,13 +166,25 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* ⚠ 2026-10-09：这条把**全站所有动画**时长清零，包括主题的装饰动画。
+     老 Android WebView（K20 实测）常年把 prefers-reduced-motion 误报成 reduce，
+     于是那台机器上「主题只有颜色、没有动效」（用户报的）。
+     主题动画是纯背景装饰、不承载操作反馈，所以给独立开关（默认开，见 src/theme-motion.ts）。
+
+     实现要点：**不能事后用 revert 抢救**——`animation-duration: revert` 回滚到浏览器默认（0s），
+     不是"元素自己声明的值"；`animation-name: revert` 更会直接回滚成 none（这两个坑都实测踩过）。
+     所以改成两条互补的规则：
+       ① 通配符那条**不带 !important**（降低它的强度）；
+       ② 主题子树显式恢复时长（`animation-duration:var(--theme-motion-duration)`），
+          变量由 styles.css 的开关段按需注入具体值。
+     这样老内核上也只依赖"选择器 + 自定义属性"，不依赖 :not(复杂选择器)（老内核不认）。 */
   *, *::before, *::after {
-    animation-duration: 0s !important;
-    animation-delay: 0s !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0s !important;
-    transition-delay: 0s !important;
-    scroll-behavior: auto !important;
+    animation-duration: 0s;
+    animation-delay: 0s;
+    animation-iteration-count: 1;
+    transition-duration: 0s;
+    transition-delay: 0s;
+    scroll-behavior: auto;
   }
 }
 
@@ -249,7 +290,7 @@
 .app-shell .puzzle-rule-selector button.selected {
   background: var(--green);
   border: 1px solid var(--green-2, var(--green));
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: 0 3px 10px var(--surface-shadow, #0002), inset 0 1px 0 #ffffff40;
 }
 
@@ -283,7 +324,6 @@
  * entire control translucent. */
 .app-shell .record-command-bar > button small,
 .app-shell .library-actions button small,
-.app-shell .theme-preference > button small,
 .app-shell .visual-option-grid > button small,
 .app-shell .feedback-kind button small,
 .app-shell .export-scope-grid button small,

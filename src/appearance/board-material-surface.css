@@ -1,0 +1,23 @@
+/* Both SVGs share one sizing/zoom host so paint isolation cannot introduce
+   drift between the background, grid, stones and pointer hit targets. */
+.board-canvas {
+  position: relative;
+  flex: none;
+  /* Keep high-frequency engine updates inside the board's paint island. On
+     older Android WebViews a sibling text update otherwise invalidates the
+     whole page layer, which is visible as a flash on animated materials. */
+  contain: paint;
+  isolation: isolate;
+  backface-visibility: hidden;
+}
+.board-canvas > .board-material-surface {
+  position: absolute; top: 0; left: 0;
+  display: block; width: 100%; height: 100%;
+  overflow: hidden; pointer-events: none; z-index: 0;
+}
+.board-canvas > .renju-board { position: relative; z-index: 1; }
+.board-canvas > .board-analysis-surface {
+  position: absolute; top: 0; left: 0;
+  display: block; width: 100%; height: 100%;
+  overflow: visible; pointer-events: none; z-index: 2;
+}

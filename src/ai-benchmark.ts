@@ -13,7 +13,7 @@ export interface AiBenchmarkOptions {
 }
 
 export const AI_BENCHMARK_PROFILES = {
-  quick: { label: "轻量", timeBudgetMs: 220, nodeBudget: 24000 },
+  quick: { label: "快速档", timeBudgetMs: 220, nodeBudget: 24000 },
   standard: { label: "标准", timeBudgetMs: 700, nodeBudget: 70000 },
   strong: { label: "强力", timeBudgetMs: 1500, nodeBudget: 160000 },
   expert: { label: "专家", timeBudgetMs: 3000, nodeBudget: 350000 },

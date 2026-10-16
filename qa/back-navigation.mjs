@@ -89,16 +89,30 @@ try {
 
   // 7. Non-home tabs are left before the home tab exits the app.
   await page.locator("nav.bottom-nav button:has-text('设置')").click();
-  await page.getByText("偏好中心").waitFor();
+  await page.locator('[aria-label="搜索设置"]').waitFor();
   await page.goBack();
   await page.waitForTimeout(300);
   results.backFromSettings = {
     state: await stateOf(),
-    settingsVisible: await page.getByText("偏好中心").isVisible().catch(() => false),
+    settingsVisible: await page.locator('[aria-label="搜索设置"]').isVisible().catch(() => false),
     boardVisible: await page.locator(".renju-board").isVisible(),
   };
   assert(!results.backFromSettings.settingsVisible, "返回键未先离开设置页");
   assert(results.backFromSettings.boardVisible, "从设置页返回后主界面棋盘丢失");
+  await waitReArm();
+
+  // 7b. 「对弈」是后加的第四个标签（2026-09-17），走同一条「先回首页」的语义。
+  await page.locator("nav.bottom-nav button:has-text('对弈')").click();
+  await page.locator(".duel-page").waitFor();
+  await page.goBack();
+  await page.waitForTimeout(300);
+  results.backFromDuel = {
+    state: await stateOf(),
+    duelVisible: await page.locator(".duel-page").isVisible().catch(() => false),
+    boardVisible: await page.locator(".renju-board").isVisible(),
+  };
+  assert(!results.backFromDuel.duelVisible, "返回键未先离开对弈页");
+  assert(results.backFromDuel.boardVisible, "从对弈页返回后主界面棋盘丢失");
   await waitReArm();
 
   // 8. The exit window re-arms the sentinel, so a later back press warns

@@ -15,6 +15,8 @@ export interface AiAnalysisCandidate {
   winRate?: number;
   nodes?: number;
   depth?: number;
+  /** 和棋率（%，KataGo 专属）：本构建的 scoreMean 字段即 drawrate（gtp.cpp:649）。 */
+  drawRate?: number;
   /** PV index from the engine stdout stream (0 = principal variation / 当前最强点). */
   pvIndex?: number;
   /** Opening-book strength rank (source === "book"; 越小越强). */
@@ -26,7 +28,13 @@ export interface AiMoveResult {
   move: Position | null;
   score: number;
   depth: number;
+  /** 引擎实际到达的最大深度（Rapfi 的 INFO SELDEPTH）。与 depth 一起构成「最小-最大」
+   *  区间；启发式兜底不产生它。 */
+  selDepth?: number;
   nodes: number;
+  /** 节点速度（节点/秒）：Rapfi 自报 SPEED 优先，否则按总节点/用时现算。
+   *  启发式兜底（alpha-beta 等）不产生它，所以是可选的。 */
+  speed?: number;
   elapsedMs: number;
   illegalRejected: number;
   reason: string;

@@ -1,8 +1,418 @@
-.tree-sheet-backdrop .bottom-sheet{max-height:min(92dvh,860px);padding-left:12px;padding-right:12px}.record-tree-panel{display:flex;flex-direction:column;gap:9px;min-width:0}.record-tree-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:4px;border-radius:13px;background:#ece8df}.record-tree-tabs button{min-height:42px;border:0;border-radius:10px;background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:700}.record-tree-tabs button.active{background:var(--paper);color:var(--green);box-shadow:0 2px 8px #554b3b18}.record-tree-tabs svg{width:16px}.tree-copy-banner{display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 9px;border:1px solid #9bb8a4;border-radius:13px;background:#edf6ef;color:var(--green)}.tree-copy-banner>svg{width:19px}.tree-copy-banner span,.tree-copy-banner b,.tree-copy-banner small{min-width:0;display:block}.tree-copy-banner b{font-size:12px}.tree-copy-banner small{margin-top:2px;font-size:11px;color:#6f7f73}.tree-copy-banner button{min-width:48px;min-height:38px;border:0;border-radius:10px;background:#fff;color:var(--green);font-size:11px;font-weight:700}.tree-node.selected rect{stroke:#b58a42;stroke-width:2.4;filter:drop-shadow(0 3px 7px #9c74333a)}.tree-node-bookmark{fill:#c18c32;stroke:#fff7;stroke-width:.5}.tree-node-actions{padding:10px;border:1px solid var(--line);border-radius:15px;background:var(--paper)}.tree-node-action-head{display:flex;align-items:center;gap:8px;min-width:0}.tree-node-action-head>div{min-width:0;flex:1}.tree-node-action-head b,.tree-node-action-head small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tree-node-action-head b{font-size:12px}.tree-node-action-head small{margin-top:3px;color:var(--muted);font-size:11px}.tree-node-action-head>svg{width:17px;color:#b98834}.tree-action-stone{width:24px;height:24px;border-radius:50%;background:#999;flex:0 0 auto}.tree-action-stone.black{background:#27251f}.tree-action-stone.white{background:#faf7ed;border:1px solid #91897e}.tree-action-stone.neutral{border-radius:8px;background:var(--jade)}.tree-node-action-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:9px}.tree-node-action-grid button{min-width:0;min-height:48px;padding:5px 2px;border:1px solid var(--line);border-radius:11px;background:#fff;color:#625c53;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px}.tree-node-action-grid button svg{width:16px;height:16px}.tree-node-action-grid button.primary{background:var(--green);border-color:var(--green);color:#fff}.tree-node-action-grid button.danger{color:#a7443a;background:#fff6f4;border-color:#ebcac5}.tree-node-action-grid button:disabled{opacity:.4}.tree-inline-rename{display:grid;grid-template-columns:minmax(0,1fr) 42px 42px;gap:5px;margin-top:9px}.tree-inline-rename input{min-width:0;height:44px;border:1px solid var(--line);border-radius:11px;padding:0 10px;background:var(--paper);color:var(--ink)}.tree-inline-rename button{border:1px solid var(--line);border-radius:11px;background:var(--paper);color:var(--green)}.tree-bookmark-browser{display:flex;flex-direction:column;gap:9px;min-height:340px}.tree-bookmark-search{min-height:46px;border:1px solid var(--line);border-radius:13px;background:var(--paper);display:flex;align-items:center;gap:8px;padding:0 11px}.tree-bookmark-search svg{width:17px;color:var(--muted)}.tree-bookmark-search input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:var(--ink);font-size:11px}.tree-bookmark-list{display:flex;flex-direction:column;gap:8px}.tree-bookmark-card{border:1px solid var(--line);border-left:4px solid #659177;border-radius:14px;background:var(--paper);overflow:hidden}.tree-bookmark-card.gold{border-left-color:#b98834}.tree-bookmark-card.blue{border-left-color:#4e86b5}.tree-bookmark-card.rose{border-left-color:#b96572}.tree-bookmark-jump{width:100%;min-height:58px;padding:9px;border:0;background:transparent;color:inherit;display:grid;grid-template-columns:28px minmax(0,1fr) 20px;align-items:center;gap:7px;text-align:left}.tree-bookmark-jump>svg:first-child{width:18px;color:#b98834}.tree-bookmark-jump span{min-width:0}.tree-bookmark-jump b,.tree-bookmark-jump small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tree-bookmark-jump b{font-size:11px}.tree-bookmark-jump small{margin-top:4px;color:var(--muted);font-size:11px}.tree-bookmark-jump>svg:last-child{width:16px;color:var(--green)}.tree-bookmark-actions{display:flex;justify-content:flex-end;gap:5px;padding:0 8px 8px}.tree-bookmark-actions button,.tree-edit-actions button{min-height:38px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--muted);display:flex;align-items:center;gap:4px;font-size:11px}.tree-bookmark-actions svg,.tree-edit-actions svg{width:14px}.tree-bookmark-edit{display:flex;flex-direction:column;gap:8px;padding:10px}.tree-bookmark-edit label{font-size:11px;color:var(--muted)}.tree-bookmark-edit input,.tree-bookmark-edit textarea{display:block;width:100%;margin-top:4px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);padding:9px;font-size:11px}.tree-bookmark-edit textarea{min-height:72px;resize:vertical}.bookmark-accent-picker{display:flex;gap:8px}.bookmark-accent-picker button{width:34px;height:34px;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 1px var(--line);background:#659177}.bookmark-accent-picker button.gold{background:#b98834}.bookmark-accent-picker button.blue{background:#4e86b5}.bookmark-accent-picker button.rose{background:#b96572}.tree-edit-actions{display:flex;justify-content:flex-end;gap:6px}
+/* 分支树窗口尽量占满屏（用户 09-23：「窗口太小了…拉长一点，窗口变大一点」）：
+   92dvh → 96dvh、860px → 96dvh 上限也放到 1100px，桌面端（min-width:700px 那条把 sheet
+   居中的规则）也跟着变高。原来 860px 的硬上限让高分辨率桌面只用到一小半屏。 */
+.tree-sheet-backdrop .bottom-sheet{max-height:min(96dvh,1100px);padding-left:12px;padding-right:12px}.record-tree-panel{display:flex;flex-direction:column;gap:9px;min-width:0}.record-tree-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:4px;border-radius:13px;background:var(--surface-2, var(--paper))}.record-tree-tabs button{min-height:42px;border:0;border-radius:10px;background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:700}.record-tree-tabs button.active{background:var(--paper);color:var(--green);box-shadow:0 2px 8px #554b3b18}.record-tree-tabs svg{width:16px}.tree-copy-banner{display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 9px;border:1px solid color-mix(in srgb,var(--green) 45%,var(--line));border-radius:13px;background:var(--jade);color:var(--green-2, var(--green))}.tree-copy-banner>svg{width:19px}.tree-copy-banner span,.tree-copy-banner b,.tree-copy-banner small{min-width:0;display:block}.tree-copy-banner b{font-size:12px}.tree-copy-banner small{margin-top:2px;font-size:11px;color:var(--muted)}.tree-copy-banner button{min-width:48px;min-height:38px;border:0;border-radius:10px;background:var(--surface,var(--paper));color:var(--green-2, var(--green));font-size:11px;font-weight:700}.tree-node.selected rect{stroke:#b58a42;stroke-width:2.4;filter:drop-shadow(0 3px 7px #9c74333a)}.tree-node-bookmark{fill:#c18c32;stroke:#fff7;stroke-width:.5}.tree-node-actions{padding:10px;border:1px solid var(--line);border-radius:15px;background:var(--paper)}.tree-node-action-head{display:flex;align-items:center;gap:8px;min-width:0}.tree-node-action-head>div{min-width:0;flex:1}.tree-node-action-head b,.tree-node-action-head small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tree-node-action-head b{font-size:12px}.tree-node-action-head small{margin-top:3px;color:var(--muted);font-size:11px}.tree-node-action-head>svg{width:17px;color:#b98834}.tree-action-stone{width:24px;height:24px;border-radius:50%;background:#999;flex:0 0 auto}.tree-action-stone.black{background:#27251f}.tree-action-stone.white{background:#faf7ed;border:1px solid #91897e}.tree-action-stone.neutral{border-radius:8px;background:var(--jade)}/* 11 个按钮（定位/展开全部/收起全部/设为主分支/展开分支/收起分支/新分支/加书签/复制/粘贴/重命名/删除）
+   用 6 列排成两排——用户明确要「两排，挤一下没事」。 */
+/* 操作区按钮（定位/展开全部/收起全部/只看这支/设为主分支/展开分支/收起分支/新分支/
+   加书签/同型局面/复制/粘贴/重命名/删除）——**按容器宽度自动排列，且每排尽量均匀**
+   （用户 2026-10-10：「就算是三行就三行吧，不过排列要自动调整」）。
+   列数由 JS 算好写进 --tree-action-cols（见 RecordTreePanel 的 actionColumns）：
+   为什么不在 CSS 里用 auto-fill——它只按宽度填，**最后一排可能只剩一个**
+   （实测 390px、11 个按钮 → 5/5/1，孤零零一个「删除分支」吊在第三排，门禁当场报红）。
+   改成「先算最宽能放几列，再选一个让每排均匀的列数」→ 11 个 → 4/4/3。
+   这个变量有兜底值 6，CSS 单独可用（老 WebView 不支持变量时也不会塌）。 */
+.tree-node-action-grid{display:grid;grid-template-columns:repeat(var(--tree-action-cols,6),minmax(0,1fr));gap:5px;margin-top:9px}.tree-node-action-grid button{min-width:0;min-height:44px;padding:4px 1px;border:1px solid var(--line);border-radius:11px;background:#fff;color:#625c53;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;line-height:1.15;text-align:center}.tree-node-action-grid button[aria-pressed="true"]{border-color:var(--green);background:var(--jade);color:var(--green)}.tree-node-action-grid button svg{width:16px;height:16px}.tree-node-action-grid button.primary{background:var(--green);border-color:var(--green);color:var(--on-accent)}.tree-node-action-grid button.danger{color:#a7443a;background:#fff6f4;border-color:#ebcac5}.tree-node-action-grid button:disabled{opacity:.4}.tree-inline-rename{display:grid;grid-template-columns:minmax(0,1fr) 42px 42px;gap:5px;margin-top:9px}.tree-inline-rename input{min-width:0;height:44px;border:1px solid var(--line);border-radius:11px;padding:0 10px;background:var(--paper);color:var(--ink)}.tree-inline-rename button{border:1px solid var(--line);border-radius:11px;background:var(--paper);color:var(--green)}.tree-bookmark-browser{display:flex;flex-direction:column;gap:9px;min-height:340px}.tree-bookmark-search{min-height:46px;border:1px solid var(--line);border-radius:13px;background:var(--paper);display:flex;align-items:center;gap:8px;padding:0 11px}.tree-bookmark-search svg{width:17px;color:var(--muted)}.tree-bookmark-search input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:var(--ink);font-size:11px}.tree-bookmark-list{display:flex;flex-direction:column;gap:8px}.tree-bookmark-card{border:1px solid var(--line);border-left:4px solid #659177;border-radius:14px;background:var(--paper);overflow:hidden}.tree-bookmark-card.gold{border-left-color:#b98834}.tree-bookmark-card.blue{border-left-color:#4e86b5}.tree-bookmark-card.rose{border-left-color:#b96572}.tree-bookmark-jump{width:100%;min-height:58px;padding:9px;border:0;background:transparent;color:inherit;display:grid;grid-template-columns:28px minmax(0,1fr) 20px;align-items:center;gap:7px;text-align:left}.tree-bookmark-jump>svg:first-child{width:18px;color:#b98834}.tree-bookmark-jump span{min-width:0}.tree-bookmark-jump b,.tree-bookmark-jump small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tree-bookmark-jump b{font-size:11px}.tree-bookmark-jump small{margin-top:4px;color:var(--muted);font-size:11px}.tree-bookmark-jump>svg:last-child{width:16px;color:var(--green)}.tree-bookmark-actions{display:flex;justify-content:flex-end;gap:5px;padding:0 8px 8px}.tree-bookmark-actions button,.tree-edit-actions button{min-height:38px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--muted);display:flex;align-items:center;gap:4px;font-size:11px}.tree-bookmark-actions svg,.tree-edit-actions svg{width:14px}.tree-bookmark-edit{display:flex;flex-direction:column;gap:8px;padding:10px}.tree-bookmark-edit label{font-size:11px;color:var(--muted)}.tree-bookmark-edit input,.tree-bookmark-edit textarea{display:block;width:100%;margin-top:4px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);padding:9px;font-size:11px}.tree-bookmark-edit textarea{min-height:72px;resize:vertical}.bookmark-accent-picker{display:flex;gap:8px}.bookmark-accent-picker button{width:34px;height:34px;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 1px var(--line);background:#659177}.bookmark-accent-picker button.gold{background:#b98834}.bookmark-accent-picker button.blue{background:#4e86b5}.bookmark-accent-picker button.rose{background:#b96572}.tree-edit-actions{display:flex;justify-content:flex-end;gap:6px}
 html[data-theme="dark"] .tree-node-actions,html[data-theme="dark"] .tree-bookmark-card{background:#26312d;border-color:#3b4842}html[data-theme="dark"] .record-tree-tabs{background:#202925}html[data-theme="dark"] .record-tree-tabs button.active,html[data-theme="dark"] .tree-node-action-grid button,html[data-theme="dark"] .tree-inline-rename input,html[data-theme="dark"] .tree-inline-rename button,html[data-theme="dark"] .tree-bookmark-search,html[data-theme="dark"] .tree-bookmark-edit input,html[data-theme="dark"] .tree-bookmark-edit textarea,html[data-theme="dark"] .tree-bookmark-actions button,html[data-theme="dark"] .tree-edit-actions button{background:#2b3933;border-color:#4a5a52;color:var(--ink)}html[data-theme="dark"] .tree-copy-banner{background:#2f493b;border-color:#60826e;color:#dcece1}
-@media(max-width:412px){.tree-sheet-backdrop .bottom-sheet{padding-left:9px;padding-right:9px}.tree-node-action-grid button{min-height:50px}.tree-toolbar{padding:8px}.tree-viewport{height:min(36dvh,320px)}}
-@media(max-width:370px){.tree-node-action-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.tree-zoom-controls{gap:2px}.tree-zoom-presets{justify-content:flex-start}}
-@media(orientation:landscape) and (max-height:600px){.tree-sheet-backdrop .bottom-sheet{max-height:96dvh}.tree-sheet{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(260px,.8fr);gap:9px}.tree-sheet>.record-tree-panel{display:contents}.record-tree-tabs,.tree-copy-banner{grid-column:1/-1}.tree-toolbar,.tree-viewport{grid-column:1}.tree-node-actions,.tree-bookmark-browser,.tree-legend{grid-column:2}.tree-node-actions{grid-row:3 / span 2}.tree-viewport{height:230px}.tree-bookmark-browser{grid-column:1/-1}}
+/* 手机：画布高度不再由 CSS 钉死（原来 36dvh 在 844px 高的屏上只给 303px）——
+   内联的 canvasHeight 会按「窗口能给多少」算，这里只兜一个最小值，避免极矮的屏把画布压没。 */
+@media(max-width:412px){.tree-sheet-backdrop .bottom-sheet{padding-left:9px;padding-right:9px}.tree-node-action-grid button{min-height:46px}.tree-toolbar{padding:8px}}
+@media(max-width:370px){.tree-zoom-controls{gap:2px}.tree-zoom-presets{justify-content:flex-start}}
 @media(prefers-reduced-motion:reduce){.tree-node rect{filter:none}.tree-copy-banner,.tree-node-actions{scroll-behavior:auto}}
 .tree-long-press-progress{fill:none;stroke:var(--green);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:44;transform:rotate(-90deg);transform-origin:center;animation:none}.tree-long-press-menu{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px;border:1px solid #d9b56a;border-radius:12px;background:#fff8e8;color:#6f5422}.tree-long-press-menu>b{font-size:12px;margin-right:auto}.tree-long-press-menu button{min-height:36px;padding:5px 9px;border:1px solid #e5d5b2;border-radius:9px;background:#fff;color:#6f5422;display:flex;align-items:center;gap:4px;font-size:11px}.tree-long-press-menu button svg{width:14px}.tree-long-press-menu button.danger{color:#a7443a;border-color:#ebcac5}
 .tree-viewport{overscroll-behavior:contain}.tree-canvas{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}.tree-canvas:active{cursor:grabbing}
+
+/* —— 分支树：多分支点标记 —— */
+/* 多分支点用金环 + 数量徽标标出来，离线分支再补一道金色描边；
+   颜色全部走语义变量，7 主题下徽标底色始终是节点纸面色，数字用 --ink 保证可读。 */
+.tree-node.branching:not(.path):not(.current) rect{stroke:var(--gold);stroke-width:1.8}
+.tree-branch-mark circle{fill:var(--paper);stroke:var(--gold);stroke-width:1.8}
+.tree-branch-mark text{fill:var(--ink);font-size:10px /* no-scale */;font-weight:700;text-anchor:middle;font-variant-numeric:tabular-nums}
+.tree-branch-mark.folded circle{stroke-dasharray:3 2.4}
+/* 缩放预设 1%–100× 共 11 档：自适应铺满整行，窄屏自动折成两行且每档等宽 */
+.tree-toolbar>.tree-zoom-presets{grid-column:1/-1;grid-row:3;justify-self:stretch;max-width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(44px,1fr));gap:5px;margin-top:2px}
+/* 倍数档（5× / 50× / 100×）与百分比档（5% / 50% / 100%）之间给一条分隔，
+   让"先百分比、后倍数"这两组一眼可分（用户 10-11 要求排列下面那排按钮的顺序）。 */
+.tree-zoom-presets button.is-times{border-left:2px solid var(--line)}
+.tree-zoom-presets button.is-times:first-of-type{margin-left:6px}
+.tree-legend i.branch{border:2px solid var(--gold);background:var(--paper)}
+.tree-legend i.revealed{background:var(--gold)}
+.tree-legend i.transposition{background:var(--bookmark-blue, var(--green))}
+/* 用户自己摊开的那一枝：金色连线 + 节点金框，一眼分得出「哪些是我点开的」，
+   与默认框架（素色线、右上斜）区分开。颜色只走 --gold，全主题可读。 */
+.tree-edge.revealed{stroke:var(--gold);stroke-width:2}
+.tree-node.revealed:not(.path):not(.current) rect{stroke:var(--gold);stroke-width:1.8}
+.tree-node.revealed .tree-dot-face{stroke:var(--gold);stroke-width:2}
+html[data-theme="dark"] .tree-edge.revealed{stroke:var(--gold)}
+
+/* —— 图谱工作区：左边画布、右边变化列表（用户 09-19）——
+   一手一行、分支缩进成子级；行与画布共用同一棵可视树，展开/收起两边同步。
+   宽屏并排（画布在左、列表在右），窄屏上下叠。颜色只走语义 token。 */
+/* 列表改成顶格「列表」标签页（用户 09-20：不要侧栏，要么顶格要么去掉）。
+   独立成页后给它自己的高度与滚动，图谱页不再被分走宽度。 */
+.tree-list-pane{display:flex;flex-direction:column;min-width:0;height:min(62dvh,560px);min-height:320px}
+.tree-list{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:15px;background:var(--paper);overflow:hidden}
+.tree-list-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:7px 9px;border-bottom:1px solid var(--line);font-size:11px;color:var(--muted)}
+.tree-list-count{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.tree-list-mainline{font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--jade);color:var(--green);border:1px solid var(--green)}
+.tree-list-onmain{color:var(--green)}
+.tree-list-toolbar button{min-height:28px;padding:0 8px;border:1px solid var(--green);border-radius:8px;background:var(--jade);color:var(--green);font-size:11px;font-weight:700}
+.tree-list-rows{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:5px}
+.tree-list-row{display:flex;align-items:center;gap:4px;width:100%;min-height:34px;padding:3px 8px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-size:12px;text-align:left;cursor:pointer;font-variant-numeric:tabular-nums}
+.tree-list-row:hover{background:color-mix(in srgb, var(--green) 7%, transparent)}
+.tree-list-row b{color:var(--muted);font-weight:400;font-size:10px;flex:0 0 auto}
+.tree-list-label{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-list-note{flex:1 1 auto;min-width:0;margin-left:2px;padding:0 4px;border-radius:6px;background:color-mix(in srgb, var(--gold) 18%, transparent);color:var(--ink);font-style:normal;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-list-bookmark{width:12px;height:12px;flex:0 0 auto;color:var(--gold)}
+.tree-list-branch{margin-left:auto;flex:0 0 auto;font-size:10px;font-weight:700;color:var(--gold);border:1px dashed var(--gold);border-radius:999px;padding:0 6px}
+.tree-list-elbow{width:7px;height:9px;flex:0 0 auto;border-left:2px solid var(--line);border-bottom:2px solid var(--line);border-radius:0 0 0 5px;margin-right:1px}
+.tree-list-row.path{background:color-mix(in srgb, var(--green) 10%, transparent)}
+.tree-list-row.current{background:var(--jade);outline:1.5px solid var(--green);outline-offset:-1.5px;font-weight:700}
+.tree-list-row.on-mainline:not(.current):not(.path) .tree-list-label{color:var(--green)}
+/* 桌面断点下面板被限宽 600px，两栏会挤成一团：开着分支树时把面板放宽到能容下两栏。
+   阈值放到 640px——用户窗口常是 800–1000px，之前卡在 1024 会让列表掉到画布下面，
+   看起来就像「只有图谱、列表不见了」。 */
+@media(min-width:640px){.bottom-sheet:has(.record-tree-panel){max-width:min(1060px,94vw)}}
+/* 真的装不下两栏时（手机、以及横屏矮窗）才上下叠：画布在上、列表在下 */
+@media(max-width:639px){.tree-list-pane{height:min(56dvh,460px)}}
+html[data-theme="dark"] .tree-list{background:#26312d;border-color:#3b4842}
+
+/* —— 棋谱预览（用户 09-20：图谱下面点哪个节点就显示那个局面，可展开收起）——
+   收起时只占一行标题；展开才画棋盘，不挤走图谱。 */
+.tree-preview{border:1px solid var(--line);border-radius:15px;background:var(--paper);overflow:hidden}
+.tree-preview-head{width:100%;min-height:44px;padding:7px 10px;border:0;background:transparent;color:var(--ink);display:flex;align-items:center;gap:7px;text-align:left}
+.tree-preview-head svg{width:16px;height:16px;flex:0 0 auto;color:var(--muted)}
+.tree-preview-head b{font-size:12px;flex:0 0 auto}
+.tree-preview-head small{min-width:0;color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 左边注释、右边棋盘（用户 09-23：注释原来压在棋盘下面，改成并排——省下半块面板的高度）。
+   棋盘大小不变（仍是 min(240px,100%)），只是不再孤零零地居中，右边那块地方正好放文字。
+   竖排改横排后注释会短很多，所以它自己可滚动，长注释不会把棋盘顶下去。 */
+.tree-preview-body{display:flex;flex-direction:row;align-items:flex-start;gap:10px;padding:0 10px 11px;min-width:0}
+.tree-preview-board{flex:0 0 auto;width:min(240px,100%);height:auto;border-radius:8px}
+.tree-preview .board-bg{stroke-width:1.4}
+.tree-preview .grid-lines{stroke-width:.9}
+/* 主盘的棋子颜色来自 SVG 渐变，这里只挂 .stone 类（它只有描边没有填充）会让黑白都变黑，
+   所以预览自己给黑白填充色（暗色主题单独覆盖）。 */
+.tree-preview-board .stone{stroke-width:.5}
+.tree-preview-board .stone.black{fill:#24231f;stroke:#00000059}
+.tree-preview-board .stone.white{fill:#f8f6ee;stroke:#8a8378}
+html[data-theme="dark"] .tree-preview-board .stone.black{fill:#141610;stroke:#ffffff1f}
+html[data-theme="dark"] .tree-preview-board .stone.white{fill:#e9e3d6;stroke:#7c7466}
+.tree-preview-meta{flex:1 1 auto;min-width:0;margin:0;font-size:11px;color:var(--muted);line-height:1.55;text-align:left;max-height:200px;overflow-y:auto;overscroll-behavior:contain}
+.tree-preview-meta b{display:block;margin-bottom:3px;color:var(--ink);font-size:12px}
+.tree-preview-meta span{display:block;word-break:break-word}
+.tree-preview-empty{margin:0;padding:12px;color:var(--muted);font-size:11px}
+/* 手机（360–430 全部）：保持「注释在左、棋盘在右」，注释给个宽度下限，棋盘跟着缩一点。
+   曾经把退回上下排列的阈值定在 420px，结果 390/412 这些主力机型全落进竖排，等于改了没用。 */
+@media(max-width:520px){.tree-preview-meta{flex:0 1 40%;min-width:96px}.tree-preview-board{width:min(200px,52vw)}}
+/* 只有真的窄到 360 以下（注释会被挤成竖排）才退回上下排列 */
+@media(max-width:344px){.tree-preview-body{flex-direction:column;align-items:center}.tree-preview-meta{width:100%;flex:0 0 auto;min-width:0;max-height:none}.tree-preview-board{width:min(200px,64vw)}}
+html[data-theme="dark"] .tree-preview{background:#26312d;border-color:#3b4842}
+
+/* —— 选中节点的呼吸动效（用户 09-20：微微发光、暗淡、一闪一闪）——
+   只动 drop-shadow 的光晕，不动颜色与尺寸，所以全主题对比度门禁不受影响；
+   prefers-reduced-motion 下完全关闭（仓库既有约定）。 */
+@keyframes tree-node-breathe{
+  0%,100%{filter:drop-shadow(0 0 2px #b58a4277);stroke:#b58a42;stroke-width:2.4}
+  50%{filter:drop-shadow(0 0 14px #e0a83af2) drop-shadow(0 0 4px #fff6);stroke:#e0a83a;stroke-width:3.6}
+}
+.tree-node.selected rect,.tree-node.selected .tree-dot-face{animation:tree-node-breathe 1.4s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.tree-node.selected rect,.tree-node.selected .tree-dot-face{animation:none}}
+
+/* —— 链条胶囊（智子式紧凑链，用户 09-26 改版）——
+   一手一列的方框会把长链拉成超长直线；无分叉/无注解/非当前与书签的链条节点压成 64px 的
+   小胶囊，链长仍缩到约 1/2，但**坐标与手数都在**（上一版只有手数圆点，用户报「连坐标都没有」）。
+   分叉点仍是大方框（要挂数量徽标），当前手/书签/带注解的节点也一样。 */
+.tree-dot-face{fill:#fffefa;stroke:#d8d1c6;stroke-width:1.2}
+.tree-dot-num{font-size:9.5px;font-weight:700;fill:var(--ink);text-anchor:middle;font-variant-numeric:tabular-nums}
+.tree-chain-label{font-size:11px;font-weight:700;fill:var(--ink);font-variant-numeric:tabular-nums}
+.tree-chain-num{font-size:9.5px;font-weight:700;fill:var(--muted);text-anchor:end;font-variant-numeric:tabular-nums}
+.tree-node.black:not(.path):not(.current) .tree-dot-face{fill:#27251f}
+.tree-node.black:not(.path):not(.current) .tree-dot-num,
+.tree-node.black:not(.path):not(.current) .tree-chain-label,
+.tree-node.black:not(.path):not(.current) .tree-chain-num{fill:#f5f2ea}
+.tree-node.white:not(.path):not(.current) .tree-dot-face{fill:#faf7ed;stroke:#91897e}
+.tree-node.path .tree-dot-face{fill:#f2f8f2;stroke:#7ca18a;stroke-width:2}
+.tree-node.current .tree-dot-face{fill:#eaf4ed;stroke:var(--green);stroke-width:2.2}
+.tree-node.selected .tree-dot-face{stroke:#b58a42;stroke-width:2.4}
+html[data-theme="dark"] .tree-dot-face{fill:#2b3933;stroke:#53635b}
+html[data-theme="dark"] .tree-node.black:not(.path):not(.current) .tree-dot-face{fill:#12140f}
+html[data-theme="dark"] .tree-node.black:not(.path):not(.current) .tree-chain-label,
+html[data-theme="dark"] .tree-node.black:not(.path):not(.current) .tree-chain-num{fill:#f5f2ea}
+html[data-theme="dark"] .tree-node.white:not(.path):not(.current) .tree-dot-face{fill:#e9e3d6;stroke:#8d8577}
+html[data-theme="dark"] .tree-node.white:not(.path):not(.current) .tree-chain-label,
+html[data-theme="dark"] .tree-node.white:not(.path):not(.current) .tree-chain-num{fill:#3d382f}
+html[data-theme="dark"] .tree-node.path .tree-dot-face{fill:#30443a;stroke:#719a7b}
+html[data-theme="dark"] .tree-node.current .tree-dot-face{fill:#355345;stroke:#9bc2a4}
+html[data-theme="dark"] .tree-chain-label{fill:#eee9df}
+html[data-theme="dark"] .tree-chain-num{fill:#c3bdb1}
+
+/* —— 搜索（用户 09-26：一键搜到哪一步/哪个注释/哪个标注，多个从近到远一个个看）——
+   面板长在 toolbar 里（toolbar 是 grid，见 styles.css 的 .tree-toolbar 规则），
+   这样它占的高度会被 measureCanvasRoom 一起算进「画布还能有多高」。 */
+.tree-search-toggle{flex:0 0 auto;min-height:34px;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--green);display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700}
+.tree-search-toggle svg{width:14px;height:14px}
+.tree-search-toggle[aria-pressed="true"]{border-color:var(--green);background:var(--jade);color:var(--green)}
+/* 「同型」开关的基类：**不能复用 .tree-search-toggle**——`qa/tree-search-chain.mjs:116`
+   用 `.tree-search-toggle` 定位搜索键，多一个同类的按钮会命中两个元素、门禁直接红
+   （strict mode violation，实测已发生）。样式与搜索键一致，只是类名分开。 */
+/* 「同型」开关与同型区块。
+   ⚠ 颜色契约（2026-10-10 实测踩到的坑）：**文字一律走 --ink / --muted，蓝色只给标记用**。
+   第一版把标题写成写死的 `#3f6f96`、开关选中态写 `#4e86b5`——22 套主题里量出 **18 套不达标**
+   （最低 1.75，mono/pale/baroque 这些浅色主题上蓝字压浅底几乎看不见）。这正是本项目
+   2026-10 那轮「写死色 vs 主题令牌」的同类问题，所以这里不再自己发明颜色：
+   语义色只保留「蓝色圆点」这一处（它是图形不是文字，靠 --bookmark-blue 跟随主题的强调色），
+   其余全部交给既有令牌。 */
+.tree-toggle{flex:0 0 auto;min-height:34px;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--muted);display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700}
+.tree-toggle svg{width:14px;height:14px}
+.tree-transposition-toggle[aria-pressed="true"]{border-color:var(--green);background:var(--jade);color:var(--green)}
+.tree-node .tree-transposition-dot{fill:var(--bookmark-blue, var(--green));stroke:var(--paper);stroke-width:1.4}
+.tree-transposition{display:flex;flex-direction:column;gap:6px;margin-top:9px;padding:9px;border:1px solid var(--line);border-radius:13px;background:var(--surface-2, var(--paper))}
+.tree-transposition-head{display:flex;align-items:baseline;gap:6px;min-width:0}
+.tree-transposition-head b{font-size:12px;color:var(--ink)}
+.tree-transposition-head small{margin-left:auto;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.tree-transposition-list{display:flex;flex-direction:column;gap:5px}
+/* 每条 = 「跳过去看」+「并入」两枚（用户 2026-10-10 要的合并；看与整理是两个动作，
+   所以各给一个按钮，不把跳转也塞进合并里）。 */
+.tree-transposition-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px;align-items:stretch}
+.tree-transposition-jump{display:grid;grid-template-columns:24px minmax(0,1fr) 18px;align-items:center;gap:7px;min-height:44px;padding:6px 8px;border:1px solid var(--line);border-radius:11px;background:var(--paper);color:var(--ink);text-align:left}
+.tree-transposition-jump>span{min-width:0}
+.tree-transposition-jump b,.tree-transposition-jump small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-transposition-jump b{font-size:12px;color:var(--ink)}
+.tree-transposition-jump small{margin-top:3px;color:var(--muted);font-size:11px}
+.tree-transposition-jump svg{width:16px;color:var(--muted)}
+.tree-transposition-merge{min-width:52px;min-height:44px;padding:0 10px;border:1px solid var(--green);border-radius:11px;background:var(--jade);color:var(--green);font-size:11px;font-weight:700}
+.tree-transposition-merge:disabled{opacity:.45}
+/* 标题块与搜索按钮**同一行**（用户 2026-10-11：「那个搜索的按钮好像是单独一行了，
+   你改一下位置，让他和别的在一行，同时也不会挤的别的按钮太小或者看不见」）。
+   ⚠ 它曾经自己占一整行（`.tree-toolbar-actions`）——那行的成因是"当时有两枚开关、
+   挤不下标题"（见 git 历史的长注释）；后来「同型局面」挪去操作区、只剩它一枚，
+   那一行就变成"一行一个按钮"。现在收回标题行，靠这两条保证**挤的是标题、不是按钮**：
+     · 标题 `flex:1 1 auto` + `min-width:0` ⇒ 空间不够时它自己省略号；
+     · 开关 `flex:0 0 auto`（见 `.tree-search-toggle`）⇒ 永不压扁，触控目标不缩水。
+   少掉的那一行高度会被 `measureCanvasRoom` 自动算进去（它量的是 .tree-toolbar 的实高），
+   所以画布只会变高、不会被顶出屏幕。 */
+.tree-toolbar-head{display:flex;align-items:center;gap:6px;min-width:0}
+.tree-toolbar-title{flex:1 1 auto;min-width:0}
+.tree-toolbar-title small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-search{grid-column:1/-1;grid-row:4;display:flex;flex-direction:column;gap:6px;min-width:0}
+.tree-search-field{display:flex;align-items:center;gap:6px;min-height:40px;padding:0 6px 0 10px;border:1px solid var(--line);border-radius:11px;background:var(--paper)}
+.tree-search-field>svg{width:15px;height:15px;color:var(--muted);flex:0 0 auto}
+.tree-search-field input{flex:1 1 auto;min-width:0;border:0;outline:0;background:transparent;color:var(--ink);font-size:12px}
+.tree-search-field button{width:32px;height:32px;flex:0 0 auto;border:0;border-radius:9px;background:transparent;color:var(--muted);display:grid;place-items:center}
+.tree-search-field button svg{width:15px;height:15px}
+.tree-search-nav{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.tree-search-nav span{flex:1 1 auto;min-width:0;font-variant-numeric:tabular-nums}
+.tree-search-nav button{min-height:32px;padding:0 9px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--green);font-size:11px;font-weight:700}
+.tree-search-nav button:disabled{opacity:.45}
+.tree-search-list{display:flex;flex-direction:column;gap:4px;max-height:184px;overflow-y:auto;overscroll-behavior:contain}
+.tree-search-hit{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:6px;min-height:38px;padding:4px 8px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);text-align:left;font-size:11px}
+.tree-search-hit b{font-variant-numeric:tabular-nums}
+.tree-search-hit span{color:var(--muted);font-size:10px;white-space:nowrap}
+.tree-search-hit small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+.tree-search-hit.active{border-color:var(--green);background:var(--jade);box-shadow:inset 0 0 0 1px var(--green)}
+/* 画布上把当前命中圈出来：虚线环 + 呼吸光晕，一眼看到「搜到的就是这一手」 */
+.tree-node.search-hit rect,.tree-node.search-hit .tree-dot-face{stroke:#2872b8;stroke-width:2.6;stroke-dasharray:5 3}
+html[data-theme="dark"] .tree-search-toggle,html[data-theme="dark"] .tree-search-field,html[data-theme="dark"] .tree-search-nav button,html[data-theme="dark"] .tree-search-hit{background:#2b3933;border-color:#4a5a52;color:var(--ink)}
+html[data-theme="dark"] .tree-search-toggle[aria-pressed="true"],html[data-theme="dark"] .tree-search-hit.active{background:#2f493b;border-color:var(--green)}
+
+/* 棋谱树里的「保存 / 取消」与「编辑 / 删除」两排：原来 38px 高、间隙 5~6px，
+   比同一张弹层里的其它控件矮一截（用户 10-01「保存、创建副本、取消这种，按钮有点紧凑了」）。 */
+.tree-bookmark-actions{gap:8px}
+.tree-edit-actions{gap:8px}
+.tree-bookmark-actions>button,.tree-edit-actions>button{min-height:42px}
+/* 大棋谱按决策层浏览：分页独立于图谱的节点预算。 */
+.tree-navigator{min-width:0;padding:10px;border:1px solid var(--line);border-radius:15px;background:var(--paper);display:flex;flex-direction:column;gap:9px}
+.tree-navigator button,.tree-window-note button{min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface,var(--paper));color:var(--ink);font:inherit;font-size:12px;cursor:pointer}
+.tree-navigator button:disabled{opacity:.45;cursor:default}
+.tree-navigator button:focus-visible,.tree-window-note button:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.tree-navigator-tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.tree-navigator-tools button{display:flex;justify-content:center;align-items:center;gap:4px;padding:4px;min-width:0;font-size:11px}
+.tree-navigator svg,.tree-window-note svg{width:16px;height:16px;flex-shrink:0}
+.tree-navigator-path{display:flex;flex-wrap:wrap;gap:5px}
+.tree-navigator-path button{padding:4px 9px;color:var(--muted)}
+.tree-navigator-path button[aria-current]{background:var(--jade);color:var(--green);border-color:var(--green);font-weight:700}
+.tree-navigator-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.tree-navigator-heading>div{min-width:0}
+.tree-navigator-heading b{display:block;overflow-wrap:anywhere;font-size:14px}
+.tree-navigator-heading small{display:block;margin-top:4px;font-size:11px;color:var(--muted)}
+.tree-navigator-heading>span{flex-shrink:0;font-size:11px;color:var(--green)}
+.tree-navigator-hint,.tree-navigator-empty,.tree-navigator-load p{margin:0;font-size:12px;line-height:1.6;color:var(--muted)}
+.tree-navigator-rows{display:flex;flex-direction:column;gap:6px;max-height:clamp(180px,36dvh,400px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:2px}
+.tree-navigator .tree-navigator-row{display:flex;width:100%;min-height:64px;align-items:center;gap:9px;padding:9px;text-align:left}
+.tree-navigator-row.current{border-color:var(--green);background:var(--jade)}
+.tree-navigator-row:hover{border-color:var(--green)}
+.tree-navigator-row-text{min-width:0;flex:1}
+.tree-navigator-row-text>span{display:flex;align-items:baseline;gap:9px;min-width:0}
+.tree-navigator-row-text b{flex-shrink:0;font-size:14px}
+.tree-navigator-row-text strong{font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-navigator-row-text small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;margin-top:4px;font-size:11px;color:var(--muted);line-height:1.5}
+.tree-navigator-row-text em{display:block;font-size:11px;font-style:normal;color:var(--muted);margin-top:4px}
+.tree-navigator-load{display:flex;flex-direction:column;gap:7px;padding:9px;border:1px dashed var(--line);border-radius:10px}
+.tree-navigator-paging{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-items:center}
+.tree-navigator-paging button{display:flex;gap:4px;align-items:center;justify-content:center;padding:4px 9px}
+.tree-navigator-paging>span{text-align:center;font-size:11px;color:var(--muted)}
+.tree-window-note{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:7px 10px;border:1px solid var(--line);border-radius:12px;background:var(--paper);font-size:11px;color:var(--muted)}
+.tree-window-note button{display:flex;align-items:center;gap:4px;padding:4px 8px;color:var(--green);font-size:11px}
+.record-tree-tabs{grid-template-columns:repeat(4,minmax(0,1fr));margin-right:40px}
+/* Navigation keeps the board beside its numbered candidates on wider panels. */
+.tree-navigator-tools{grid-template-columns:repeat(4,minmax(0,1fr))}
+.tree-navigator-location{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.tree-navigator-location>span{font-size:11px;color:var(--muted)}
+.tree-navigator-location button{display:flex;align-items:center;gap:4px;padding:5px 8px;font-size:11px;color:var(--green)}
+.tree-navigator-content{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-width:0}
+.tree-navigator .tree-preview-board{width:min(188px,65%);height:auto;flex-shrink:0}
+.tree-navigator .tree-preview-body{flex-direction:row;align-items:flex-start;gap:8px}
+.tree-navigator .tree-preview-meta{max-height:188px}
+.tree-navigator-path{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior:contain;padding:2px 0}
+.tree-navigator-path button{flex-shrink:0}
+.tree-navigator .tree-preview-head{min-height:44px}
+.tree-navigator-candidates{display:flex;flex-direction:column;gap:7px;min-width:0}
+.tree-navigator-candidate-heading{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:0 3px;font-size:12px}
+.tree-navigator-candidate-heading small{font-size:11px;color:var(--muted)}
+.tree-navigator-number{min-width:20px;text-align:center;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums}
+.tree-navigator-compare{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:6px}
+.tree-navigator-compare button{display:flex;justify-content:center;align-items:center;gap:4px;padding:4px 9px}
+.tree-navigator-compare>span{text-align:center;color:var(--muted);font-size:11px}
+.tree-preview-candidate{cursor:pointer;outline:none}
+.tree-preview-candidate circle{fill:var(--jade);stroke:var(--green);stroke-width:.8}
+.tree-preview-candidate text{fill:var(--ink);font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none;font-variant-numeric:tabular-nums}
+.tree-preview-candidate:hover circle,.tree-preview-candidate:focus-visible circle{stroke:var(--ink);stroke-width:1.8}
+.tree-preview-candidate[aria-disabled="true"]{opacity:.5;cursor:default}
+/* Subtree bands and fork stems preserve the hierarchy when everything is open. */
+.tree-branch-bands rect{fill:var(--green);fill-opacity:.035;stroke:var(--green);stroke-opacity:.13;stroke-width:1}
+.tree-branch-bands rect.selected{fill-opacity:.07;stroke-opacity:.3}
+.tree-edge{stroke-linejoin:round;stroke-linecap:round}
+.tree-edge.trace{stroke:var(--gold,#b58a42);stroke-width:3}
+.tree-legend i.trace{background:var(--gold,#b58a42)}
+.tree-mapbar{display:flex;align-items:center;gap:10px;min-width:0;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
+.tree-mapbar-overview{flex:0 0 128px;min-width:0;text-align:center}
+.tree-mapbar-overview small{display:block;margin-top:3px;font-size:10px;color:var(--muted)}
+.tree-overview{display:block;width:128px;height:auto;cursor:pointer;touch-action:manipulation}
+.tree-overview:focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:8px}
+.tree-overview-bg{fill:var(--surface-2,var(--paper));stroke:var(--line);stroke-width:1}
+.tree-overview-edge{fill:none;stroke:var(--muted);stroke-width:.6;opacity:.4}
+.tree-overview-node{fill:var(--muted)}
+.tree-overview-node.path{fill:var(--green)}
+.tree-overview-node.selected{fill:var(--gold,#b58a42);stroke:var(--ink);stroke-width:.5}
+.tree-overview-window{fill:var(--green);fill-opacity:.1;stroke:var(--green);stroke-width:1.2;pointer-events:none}
+.tree-overview-density{fill:var(--muted);opacity:.35}
+.tree-viewport{position:relative}
+.tree-structure-hint{position:absolute;left:8px;top:8px;z-index:1;padding:5px 8px;border-radius:8px;background:var(--paper);color:var(--muted);font-size:11px;pointer-events:none}
+.tree-structure-hit{fill:transparent!important;stroke:none!important;animation:none!important;filter:none!important}
+.tree-structure-node{fill:var(--muted)}
+.tree-node.path .tree-structure-node,.tree-structure-node.current{fill:var(--green)}
+.tree-structure-node.selected{fill:var(--gold);stroke:var(--ink);stroke-width:.7;vector-effect:non-scaling-stroke}
+.tree-scope-path{display:flex;align-items:center;gap:6px;min-width:0;font-size:11px}
+.tree-scope-path>button{flex:0 0 auto}
+.tree-scope-path>div{display:flex;align-items:center;overflow-x:auto;min-width:0;overscroll-behavior:contain}
+.tree-scope-path button{min-height:44px;max-width:130px;display:flex;align-items:center;gap:3px;white-space:nowrap;padding:4px 8px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font:inherit;cursor:pointer}
+.tree-scope-path button:disabled{color:var(--green);cursor:default;background:var(--jade)}
+.tree-scope-path button:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.tree-scope-path svg{width:12px;height:12px;flex:0 0 auto}
+.tree-mapbar-context{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.tree-mapbar-context button{min-height:44px;min-width:0;padding:4px 6px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-size:11px;display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer}
+.tree-mapbar-context button:disabled{opacity:.45;cursor:default}
+.tree-mapbar-context button:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.tree-mapbar-context svg{width:15px;height:15px;flex-shrink:0}
+.tree-mapbar-selected span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-mapbar-context>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.tree-mapbar-context>div.expanded-controls{grid-template-columns:repeat(3,minmax(0,1fr))}
+.tree-expand-toggle{width:44px;min-height:44px;flex-shrink:0;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--green);display:grid;place-items:center;cursor:pointer}
+.tree-expand-toggle svg{width:16px;height:16px}
+.tree-expand-toggle:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.graph-expanded .tree-inspector{display:none}
+@media(min-width:540px){.tree-navigator-content{grid-template-columns:minmax(180px,.85fr) minmax(0,1.15fr);align-items:start}.tree-navigator-rows{max-height:360px}.tree-navigator .tree-preview-board{width:min(250px,100%)}.tree-navigator .tree-preview-body{flex-direction:column-reverse;align-items:center}.tree-navigator .tree-preview-meta{width:100%;max-height:100px}}
+@media(max-width:400px){.tree-mapbar-overview{flex-basis:110px}.tree-overview{width:110px}.tree-navigator-rows{max-height:240px}}
+@media(orientation:landscape) and (max-height:600px){.tree-navigator,.tree-window-note{grid-column:1/-1}.tree-node-actions.navigation-actions{grid-column:1/-1;grid-row:auto}.tree-navigator-rows{max-height:240px}}
+@media(orientation:landscape) and (max-height:600px){.tree-mapbar{grid-column:1}.tree-navigator-content{grid-template-columns:minmax(180px,.85fr) minmax(0,1.15fr)}}
+.tree-atlas-toggle{flex:0 0 auto;min-width:44px;min-height:44px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--green);font-size:11px;cursor:pointer}.tree-atlas-toggle[aria-pressed="true"]{background:var(--jade);border-color:var(--green)}.tree-zoom-controls[hidden],.tree-zoom-presets[hidden]{display:none}.tree-atlas-tools{padding:5px 0;color:var(--muted);font-size:11px}.tree-branch-atlas{position:absolute;inset:0;padding:10px;overflow-y:auto;overscroll-behavior:contain;background:var(--surface-2,var(--paper))}.tree-atlas-intro{font-size:11px;color:var(--muted);margin-bottom:8px}.tree-atlas-grid{display:grid;gap:8px}.tree-atlas-region{min-width:0;height:92px;padding:9px;display:flex;flex-direction:column;gap:5px;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);font:inherit;text-align:left;cursor:pointer}.tree-atlas-region.selected{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}.tree-atlas-region:focus-visible{outline:2px solid var(--green);outline-offset:2px}.tree-atlas-region-head{display:flex;align-items:center;gap:5px;min-width:0}.tree-atlas-region-head i{font-size:10px;color:var(--muted);font-style:normal;flex:0 0 auto}.tree-atlas-region-head b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}.tree-atlas-region-head svg{width:14px;height:14px;color:var(--green);flex:0 0 auto}.tree-atlas-region>span:not(:first-child),.tree-atlas-region small{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tree-atlas-region em{font-size:9px;font-style:normal;margin-left:4px;color:var(--green)}.tree-atlas-weight{display:block;width:100%;height:3px;border-radius:3px;background:var(--line);margin-top:auto;flex:0 0 auto}.tree-atlas-weight i{display:block;height:100%;background:var(--green);border-radius:3px}.tree-atlas-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:100%;font-size:12px;color:var(--muted)}.tree-atlas-empty button{min-height:44px;padding:6px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--green)}
+
+/* 图谱优先：小地图在画布内，手机按需打开操作，宽屏详情临时浮出。 */
+.app-shell .tree-sheet-backdrop .bottom-sheet{
+  max-height:min(96dvh,1100px);max-width:min(1200px,98vw);padding:8px 10px calc(10px + var(--safe-area-bottom, env(safe-area-inset-bottom)));
+}
+.tree-sheet-backdrop .tree-sheet{display:block;padding-top:0}
+.tree-sheet-backdrop .record-tree-panel{display:flex;gap:8px}
+.tree-graph-layout{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0;align-items:start}
+.tree-graph-pane{display:flex;flex-direction:column;gap:8px;min-width:0}
+.tree-graph-pane .tree-toolbar{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:6px 8px}
+.tree-graph-pane .tree-toolbar-head{gap:4px}
+.tree-graph-pane .tree-toolbar-title b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree-graph-pane .tree-toolbar-title small{margin-top:2px}
+.tree-graph-pane .tree-zoom-controls{width:100%;min-width:0;justify-content:flex-start;gap:4px}
+.tree-graph-pane .tree-zoom-range{flex:1;min-width:30px;width:80px;max-width:none}
+.tree-graph-pane .tree-zoom-controls>button{min-width:36px;min-height:44px}
+.tree-zoom-menu,.tree-branch-menu{position:relative;flex-shrink:0}
+.tree-zoom-menu summary,.tree-branch-menu summary{
+  list-style:none;min-height:44px;min-width:44px;padding:0 6px;display:flex;align-items:center;justify-content:center;gap:4px;
+  border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-size:11px;font-weight:700;cursor:pointer;
+}
+.tree-zoom-menu summary::-webkit-details-marker,.tree-branch-menu summary::-webkit-details-marker{display:none}
+.tree-branch-menu summary svg{width:15px;height:15px}
+.tree-zoom-menu summary:focus-visible,.tree-branch-menu summary:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.tree-graph-pane .tree-zoom-presets,.tree-branch-choices{
+  position:absolute;top:calc(100% + 4px);right:0;z-index:5;width:176px;padding:8px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;
+  border:1px solid var(--line);border-radius:12px;background:var(--paper);box-shadow:0 6px 20px color-mix(in srgb,var(--ink) 16%,transparent);
+}
+.tree-branch-choices{width:224px;left:0;right:auto}
+.tree-graph-pane .tree-zoom-presets button,.tree-branch-choices button{min-height:44px;margin:0;padding:4px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:11px;cursor:pointer}
+.tree-branch-choices button{display:flex;align-items:center;justify-content:center;gap:4px}
+.tree-branch-choices button svg{width:14px;height:14px}
+.tree-branch-choices button:disabled{opacity:.45;cursor:default}
+.tree-minimap{position:absolute;right:8px;bottom:8px;z-index:2;border:1px solid var(--line);border-radius:9px;background:var(--paper);overflow:hidden;box-shadow:0 2px 8px color-mix(in srgb,var(--ink) 12%,transparent)}
+.tree-minimap .tree-overview{width:128px;height:84px}
+.tree-graph-pane .tree-mapbar{padding:0;border:0;background:transparent;border-radius:0;min-width:0}
+.tree-graph-pane .tree-mapbar-context{display:flex;flex-direction:row;align-items:stretch;gap:4px}
+.tree-graph-pane .tree-mapbar-context>button{flex:0 0 auto;min-height:44px;padding:4px 8px;white-space:nowrap}
+.tree-graph-pane .tree-mapbar-context>.tree-mapbar-selected{flex:1;min-width:44px;justify-content:flex-start}
+.tree-mapbar-selected>span{display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0}
+.tree-mapbar-selected b,.tree-mapbar-selected small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-mapbar-selected b{font-size:12px}
+.tree-mapbar-selected small{font-size:10px;color:var(--muted);font-weight:400}
+.tree-mapbar-context [aria-expanded="true"]{background:var(--jade);border-color:var(--green)}
+.tree-inspector{display:flex;flex-direction:column;gap:8px;min-width:0}
+.tree-inspector[hidden]{display:none}
+.tree-inspector>*{flex-shrink:0}
+.tree-inspector-options{display:flex;gap:4px}
+.tree-inspector-options button{flex:1;min-width:0;min-height:44px;padding:4px 8px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);font-size:11px;cursor:pointer}
+.tree-inspector-options button[aria-pressed="true"]{background:var(--jade);border-color:var(--green);color:var(--green)}
+.tree-inspector-options button:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.tree-inspector-options button:disabled{opacity:.45;cursor:default}
+.tree-inspector-content{display:flex;flex-direction:column;gap:8px;max-height:min(36dvh,300px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.tree-inspector-content[hidden],.tree-inspector-content>div[hidden]{display:none}
+.tree-inspector-content>*{flex-shrink:0;min-width:0}
+.tree-inspector .tree-preview-body{padding-top:10px}
+.tree-inspector .tree-legend{flex-wrap:wrap;gap:6px}
+/* 右下角**小地图**自带的折叠（用户 2026-10-14：要折叠的是这张缩略图，不是棋盘预览）：
+   按钮贴在缩略图右上角、24×20，不额外吃高度；折叠后原地只剩一颗 40×40 的小按钮，
+   占的就是缩略图自己那个角 ⇒ 不需要给别的东西让位。 */
+.tree-minimap-collapse{position:absolute;top:3px;right:3px;z-index:1;display:grid;place-items:center;width:24px;height:20px;border:1px solid var(--line);border-radius:7px;background:color-mix(in srgb,var(--paper) 88%,transparent);color:var(--ink);cursor:pointer}
+.tree-minimap-collapse svg{width:13px;height:13px}
+.tree-minimap-collapse:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.tree-minimap-reopen{position:absolute;right:8px;bottom:8px;z-index:3;display:grid;place-items:center;width:40px;height:40px;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);box-shadow:0 2px 8px color-mix(in srgb,var(--ink) 12%,transparent);cursor:pointer}
+.tree-minimap-reopen svg{width:18px;height:18px}
+.tree-minimap-reopen:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+@media(min-width:900px) and (min-height:600px){
+  .tree-inspector{position:relative}
+  .tree-inspector-options button{flex:0 1 140px}
+  .tree-inspector-options .tree-quick-collapse{margin-right:auto}
+  .tree-inspector-content{position:absolute;right:0;bottom:52px;z-index:4;width:360px;max-height:min(480px,calc(96dvh - 260px));padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--paper);box-shadow:0 4px 20px color-mix(in srgb,var(--ink) 16%,transparent)}
+  .tree-inspector .tree-preview-body{flex-direction:column;align-items:center}
+  .tree-inspector .tree-preview-board{width:min(220px,100%)}
+  .tree-inspector .tree-preview-meta{width:100%;max-height:120px}
+}
+@media(orientation:landscape) and (max-height:600px) and (min-width:640px){
+  .tree-graph-pane .tree-toolbar{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(240px,.8fr);align-items:center;column-gap:12px}
+  .tree-graph-pane .tree-toolbar>.tree-toolbar-head{grid-column:1;grid-row:1}
+  .tree-graph-pane .tree-toolbar>.tree-zoom-controls{grid-column:2;grid-row:1}
+  .tree-graph-pane .tree-search,.tree-graph-pane .tree-atlas-tools{grid-column:1/-1;grid-row:auto}
+  .tree-graph-pane .tree-search-list{max-height:80px}
+  .tree-graph-layout{position:relative}
+  .tree-graph-pane .tree-mapbar{padding-right:324px}
+  .tree-inspector{position:absolute;right:0;bottom:0;width:316px;z-index:4}
+  .tree-inspector-content{position:absolute;right:0;bottom:52px;width:min(360px,65vw);max-height:calc(96dvh - 180px);padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--paper);box-shadow:0 4px 20px color-mix(in srgb,var(--ink) 16%,transparent)}
+  .tree-minimap .tree-overview{width:96px;height:63px}
+}
+.tree-node .tree-compact-face{stroke-width:1;vector-effect:non-scaling-stroke}
+.tree-node.selected .tree-compact-face{animation:none;stroke:var(--gold);stroke-width:1.5;filter:none}
+.tree-compact-label{fill:var(--ink);font-weight:700;pointer-events:none}

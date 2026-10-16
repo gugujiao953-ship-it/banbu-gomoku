@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-215 -132 430 264" fill="none">
+  <!-- 鹈鹕远侧（左）蹼足，压暗。相位差 180° 已烘进关键帧。 -->
+  <!-- 蹼足：原点＝踝（＝踏板中心）。足底 y≈-2.5 压在踏板面上，趾尖朝前 -->
+  <path d="M-6 -2.5C-3 -8 4 -11 12 -11c7 0 13 2 17 6-4 4-11 6-18 6-7 0-13-1-17-3Z" fill="#d98b2c"/>
+  <path d="M12 -11c7 0 13 2 17 6-4 4-11 6-18 6" fill="#b3721f" opacity=".55"/>
+  <path d="M-6 -2.5C-3 -8 4 -11 12 -11" stroke="#b3721f" stroke-width="1.2" opacity=".5" fill="none"/>
+  <path d="M4 -8.5c5-2 11-2 16 1" stroke="#b3721f" stroke-width="1.1" opacity=".55" fill="none"/>
+  <path d="M-7 -3.2c4-1 8-1 12 0" stroke="#b3721f" stroke-width="1.4" opacity=".45" fill="none"/>
+</svg>

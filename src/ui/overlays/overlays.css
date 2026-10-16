@@ -1,0 +1,304 @@
+/* Shared overlay finish. Loaded after feature styles so theme overrides cannot
+ * turn a sheet into a white island. Surfaces stay opaque for legibility; only
+ * the scrim blurs. No persistent animation or extra JS on the thinking path. */
+:root {
+  --overlay-ease: cubic-bezier(.16, 1, .3, 1);
+  --overlay-shadow: 0 24px 72px #00000026, 0 4px 16px #0000000a;
+}
+
+html[data-theme] .sheet-backdrop {
+  padding: max(12px, var(--safe-area-top, env(safe-area-inset-top))) max(12px, env(safe-area-inset-right)) max(10px, var(--safe-area-bottom, env(safe-area-inset-bottom))) max(12px, env(safe-area-inset-left));
+  background: #11171466;
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  animation: overlay-scrim-in 180ms ease-out;
+}
+
+html[data-theme] .sheet-backdrop > .bottom-sheet {
+  width: 100%;
+  border: 1px solid var(--surface-border, var(--line));
+  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 28px;
+  padding: 10px 20px 20px;
+  background: var(--paper);
+  background: radial-gradient(ellipse at 100% 0, color-mix(in srgb, var(--green) 7%, transparent), transparent 58%), var(--paper);
+  color: var(--ink);
+  box-shadow: var(--overlay-shadow), inset 0 1px 0 color-mix(in srgb, var(--surface) 85%, transparent);
+  /* Release the animated transform after entry: a retained transform creates
+   * a containing block and traps nested fixed AI dialogs inside this sheet. */
+  animation: overlay-sheet-in 300ms var(--overlay-ease) backwards;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.sheet-backdrop .sheet-handle {
+  width: 30px;
+  height: 4px;
+  margin: 0 auto 9px;
+  background: var(--line);
+  background: color-mix(in srgb, var(--muted) 30%, transparent);
+}
+
+.sheet-backdrop .sheet-head {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 44px;
+  flex: 0 0 auto;
+  gap: 11px;
+  min-height: 64px;
+  margin-bottom: 5px;
+  padding: 5px 0 13px;
+  border-bottom: 1px solid var(--line);
+  border-color: color-mix(in srgb, var(--line) 55%, transparent);
+  background: transparent;
+}
+
+.sheet-backdrop .sheet-head h2 {
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: .035em;
+  text-wrap: balance;
+}
+
+.sheet-backdrop :is(.sheet-close, .sheet-close-floating) {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-color: color-mix(in srgb, var(--line) 45%, transparent);
+  border-radius: 50%;
+  background: var(--surface-2, var(--paper));
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper));
+  color: var(--ink);
+  transition: background 160ms ease, transform 160ms ease, border-color 160ms ease;
+}
+
+.sheet-backdrop .sheet-close-floating { top: 8px; right: 12px; }
+.sheet-backdrop :is(.sheet-close, .sheet-close-floating):active { transform: scale(.92); }
+
+.sheet-backdrop .sheet-body { padding: 12px 0 0; }
+.bottom-sheet .sheet-body > .section-note { margin-top: 0; margin-bottom: 16px; font-size: 12px; line-height: 1.7; color: var(--muted); }
+
+.bottom-sheet :is(.primary-button, .secondary-button, .danger-button) {
+  min-height: 48px;
+  padding: 11px 15px;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.45;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.bottom-sheet .primary-button { box-shadow: 0 5px 14px color-mix(in srgb, var(--green) 18%, transparent); }
+.bottom-sheet .secondary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-color: var(--line);
+  background: var(--surface-2, var(--paper));
+  background: color-mix(in srgb, var(--ink) 3%, var(--paper));
+  color: var(--ink);
+}
+
+.bottom-sheet :is(.primary-button, .secondary-button, .danger-button):active:not(:disabled) { transform: scale(.985); }
+.bottom-sheet :is(.primary-button, .secondary-button, .danger-button) svg { width: 18px; height: 18px; flex: 0 0 auto; }
+
+.bottom-sheet :is(.form-grid input, .form-grid select, .sheet-body textarea, .find-input) {
+  border-radius: 15px;
+  border-color: var(--line);
+  background: var(--surface, var(--paper));
+  color: var(--ink);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.bottom-sheet :is(.form-grid input, .form-grid select) { min-height: 48px; }
+.bottom-sheet .form-grid label { color: var(--muted); }
+.bottom-sheet :is(input, select, textarea):focus-visible,
+.bottom-sheet .find-input:focus-within {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+  border-color: var(--green);
+}
+.bottom-sheet button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+
+.bottom-sheet .sheet-empty { gap: 10px; padding: 36px 18px; color: var(--muted); }
+.bottom-sheet .sheet-empty > svg { width: 56px; height: 56px; padding: 15px; border-radius: 18px; background: var(--jade); color: var(--green-2, var(--ink)); }
+.bottom-sheet .sheet-empty b { color: var(--ink); font-size: 14px; }
+.bottom-sheet .sheet-empty span { max-width: 280px; font-size: 12px; line-height: 1.65; }
+
+/* Import cards share the title's quiet board motif. Explicit text colors also
+ * fix the old first-card white text surviving the theme's pale background. */
+.bottom-sheet .import-options { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; }
+.bottom-sheet .import-options::before { margin: 0 2px 14px; color: var(--muted); font-size: 12px; font-weight: 400; }
+html[data-theme] .bottom-sheet .import-choice {
+  gap: 12px;
+  min-height: 86px;
+  margin-bottom: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-color: color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 19px;
+  background: var(--surface, var(--paper));
+  color: var(--ink);
+  box-shadow: 0 2px 6px #00000003;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+html[data-theme] .bottom-sheet .import-choice:first-of-type {
+  border-color: color-mix(in srgb, var(--green) 32%, var(--line));
+  background: var(--jade);
+  background: color-mix(in srgb, var(--green) 6%, var(--paper));
+  color: var(--ink);
+  box-shadow: none;
+}
+html[data-theme] .bottom-sheet .import-choice .format-icon {
+  width: 44px;
+  height: 44px;
+  flex-basis: 44px;
+  border-radius: 14px;
+  background: var(--jade);
+  background: color-mix(in srgb, var(--green) 9%, var(--paper));
+  color: var(--green-2, var(--ink));
+}
+html[data-theme] .bottom-sheet .import-choice small { color: var(--muted); font-size: 12px; line-height: 1.55; }
+html[data-theme] .bottom-sheet .import-choice > svg { width: 18px; color: var(--muted); }
+.bottom-sheet .import-options .helper { margin: 6px 0 0; padding: 12px 14px; border-radius: 15px; background: var(--surface-2, var(--paper)); color: var(--muted); font-size: 11px; line-height: 1.7; }
+.bottom-sheet .import-options > .recent-imports { width: 100%; margin-top: 4px; padding: 12px 0 0; border-top: 1px solid var(--line); border-left: 0; }
+
+html[data-theme] :is(.draft-guard-backdrop, .flatten-guard-backdrop) { align-items: center; }
+html[data-theme] :is(.draft-guard-backdrop, .flatten-guard-backdrop) > .bottom-sheet { max-width: 460px; }
+
+/* Long workspaces keep their capacity and existing desktop/landscape layout. */
+html[data-theme] .tree-sheet-backdrop { padding: max(8px, var(--safe-area-top, env(safe-area-inset-top))) 0 0; }
+html[data-theme] .tree-sheet-backdrop > .bottom-sheet { padding: 8px 16px calc(12px + var(--safe-area-bottom, env(safe-area-inset-bottom))); border-radius: 26px 26px 0 0; }
+html[data-theme] .tree-sheet-backdrop .sheet-body { padding-top: 0; }
+.sheet-backdrop .puzzle-selector-footer { background: transparent; }
+
+/* First-run welcome uses the same surface, with a little more breathing room. */
+html[data-theme] .first-run-backdrop { padding: 16px; background: #11171466; -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); animation: overlay-scrim-in 180ms ease-out; }
+html[data-theme] .first-run-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 48px 22px 22px;
+  border-color: var(--line);
+  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 30px;
+  background: var(--paper);
+  background: radial-gradient(ellipse at 50% 0, color-mix(in srgb, var(--green) 9%, transparent), transparent 55%), var(--paper);
+  box-shadow: var(--overlay-shadow);
+  animation: overlay-dialog-in 300ms var(--overlay-ease) backwards;
+}
+.first-run-content { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.first-run-content #first-run-description { max-width: 350px; margin: 0 auto; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.first-run-dialog h2 { margin-top: 9px; margin-bottom: 12px; font-size: 26px; line-height: 1.35; text-wrap: balance; }
+.first-run-dialog .first-run-eyebrow { color: var(--green-2, var(--ink)); }
+.first-run-dialog .first-run-feature-list { gap: 8px; margin-top: 18px; }
+.first-run-dialog .first-run-feature-list > div { padding: 12px 10px; border-color: var(--line); border-color: color-mix(in srgb, var(--line) 65%, transparent); border-radius: 16px; background: var(--surface, var(--paper)); }
+.first-run-dialog .first-run-actions { flex: 0 0 auto; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.first-run-dialog .first-run-actions .primary-button { border-radius: 16px; box-shadow: 0 5px 14px color-mix(in srgb, var(--green) 18%, transparent); }
+.first-run-dialog .first-run-actions .secondary-button { color: var(--ink); }
+.first-run-dialog .first-run-updates { top: 12px; right: 12px; min-height: 32px; }
+
+/* Small floating menus preserve their positioning transforms. */
+html[data-theme] .panel-select-menu {
+  padding: 6px;
+  border-color: var(--line);
+  border-radius: 17px;
+  background: var(--surface-2, var(--paper));
+  box-shadow: 0 12px 36px #00000024, 0 2px 6px #0000000a;
+  animation: overlay-scrim-in 140ms ease-out;
+}
+.panel-select-menu button { padding: 9px 12px; border-radius: 11px; }
+html[data-theme] .ai-float-backdrop { background: #11171455; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); animation: overlay-scrim-in 180ms ease-out; }
+html[data-theme] .ai-float-panel { max-width: 380px; padding: 18px; border: 1px solid var(--line); border-radius: 25px; background: var(--paper); color: var(--ink); box-shadow: var(--overlay-shadow); animation: overlay-dialog-in 260ms var(--overlay-ease) backwards; }
+.ai-float-panel .ai-float-head { gap: 12px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.ai-float-panel .ai-float-head b { font-family: var(--font-display); font-size: 19px; }
+.ai-float-panel .ai-float-head button { width: 40px; height: 40px; flex: 0 0 auto; border-radius: 50%; background: var(--surface-2, var(--paper)); color: var(--ink); }
+.ai-float-panel .ai-float-list button { position: relative; padding: 12px 14px; border-radius: 16px; background: var(--surface, var(--paper)); }
+.ai-float-panel .ai-float-list button.selected { padding-right: 35px; background: var(--jade); box-shadow: none; }
+.ai-float-panel .ai-float-list button.selected::after { content: ""; position: absolute; right: 15px; top: 20px; width: 6px; height: 11px; border: solid var(--green-2, var(--ink)); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+html[data-theme] .library-sort-menu { padding: 6px; border-color: var(--line); border-radius: 17px; background: var(--surface, var(--paper)); box-shadow: 0 12px 36px #00000024, 0 2px 6px #0000000a; animation: overlay-scrim-in 140ms ease-out; }
+.library-sort-menu button { min-height: 40px; border-radius: 11px; }
+html[data-theme] .mark-studio-popover { border-color: var(--line); border-radius: 20px; background: var(--surface, var(--paper)); box-shadow: 0 12px 36px #00000024, 0 2px 6px #0000000a; }
+.quick-drawer-scrim { -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); animation-duration: 180ms; }
+.quick-drawer-panel { animation-duration: 300ms; animation-timing-function: var(--overlay-ease); }
+
+/* Clock settings retain their audited one-screen spacing. */
+html[data-theme] .clock-setup-overlay { background: #11171455; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); animation: overlay-scrim-in 180ms ease-out; }
+html[data-theme] .clock-setup-card { border: 1px solid var(--line); border-radius: 24px; background: var(--paper); box-shadow: var(--overlay-shadow); animation: overlay-dialog-in 260ms var(--overlay-ease) backwards; }
+.clock-setup-card .clock-setup-head { background: var(--paper); }
+.clock-setup-card .clock-setup-head b { font-family: var(--font-display); font-size: 20px; }
+.clock-setup-card .clock-setup-head button { border-radius: 50%; background: var(--surface-2, var(--paper)); color: var(--ink); }
+
+/* Match confirmations to the sheets; the approved duel ending remains separate. */
+.duel-confirm-scrim { position: absolute; inset: 0; z-index: 4; background: #11171455; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); animation: overlay-scrim-in 180ms ease-out; }
+html[data-theme] .duel-confirm {
+  left: 50%;
+  right: auto;
+  width: min(360px, calc(100% - 32px));
+  gap: 12px;
+  padding: 25px 22px 20px;
+  border-color: var(--line);
+  border-radius: 26px;
+  background: var(--paper);
+  box-shadow: var(--overlay-shadow);
+  transform: translate(-50%, -50%);
+  animation: overlay-confirm-in 260ms var(--overlay-ease) backwards;
+}
+.duel-confirm .duel-confirm-mark { display: grid; place-items: center; width: 52px; height: 52px; margin: 0 auto 2px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface-2, var(--paper)); color: var(--red-2, var(--ink)); }
+.duel-confirm > b { font-family: var(--font-display); font-size: 22px; line-height: 1.4; }
+.duel-confirm > small { font-size: 12px; line-height: 1.7; }
+.duel-confirm .duel-confirm-actions { gap: 10px; margin-top: 8px; }
+.duel-confirm .duel-confirm-actions button { flex: 1; justify-content: center; min-height: 46px; border-radius: 14px; background: var(--surface, var(--paper)); font-size: 13px; font-weight: 600; }
+html[data-theme] .duel-confirm-actions .danger { border-color: var(--line); border-color: color-mix(in srgb, var(--red) 35%, var(--line)); background: var(--surface, var(--paper)); background: color-mix(in srgb, var(--red) 8%, var(--paper)); color: var(--red-2, var(--ink)); }
+
+@keyframes overlay-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes overlay-sheet-in { from { opacity: 0; transform: translateY(22px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes overlay-dialog-in { from { opacity: 0; transform: translateY(12px) scale(.965); } to { opacity: 1; transform: none; } }
+@keyframes overlay-confirm-in { from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)) scale(.965); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+
+@media (hover: hover) and (pointer: fine) {
+  .sheet-backdrop :is(.sheet-close, .sheet-close-floating):hover { background: var(--jade); border-color: var(--green); transform: rotate(8deg); }
+  .bottom-sheet :is(.primary-button, .secondary-button, .danger-button):hover:not(:disabled) { transform: translateY(-1px); }
+  html[data-theme] .bottom-sheet .import-choice:hover { border-color: var(--green); box-shadow: 0 5px 18px #0000000a; transform: translateY(-2px); }
+}
+
+@media (min-width: 700px) {
+  html[data-theme] .sheet-backdrop > .bottom-sheet { padding: 18px 26px 26px; border-radius: 30px; animation-name: overlay-dialog-in; }
+  html[data-theme] .tree-sheet-backdrop { padding: max(16px, var(--safe-area-top, env(safe-area-inset-top))) 16px max(16px, var(--safe-area-bottom, env(safe-area-inset-bottom))); }
+  html[data-theme] .tree-sheet-backdrop > .bottom-sheet { padding: 12px 18px 18px; border-radius: 26px; }
+  html[data-theme] .puzzle-selector-backdrop { padding: 0; }
+  html[data-theme] .puzzle-selector-backdrop > .bottom-sheet { padding: 14px 18px calc(14px + var(--safe-area-bottom, env(safe-area-inset-bottom))); border-radius: 26px 0 0 26px; animation-name: overlay-sidebar-in; }
+}
+@keyframes overlay-sidebar-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 360px) {
+  html[data-theme] .sheet-backdrop { padding-right: max(8px, env(safe-area-inset-right)); padding-left: max(8px, env(safe-area-inset-left)); }
+  html[data-theme] .sheet-backdrop > .bottom-sheet { padding-right: 16px; padding-left: 16px; border-radius: 24px; }
+  .sheet-backdrop .sheet-head { grid-template-columns: 32px minmax(0, 1fr) 44px; gap: 8px; }
+  .sheet-backdrop .sheet-head h2 { font-size: 19px; }
+  html[data-theme] .tree-sheet-backdrop { padding-right: 0; padding-left: 0; }
+  html[data-theme] .tree-sheet-backdrop > .bottom-sheet { border-radius: 24px 24px 0 0; }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  html[data-theme] .sheet-backdrop { padding: max(8px, var(--safe-area-top, env(safe-area-inset-top))) max(12px, env(safe-area-inset-right)) max(8px, var(--safe-area-bottom, env(safe-area-inset-bottom))) max(12px, env(safe-area-inset-left)); }
+  html[data-theme] .sheet-backdrop > .bottom-sheet { padding-top: 10px; padding-bottom: 14px; border-radius: 22px; }
+  .sheet-backdrop .sheet-head { min-height: 52px; padding-top: 0; padding-bottom: 8px; }
+  .sheet-backdrop .sheet-handle { display: none; }
+  html[data-theme] .puzzle-selector-backdrop { padding: 0; }
+  html[data-theme] .puzzle-selector-backdrop > .bottom-sheet { border-radius: 22px 0 0 22px; }
+  html[data-theme] .first-run-dialog { padding-top: 42px; }
+  html[data-theme] .duel-confirm { gap: 8px; padding: 16px 20px; }
+  .duel-confirm .duel-confirm-mark { width: 40px; height: 40px; border-radius: 13px; }
+}
+
+/* Explicitly mirror the app's motion switch as well as the OS preference. */
+:root[data-motion="off"] :is(.sheet-backdrop, .bottom-sheet, .first-run-backdrop, .first-run-dialog, .duel-confirm, .duel-confirm-scrim, .panel-select-menu, .ai-float-backdrop, .ai-float-panel, .library-sort-menu, .clock-setup-overlay, .clock-setup-card) { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] :is(.sheet-backdrop, .bottom-sheet, .first-run-backdrop, .first-run-dialog, .duel-confirm, .duel-confirm-scrim, .panel-select-menu, .ai-float-backdrop, .ai-float-panel, .library-sort-menu, .clock-setup-overlay, .clock-setup-card) { animation: none !important; }
+}

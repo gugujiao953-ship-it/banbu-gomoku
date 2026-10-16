@@ -142,4 +142,25 @@ describe("record editing bridge", () => {
     expect(copy.nodes[source.rootId].preferredChildId).toBeUndefined();
     expect((copy as unknown as Record<PropertyKey, unknown>)[marker]).toBeUndefined();
   });
+
+  /**
+   * `partial`（「这份文档只是来源的一部分」）必须**跨过编辑副本**（2026-10-11 P5）。
+   *
+   * 这是它被做成普通布尔字段（而不是像 DP_VIEW 那样的不可枚举 Symbol）的**唯一理由**：
+   * 在懒加载谱上做任何一次编辑，App 会自动生成一份 `createEditableViewCopy`，
+   * 而那份副本是对象展开、Symbol 刻意不跨过去。若副本不再被判为不完整，
+   * 「同型局面 / 查找 / 复制分支」就会拿子集当全谱给结论——副本继承的其实
+   * 正是这份「不完整」，所以字段必须带过去（且语义正确，不是顺手复制）。
+   */
+  it("keeps the partial marker on the editable copy (副本仍是子集)", () => {
+    const source = createDocument("按局面读取的棋谱");
+    source.partial = true;
+    const copy = createEditableViewCopy(source, source.rootId, { token: "partial", now: "2026-10-12T00:00:00.000Z" });
+    expect(copy.partial).toBe(true);
+
+    // 正常棋谱（没有这个字段）副本里也不许凭空长出来
+    const whole = createDocument("完整棋谱");
+    const wholeCopy = createEditableViewCopy(whole, whole.rootId, { token: "whole", now: "2026-10-12T00:00:00.000Z" });
+    expect(wholeCopy.partial).toBeUndefined();
+  });
 });

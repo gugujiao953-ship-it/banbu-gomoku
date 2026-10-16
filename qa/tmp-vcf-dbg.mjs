@@ -1,0 +1,20 @@
+import { chromium } from "playwright";
+const BASE = "http://127.0.0.1:5202/?qa=1";
+const b = await chromium.launch({ headless: true });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, serviceWorkers: "block" });
+const page = await ctx.newPage(); page.setDefaultTimeout(90000);
+const primary = () => page.evaluate(() => document.querySelector(".vcfch-bottom .vcfch-primary")?.textContent?.trim());
+const waitP = async (w, ms=90000) => { const t=Date.now(); for(;;){ if(await primary()===w) return true; if(Date.now()-t>ms) return false; await page.waitForTimeout(150);} };
+await page.goto(BASE,{waitUntil:"domcontentloaded"}); await page.waitForTimeout(2200);
+await page.evaluate(()=>{localStorage.setItem("vcfch-state-v1",JSON.stringify({rating:1000,solvedIds:[],seenIds:[],solved:0,failed:0,streak:0,bestStreak:0,daily:{},history:[],settings:{pace:"default",genDeep:true}}));});
+await page.reload({waitUntil:"domcontentloaded"}); await page.waitForTimeout(2000);
+await page.evaluate(()=>{const n=document.querySelector('nav[aria-label="主导航"]');Array.from(n.querySelectorAll("button")).find(x=>(x.textContent||"").trim()==="对弈")?.click();}); await page.waitForTimeout(400);
+await page.locator('[data-duel-entry="vcf"] [data-duel-vcf-start]').click(); await page.locator(".vcfch-board").waitFor({timeout:30000}); await page.waitForTimeout(700);
+await page.evaluate(()=>document.querySelector(".vcfch-top-actions button")?.click()); await page.waitForTimeout(350);
+console.log("tier chips:", await page.evaluate(()=>{const rows=Array.from(document.querySelectorAll(".vcfch-sheet-row"));const r=rows.find(x=>(x.querySelector("span")?.textContent||"").includes("出题档"));return Array.from(r.querySelectorAll("button")).map(b=>b.textContent.trim());}));
+await page.evaluate(()=>{const rows=Array.from(document.querySelectorAll(".vcfch-sheet-row"));const r=rows.find(x=>(x.querySelector("span")?.textContent||"").includes("出题档"));Array.from(r.querySelectorAll("button")).find(y=>y.textContent.trim().startsWith("深"))?.click();});
+await page.waitForTimeout(150);
+console.log("selected:", await page.evaluate(()=>{const rows=Array.from(document.querySelectorAll(".vcfch-sheet-row"));const r=rows.find(x=>(x.querySelector("span")?.textContent||"").includes("出题档"));return r.querySelector("button.chip.selected")?.textContent.trim();}));
+await page.evaluate(()=>{const bar=document.querySelector(".vcfch-sheet-actions");Array.from(bar.querySelectorAll("button")).find(y=>y.textContent.trim()==="确定")?.click();}); await page.waitForTimeout(400);
+for (let i=0;i<4;i++){ await page.evaluate(()=>document.querySelector(".vcfch-bottom .vcfch-primary").click()); const ok=await waitP("认输（判负）",90000); const meta=await page.evaluate(()=>document.querySelector(".vcfch-meta")?.textContent); const msg=await page.evaluate(()=>document.querySelector(".vcfch-message")?.textContent); console.log(i,"ok="+ok,meta,msg); await page.evaluate(()=>document.querySelector(".vcfch-bottom .vcfch-primary").click()); await waitP("下一题",20000); }
+await b.close();

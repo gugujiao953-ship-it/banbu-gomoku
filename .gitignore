@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-web/
 artifacts/
 graphify-out/
 tmp/
@@ -43,8 +44,9 @@ android/.idea/
 /temp-apk-compare/
 *.dex
 
-# 识谱测试语料（4MB 级真机样本，本机专用；正式门禁用入库的 qa/fixtures/recognition/）
-public/.tmp-bench/
+# 识谱测试语料（4MB 级真机样本）：2026-10-07 从 public/.tmp-bench 移到
+# qa/fixtures/bench——放 public 会被 build 打进 dist 白占 4.4MB。语料本身随仓库走，
+# 因此不再忽略（`RECOGNITION_PARITY_FIXTURES=qa/fixtures/bench`）。
 # 根目录的一次性补丁与探针（不随版本走）
 /*.patch
 /probe2.cjs
@@ -63,5 +65,78 @@ public/.tmp-bench/
 engine-packs/
 public/rapfi/full/rapfi.data
 
+# 识谱增强包的**构建产物**（2026-10-07）：由 npm run prepare:ai 从
+# node_modules（ort wasm）与 qa/fixtures/models（模型，入库 7.2MB）拷出来。
+# public/ 这两份不入库，避免仓库里再存一份 20MB 二进制。
+public/ort/
+public/models/
+
 # 第三方工具（dsh）修复前的备份目录，不入库
 /.dsh-fix-backup-*/
+
+# 安卓原生引擎的生成物：由 scripts/build-android-engine.mjs 产出（权重 39MB 从现有包切片而来，不入库）
+android/app/src/main/jniLibs/
+android/app/src/main/assets/engine-native/
+# 本地预览用的浏览器 profile（开始预览-免代理.cmd 生成）
+.tmp-preview-profile/
+
+# ===== 2026-10-09 工程债清理：生成物与一次性探针（每条都验证过 0 误伤已入库文件）=====
+#
+# 背景：工作树里长期挂着 3000+ 未跟踪文件（395MB），`git status` 完全读不动，
+# 「哪些是真源码、哪些是跑一次就废的探针」分不清。下面按「生成物 / 一次性证据」两类收进来。
+# 每条规则都跑过 `git check-ignore -v` 与 tracked 计数双验，确认不会藏起任何已入库文件。
+
+# --- 一次性运行证据（截图、转储、探针输出）---
+.diag/
+qa/recover/
+qa/cand-models/
+qa/tmp-vcf-shots/
+# qa 下一次性的 AB 对比 / 主题审计工作区（目录形式，避免命中已入库的
+# qa/tmp-showcase.mjs 与 qa/.tmp-fuzz-sgf.mjs —— 尾斜杠只匹配目录）
+qa/tmp-theme-audit/
+qa/tmp-studio/
+qa/tmp-duel-ab/
+qa/tmp-vcf-ab/
+
+# ⚠ 注意：qa/fixtures/materials/ 与 qa/fixtures/models/ **不属于生成物**，不要忽略——
+# 前者是带真值的识谱测试语料（renjuportal/ 的 .truth.json、self-render/ 的自渲染图），
+# 后者是构建输入（scripts/prepare-ai-assets.mjs 要从这里拷进 public/models）。
+# 2026-10-09 曾误判为生成物加过忽略规则，核实内容后撤回。
+
+# --- VCT 独立研究（2026-10-03 起，未接入应用；源码保留，产物忽略）---
+vct-generator/fork-research/output/
+vct-generator/fork-research/exhaustive/output/
+vct-generator/fork-research/long/optimization-*/
+vct-generator/fork-research/long/benchmark-*/
+vct-generator/fork-research/long/benchmark-staged-*/
+vct-generator/fork-research/long/role-aware-output-*/
+vct-generator/fork-research/long/recursive-*/
+vct-generator/research/
+
+# --- 宣传物料的大宗中间产物（成品 HTML/工具/坐标配置已入库，帧序列与静帧不入库）---
+marketing/v1.1.9/stills/
+marketing/v1.1.9/current-stills/
+marketing/v1.1.8/stills/
+marketing/promo-v2/stills/
+# seq/ 里混着「tools/*.mjs 要读的坐标配置」与「成百张渲染帧」。
+# 注意 git 的规矩：父目录一旦整体排除，下面的 ! 例外**不会生效**，
+# 所以这里按文件类型忽略，而不是忽略整个目录。
+marketing/v1.1.9/seq/**/*.png
+marketing/v1.1.9/seq/**/*.jpg
+marketing/v1.1.8/seq/**/*.png
+marketing/v1.1.8/seq/**/*.jpg
+marketing/v1.1.9/seq/**/*.cpuprofile
+marketing/v1.1.8/seq/**/*.cpuprofile
+
+# --- 预览工作区的本轮验证图（.sheet.html 是索引，已入库，故只忽略图片）---
+预览/验证图-本轮/*.png
+预览/主题预览图/
+
+# --- 根目录的一次性临时件（探针与分析转储；.patch / probe2.cjs 上面已有同款规则）---
+/.tmp-*
+/batch-result.jsonl
+/.graphifyignore
+# design-lab 里只有少量定稿图入库，其余是本机实验产物
+design-lab/*.png
+design-lab/**/*.png
+

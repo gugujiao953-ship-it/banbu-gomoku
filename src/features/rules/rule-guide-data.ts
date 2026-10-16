@@ -17,12 +17,14 @@ export const AI_RULE_PRESET_GUIDES: readonly AiRulePresetGuide[] = [
   { key: "standard", rule: "standard", openingRule: "free", name: "无禁6不胜", badge: "无禁", summary: "自由开局；必须恰好五连", detail: "双方都没有禁手，但六子及以上的长连不断线也不算胜。", steps: "黑方先手 → 双方轮流落子 → 恰好五连判胜", winning: "只有恰好五连获胜；六连及以上不判胜。" },
   { key: "swap1", rule: "freestyle", openingRule: "swap1", name: "一手交换", badge: "无禁", summary: "第1手后决定是否交换执子方", detail: "黑方先落第1手，随后另一方可以交换黑白执子颜色；交换完成后进入无禁手正常对局。", steps: "黑1 → 选择交换或不交换 → 正常轮流落子", winning: "交换只改变执子颜色；之后五连或长连均可获胜。" },
   { key: "swap3", rule: "freestyle", openingRule: "swap3", name: "三手交换", badge: "无禁", summary: "黑白黑三手后决定是否交换", detail: "先完成黑1、白2、黑3，随后后手方选择交换或保持执子颜色；之后进入无禁手正常对局。", steps: "黑1 → 白2 → 黑3 → 选择交换 → 正常轮流落子", winning: "交换只改变执子颜色；之后五连或长连均可获胜。" },
+  { key: "swap2", rule: "standard", openingRule: "swap2", name: "Swap2（二次交换）", badge: "无禁", summary: "先手连下三子后，后手三选一", detail: "Swap2（Gomoku Swap2）：先手先在任意位置连下三子（黑、白、黑）。后手三选一：① 执白（保持现状）；② 执黑（交换）；③ 再补白、黑两子共五子，随后由先手选执子颜色。之后进入正常对局。双方无禁手，必须恰好五连获胜。", steps: "先手连下 3 子 → 后手三选一 →（若补到 5 子）先手选色 → 正常轮流落子", winning: "双方都没有禁手，必须恰好五连获胜；六连及以上不算胜。" },
   { key: "renju-free", rule: "renju", openingRule: "free", name: "有禁手", badge: "有禁", summary: "自由开局；黑方受禁手约束", detail: "采用连珠胜负：黑方必须恰好五连，并受三三、四四、长连禁手约束；白方五连或长连获胜。自由开局，不附加交换或打点流程，是最直接的有禁手对局。", steps: "黑方先手 → 双方轮流落子 → 黑方恰五获胜（受禁手约束），白方五连或长连获胜", winning: "黑方恰好五连获胜，且不能形成三三、四四、长连禁手；白方五连或长连获胜。" },
   { key: "five-two", rule: "renju", openingRule: "five-two", name: "五手两打", badge: "有禁", summary: "白4后提供 A1、A2 两个黑5候选", detail: "前三手由开局方摆出，另一方决定是否交换；白4后黑方给出两个不同棋形的第5手候选，白方选择其中一个继续。", steps: "黑1 → 白2 → 黑3 → 交换决定 → 白4 → 黑方给 A1/A2 → 白方选一个", winning: "采用连珠胜负：黑方恰五获胜并受三三、四四、长连禁手约束；白方五连或长连获胜。" },
-  { key: "five-n", rule: "renju", openingRule: "five-n", name: "五手多打", badge: "有禁", summary: "白4后临场选择 3–10 个打点", detail: "数量不在开局前决定。白4完成后由白方临场选择本局打点数，黑方依次提供 A1、A2…候选，白方从中选择一个；候选不得对称重复。", steps: "黑1 → 白2 → 黑3 → 交换决定 → 白4 → 选择打点数 → 黑方给候选 → 白方选一个", winning: "采用连珠胜负，黑方有三三、四四、长连禁手。" },
-  { key: "yamaguchi", rule: "renju", openingRule: "yamaguchi", name: "山口", badge: "有禁", summary: "黑方开局时宣布打点数，白4后黑方打点", detail: "山口：先手方摆出前三手（天元、3×3、5×5 的 26 开局点内）并同时宣布本局第5手打点数量；另一方决定是否交换；白方在任意位置落第4手；黑方放置宣言数量的第5手候选（不得对称重复），白方选择其一并下白6。", steps: "黑1 并宣布打点数 → 白2 → 黑3 → 交换决定 → 白4 → 黑方打点 → 白方选一个并下白6", winning: "采用连珠胜负，黑方有三三、四四、长连禁手。" },
+  // 山口与「五手多打」是同一条规则的两种叫法，人机规则清单只保留本条（key 仍为 yamaguchi）。
+  // five-n 已从本清单移除，但引擎/开局簿层仍支持 openingRule: "five-n"（见下 recordRuleDisplayName 兜底）。
+  { key: "yamaguchi", rule: "renju", openingRule: "yamaguchi", name: "五手多打（山口）", badge: "有禁", summary: "黑方开局时宣布打点数，白4后黑方打点", detail: "山口（即五手多打）：先手方摆出前三手（天元、3×3、5×5 的 26 开局点内）并同时宣布本局第5手打点数量；另一方决定是否交换；白方在任意位置落第4手；黑方放置宣言数量的第5手候选（不得对称重复），白方选择其一并下白6。", steps: "黑1 并宣布打点数 → 白2 → 黑3 → 交换决定 → 白4 → 黑方打点 → 白方选一个并下白6", winning: "采用连珠胜负，黑方有三三、四四、长连禁手。" },
   { key: "soosyrv-8", rule: "renju", openingRule: "soosyrv-8", name: "索索夫-8", badge: "有禁", summary: "白4宣布 1–8 打，宣布后可再交换", detail: "索索夫-8（2017 年起的世界锦标赛规则）：前三手在 26 开局点内摆出，另一方决定是否交换；白方在任意位置落第4手并宣布 1–8 个第5手打点数量；宣布后执黑方仍有一次交换权；黑方放置宣言数量的第5手候选（不得对称重复），白方选择其一并下白6。", steps: "黑1 → 白2 → 黑3 → 交换决定 → 白4 并宣布打点数 → 交换决定 → 黑方打点 → 白方选一个并下白6", winning: "采用连珠胜负，黑方有三三、四四、长连禁手。" },
-  { key: "taraguchi-10", rule: "renju", openingRule: "taraguchi-10", name: "塔十", badge: "有禁", summary: "前四手交换后选择单点或十打", detail: "塔拉山口-10：前四手在逐步扩大的中心区域落子，每手后可交换；第4手后可选择交换并单点黑5，或不交换进入十个黑5候选。", steps: "前四手逐步落子并可交换 → 单点黑5或十打 → 选定黑5 → 正常对局", winning: "采用连珠胜负，黑方有三三、四四、长连禁手。" },
+  { key: "taraguchi-10", rule: "renju", openingRule: "taraguchi-10", name: "塔十", badge: "有禁", summary: "前四手交换后选择单点或十打", detail: "塔拉山口-10：前四手在逐步扩大的中心区域落子，每手后可交换。第4手后分两步：先决定是否交换黑白方，再由黑方选择第5手方式——单点第5手（中心 9×9 内），或摆出十个第5手打点由白方选一个（打点之间不得同形）。", steps: "前四手逐步落子并可交换 → 单点黑5或十打 → 选定黑5 → 正常对局", winning: "采用连珠胜负，黑方有三三、四四、长连禁手。" },
   { key: "tarannikov", rule: "renju", openingRule: "tarannikov", name: "塔拉", badge: "有禁", summary: "前五手每手后都可交换", detail: "前五手每落一手，对方都获得一次交换权；允许落子区域从天元开始逐步扩大到 9×9。", steps: "黑1 → 交换决定 → 白2 → 交换决定……直到第5手 → 正常对局", winning: "采用连珠胜负，黑方有三三、四四、长连禁手。" },
 ];
 
@@ -49,7 +51,7 @@ export const RULE_GUIDES: readonly RuleGuideEntry[] = [
   {
     rule: "standard",
     name: "无禁6不胜 · 无禁",
-    board: "应用支持 5–25 路；竞赛与 AI 常用 15×15。",
+    board: "应用支持 5–30 路；竞赛与 AI 常用 15×15。",
     firstMove: "黑方先行，应用的人机模式采用自由落点，不附加 Pro/Swap 开局限制。",
     win: "双方都必须形成恰好五连；六子或以上不断线，但不算胜。",
     overline: "双方都允许形成长连，只是长连本身不获胜。",
@@ -58,7 +60,7 @@ export const RULE_GUIDES: readonly RuleGuideEntry[] = [
   {
     rule: "freestyle",
     name: "无禁手 · 无禁",
-    board: "应用支持 5–25 路；常见对局使用 15×15 或 19×19。",
+    board: "应用支持 5–30 路；常见对局使用 15×15 或 19×19。",
     firstMove: "黑方先行，双方依次在任意空点落子。",
     win: "双方五子或更多连续相连都获胜。",
     overline: "长连允许，并直接视为胜利。",
@@ -67,6 +69,7 @@ export const RULE_GUIDES: readonly RuleGuideEntry[] = [
 ] as const;
 
 export const OPENING_GUIDES: ReadonlyArray<{ rule: OpeningRule; name: string; summary: string }> = [
+  { rule: "swap2", name: "Swap2（二次交换） · 无禁", summary: "先手连下三子，后手三选一：执白／执黑（交换）／再补两子后先手选色。" },
   { rule: "swap1", name: "一手交换 · 无禁", summary: "黑方先落 1 手后，白方可选择交换黑白。" },
   { rule: "swap3", name: "三手交换 · 无禁", summary: "黑白黑 3 手后，后手方可选择交换。" },
   { rule: "free", name: "自由开局 · 无禁", summary: "应用直接进入轮流落子；适合最简单的起始流程。" },
@@ -88,9 +91,12 @@ export const RULE_SOURCE_NOTES = [
 export function recordRuleDisplayName(metadata: Pick<GameMetadata, "rule" | "openingRule" | "openingN">): string {
   const openingRule = metadata.openingRule || "free";
   const preset = AI_RULE_PRESET_GUIDES.find((guide) => guide.rule === metadata.rule && guide.openingRule === openingRule);
-  if (preset) {
-    const count = openingRule === "five-n" && metadata.openingN ? `（${metadata.openingN}打）` : "";
-    return `${preset.name}${count} · ${preset.badge}`;
+  if (preset) return `${preset.name} · ${preset.badge}`;
+  // five-n 已并入「五手多打（山口）」条目、不再出现在 AI 规则清单里，但老存档/棋谱仍可能带
+  // openingRule: "five-n"（引擎与开局簿层继续支持）。这里兜底成开局名，避免反查落空后
+  // 把开局信息整条丢掉（调用点：board-image-export.ts、RecordSelectorSheet.tsx）。
+  if (metadata.rule === "renju" && openingRule === "five-n") {
+    return metadata.openingN ? `五手多打（${metadata.openingN}打） · 有禁` : "五手多打 · 有禁";
   }
   return RULE_GUIDES.find((guide) => guide.rule === metadata.rule)?.name || "规则未标注";
 }

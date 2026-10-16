@@ -42,7 +42,14 @@ self.onmessage = async (event: MessageEvent<File>) => {
       self.postMessage({ ok: true, finalOnly: true, summary: persistedSummary, compactDiagnostic: { hasCompact: true, nodeCount: compactIndex.nodeCount, parseMs } });
       return;
     }
-    const message = { ok: true, result: baseResult(result), summary, compactIndex: undefined, compactDiagnostic: { hasCompact: false, parseMs } };
+    // 只有带 compact 索引时才能回传「剥掉 nodes 的文档」——主线程会用
+    // createLazyDocument(索引) 把节点树还原出来。**没有索引的格式（SGF / PSQ / POS 等）
+    // 必须回传完整节点树**：baseResult 会把 nodes 清空，那条路存进库里的就是一份空棋谱
+    // （实测：≥4MB 的 SGF 导入后提示「已存入大型棋谱库」，但条目里没有子、棋盘空白）。
+    // 结构化克隆一整棵树的代价换的是正确性；真要省这一步，得给大 SGF 也建 compact 索引。
+    const message = compactIndex
+      ? { ok: true, result: baseResult(result), summary, compactDiagnostic: { hasCompact: true, parseMs } }
+      : { ok: true, result, summary, compactDiagnostic: { hasCompact: false, parseMs } };
     if (compactIndex) {
       self.postMessage({ ...message, compactIndex }, transferIndex(compactIndex));
     } else self.postMessage(message);

@@ -1,4 +1,4 @@
-/* Chrome/WebView 83 fallback layer. Modern declarations remain the primary
+/* Chrome/WebView 79+ fallback layer. Modern declarations remain the primary
  * design; this class is added only when selector/color/viewport support is
  * incomplete, so unsupported rules never make controls unreadable or tall. */
 .legacy-webview {
@@ -13,6 +13,10 @@
 .legacy-webview .first-run-backdrop,
 .legacy-webview .quick-drawer-layer,
 .legacy-webview .quick-drawer-scrim,
+.legacy-webview .ai-float-backdrop,
+.legacy-webview .clock-setup-overlay,
+.legacy-webview .duel-confirm-scrim,
+.legacy-webview .overlay-backdrop,
 .legacy-webview .preview-page-glow,
 .legacy-webview .preview-board-lines {
   top:0;
@@ -20,6 +24,31 @@
   bottom:0;
   left:0;
 }
+.legacy-webview .theme-scene { width:100%; top:0; border-radius:0; height:100vh; }
+/* Engine progress and animated scene layers compete for the same old WebView
+   compositor. Freeze decorative motion while a search is active; gameplay
+   feedback and the board remain live, so this only removes background paint
+   churn on compatibility devices. */
+.legacy-webview .app-shell[data-ai-worker-state="running"] .theme-scene,
+.legacy-webview .app-shell[data-ai-worker-state="running"] .theme-scene * {
+  animation-play-state: paused !important;
+}
+.legacy-webview.duel-screen-active .topbar,
+.legacy-webview.vcf-screen-active .topbar { display:none; }
+.legacy-webview.duel-screen-active .app-main { min-height:calc(100vh - 78px); }
+/* Flexbox gap landed after the supported WebView. Cover the high-traffic
+   sheets and tree controls with sibling margins when the runtime probe says
+   the property is ignored. */
+.no-flex-gap .bottom-sheet > * + * { margin-top:8px; }
+.no-flex-gap .record-tree-panel > * + *,
+.no-flex-gap .tree-graph-layout > * + *,
+.no-flex-gap .tree-graph-pane > * + *,
+.no-flex-gap .tree-inspector > * + * { margin-top:8px; }
+.no-flex-gap .tree-toolbar > * + *,
+.no-flex-gap .tree-toolbar-head > * + *,
+.no-flex-gap .tree-zoom-controls > * + *,
+.no-flex-gap .tree-inspector-options > * + * { margin-left:5px; }
+.no-flex-gap .tree-preview-body > * + * { margin-left:10px; }
 .legacy-webview .preview-board-surface,
 .legacy-webview .board-opacity-preview .preview-board-lines { top:8px; right:8px; bottom:8px; left:8px; }
 .legacy-webview .material-preview-wallpaper { top:0; right:0; bottom:0; left:0; }
@@ -93,8 +122,317 @@
 .legacy-webview .puzzle-rule-selector button:not(.selected) { background: var(--surface-2, #f1f4f2); border: 1px solid var(--surface-border, var(--line)); color: var(--ink); }
 .legacy-webview .puzzle-rule-selector button.selected { background: var(--jade); border: 1px solid var(--green); color: var(--green); box-shadow: 0 2px 7px var(--surface-shadow, #0001); }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   2026-10-09 补：**这几轮新加的东西在老 WebView（K20 实测）上全部失效**。
+   用户在 K20 上看到三个症状，根因都在这一层没跟上：
+     ① 有些地方没适配主题 → 我用了 `color-mix()`（Chrome 111+）、`:is()/:where()`
+        （老 WebView 不支持），整条声明被丢弃 ⇒ 那些控件回退成"无样式"。
+     ② 底部导航背景一直是透明、怎么调都一样 → 我把底色写成
+        `background: color-mix(in srgb, var(--paper) calc(var(--action-opacity) * 92%), transparent) !important`，
+        `color-mix` 与 `calc` 里嵌变量都不被支持 ⇒ 整条 !important 声明作废 ⇒
+        连原来那条静态底色也被这次 !important 覆盖的意图落空，结果透成背景。
+     ③ 主题只出颜色、不出动效 → 老 WebView 常年把 `prefers-reduced-motion` 报成 `reduce`
+        （assets 里那条 `@media(prefers-reduced-motion:reduce){ .theme-scene *{animation:none!important} }`
+        于是把整层动画全停）。这一条**必须由用户决定**：见下面 legacy-motion 开关，默认不强开。
+   这一段给①②提供"老写法"的等价样式：不依赖 color-mix / :is / calc(变量)。
+   ⚠ 数字口径与新版对齐：默认 --action-opacity:1 时与改动前观感一致。 */
+
+/* ① 功能区按钮透明度 —— **已收归 action-opacity.css 统一处理**（2026-10-09 二次整改）。
+   为什么删掉这里的兜底：以前是"新内核用 color-mix、老内核用 [data-action-alpha] 档位改 opacity"的
+   成对写法，两边各写一遍、必然漏（用户 K20 实测就是"只修复了一半"）。而 opacity 会连文字一起淡，
+   低调时还得补 text-shadow 描边，越补越绕。
+   现在改成**一条路**：JS 用 withAlpha() 把主题色 × 用户透明度算成 rgba，
+   写进 `--action-surface` / `--action-border`，action-opacity.css 只引用它、且只用老写法选择器。
+   rgba 新老内核都能解析 ⇒ 同一个文件同时服务两种内核，不再需要这一层。
+   （本文件不得出现 :is( / :where( / :has( / color-mix( ，由 src/legacy-assets.test.ts 守住。） */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★★★ 2026-10-09 真机实测（Redmi K20 Pro / Android 11 / **WebView 83.0.4103.106**）★★★
+   最上游的根因在这里：**开启整个主题场景层的那条规则用了 `:is()`**，而 `:is()` 要 Chrome 88+，
+   83 不支持 ⇒ 整条规则被丢弃 ⇒ `.theme-scene` 保持基础规则的 `display:none`
+   ⇒ 梅枝/花瓣/雪花/黄昏骑行/极光 这些**画面一个都不显示**，用户只能看到 CSS 变量带来的配色。
+   这就是"主题只有颜色、没有动效"的真正原因（比 prefers-reduced-motion 更靠前 ——
+   即便那一层修好了，场景层压根没打开的话动画也不会出现）。
+
+   所以凡是"用 :is() 把一批主题圈起来开场景"的规则，都必须在这里展开成老写法。 */
+html[data-theme="rain"] .theme-scene,
+html[data-theme="bamboo"] .theme-scene,
+html[data-theme="snow"] .theme-scene,
+html[data-theme="porcelain"] .theme-scene,
+html[data-theme="plum"] .theme-scene,
+html[data-theme="jiangnan"] .theme-scene,
+html[data-theme="firefly"] .theme-scene,
+html[data-theme="cyber"] .theme-scene,
+html[data-theme="blackgold"] .theme-scene,
+html[data-theme="kawaii"] .theme-scene,
+html[data-theme="aurora"] .theme-scene,
+html[data-theme="deepsea"] .theme-scene,
+html[data-theme="pelican"] .theme-scene,html[data-theme="soul"] .theme-scene { display: block; }
+html[data-theme="rain"] .theme-scene .ts-sway,html[data-theme="rain"] .theme-scene .ts-parts,
+html[data-theme="bamboo"] .theme-scene .ts-sway,html[data-theme="bamboo"] .theme-scene .ts-parts,
+html[data-theme="snow"] .theme-scene .ts-sway,html[data-theme="snow"] .theme-scene .ts-parts,
+html[data-theme="porcelain"] .theme-scene .ts-sway,html[data-theme="porcelain"] .theme-scene .ts-parts,
+html[data-theme="plum"] .theme-scene .ts-sway,html[data-theme="plum"] .theme-scene .ts-parts,
+html[data-theme="jiangnan"] .theme-scene .ts-sway,html[data-theme="jiangnan"] .theme-scene .ts-parts,
+html[data-theme="firefly"] .theme-scene .ts-sway,html[data-theme="firefly"] .theme-scene .ts-parts,
+html[data-theme="cyber"] .theme-scene .ts-sway,html[data-theme="cyber"] .theme-scene .ts-parts,
+html[data-theme="blackgold"] .theme-scene .ts-sway,html[data-theme="blackgold"] .theme-scene .ts-parts,
+html[data-theme="kawaii"] .theme-scene .ts-sway,html[data-theme="kawaii"] .theme-scene .ts-parts,
+html[data-theme="aurora"] .theme-scene .ts-sway,html[data-theme="aurora"] .theme-scene .ts-parts,
+html[data-theme="deepsea"] .theme-scene .ts-sway,html[data-theme="deepsea"] .theme-scene .ts-parts,
+html[data-theme="pelican"] .theme-scene .ts-sway,html[data-theme="soul"] .theme-scene .ts-sway,
+html[data-theme="pelican"] .theme-scene .ts-parts,html[data-theme="soul"] .theme-scene .ts-parts { display: block; }
+/* 同一类问题：`:is(html[data-theme=…]) :is(.topbar,.bottom-nav)` 用于 3 个主题的顶/底栏底色，
+   `:is()` 在 83 上失效 ⇒ 那些主题的栏底色不跟随（用户说的"有些地方没适配"包含这一处）。
+   ⚠ 2026-10-09 二次整改：这三条**已不需要** —— 顶/底栏底色现在由 action-opacity.css ⑤ 的
+     `var(--paper-with-alpha)` 统一给（JS 算好的 rgba，两种内核同一条路），
+     且那条带 !important、与主题无关。这里保留注释做个路标，避免以后又加回来。 */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★★★ 2026-10-09 真机实测第二轮（K20 / WebView 83）★★★
+   上一段展开了 `:is()`，真机诊断条确认 `scene:"block"`（场景层打开了），**但画面依然空白**。
+   继续查下去发现第二个、也是更致命的一层：**`dvh` 单位不被支持**（真机诊断 `dvh:false`）。
+   而 `.theme-scene{height:100dvh}` 是**唯一给场景层高度**的地方 —— 单位无效 ⇒ 整条 height 声明
+   被丢弃 ⇒ 高度 auto ⇒ 而它所有子元素都是 `position:absolute` ⇒ **层高 0，什么都不显示**。
+   所以"主题只有颜色、没有画面"是**两个原因叠加**：`:is()` 让层没打开，`dvh` 让层没有高度。
+   这里把与场景/外壳高度相关的 `dvh` 全部回退成 `vh`（83 支持）。
+   全项目 dvh 有 119 处，但只有这几处决定"能不能看见"，其余是间距微调（失效也只是差几像素）。 */
+.legacy-webview .theme-scene { height: 100vh; }
+.legacy-webview .app-shell { min-height: 100vh; }
+.legacy-webview .theme-scene .ts-ride { height: auto; }
+@media (orientation: landscape) and (max-height: 600px) {
+  .legacy-webview .theme-scene { height: 100vh; }
+}
+/* deepsea 的摆动件高度也用了 dvh；失效会让它塌成 0 —— 一并给个近似值。 */
+.legacy-webview[data-theme="deepsea"] .ts-sway b { height: 78vh; }
+/* 大量布局用 `min-height:calc(100dvh - Npx)`；兜底成 vh 版本（N 不同，这里给常用的几档）。 */
+.legacy-webview .bottom-nav { padding-bottom: var(--safe-area-bottom, env(safe-area-inset-bottom)); }
+.legacy-webview .app-main { min-height: calc(100vh - 146px); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★★★ 2026-10-09 真机实测第三轮（K20 / WebView 83）—— 黄昏骑行 ★★★
+   用户反馈：「黄昏骑行，里面的鹈鹕骑自行车、马路什么的还是没有，但是背景有动态的太阳和云」。
+   现象完全对上机制：太阳/云是 `.ts-far` 的 **background-image 渐变**（不依赖元素尺寸，永远看得见），
+   而鹈鹕/车/马路都在 `.ts-ride` 里 —— 那个元素用了**两个 83 不支持的特性**：
+     · `aspect-ratio:430/264`（Chrome 88+）→ 高度算不出来
+     · `width:min(100%,calc(17dvh * 1.6288))`（dvh，Chrome 108+）→ 宽度也算不出来
+   两者一起失效 ⇒ 元素塌成 **0×0** ⇒ 里面所有图层（车轮/曲柄/腿/车架/上身/地面伪元素）全部不可见。
+   兜底：用老写法直接给出**确定的宽高**（按 430:264 的比例，高度取 17vh 折算，与新版口径一致：
+   17dvh ≈ 17vh；宽 = 高 × 1.6288）。因为高度与宽度都写死，元素不再依赖 aspect-ratio。
+   ⚠ 横屏另有一档（44dvh），同样折算成 vh。 */
+.legacy-webview .theme-scene .ts-ride {
+  aspect-ratio: auto;
+  height: 17vh;
+  width: min(100%, calc(17vh * 1.6288));
+}
+@media (orientation: landscape) {
+  .legacy-webview .theme-scene .ts-ride {
+    height: 44vh;
+    width: min(100%, calc(44vh * 1.6288));
+  }
+}
+/* 骑行层里的轮子也是方形的（`aspect-ratio:1`），83 不支持 ⇒ 高度 0 ⇒ 轮子看不见。
+   直径 = 元素宽的 18.6%，用 padding-top 撑出正方形（老写法，83 支持）。 */
+.legacy-webview .theme-scene .tr-wheel {
+  aspect-ratio: auto;
+  height: 0;
+  padding-top: 18.6%;              /* 相对**包含块宽度**解析 ⇒ 正好等于 width 的 18.6% */
+  background-size: 100% 100%;
+}
+/* 蹼足/曲柄那些用 `inset:0` 的层：`inset` 简写 83 也不支持（要 Chrome 87+）。
+   它失效 ⇒ 元素没有 left/top/right/bottom ⇒ 只在静态位置、尺寸又靠 width/height:100%
+   还能撑起来，但绝对定位的参考点会偏。这里逐条展开成四边。 */
+.legacy-webview .theme-scene .tr-crank,
+.legacy-webview .theme-scene .tr-crank-far,
+.legacy-webview .theme-scene .tr-frame,
+.legacy-webview .theme-scene .tr-body {
+  top: 0; right: 0; bottom: 0; left: 0;
+}
+
+/* ③ 顶栏 / 底栏：全站通用底色写的是
+   `.topbar,.bottom-nav { background: color-mix(in srgb, var(--paper) 92%, transparent) }`（library.css），
+   `color-mix` 在 WebView 83 上失效 ⇒ **整条声明作废、顶栏底栏没有底色**。
+   真机实测里用户看到的「下方金刚页区域背景一直是透明，怎么调节都一样」就是这一条
+   （不是透明度滑杆的问题）。老写法：用同一底色的 92% 不透明近似（rgba 由 CSS 变量算不出来，
+   所以按"纯色 + 整体 opacity 会连内容一起淡"的取舍，这里直接给不透明底色 ——
+   顶栏/底栏承载导航文字，可读性优先；想要的"透出背景"靠主题自己的 ts-far 层去表达）。 */
+.legacy-webview .topbar,
+.legacy-webview .bottom-nav { background: var(--paper); border-color: var(--line); }
+
+/* ④ 顶栏 / 底栏的底色 —— 「金刚页」也要跟着透明度一起调（用户 2026-10-09：
+   「现在好像已经默认了金刚页无论如何都完全透明了，这个也要跟着调节才对」）。
+   背景：全站通用那条是 `.topbar,.bottom-nav{background:color-mix(in srgb,var(--paper) 92%,transparent)}`
+   （library.css）；`color-mix` 在 WebView 83 上失效 ⇒ 声明作废 ⇒ 真机诊断 navBg 为 rgba(0,0,0,0)，底栏透明。
+   上一版兜底写成不透明 `var(--paper)`，于是又变成"永远实心、不受调节"——两个极端都错。
+   正解：底栏底色也乘 --action-opacity，且**只淡底色、不淡内容**（底栏有导航图标与文字）。
+   难点：老内核既无 color-mix，也不能把 hex 拆成 rgba 分量 ⇒ 由 **JS 侧算好**：
+     App 把当前主题的 paper/line 色与透明度合成 rgba，写进 `--paper-with-alpha` / `--line-with-alpha`
+     （见 src/action-opacity.ts 的 withAlpha）。这里只引用，JS 没跑到时退回纯色。 */
+.legacy-webview .topbar,
+.legacy-webview .bottom-nav {
+  /* ⚠ 必须 !important：`styles.css` 里有一条 `.bottom-nav{…background:#fbfaf6eb…}`
+     （浅色主题的写死底色，实测它最终赢过我这条，于是底栏永远浅色、也看不出透明度调节）。
+     真机 CDP 抓到的胜出规则就是 `rgba(251, 250, 246, 0.92)` —— 即 #fbfaf6eb。 */
+  background: var(--paper-with-alpha, var(--paper)) !important;
+  border-color: var(--line-with-alpha, var(--line));
+}
+
+/* ⑤ 棋谱控制那排（起点/上一手/下一手/终点/撤销/重做/放弃）的**图标颜色**：
+   `html[data-theme] :is(.moves-row button svg){color:var(--green)}` 用了 :is()，83 失效
+   ⇒ 图标退回继承按钮的文字色。浅色主题下按钮底白、文字色也浅 ⇒ 图标"看不见"
+   （用户报「有时候下一步那个按钮的图案会不见…老是这个出问题」）。
+   这里逐条给回绿色，保证任何主题下都与底色有对比。
+   ⚠ accent（「下一手」）的底色/禁用态已收归 action-opacity.css 统一处理（那里的 ③），
+     本文件不再重复定义，避免"两处都改、漏一处"。
+
+/* ④ 主题顶栏/底栏里用 color-mix 调过底色的：真机确认（K20 诊断 navBg 始终 rgba(0,0,0,0)）
+   `color-mix` 在 WebView 83 上失效 ⇒ 整条声明作废 ⇒ **那些主题的顶栏/底栏没有底色、透明**。
+   ⚠ 2026-10-09 二次整改后**这里不再需要逐主题打补丁**：顶/底栏底色统一由
+     action-opacity.css ⑤ 的 `var(--paper-with-alpha)` 提供（JS 用 withAlpha 算好 rgba，
+     所有内核都能解析）。所以那些 color-mix 的 static 兜底已被更上游的一条统一覆盖。 */
+
+/* ② 底部导航 —— 同上，收归 action-opacity.css（`--paper-with-alpha` + `--line-with-alpha`），
+   且**只淡底色不淡内容**。以前这里用 `opacity: .62` 逐档压整条导航，
+   会连图标文字一起淡（用户要的是"背景透出来"，不是"整条雾化"），已删除。 */
+
+
+/* ③ 外观三版面 / 共用预览：老 WebView 无 :is()，逐条写出来 */
+.legacy-webview .appearance-pane-tabs > button { border: 1px solid var(--line); background: var(--surface, var(--paper)); color: var(--ink); }
+.legacy-webview .appearance-pane-tabs > button.selected { background: var(--green); border-color: var(--green); color: var(--on-accent); }
+.legacy-webview .appearance-opacity-row > label { display: block; }
+.legacy-webview .appearance-opacity-row > label > span { float: left; width: 82px; }
+.legacy-webview .appearance-opacity-row > label > input { width: 60%; height: 16px; }
+.legacy-webview .appearance-opacity-row > label > output { float: right; }
+.legacy-webview .material-live-preview.pane-motion-live .material-crop-stones { display: none; }
+/* 落子动效那枚演出棋子：transform-box 老 WebView 不支持，用 CSS 的 scale/translate 兜底 */
+.legacy-webview .material-crop .crop-stone-demo { animation: none; opacity: 1; }
+
+/* ④ 梅枝映雪 / 黄昏骑行 的 `::before/::after` 伪元素里用了 dvh 与 min()，补静态值 */
+.legacy-webview .ts-ride::before { top: 50.76%; height: 49.24%; }
+.legacy-webview .ts-mid::before,
+.legacy-webview .ts-mid::after { animation: none; }
+
 @media (orientation:landscape) and (max-height:600px) {
   .legacy-webview .board-scroller { max-height:calc(100vh - 170px); }
   .legacy-webview .renju-board { width:min(100%,calc(100vh - 170px)); }
   .legacy-webview .tree-sheet-backdrop .bottom-sheet { max-height:96vh; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★★★ 2026-10-09 真机第四轮（K20 / WebView 83）：**关键帧里的 dvh** ★★★
+   用户：「深海幽蓝这个主题，发现只有一点绘画图，但是动效没了…感觉都是只修复了一点的样子」。
+   现象＝有画面、没动效。根因：**@keyframes 里用了 dvh**，而 83 不认这个单位 ⇒
+   关键帧里那条 `transform` 整条无效 ⇒ 动画照跑、位置却始终不动（看着就是"静止"）。
+   扫出 7 组（竹子落叶 / 江南雨滴 / 深海气泡 / 梅枝花瓣 / 梅枝雪 / 青花瓷花瓣）。
+   这里用 `N vh` 等价重写一遍（同名 keyframes 后者覆盖前者；本文件在 styles.css 之后加载）。
+   ⚠ 数值与源码逐字对应，只是把 dvh 换成 vh —— 两者在 vh 与 dvh 相等时（无动态工具条）本就一致，
+     老内核上 dhv 根本不生效，所以这里的近似只会更准。
+   ⚠ 以后新增主题动画**不要在关键帧里用 dvh/dvw/svh/lvh**，用 vh/vw 或 px 即可（老内核兼容）。 */
+@keyframes deepsea-bubble{
+  0%{transform:translate3d(0,0,0);opacity:0}
+  10%{opacity:.75}
+  50%{transform:translate3d(14px,-46vh,0);opacity:.7}
+  88%{opacity:.4}
+  100%{transform:translate3d(-10px,-92vh,0);opacity:0}
+}
+@keyframes plum-petal-fall{
+  0%{transform:translate3d(0,0,0) rotate(-24deg);opacity:0}
+  10%{opacity:.88}
+  38%{transform:translate3d(-42px,36vh,0) rotate(150deg)}
+  70%{transform:translate3d(30px,64vh,0) rotate(302deg);opacity:.8}
+  100%{transform:translate3d(-16px,104vh,0) rotate(430deg);opacity:0}
+}
+@keyframes plum-snow-fall{
+  0%{transform:translate3d(0,0,0);opacity:0}
+  12%{opacity:.62}
+  40%{transform:translate3d(9px,42vh,0)}
+  70%{transform:translate3d(-7px,72vh,0);opacity:.5}
+  100%{transform:translate3d(5px,104vh,0);opacity:0}
+}
+@keyframes bamboo-leaf-drift{
+  0%{opacity:0;transform:translate(0,0) rotate(26deg)}
+  7%{opacity:.7}
+  34%{transform:translate(-54px,32vh) rotate(196deg)}
+  60%{opacity:.62;transform:translate(32px,56vh) rotate(332deg)}
+  90%{opacity:.34}
+  100%{opacity:0;transform:translate(-20px,102vh) rotate(438deg)}
+}
+@keyframes jiangnan-drop{
+  0%{transform:translate3d(0,0,0);opacity:0}
+  12%{opacity:.85}
+  100%{transform:translate3d(-26px,86vh,0);opacity:0}
+}
+@keyframes porcelain-petal{
+  0%{transform:translate3d(0,0,0) rotate(-14deg);opacity:0}
+  14%{opacity:.6}
+  50%{transform:translate3d(-34px,42vh,0) rotate(164deg);opacity:.55}
+  86%{opacity:.34}
+  100%{transform:translate3d(20px,104vh,0) rotate(340deg);opacity:0}
+}
+/* 深海光线（.ts-sway）的高度用了 78dvh ⇒ 高度 0 ⇒ 看不到；
+   竹子（62/70/50/44dvh）、deepsea（78dvh）一并给 vh 兜底。 */
+.legacy-webview[data-theme="deepsea"] .ts-sway b { height: 78vh; }
+.legacy-webview[data-theme="bamboo"] .ts-sway b:nth-child(1) { height: 62vh; }
+.legacy-webview[data-theme="bamboo"] .ts-sway b:nth-child(2) { height: 70vh; }
+.legacy-webview[data-theme="bamboo"] .ts-sway b:nth-child(3) { height: 50vh; }
+.legacy-webview[data-theme="bamboo"] .ts-sway b:nth-child(4) { height: 44vh; }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★ 2026-10-10 第七轮补：**两个棋魂弹窗在旧内核上没有兜底**（用户问「能不能在旧安卓版本手机显示」）
+   ══════════════════════════════════════════════════════════════════════════
+   现状（弹窗住在 soul-lockable.css，那里的写法是新内核取向）：
+     · `.soul-buy-backdrop` / `.vcfch-itemback` 的遮罩用 `inset: 0` —— **83 不支持**
+       （要 Chrome 87+）。失效 ⇒ 没有 left/top/right/bottom ⇒ 遮罩只在静态位置、
+       盖不住视口（本来该是"全屏压暗 + 居中卡片"）。
+     · 卡片边框/价格底色/按下反馈用了 `color-mix()` —— **83 不支持**，整条声明作废
+       ⇒ 卡片没有金色描边、价格胶囊没有底色、按钮按下没反馈（像"点了没反应"）。
+   下面的兜底全部是 **83 能解析的老写法**（四边分开写、纯色代替代色），
+   口径与新版一致：遮罩仍是半透明黑、卡片仍是实体面、金色仍是琥珀金。
+   注意：这些选择器**只用简单选择器**，不出现 :is/:where/:has/color-mix
+   （本文件由 src/legacy-assets.test.ts 守着）。 */
+.legacy-webview .soul-buy-backdrop,
+.legacy-webview .vcfch-itemback {
+  top:0;
+  right:0;
+  bottom:0;
+  left:0;
+}
+/* 卡片：色值兜底（color-mix 那条在 83 上作废 ⇒ 补一条纯色金边） */
+.legacy-webview .soul-buy-card,
+.legacy-webview .vcfch-itemcard {
+  border-color:#d8c39a;
+}
+/* 价格胶囊：底色的 color-mix 作废 ⇒ 补一条等价的半透明金（rgba 所有内核都能解析） */
+.legacy-webview .soul-buy-price,
+.legacy-webview .vcfch-itemcard-price {
+  background:rgba(199,156,74,.14);
+}
+/* 魂火光晕：filter 里的 color-mix 作废 ⇒ 补一条 rgba 版（drop-shadow 本身 83 支持） */
+.legacy-webview .soul-buy-flame {
+  filter:drop-shadow(0 4px 14px rgba(199,156,74,.32));
+}
+/* 深色主题下"解锁"按钮的底色/字色：那条 color-mix 作废 ⇒ 按钮会失去金底 */
+.legacy-webview .soul-buy-confirm,
+.legacy-webview .vcfch-itemcard-actions .soul-buy-confirm {
+  background:#f0e2c4;
+  border-color:#d8c39a;
+  color:#6b4c17;
+}
+/* 按下反馈：:active 那两条 color-mix 作废 ⇒ 补纯色，否则"点了没反应" */
+.legacy-webview .soul-buy-cancel:active { background:#f0ede6; }
+.legacy-webview .soul-buy-confirm:active { background:#e8d5ab; }
+/* 深色底主题：上面几条浅金在深底上会刺眼/发白，换深金一档。
+   ⚠ 逐主题展开、不用 :is()（选择器列表任一非法 ⇒ 整条规则丢弃）。 */
+.legacy-webview[data-theme="dark"] .soul-buy-card,
+.legacy-webview[data-theme="rain"] .soul-buy-card,
+.legacy-webview[data-theme="jiangnan"] .soul-buy-card,
+.legacy-webview[data-theme="firefly"] .soul-buy-card,
+.legacy-webview[data-theme="pixel"] .soul-buy-card,
+.legacy-webview[data-theme="cyber"] .soul-buy-card,
+.legacy-webview[data-theme="blackgold"] .soul-buy-card,
+.legacy-webview[data-theme="aurora"] .soul-buy-card,
+.legacy-webview[data-theme="deepsea"] .soul-buy-card,
+.legacy-webview[data-theme="pelican"] .soul-buy-card {
+  border-color:#6a5a33;
 }

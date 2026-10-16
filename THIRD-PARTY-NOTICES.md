@@ -17,6 +17,18 @@
 - 再分发要求：GPL-3.0 要求随二进制一并提供许可正文与对应源码。许可正文已随仓库提供；
   源码以上游仓库对应 tag 为准。修改本目录内二进制并再分发时，请同时公开你的修改。
 
+## KataGo（五子棋分支，旗舰引擎，MIT）
+
+- 上游仓库：<https://github.com/hzyhhzy/KataGo>（五子棋分支；上游 KataGo
+  <https://github.com/lightvector/KataGo>，作者 David J Wu "lightvector"）
+- 许可：**MIT License**（上游 KataGo 主仓库许可，见
+  [`licenses/KataGo-LICENSE.txt`](licenses/KataGo-LICENSE.txt)）
+- 随包内容（仅安卓 arm64-v8a）：`libkatago-engine.so`（ONNX Runtime CPU 后端构建）、
+  `libonnxruntime.so`（Apache-2.0，<https://onnxruntime.ai>）与
+  `assets/engine-katago/distill-fp16.onnx`（作者网 b10c128nbt 的 fp16 转换）、
+  `assets/engine-katago/kata.cfg`（运行时配置）。
+- 旗舰引擎为**可选项**，默认引擎仍为 Rapfi；KataGo 相关桥接与协议代码为本项目自有（MIT）。
+
 ## 其他参考与致谢（不含其代码或二进制）
 
 - **RenLib / SGF 生态、爱五子棋打谱**：打谱与库格式（`.lib`）的交互与格式参考。

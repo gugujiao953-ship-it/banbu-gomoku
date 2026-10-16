@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 300" fill="none">
+  <!-- 夜雨江南·屋脊剪影（底部锚定）：白墙 + 黑瓦 + 翘檐 + 一扇亮着灯的窗。
+       江南的辨识度就在这条「白墙黑瓦 + 灯笼」的轮廓上。 -->
+  <defs>
+    <linearGradient id="jnWall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8efeb" stop-opacity=".46"/>
+      <stop offset="1" stop-color="#c3d0ce" stop-opacity=".28"/>
+    </linearGradient>
+    <linearGradient id="jnRoof" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1b1e" stop-opacity=".94"/>
+      <stop offset="1" stop-color="#14282b" stop-opacity=".86"/>
+    </linearGradient>
+    <radialGradient id="jnLamp" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#ffd98a" stop-opacity=".85"/>
+      <stop offset=".45" stop-color="#f6b95c" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#f6b95c" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 远处第二重屋脊（更淡，做纵深） -->
+  <path d="M0 190c40-16 66-4 96-16s58-22 96-8 62 22 100 12 88-16 138-6v128H0Z" fill="#14282b" opacity=".42"/>
+
+  <!-- 主屋脊：翘檐 + 瓦垄 + 白墙 -->
+  <path d="M0 214c52-30 96-22 140-34 26-7 44-16 74-16s46 10 72 17c44 12 92 6 144 33v86H0Z" fill="url(#jnWall)"/>
+  <path d="M-14 232C40 200 92 210 138 196c30-9 50-20 76-20s46 12 74 20c46 13 100 4 152 30l6 14c-58-24-108-14-156-27-30-8-46-20-76-20s-46 10-76 18C84 226 36 214-8 246Z" fill="url(#jnRoof)"/>
+  <path d="M-14 232c-8-8-12-16-14-26 14 6 26 16 34 28Z" fill="#0b1b1e"/>
+  <path d="M440 240c6-10 8-18 8-28-14 8-24 18-30 30Z" fill="#0b1b1e"/>
+  <!-- 瓦垄 -->
+  <g stroke="#081619" stroke-width="1.6" opacity=".5">
+    <path d="M40 214v18M74 208v20M108 202v20M142 196v22M176 190v22M210 184v24M244 188v22M278 194v22M312 200v22M346 206v20M380 212v18"/>
+  </g>
+  <!-- 檐下阴影 -->
+  <path d="M-8 246c56-32 108-22 156-34 30-8 46-18 74-18s46 10 74 18c48 12 100 2 156 30v10c-58-26-108-16-156-29-30-8-46-18-74-18s-46 10-74 18C100 230 44 220-8 254Z" fill="#0a181b" opacity=".5"/>
+
+  <!-- 亮灯的窗（两扇）+ 灯笼 -->
+  <g fill="#ffd077" opacity=".55">
+    <rect x="96" y="262" width="26" height="20" rx="2"/>
+    <rect x="188" y="274" width="22" height="17" rx="2"/>
+  </g>
+  <g fill="#fff0c4" opacity=".7">
+    <path d="M96 262h26v2.4H96Z"/>
+    <circle cx="109" cy="272" r="3" opacity=".8"/>
+  </g>
+  <ellipse cx="352" cy="268" rx="46" ry="40" fill="url(#jnLamp)"/>
+  <g fill="#ffca6d">
+    <ellipse cx="352" cy="266" rx="7" ry="9" opacity=".9"/>
+    <path d="M345 256h14v2h-14ZM345 276h14v2h-14Z" opacity=".7"/>
+  </g>
+  <path d="M352 250v6" stroke="#ffd98a" stroke-width="1.4" opacity=".7"/>
+</svg>

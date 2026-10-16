@@ -18,7 +18,9 @@ import { resolve } from "node:path";
  *   npm run dev -- --port 5173
  *   QA_BASE_URL=http://127.0.0.1:5173/ node qa/recognition-parallel-parity.mjs
  * 覆盖更多语料（含书谱纸面图）：
- *   RECOGNITION_PARITY_FIXTURES=public/.tmp-bench node qa/recognition-parallel-parity.mjs
+ *   RECOGNITION_PARITY_FIXTURES=qa/fixtures/bench node qa/recognition-parallel-parity.mjs
+ *   （语料原在 public/.tmp-bench，2026-10-07 移出 public——放那儿会被 build 打进
+ *     dist 白占 4.4MB，且与运行时无关；本体保留在 qa/fixtures/bench。）
  */
 const baseUrl = process.env.QA_BASE_URL || "http://127.0.0.1:5173/";
 const fixtureDir = resolve(process.env.RECOGNITION_PARITY_FIXTURES || "qa/fixtures/recognition");
@@ -48,7 +50,20 @@ try {
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
   page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
-  page.on("console", (message) => { if (message.type() === "error") errors.push(`console: ${message.text()}`); });
+  /**
+   * 只放行**一条**上游噪声：onnxruntime 启动时探测 cpuid 会打 `LogEarlyWarning ... Unknown CPU vendor`
+   * （2026-10-15：把内存预算放开到 6 条线程后，每个 ORT 实例各打一条，从 1 条变 7 条，
+   * 这条「console 不得有 error」就把门禁判红了，而**实质断言 8/8 逐位一致是过的**）。
+   * 排除范围刻意收得很窄：必须同时含 "onnxruntime" 与 "Unknown CPU vendor" 才放过；
+   * 其余任何 console error 照旧算红。ORT 用不上厂商特化内核只会慢一点，不影响数值——
+   * 数值另有各基线门禁（input-quality / order-*）比对，不是靠这条兜。
+   */
+  const upstreamNoise = (text) => text.includes("onnxruntime") && text.includes("Unknown CPU vendor");
+  page.on("console", (message) => {
+    if (message.type() !== "error") return;
+    if (upstreamNoise(message.text())) return;
+    errors.push(`console: ${message.text()}`);
+  });
   // A/B 段跑在一个同源的空白宿主页上（由请求拦截直接给出），不加载应用：
   // 应用页在 dev 下会被 SW 复位中间件导航一次，长跑的 evaluate 会被打断。
   await page.route("**/qa-recognition-host.html", (route) => route.fulfill({
@@ -66,9 +81,15 @@ try {
       const blob = await (await fetch("data:image/png;base64," + item.b64)).blob();
       const run = async (parallel) => {
         const before = window.__banbuWorkerSpawns;
+        // 池遥测（2026-10-14）：复用上一趟的池时**不新建 worker**，只看 Worker 构造函数
+        // 会把复用误判成「静默回落单线程」。加速器暴露 {spawned, reused}，任一增长即真走多核。
+        const statsBefore = { ...(window.__banbuPoolStats ?? { spawned: 0, reused: 0 }) };
         const result = await mod.recognizeBoardImage(new File([blob], item.name, { type: "image/png" }), 15, { parallel });
+        const statsAfter = window.__banbuPoolStats ?? { spawned: 0, reused: 0 };
         return {
           spawned: window.__banbuWorkerSpawns - before,
+          poolUsed: (statsAfter.spawned - statsBefore.spawned) + (statsAfter.reused - statsBefore.reused),
+          poolReused: statsAfter.reused - statsBefore.reused,
           fingerprint: JSON.stringify({
             boardSize: result.boardSize,
             board: result.board,
@@ -81,7 +102,7 @@ try {
       };
       const serial = await run(false);
       const parallel = await run(true);
-      out.push({ name: item.name, serialSpawned: serial.spawned, parallelSpawned: parallel.spawned, identical: serial.fingerprint === parallel.fingerprint });
+      out.push({ name: item.name, serialSpawned: serial.spawned, parallelSpawned: parallel.spawned, poolUsed: parallel.poolUsed, poolReused: parallel.poolReused, identical: serial.fingerprint === parallel.fingerprint });
     }
     return out;
   }, fixtures);
@@ -89,9 +110,9 @@ try {
   for (const row of rows) {
     assert(row.identical, `${row.name}：多核与单线程识别结果不一致（并行路径改变了判定结果）`);
     assert(row.serialSpawned === 0, `${row.name}：单线程模式不应创建 Worker，实际创建了 ${row.serialSpawned} 个`);
-    assert(row.parallelSpawned >= 1, `${row.name}：多核模式没有创建 Worker，说明已静默回落单线程（等于没加速）`);
+    assert(row.parallelSpawned >= 1 || row.poolUsed >= 1, `${row.name}：多核模式既没新建 Worker 也没复用池，说明已静默回落单线程（等于没加速）`);
   }
-  console.log(`[recognition-parallel] 逐位一致 ${rows.length}/${rows.length} 张，多核线程创建数 ${rows.map((row) => row.parallelSpawned).join("/")}`);
+  console.log(`[recognition-parallel] 逐位一致 ${rows.length}/${rows.length} 张，多核线程创建数 ${rows.map((row) => row.parallelSpawned).join("/")}｜池复用 ${rows.filter((row) => row.poolReused >= 1).length} 张`);
 
   // ---------- C：设置项在位、默认开启、可关闭 ----------
   const coresSeen = await page.evaluate(() => navigator.hardwareConcurrency);

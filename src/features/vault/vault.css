@@ -1,0 +1,378 @@
+/**
+ * 本机凭证面板的样式（2026-10-11）。
+ *
+ * ## 两条纪律（都是本项目踩过坑总结出来的）
+ *
+ * ① **全部走主题令牌**（`--ink` / `--muted` / `--surface` / `--surface-border`…），
+ *    不写死颜色 —— 这个应用有 20+ 套主题，硬编码的颜色在某一套上必然出问题
+ *    （对比度门禁就是这么抓出来的）。
+ *
+ * ② **这份 CSS 必须常驻加载**（由 `vault/` 下的组件直接 import），
+ *    **不能挂在懒加载的 chunk 上**。上一轮有一条同款教训：
+ *    商店的购买弹窗样式曾经住在懒加载的 `vcf-challenge.css` 里，
+ *    于是"从对弈页进商店"那条路径上弹窗丢了 `position: fixed`、
+ *    退化成"在下面展开"。凭证面板会被设置页与首运行弹窗两处用到，
+ *    属于跨入口组件，所以样式跟着组件走。
+ */
+
+.vault-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vault-intro,
+.vault-foot {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted, #68635b);
+}
+
+/* ── 状态卡 ───────────────────────────────────────────────── */
+
+.vault-status {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 11px 12px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+
+.vault-status-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.vault-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--green, #3f6e52) 14%, transparent);
+  color: var(--green, #3f6e52);
+}
+
+.vault-status-copy { min-width: 0; }
+
+.vault-status-copy b {
+  display: block;
+  font-size: 13px;
+  color: var(--ink, #292620);
+}
+
+.vault-status-copy small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted, #68635b);
+}
+
+/* ── 恢复码 ───────────────────────────────────────────────── */
+
+.vault-code-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.vault-code-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted, #68635b);
+}
+
+.vault-code {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 9px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink, #292620) 4%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: .06em;
+  color: var(--ink, #292620);
+  overflow-wrap: anywhere;
+}
+
+.vault-code--big {
+  display: block;
+  margin: 8px 0;
+  padding: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-align: center;
+}
+
+.vault-code-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted, #68635b);
+}
+
+/* ── 开关 ─────────────────────────────────────────────────── */
+
+.vault-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink, #292620);
+}
+
+.vault-toggle input { margin-top: 2px; }
+
+.vault-toggle b { display: block; font-size: 12px; }
+
+.vault-toggle small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted, #68635b);
+}
+
+/* ── 按钮 ─────────────────────────────────────────────────── */
+
+.vault-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vault-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 9px;
+  background: var(--surface, #fff);
+  color: var(--ink, #292620);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vault-button:disabled { opacity: .55; cursor: not-allowed; }
+
+.vault-button--primary {
+  border-color: color-mix(in srgb, var(--green, #3f6e52) 55%, transparent);
+  background: color-mix(in srgb, var(--green, #3f6e52) 14%, var(--surface, #fff));
+}
+
+.vault-button--quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted, #68635b);
+  font-weight: 500;
+}
+
+.vault-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 7px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 7px;
+  background: var(--surface, #fff);
+  color: var(--muted, #68635b);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.vault-text-button {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted, #68635b);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── 分区（新建 / 恢复 / 预览）────────────────────────────── */
+
+.vault-created,
+.vault-restore,
+.vault-restoring,
+.vault-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px 12px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+
+.vault-created b,
+.vault-restore b,
+.vault-restoring b,
+.vault-preview b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink, #292620);
+}
+
+.vault-preview-summary {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink, #292620) 4%, transparent);
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted, #68635b);
+}
+
+.vault-input {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 9px;
+  background: var(--surface, #fff);
+  color: var(--ink, #292620);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  letter-spacing: .12em;
+}
+
+/* ── 提示条 ───────────────────────────────────────────────── */
+
+.vault-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.vault-note--warn {
+  border: 1px solid color-mix(in srgb, var(--red, #a7443a) 40%, transparent);
+  background: color-mix(in srgb, var(--red, #a7443a) 10%, var(--surface, #fff));
+  color: var(--ink, #292620);
+}
+
+.vault-note b { display: block; }
+.vault-note small { display: block; margin-top: 3px; font-size: 11px; color: var(--muted, #68635b); }
+
+.vault-error {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--red-2, #a7443a);
+}
+
+.vault-ok {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green, #3f6e52);
+}
+
+.vault-hint,
+.vault-location {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted, #68635b);
+  overflow-wrap: anywhere;
+}
+
+/* ── 凭证列表（2026-10-11 第六轮：从"一份自动同步"改成"多份手动管理"）──── */
+
+.vault-list { display: flex; flex-direction: column; gap: 10px; }
+
+.vault-list-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink, #292620);
+}
+
+.vault-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px 12px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+
+.vault-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vault-card-name {
+  font-size: 13px;
+  color: var(--ink, #292620);
+  overflow-wrap: anywhere;
+}
+
+.vault-card-when {
+  font-size: 11px;
+  color: var(--muted, #68635b);
+  white-space: nowrap;
+}
+
+.vault-name-input {
+  flex: 1 1 140px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 9px;
+  background: var(--surface, #fff);
+  color: var(--ink, #292620);
+  font-size: 12px;
+}
+
+/* ── 范围选择 / 新建 / 导入 三块 ───────────────────────────────────── */
+
+.vault-scope,
+.vault-create,
+.vault-import {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px 12px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+
+.vault-scope > b,
+.vault-create > b,
+.vault-import > b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink, #292620);
+}
+
+/* 单选项：与开关同一套排版（点整行都能选） */
+.vault-toggle input[type="radio"] { margin-top: 2px; }

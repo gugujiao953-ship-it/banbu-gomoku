@@ -71,24 +71,28 @@ try {
   await page.waitForTimeout(700);
   assert(await page.locator(".renju-board .stone").count() === 1, "删除保存后刷新，已删变化重新出现");
 
-  await page.getByRole("button", { name: "打开导出方式" }).click();
-  await page.getByRole("button", { name: "选择格式导出" }).click();
+  // 导出弹窗已改版：范围与格式同屏，格式按钮名为纯格式名（旧版有「选择格式导出」一层，
+  // 按钮名还带范围后缀如「SGF（整谱）」）。
+  const openExportSheet = async () => {
+    await page.getByRole("button", { name: "打开导出方式" }).click();
+    await page.locator(".export-format-grid").waitFor({ state: "visible" });
+  };
+  const formatButton = (label) => page.locator(".export-format-grid button").filter({ has: page.locator(`b:text-is("${label}")`) });
+
+  await openExportSheet();
   const exportStart = performance.now();
   const [sgfDownload] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: /SGF（整谱）/ }).click(),
+    formatButton("SGF").click(),
   ]);
   const sgfMs = Math.round(performance.now() - exportStart);
   assert((await sgfDownload.suggestedFilename()).endsWith(".sgf"), "SGF 导出文件名错误");
 
-  await page.getByRole("button", { name: "打开导出方式" }).click();
-  if (await page.getByRole("button", { name: /JSON（整谱）/ }).count() === 0) {
-    await page.getByRole("button", { name: "选择格式导出" }).click();
-  }
+  if (!(await page.locator(".export-format-grid").isVisible().catch(() => false))) await openExportSheet();
   const jsonStart = performance.now();
   const [jsonDownload] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: /JSON（整谱）/ }).click(),
+    formatButton("JSON").click(),
   ]);
   const jsonMs = Math.round(performance.now() - jsonStart);
   assert((await jsonDownload.suggestedFilename()).endsWith(".json"), "JSON 导出文件名错误");

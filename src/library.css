@@ -21,7 +21,7 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .orientation-bar button { min-height: 34px; padding: 0 9px; border: 1px solid #e4dfd5; border-radius: 10px; background: #fff; color: var(--green); display: inline-flex; align-items: center; gap: 5px; font-size: 11px; }
 .quick-actions button.active { color: var(--green); background: var(--jade); border-radius: 10px; }
 .branch-create-button { width: 100%; min-height: 48px; margin-top: 12px; border: 1px solid #c9dbd0; border-radius: 14px; background: var(--jade); color: var(--green-2); display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 12px; font-weight: 700; }
-.find-input { height: 46px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid #e2ddd4; border-radius: 14px; background: #fff; color: #8b857c; }
+.find-input { height: 46px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--surface-border, var(--line)); border-radius: 14px; background: var(--surface, var(--paper)); color: var(--muted); }
 .find-input:focus-within { border-color: #91aa9b; box-shadow: 0 0 0 3px #dfece4; }
 .find-input input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 12px; }
 .find-input button { width: 28px; height: 28px; border: 0; background: transparent; color: #aaa399; display: grid; place-items: center; }
@@ -34,7 +34,7 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .manual-candidate-sheet h3 { margin: 0 0 8px; font: 700 14px serif; }
 .candidate-grid-title { grid-column: 1 / -1; color: #837b70; font-size: 12px; }
 
-.import-progress { position: fixed; z-index: 85; left: 50%; bottom: calc(82px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(calc(100% - 28px), 500px); padding: 13px 14px 12px; border: 1px solid #ffffff1f; border-radius: 18px; background: #20251ff2; color: #fff; box-shadow: 0 18px 48px #0006, inset 0 1px #ffffff12; backdrop-filter: blur(14px); }
+.import-progress { position: fixed; z-index: 85; left: 50%; bottom: calc(82px + var(--safe-area-bottom, env(safe-area-inset-bottom))); transform: translateX(-50%); width: min(calc(100% - 28px), 500px); padding: 13px 14px 12px; border: 1px solid #ffffff1f; border-radius: 18px; background: #20251ff2; color: #fff; box-shadow: 0 18px 48px #0006, inset 0 1px #ffffff12; backdrop-filter: blur(14px); }
 .import-progress__head { display: flex; align-items: flex-start; gap: 11px; }
 .import-progress__status-mark { position: relative; width: 24px; height: 24px; margin-top: 2px; flex: 0 0 24px; border: 2px solid #ffffff42; border-top-color: #b8dfc5; border-radius: 50%; animation: import-spin .85s linear infinite; }
 .import-progress--complete .import-progress__status-mark, .import-progress--error .import-progress__status-mark { display: grid; place-items: center; border: 0; animation: none; color: #102117; background: #a9d8b8; font-size: 15px; font-weight:700; }
@@ -83,7 +83,7 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .mark-preset-grid button:active { background: var(--jade); border-color: var(--green); }
 .custom-mark-row { display: grid; grid-template-columns: 1fr 76px; gap: 8px; margin-top: 9px; }
 .custom-mark-row input { height: 46px; min-width: 0; border: 1px solid #ddd7cc; border-radius: 13px; background: #fff; padding: 0 12px; }
-.custom-mark-row button { border: 0; border-radius: 13px; background: var(--green); color: #fff; font-weight: 700; }
+.custom-mark-row button { border: 0; border-radius: 13px; background: var(--green); color: var(--on-accent); font-weight: 700; }
 .custom-mark-row button:disabled { opacity: .4; }
 .mark-shape-tip { margin-top: 16px; padding: 12px; border-radius: 14px; background: #f2eee5; display: flex; flex-direction: column; gap: 4px; }
 .mark-shape-tip b { font-size: 11px; }
@@ -100,7 +100,7 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .mark-preset-grid button:active, .mark-preset-grid button:focus-visible { background: var(--jade); border-color: #91ad9b; color: var(--green); }
 .custom-mark-row { display: flex; gap: 4px; margin-top: 4px; }
 .custom-mark-row input { width: 100%; height: 29px; min-width: 0; padding: 0 5px; border: 1px solid #ddd7cd; border-radius: 8px; background: #fbfaf7; color: var(--ink); font-size: 11px; }
-.custom-mark-row button { width: 32px; flex: 0 0 32px; height: 29px; padding: 0; border: 0; border-radius: 8px; background: var(--green); color: #fff; font-size: 11px; font-weight:700; }
+.custom-mark-row button { width: 32px; flex: 0 0 32px; height: 29px; padding: 0; border: 0; border-radius: 8px; background: var(--green); color: var(--on-accent); font-size: 11px; font-weight:700; }
 .custom-mark-row button:disabled { opacity: .4; }
 .mark-shape-tip { flex-direction: row; gap: 6px; margin-top: 0; padding: 6px 8px; border-radius: 9px; font-size: 11px; line-height: 1.25; }
 .mark-shape-tip b { flex: 0 0 auto; color: var(--green); font-size: 11px; }
@@ -132,7 +132,7 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .mark-preset-grid.numbers { grid-template-columns: repeat(5, minmax(0, 1fr)); }.mark-preset-grid.words { grid-template-columns: repeat(4, minmax(0, 1fr)); }.mark-preset-grid.letters { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .mark-preset-grid button { min-width: 0; min-height: 29px; padding: 2px; border: 1px solid #e2dcd2; border-radius: 8px; background: #fbfaf7; color: var(--ink); font-size: 11px; font-weight:700; }
 .mark-preset-grid button:active, .mark-preset-grid button:focus-visible { background: var(--jade); border-color: #91ad9b; color: var(--green); }
-.custom-mark-row { display: flex; gap: 5px; margin: 0; }.custom-mark-row input { width: 100%; height: 32px; min-width: 0; padding: 0 8px; border: 1px solid #ddd7cd; border-radius: 8px; background: #fbfaf7; color: var(--ink); font-size: 12px; }.custom-mark-row button { width: 48px; flex: 0 0 48px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: var(--green); color: #fff; font-size: 12px; font-weight:700; }.custom-mark-row button:disabled { opacity: .4; }
+.custom-mark-row { display: flex; gap: 5px; margin: 0; }.custom-mark-row input { width: 100%; height: 32px; min-width: 0; padding: 0 8px; border: 1px solid #ddd7cd; border-radius: 8px; background: #fbfaf7; color: var(--ink); font-size: 12px; }.custom-mark-row button { width: 48px; flex: 0 0 48px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: var(--green); color: var(--on-accent); font-size: 12px; font-weight:700; }.custom-mark-row button:disabled { opacity: .4; }
 .mark-shape-tip { display: flex; flex-direction: row; align-items: center; gap: 6px; margin: 0; padding: 6px 8px; border-radius: 9px; background: #f1eee7; color: #81796e; font-size: 11px; line-height: 1.25; }.mark-shape-tip b { flex: 0 0 auto; color: var(--green); font-size: 11px; }.mark-shape-tip span { min-width: 0; font-size: 11px; }
 .mark-sheet > .danger-button { margin: 0; min-height: 36px; border-radius: 10px; font-size: 12px; }
 @media(max-width:360px){.annotation-options > .section-note{margin-bottom:5px}.annotation-options > h3{margin:5px 0 3px}.annotation-style-grid{gap:3px}.annotation-style-grid button{min-height:32px}.annotation-style-grid button .annotation-preview{height:17px;flex-basis:17px;font-size:16px}.annotation-style-grid button .annotation-preview.circle{font-size:19px}.annotation-style-grid button .annotation-preview.triangle{font-size:17px}.annotation-style-grid button .annotation-preview.cross{font-size:16px}.annotation-style-grid button small{font-size:11px}.annotation-color-grid{gap:3px}.annotation-color-grid button{height:27px}.annotation-color-grid button .annotation-color-swatch{width:14px;height:14px}.annotation-color-grid button .annotation-color-swatch svg{width:9px;height:9px}.annotation-color-grid button small{font-size:12px}.mark-sheet{gap:4px}.mark-sheet > section,.mark-custom-section{padding:5px 6px}.mark-sheet > section h3,.mark-custom-section h3{margin-bottom:3px;font-size:11px}.mark-preset-grid{gap:3px}.mark-preset-grid button{min-height:26px;font-size:12px}.custom-mark-row input,.custom-mark-row button{height:30px}.mark-shape-tip{padding:5px 6px}.mark-sheet > .danger-button{min-height:32px}}
@@ -207,7 +207,7 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .vcf-heading b { display: block; margin-top: 3px; color: var(--green-2); font: 700 15px serif; }
 .vcf-heading em { padding: 5px 7px; border-radius: 999px; background: #fff; color: #75867b; font-size: 11px; font-style: normal; white-space: nowrap; }
 .vcf-panel > p { margin: 10px 0; color: var(--muted, #6f7972); font-size: 11px; line-height: 1.55; }
-.vcf-search-button { width: 100%; min-height: 46px; margin-top: 10px; border: 0; border-radius: 13px; background: var(--green); color: #fff; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 11px; font-weight:700; }
+.vcf-search-button { width: 100%; min-height: 46px; margin-top: 10px; border: 0; border-radius: 13px; background: var(--green); color: var(--on-accent); display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 11px; font-weight:700; }
 .vcf-search-button:disabled { opacity: .65; }
 .vcf-running { min-height: 62px; display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--green); font-size: 11px; }
 .vcf-running i { width: 18px; height: 18px; border: 2px solid #b8cbbf; border-top-color: var(--green); border-radius: 50%; animation: vcf-spin .7s linear infinite; }
@@ -293,7 +293,7 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .puzzle-library-head button { min-height: 34px; border: 0; border-radius: 10px; padding: 0 10px; background: var(--jade); color: var(--green); font-size: 11px; font-weight:700; }
 .puzzle-collection-list { display: flex; flex-direction: column; gap: 8px; }
 .puzzle-collection-list > button { min-height: 66px; padding: 10px 11px; border: 1px solid #e4dfd5; border-radius: 15px; background: #fff; display: flex; align-items: center; gap: 10px; text-align: left; }
-.puzzle-folder-icon { width: 42px; height: 42px; flex-shrink: 0; border-radius: 12px; background: #f0e3c9; color: #84622b; display: grid; place-items: center; font-size: 18px; }
+.puzzle-folder-icon { width: 42px; height: 42px; flex-shrink: 0; border-radius: 12px; background: var(--jade); color: var(--green-2, var(--green)); display: grid; place-items: center; font-size: 18px; }
 .puzzle-collection-list > button > div { min-width: 0; flex: 1; }
 .puzzle-collection-list b, .puzzle-collection-list small { display: block; }
 .puzzle-collection-list b { font-size: 11px; }
@@ -306,11 +306,11 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .workspace-bar { min-height: 56px; margin: 0 4px 8px; display: grid; grid-template-columns: minmax(0, 1fr) 104px; gap: 8px; align-items: flex-start; }
 .workspace-current, .workspace-mode-toggle { border: 1px solid #e3ded4; border-radius: 14px; background: #fff; }
 .workspace-current { min-width: 0; min-height: 56px; padding: 6px 8px; display: flex; align-items: center; gap: 9px; text-align: left; }
-.workspace-current > span { width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px; background: var(--jade); color: var(--green); display: grid; place-items: center; font: 700 13px serif; }
+.workspace-current > span { width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px; background: var(--jade); color: var(--green-2, var(--green)); display: grid; place-items: center; font: 700 13px serif; }
 .workspace-current > div { min-width: 0; flex: 1; }
 .workspace-current b, .workspace-current small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-current b { font-size: 12px; }
-.workspace-current small { margin-top: 3px; color: #8d867c; font-size: 11px; }
+.workspace-current small { margin-top: 3px; color: var(--muted); font-size: 11px; }
 .workspace-current > svg { flex-shrink: 0; color: #aaa397; }
 .workspace-current > svg { transition: transform .18s ease; }
 .workspace-current.open > svg { transform: rotate(180deg); }
@@ -346,7 +346,7 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .inline-puzzle-list > button { width: 100%; min-height: 52px; padding: 6px 8px; border: 1px solid var(--surface-border, #e2ddd4); border-radius: 11px; background: var(--surface, var(--paper)); display: flex; align-items: center; gap: 8px; text-align: left; }
 .inline-puzzle-list > button.current { border-color: var(--green, #789985); background: var(--jade, #edf5f0); }
 .inline-puzzle-list > button > span { width: 30px; height: 30px; flex-shrink: 0; border-radius: 9px; background: var(--jade, #eeeae2); color: var(--green-2, var(--muted)); display: grid; place-items: center; font-size: 11px; font-weight:700; }
-.inline-puzzle-list > button > span.solved { background: var(--green); color: #fff; }
+.inline-puzzle-list > button > span.solved { background: var(--green); color: var(--on-accent); }
 .inline-puzzle-list > button > div { min-width: 0; flex: 1; }
 .inline-puzzle-list b, .inline-puzzle-list small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .inline-puzzle-list b { font-size: 11px; }
@@ -390,7 +390,7 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .dock-panel > button { min-width: 0; min-height: 54px; padding: 5px 3px; border: 0; border-radius: 11px; background: #f5f3ee; color: #6e685f; display: flex; flex: none; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight:700; }
 .dock-panel > button svg { width: 17px; height: 17px; }
 .dock-panel > button:disabled { opacity: .32; }
-.dock-panel > button.accent, .dock-panel > button.selected { background: var(--green); color: #fff; }
+.dock-panel > button.accent, .dock-panel > button.selected { background: var(--green); color: var(--on-accent); }
 .dock-panel > button.danger { background: #b94b3f; color: #fff; }
 .dock-panel.dock-panel-moves { display: flex; flex-wrap: nowrap; overflow: hidden; }
 .dock-panel.dock-panel-moves > button { flex: 1 1 0; min-width: 0; }
@@ -428,14 +428,21 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .puzzle-grid-list > button { min-height: 54px; padding: 6px 8px; border: 1px solid #e2ddd4; border-radius: 12px; background: #fff; display: flex; align-items: center; gap: 8px; text-align: left; }
 .puzzle-grid-list > button.current { border-color: #789985; background: #f0f6f2; }
 .puzzle-grid-list > button > span { width: 29px; height: 29px; flex-shrink: 0; border-radius: 9px; background: #f0ece4; color: #746d64; display: grid; place-items: center; font-size: 11px; font-weight:700; }
-.puzzle-grid-list > button > span.solved { background: var(--green); color: #fff; }
+.puzzle-grid-list > button > span.solved { background: var(--green); color: var(--on-accent); }
 .puzzle-grid-list b, .puzzle-grid-list small { display: block; }
 .puzzle-grid-list b { font-size: 11px; }
 .puzzle-grid-list small { margin-top: 3px; color: var(--muted); font-size: 11px; }
 .picker-library-link { width: 100%; min-height: 44px; margin-top: 10px; border: 0; border-radius: 12px; background: #efede7; color: var(--green); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; font-weight:700; }
 
-.library-segment { height: 48px; margin: 18px 0 12px; padding: 4px; border-radius: 14px; border: 1px solid var(--surface-border, var(--line)); background: var(--surface-2); display: grid; grid-template-columns: 1fr 1fr; }
-.library-segment button { min-height: 40px; border: 0; border-radius: 11px; background: transparent; color: var(--muted, #817a70); font-size: 11px; font-weight:700; }
+/* 三个界面（棋谱 / 题库 / 在线，2026-09-15 加在线）——写死 1fr 1fr 会把第三个挤到
+   第二行并被 48px 固定高度裁掉。 */
+/* 列数不能写死：分区按钮的数量会变（在线/题库都可能被开关收起，将来还会加），
+   写死 repeat(3,1fr) 时只剩两个按钮就会空出第三列——题库被推到中间、右边一片空（用户 09-18 报）。
+   这里按实际按钮数自动分列，将来加按钮也不用改 CSS。 */
+.library-segment { height: 48px; margin: 18px 0 12px; padding: 4px; border-radius: 14px; border: 1px solid var(--surface-border, var(--line)); background: var(--surface-2); display: grid; grid-auto-flow: column; align-items: stretch;
+  /* 每个按钮至少有 84px：按钮变多时不会把字挤没，改为整行横向滚动（少按钮时按 1fr 等分，与现在一致）。 */
+  grid-auto-columns: minmax(84px, 1fr); overflow-x: auto; scrollbar-width: none; }
+.library-segment button { min-height: 40px; white-space: nowrap; border: 0; border-radius: 11px; background: transparent; color: var(--muted, #817a70); font-size: 11px; font-weight:700; display: inline-flex; align-items: center; justify-content: center; gap: 3px; }
 .library-segment button.active { background: var(--jade); color: var(--green); box-shadow: 0 3px 10px #544d4018; }
 .library-segment small { margin-left: 4px; color: inherit; font-size: 11px; opacity: .7; }
 .library-actions.three { grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 12px 0 16px; }
@@ -474,6 +481,11 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .bookmark-jump-row:hover { box-shadow: 0 1px 6px #365e4b14; }
 .bookmark-jump-row:active { background: var(--jade); }
 .bookmark-jump-main { min-width: 0; flex: 1; border: 0; background: transparent; display: flex; align-items: center; gap: 9px; text-align: left; padding: 4px 0; }
+.bookmark-orphan-bar { display: flex; align-items: center; gap: 9px; padding: 9px 10px; margin-bottom: 8px; border: 1px solid var(--surface-border,#e5dfd6); border-radius: 12px; background: color-mix(in srgb, var(--gold,#c79c4a) 10%, var(--surface,#fff)); }
+.bookmark-orphan-bar > span { min-width: 0; flex: 1; }
+.bookmark-orphan-bar b, .bookmark-orphan-bar small { display: block; }
+.bookmark-orphan-bar b { color: var(--ink); font-size: 12px; }
+.bookmark-orphan-bar small { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.4; }
 .bookmark-dot { width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 20%, transparent); }
 .bookmark-jump-copy { min-width: 0; flex: 1; }
 .bookmark-jump-copy b, .bookmark-jump-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -498,7 +510,7 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .library-item-actions > button.fav-on:active, .puzzle-manager-list button.fav-on:active { color: var(--gold,#c79c4a); }
 .library-inline-action.fav-on { color: var(--gold,#c79c4a); background: #fbf4e3; border-color: #ecd9a8; }
 /* 最近棋谱展开/收起按钮。 */
-.research-recent-count { margin-left: 4px; padding: 1px 6px; border-radius: 9px; background: color-mix(in srgb, var(--green) 14%, transparent); color: var(--green); font-size: 10px; font-weight: 700; }
+.research-recent-count { margin-left: 4px; padding: 1px 6px; border-radius: 9px; background: color-mix(in srgb, var(--green) 14%, transparent); color: var(--green-2, var(--green)); font-size: 10px; font-weight: 700; }
 .research-recent-toggle { min-height: 30px; padding: 4px 9px; border: 1px solid var(--surface-border, var(--line)); border-radius: 9px; display: inline-flex; align-items: center; gap: 4px; background: var(--surface, var(--paper)); color: var(--ink, var(--green)); font-size: 11px; font-weight: 700; }
 .research-recent-toggle svg { width: 14px; }
 .library-folder-row { display: flex; align-items: center; background: var(--surface); }
@@ -529,15 +541,56 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .puzzle-collection-tools { display: flex; align-items: center; gap: 6px; padding: 0 9px 8px 60px; }
 .puzzle-collection-tools select { min-width: 0; height: 29px; flex: 1; padding: 0 22px 0 7px; border: 1px solid var(--surface-border, #ded8ce); border-radius: 8px; background: var(--surface-3, #f8f6f1); color: var(--muted); font-size: 11px; }
 .puzzle-collection-tools button { min-height: 29px; padding: 0 8px; border: 1px solid var(--surface-border, #bfd0c4); border-radius: 8px; background: var(--surface-3, #f0f6f2); color: var(--green-2, var(--green)); font-size: 11px; font-weight:700; white-space: nowrap; }
-.puzzle-manager-list { max-height: 280px; overflow-y: auto; border-top: 1px solid var(--surface-border, #ece7df); background: var(--surface-3, #faf8f4); }
-.puzzle-manager-list > div { min-height: 47px; padding: 5px 7px 5px 10px; border-top: 1px solid var(--surface-border, #efebe4); display: flex; align-items: center; gap: 5px; }
-.puzzle-manager-list > div:first-child { border-top: 0; }
-.puzzle-manager-list > div > button:first-of-type { min-width: 0; min-height: 36px; flex: 1; padding: 0; border: 0; background: transparent; display: flex; align-items: center; gap: 8px; text-align: left; }
-.puzzle-manager-list > div > button:first-of-type span { width: 27px; height: 27px; flex: 0 0 27px; border-radius: 8px; background: var(--jade, #ece8df); color: var(--green-2, var(--muted)); display: grid; place-items: center; font-size: 11px; font-weight:700; }
-.puzzle-manager-list > div > button:first-of-type b { overflow: hidden; color: var(--ink); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.puzzle-manager-list > div > button:last-child { width: 34px; height: 34px; flex: 0 0 34px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); display: grid; place-items: center; }
+.puzzle-manager-list { max-height: 320px; overflow-y: auto; border-top: 1px solid var(--surface-border, #ece7df); background: var(--surface-3, #faf8f4); }
+/* 管理区表头（用户 2026-09-21）：题量、正确率、平均用时 + 加题/撤销。 */
+.puzzle-manager-head { position: sticky; top: 0; z-index: 1; min-height: 40px; padding: 6px 8px; border-bottom: 1px solid var(--surface-border, #efebe4); background: var(--surface-3, #faf8f4); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.puzzle-manager-summary { min-width: 0; color: var(--muted); font-size: 11px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.puzzle-manager-summary b { color: var(--ink); font-size: 11px; }
+.puzzle-manager-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; }
+.puzzle-manager-actions button { min-height: 27px; padding: 0 8px; border: 1px solid var(--surface-border, #bfd0c4); border-radius: 8px; background: var(--surface-3, #f0f6f2); color: var(--green-2, var(--green)); display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; }
+.puzzle-manager-row { min-height: 47px; padding: 5px 7px 5px 10px; border-top: 1px solid var(--surface-border, #efebe4); display: flex; align-items: center; gap: 5px; }
+.puzzle-manager-row:first-child { border-top: 0; }
+.puzzle-manager-row > button:first-of-type { min-width: 0; min-height: 36px; flex: 1; padding: 0; border: 0; background: transparent; display: flex; align-items: center; gap: 8px; text-align: left; }
+.puzzle-manager-row > button:first-of-type span { width: 27px; height: 27px; flex: 0 0 27px; border-radius: 8px; background: var(--jade, #ece8df); color: var(--green-2, var(--muted)); display: grid; place-items: center; font-size: 11px; font-weight:700; }
+.puzzle-manager-row > button:first-of-type b { overflow: hidden; color: var(--ink); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+/* 每题的掌握状态徽标：solved 绿、mastered 金、wrong 红、queued 蓝。 */
+.puzzle-mastery { flex: 0 0 auto; padding: 1px 6px; border-radius: 7px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.puzzle-mastery.solved { background: color-mix(in srgb, var(--green) 14%, var(--surface, #fff)); color: var(--green-2, var(--green)); }
+.puzzle-mastery.mastered { background: color-mix(in srgb, var(--gold, #c79c4a) 18%, var(--surface, #fff)); color: var(--gold, #956e3b); }
+.puzzle-mastery.wrong { background: color-mix(in srgb, #c0503f 12%, var(--surface, #fff)); color: #a0443a; }
+.puzzle-mastery.queued { background: color-mix(in srgb, #3d6ea8 12%, var(--surface, #fff)); color: #3d6ea8; }
+.puzzle-manager-row > button:not(:first-of-type) { width: 32px; height: 32px; flex: 0 0 32px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); display: grid; place-items: center; }
+.puzzle-manager-row > button.delete-puzzle { color: #a0443a; }
+.puzzle-manager-row > button.delete-puzzle:hover { background: color-mix(in srgb, #c0503f 12%, transparent); }
+.puzzle-move-select { width: 64px; height: 30px; flex: 0 0 64px; padding: 0 4px; border: 1px solid var(--surface-border, #ded8ce); border-radius: 8px; background: var(--surface-3, #f8f6f1); color: var(--muted); font-size: 10px; }
+/* 题目行在 392px 上要塞下徽标 + 三个操作，收紧留白并把标题的省略留给 flex。 */
+.puzzle-manager-row { gap: 3px; padding: 5px 5px 5px 9px; }
+.puzzle-manager-row > button:first-of-type { gap: 6px; }
+.puzzle-manager-row > button:not(:first-of-type) { width: 30px; height: 30px; flex: 0 0 30px; }
+.puzzle-mastery { padding: 1px 5px; font-size: 9px; }
+.puzzle-manager-empty { margin: 0; padding: 16px; color: #9a9389; font-size: 11px; text-align: center; }
+/* 编辑/拆分/合并浮层里的按钮行与范围输入。 */
+.puzzle-edit-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.puzzle-edit-actions > button { display: inline-flex; align-items: center; gap: 5px; }
+.puzzle-split-range { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+.puzzle-split-range label { display: inline-flex; align-items: center; gap: 6px; }
+.puzzle-split-range input { width: 74px; height: 34px; padding: 0 8px; border: 1px solid var(--surface-border, #ded8ce); border-radius: 9px; background: var(--surface-3, #f8f6f1); color: var(--ink); font-size: 12px; }
+.puzzle-merge-list { margin: 0; padding: 0; list-style: none; max-height: 170px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.puzzle-merge-list li { padding: 7px 9px; border: 1px solid var(--surface-border, #e5dfd6); border-radius: 10px; background: var(--surface, #fff); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.puzzle-merge-list b { overflow: hidden; color: var(--ink); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.puzzle-merge-list small { flex: 0 0 auto; color: var(--muted); font-size: 11px; }
+.checkbox-row { display: flex; align-items: flex-start; gap: 8px; color: var(--ink); font-size: 12px; }
+.checkbox-row input { margin-top: 3px; }
+.checkbox-row small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; font-weight: 400; }
+/* 错题本：每行右侧的重做/已掌握，以及底部「全部放回」。 */
+.wrongbook-row { display: flex; align-items: center; gap: 6px; }
+.wrongbook-open { min-width: 0; flex: 1; }
+.wrongbook-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 5px; }
+.wrongbook-actions button { min-height: 30px; padding: 0 8px; border: 1px solid var(--surface-border, #bfd0c4); border-radius: 8px; background: var(--surface-3, #f0f6f2); color: var(--green-2, var(--green)); display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.wrongbook-footer { min-height: 40px; padding: 8px 2px 0; border-top: 1px solid var(--surface-border, #ece7df); display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 11px; }
+.wrongbook-footer button { min-height: 30px; padding: 0 9px; border: 1px solid var(--surface-border, #bfd0c4); border-radius: 8px; background: var(--surface-3, #f0f6f2); color: var(--green-2, var(--green)); display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; }
 .rename-summary { min-height: 62px; padding: 10px 11px; border: 1px solid #dce5df; border-radius: 14px; background: linear-gradient(145deg,#eef5f0,#fff); display: flex; align-items: center; gap: 10px; }
-.rename-summary > span { width: 38px; height: 38px; flex: 0 0 38px; border-radius: 11px; background: var(--green); color: #fff; display: grid; place-items: center; }
+.rename-summary > span { width: 38px; height: 38px; flex: 0 0 38px; border-radius: 11px; background: var(--green); color: var(--on-accent); display: grid; place-items: center; }
 .rename-summary b, .rename-summary small { display: block; }
 .rename-summary b { color: var(--green-2); font-size: 11px; }
 .rename-summary small { margin-top: 4px; color: #817a70; font-size: 11px; word-break: break-all; }
@@ -558,6 +611,18 @@ html[data-theme="dark"] .library-search { background: #26312d; border-color: #3b
 .recycle-bin-actions button { width: 31px; height: 31px; border: 0; border-radius: 9px; background: transparent; color: var(--green); display: grid; place-items: center; }
 .recycle-bin-actions button:active { background: #edf4ef; }
 .recycle-bin-actions .delete-record { color: #a0443a; }
+
+/* 版本历史（audit 2026-09-17）：与回收站同一套卡片语言，只用语义色，7 主题通用。 */
+.version-history-sheet { display: flex; flex-direction: column; gap: 10px; }
+.version-history-card { min-height: 67px; padding: 8px; border: 1px solid var(--surface-border,#e5dfd6); border-radius: 13px; background: var(--surface,#fff); display: flex; align-items: center; gap: 8px; }
+.version-history-copy { min-width: 0; flex: 1; }
+.version-history-copy b, .version-history-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.version-history-copy b { color: var(--ink); font-size: 12px; }
+.version-history-copy small { margin-top: 3px; color: var(--muted); font-size: 11px; }
+.version-history-actions { display: flex; flex-direction: column; gap: 2px; }
+.version-history-actions button { width: 31px; height: 31px; border: 0; border-radius: 9px; background: transparent; color: var(--green); display: grid; place-items: center; }
+.version-history-actions button:active { background: var(--jade); }
+.version-history-actions button[aria-label^="取消钉住"] { color: var(--gold,#956e3b); }
 
 @media(max-width:360px){.puzzle-collection-tools{padding-left:9px}.library-item-actions>button{width:31px;height:31px}.puzzle-manager-list{max-height:240px}}
 
@@ -595,7 +660,7 @@ html[data-theme="dark"] .storage-path { background: #26312d; }
 .creator-message p { margin: 5px 0 0; font-size: 11px; line-height: 1.7; }
 .about-card { padding: 12px; border: 1px solid #e2ddd4; border-radius: 15px; background: #fff; }
 .about-card h3 { margin: 0 0 8px; color: var(--green-2); display: flex; align-items: center; gap: 6px; font-size: 11px; }
-.about-card p { margin: 0; color: #706a61; font-size: 11px; line-height: 1.7; }
+.about-card p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
 .about-card ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; }
 .about-card li { padding-left: 10px; border-left: 2px solid #d7e4dc; }
 .about-card li b, .about-card li span { display: block; }
@@ -608,7 +673,44 @@ html[data-theme="dark"] .storage-path { background: #26312d; }
 .github-link > span { min-width: 0; flex: 1; }
 .github-link b, .github-link small { display: block; }
 .github-link b { font-size: 11px; }
-.github-link small { margin-top: 3px; overflow: hidden; color: #6f8176; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.github-link small { margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 11px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; white-space:normal; word-break:break-all; }
+
+/* ── 关于：入口行 + 两个子视图（引擎介绍 / 本版本更新内容）────────────
+   用户 2026-10-01：「引擎的介绍有点粗糙，字体也有点大，可以在那里单独列一个按钮」。
+   所以引擎那段从「第三方引擎与模型许可」的长段落里拆出来，做成一行一制的列表；
+   字号统一压到 标题 12px / 正文 11px / 说明 10.5px（比原来的卡片小一档）。
+   **颜色一律走主题变量**：这块有 20 套主题（含 6 套深色），写死 #fff 会在深色主题上糊成一片，
+   而 `qa/theme-adaptation.mjs` 就是查这个的。 */
+.about-row { width: 100%; min-height: 54px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); color: var(--green-2); display: flex; align-items: center; gap: 9px; text-align: left; }
+.about-row > svg { flex: 0 0 auto; color: var(--green-2); }
+.about-row > span { min-width: 0; flex: 1; }
+.about-row b, .about-row small { display: block; }
+.about-row b { color: var(--ink); font-size: 12px; }
+.about-row small { margin-top: 3px; color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+.about-row > svg:last-child { color: var(--muted); }
+.about-detail { display: flex; flex-direction: column; gap: 9px; }
+.about-detail-back { align-self: flex-start; min-height: 38px; padding: 0 6px 0 2px; border: 0; border-radius: 10px; background: transparent; color: var(--green-2); display: inline-flex; align-items: center; gap: 2px; font-size: 11.5px; font-weight: 700; }
+.about-detail-head { display: flex; flex-direction: column; gap: 3px; padding: 0 2px; }
+.about-detail-head b { color: var(--ink); font: 700 15px/1.3 serif; letter-spacing: .02em; }
+.about-detail-head small { color: var(--muted); font-size: 10.5px; line-height: 1.5; }
+.about-detail-summary { margin: 0; padding: 9px 10px; border-radius: 12px; background: color-mix(in srgb, var(--gold) 16%, var(--paper)); color: var(--ink); font-size: 11px; line-height: 1.6; }
+.about-detail-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.about-detail-list > li { padding: 9px 10px; border: 1px solid var(--line); border-left: 2px solid color-mix(in srgb, var(--green) 45%, var(--paper)); border-radius: 12px; background: var(--paper); }
+.about-detail-list b, .about-detail-list span { display: block; }
+.about-detail-list b { color: var(--ink); font-size: 12px; }
+.about-detail-list span { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.about-detail-empty { margin: 0; padding: 10px; border-radius: 12px; background: color-mix(in srgb, var(--ink) 6%, var(--paper)); color: var(--muted); display: flex; align-items: flex-start; gap: 7px; font-size: 11px; line-height: 1.6; }
+.about-detail-empty svg { flex: 0 0 auto; margin-top: 2px; }
+.about-detail-foot { margin: 0; padding: 0 2px; color: var(--muted); font-size: 10.5px; line-height: 1.55; }
+/* 引擎介绍：一行一制（名称 + 右侧一句定位）+ 下面整行说明。 */
+.engine-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.engine-list > li { padding: 9px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; align-items: baseline; }
+.engine-list b { color: var(--ink); font-size: 12px; }
+.engine-list .engine-tag { grid-column: 2; color: var(--green-2); font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+.engine-list span { grid-column: 1 / -1; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.engine-list code { padding: 0 3px; border-radius: 4px; background: color-mix(in srgb, var(--ink) 8%, var(--paper)); color: var(--ink); font-size: 10.5px; }
+.engine-note { margin: 0; padding: 9px 10px; border-radius: 12px; background: var(--jade); color: var(--ink); font-size: 10.5px; line-height: 1.6; }
+.engine-note b { color: var(--green-2); }
 .update-check-card { padding: 12px; border: 1px solid #d8e3dc; border-radius: 15px; background: #fbfdfb; }
 .update-check-heading { display: flex; align-items: center; gap: 8px; color: var(--green-2); }
 .update-check-heading > span, .update-check-heading b, .update-check-heading small, .update-check-result > span, .update-check-result b, .update-check-result small { display: block; }
@@ -664,7 +766,7 @@ html[data-theme="dark"] .storage-path { background: #26312d; }
 .settings-collapsible[open] > .settings-section-toggle { box-shadow: inset 3px 0 0 var(--green); }
 .settings-section-title { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .settings-section-title b { color: var(--ink); font-size: 13px; }
-.settings-section-title small { overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.settings-section-title small { overflow: hidden; color: var(--muted); font-size: 11px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; white-space:normal; }
 .settings-section-toggle > svg { width: 18px; justify-self: end; color: #8d857a; transition: transform .2s ease, color .2s ease; }
 .settings-collapsible[open] > .settings-section-toggle { background: var(--surface-2); }
 .settings-collapsible[open] > .settings-section-toggle > svg { color: var(--green); transform: rotate(180deg); }
@@ -697,9 +799,7 @@ html[data-theme="dark"] .storage-path { background: #26312d; }
 .theme-preference > button { width: 100%; min-height: 60px; padding: 8px; border: 1px solid #e2ddd4; border-radius: 14px; background: #fff; color: var(--ink); display: flex; align-items: center; gap: 8px; text-align: left; }
 .theme-preference > button.selected { border-color: #729681; background: var(--jade); color: var(--green); box-shadow: 0 0 0 2px #72968122; }
 .theme-preference > button > span:nth-child(2) { min-width: 0; flex: 1; }
-.theme-preference b, .theme-preference small { display: block; }
-.theme-preference b { font-size: 11px; }
-.theme-preference small { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+.theme-preference b { display: block; font-size: 11px; }
 .theme-preference .theme-check { width: 17px; flex: 0 0 auto; color: var(--green); opacity: 0; }
 .theme-preference > button.selected .theme-check { opacity: 1; }
 .theme-swatch { width: 32px; height: 32px; flex: 0 0 32px; border: 1px solid #d9d3c8; border-radius: 10px; background: linear-gradient(135deg,#fff 0 50%,#e8e4dc 50%); box-shadow: inset 0 1px #fff8; }
@@ -741,14 +841,43 @@ html[data-theme="dark"] .save-info-disclosure[open] > summary { background: #263
 .theme-swatch.mono { background: linear-gradient(135deg,#fff 0 50%,#555 50%); }
 .theme-swatch.custom { background: conic-gradient(#e9c46a 0 25%,#f4f1de 0 50%,#6a9b7d 0 75%,#8b6f57 0); }
 .theme-swatch.rain { background: linear-gradient(125deg,#1a292c,#5b8588); background-image: repeating-linear-gradient(105deg,transparent 0 7px,#d0eef055 8px,#d0eef055 9px,transparent 10px 17px); }
-.theme-swatch.bamboo { background: #dfe5d9 url("/theme-assets/bamboo-ink.svg") center/cover; }
+.theme-swatch.bamboo { background: #e7eadf url("/theme-assets/scene-bamboo-grove.svg") center bottom/cover; }
 .theme-swatch.snow { background: #dfe9ef url("/theme-assets/snowflakes.svg") center/cover; }
 .custom-background-controls { display: grid; gap: 8px; padding: 0 10px 11px; }
-.custom-background-controls label { min-height: 42px; padding: 7px 9px; border: 1px solid #e2ddd4; border-radius: 12px; background: #fbfaf7; display: flex; align-items: center; justify-content: space-between; color: var(--ink); font-size: 12px; }
+/* ⚠ 这三条底色/边框**必须走令牌**（2026-10-12）：从前写死浅色（`#fbfaf7` / `#e2ddd4`）
+   只在"自定义背景恒为浅色界面"时成立。现在「自定义背景」可以配任意界面主题，
+   而文字用的是 `var(--ink)` —— 配了 cyber / soul 这类深色界面时，近白的字压在
+   `#fbfaf7` 上就是白底白字（本文件原有 dark/eye/mono 三条补丁只兜住 dark 一套，
+   漏掉另外 10 套深色主题）。改用令牌后 23 套主题**自动**全对。 */
+.custom-background-controls label { min-height: 42px; padding: 7px 9px; border: 1px solid var(--surface-border, #e2ddd4); border-radius: 12px; background: var(--surface-2, #fbfaf7); display: flex; align-items: center; justify-content: space-between; color: var(--ink); font-size: 12px; }
 .custom-background-controls input[type="color"] { width: 42px; height: 28px; padding: 0; border: 0; background: transparent; }
-.custom-background-controls > button { min-height: 42px; border: 1px solid #c6d6cb; border-radius: 11px; background: var(--jade); color: var(--green); font-size: 12px; font-weight:700; }
+.custom-background-controls > button { min-height: 42px; border: 1px solid var(--surface-border, #c6d6cb); border-radius: 11px; background: var(--jade); color: var(--green); font-size: 12px; font-weight:700; }
+/* 「清除图片背景」那枚红：颜色自成一套（不随主题），深色界面上也读得清，所以保留写死。 */
 .custom-background-controls > button.custom-background-clear { border-color: #e0b2ad; background: #fbefed; color: #a7443a; }
 .custom-background-controls p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+/* 界面主题（2026-10-12）：小标题 + 复用「应用主题」那套卡片分页。 */
+.custom-ui-theme { display: grid; gap: 2px; padding-top: 3px; }
+.custom-ui-theme-heading { display: grid; gap: 2px; padding: 0 2px; }
+.custom-ui-theme-heading b { font-size: 12px; color: var(--ink); }
+.custom-ui-theme-heading small { color: var(--muted); font-size: 11px; line-height: 1.45; }
+/* 「界面主题」下拉框（用户 2026-10-12 第二轮：「选 UI 时不必要全部都展示，搞一个框框，
+   然后选就行了」）—— 左边一枚当前主题的小色块 + 一个原生 select，整块只占一行。
+   ⚠ 用原生 select 而不是自造弹层：键盘/读屏/中文输入法都是现成的，老 WebView 也认。 */
+.custom-ui-theme-pick { display: flex; align-items: center; gap: 7px; width: 100%; min-width: 0; margin-top: 5px; padding: 5px 8px; border: 1px solid var(--surface-border, #e2ddd4); border-radius: 12px; background: var(--surface, #fff); }
+/* ⚠ 选择器要带上 `.custom-ui-theme` 这一层：`.appearance-center-subsection .theme-swatch`
+   （材质卡里那种"整幅预览"）同为 0-2-0 且排在后面，会把这里压成 width:100% ⇒
+   色块吃掉整行、select 被挤成 0 宽（实测 Playwright 报 element is not visible）。 */
+.custom-ui-theme .custom-ui-theme-pick .theme-swatch { width: 26px; height: 26px; flex: 0 0 26px; border-radius: 8px; }
+/* ⚠ 这一行用 `<div>` 而不是 `<label>`：`.custom-background-controls label` 那套（space-between、
+   42px 高、自带底色边框）会盖过来，把 select 挤成 0 宽（实测 Playwright 报"element is not visible"）。 */
+.custom-ui-theme .custom-ui-theme-pick select { flex: 1 1 auto; width: 100%; min-width: 0; min-height: 30px; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 12px; font-weight: 600; }
+/* 选中未解锁主题时长出来的那一行问价条（试看 / 买并换上 / 先不用） */
+.custom-ui-theme-buy { display: grid; gap: 5px; margin-top: 5px; padding: 7px 8px; border: 1px dashed var(--surface-border, #d9d3c8); border-radius: 12px; background: color-mix(in srgb, var(--gold, #c79c4a) 10%, var(--surface, #fff)); }
+.custom-ui-theme-buy p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.custom-ui-theme-buy p b { color: var(--ink); }
+.custom-ui-theme-buy-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.custom-ui-theme-buy-actions button { min-height: 30px; padding: 0 11px; border: 1px solid var(--surface-border, #e2ddd4); border-radius: 9px; background: var(--surface, #fff); color: var(--ink); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.custom-ui-theme-buy-actions button:nth-child(2) { border-color: color-mix(in srgb, var(--gold, #c79c4a) 55%, transparent); background: color-mix(in srgb, var(--gold, #c79c4a) 22%, var(--surface, #fff)); }
 .visual-theme-settings { display: grid; gap: 14px; padding: 11px 10px 12px; }
 .visual-theme-label { display: block; margin: 0 2px 7px; color: var(--ink); font-size: 12px; }
 .visual-option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
@@ -756,11 +885,14 @@ html[data-theme="dark"] .save-info-disclosure[open] > summary { background: #263
 .visual-option-grid > button.selected { border-color: #729681; background: var(--jade); box-shadow: 0 0 0 2px #72968122; }
 .visual-option-grid > button > span { min-width: 0; flex: 1; }
 .visual-option-grid b,.visual-option-grid small { display: block; }
-.visual-option-grid b { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.visual-option-grid small { margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 11px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.visual-option-grid b { overflow: hidden; font-size: 11px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; white-space:normal; }
+.visual-option-grid small { margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 11px; line-height: 1.25; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; white-space:normal; }
 .visual-check { width: 14px; flex: 0 0 auto; color: var(--green); opacity: 0; }
 .visual-option-grid > button.selected .visual-check { opacity: 1; }
 .board-preview,.stone-preview { position: relative; width: 32px; height: 32px; flex: 0 0 32px; overflow: hidden; border-radius: 9px; }
+/* 用材质数据画的小预览（src/appearance/preview.tsx）。色块圆角与上面那套手写 CSS 对齐，
+   本体原有主题走 .board-preview.<id>、实验室材质走这个，两者尺寸一致才不会错位。 */
+.material-swatch{ display:block; border-radius:9px; flex:0 0 auto; }
 .board-preview { background:#d8ad69; background-image:linear-gradient(#594a3677 1px,transparent 1px),linear-gradient(90deg,#594a3677 1px,transparent 1px); background-size:8px 8px; }
 .board-preview.jade { background:#6e9d89; background-image:linear-gradient(#e7f0df99 1px,transparent 1px),linear-gradient(90deg,#e7f0df99 1px,transparent 1px); }
 .board-preview.emerald { background:#1f604b; background-image:linear-gradient(#e6c778aa 1px,transparent 1px),linear-gradient(90deg,#e6c778aa 1px,transparent 1px); }
@@ -776,16 +908,14 @@ html[data-theme="dark"] .save-info-disclosure[open] > summary { background: #263
 .stone-preview.notebook::before { content:"×"; position:absolute; left:3px; top:3px; color:#202832; font:700 19px/1 "Comic Sans MS","Segoe Print",cursive; transform:rotate(-8deg); }
 .stone-preview.notebook::after { content:"✓"; position:absolute; width:auto; height:auto; left:15px; top:11px; border-radius:0; background:none; color:#b92f39; font:700 17px/1 "Comic Sans MS","Segoe Print",cursive; transform:rotate(8deg); }
 .visual-theme-note { margin: 0 2px; color: var(--muted); font-size: 11px; line-height: 1.5; }
-html[data-theme="dark"] .custom-background-controls label,
+/* ⚠ 原有 dark / eye / mono 三条 `.custom-background-controls` 底色补丁已删（2026-10-12）：
+   那是"主题清单硬编码几套"的老做法，而这三条**从来没命中过** —— 自定义背景的这几件控件
+   只在 `themePreference === "custom"` 时渲染，那时 `data-theme` 恒为 `custom`。
+   现在控件改用令牌（见上面那段），任何界面主题都自动适配，补丁既没必要也不该留。 */
 html[data-theme="dark"] .visual-option-grid > button { background: #26312d; border-color: #3b4842; }
-html[data-theme="dark"] .custom-background-controls > button { border-color: #5d876d; }
-html[data-theme="dark"] .custom-background-controls > button.custom-background-clear { background: #402926; border-color: #87504b; }
-html[data-theme="dark"] .custom-background-controls p,
 html[data-theme="dark"] .visual-option-grid small,
 html[data-theme="dark"] .visual-theme-note { color: #aaa69d; }
-html[data-theme="eye"] .custom-background-controls label,
 html[data-theme="eye"] .visual-option-grid > button { background: var(--surface); border-color: var(--surface-border); }
-html[data-theme="mono"] .custom-background-controls label,
 html[data-theme="mono"] .visual-option-grid > button { background: #fff; border-color: #d2d2d2; }
 
 .feedback-sheet { gap: 12px; }
@@ -811,7 +941,7 @@ html[data-theme="mono"] .visual-option-grid > button { background: #fff; border-
 .feedback-message > small, .feedback-contact > small { display: block; margin: 5px 2px 0; color: var(--muted, #938c82); font-size: 11px; line-height: 1.4; }
 .feedback-message > small.error, .feedback-contact > small.error { color: var(--red); }
 .feedback-actions { display: flex; flex-direction: column; gap: 8px; }
-.feedback-github, .feedback-email { display: grid; grid-template-columns: 22px 1fr 17px; align-items: center; gap: 9px; width: 100%; min-height: 58px; padding: 9px 12px; border: 1px solid #6f9c7e; border-radius: 14px; background: var(--green); color: #fff; text-align: left; }
+.feedback-github, .feedback-email { display: grid; grid-template-columns: 22px 1fr 17px; align-items: center; gap: 9px; width: 100%; min-height: 58px; padding: 9px 12px; border: 1px solid #6f9c7e; border-radius: 14px; background: var(--green); color: var(--on-accent); text-align: left; }
 .feedback-email { border-color: #b99550; background: #f5eddd; color: #765a25; }
 .feedback-github > svg, .feedback-email > svg { width: 18px; }
 .feedback-github span, .feedback-email span, .feedback-github b, .feedback-email b, .feedback-github small, .feedback-email small { display: block; }
@@ -830,14 +960,15 @@ html[data-theme="dark"] .feedback-email { border-color: #8d7040; background: #3c
 .theme-swatch.porcelain { border-color:#789db7; background-color:#f8f5ed; background-image:linear-gradient(135deg,#f8f5edcc 0 42%,#1d5688d9 43% 58%,#b8d1ddcc 59% 72%,#123f73e6 73%),url("/theme-assets/porcelain.svg"); background-position:center; background-size:cover; }
 .theme-swatch.plum { background:#f0e0e6 url("/theme-assets/plum-snow.svg") center/cover; }
 .theme-swatch.jiangnan { background:#1c3033 url("/theme-assets/jiangnan.svg") center/cover; }
-.theme-swatch.firefly { background:#182c27 url("/theme-assets/firefly.svg") center/cover; }
+.theme-swatch.firefly { background:#182c27 url("/theme-assets/scene-firefly-grove.svg") center/cover; }
 .theme-swatch.rice { background:#f4f1e7 url("/theme-assets/rice.svg") center/cover; }
 .theme-swatch.pixel { background:#111936 url("/theme-assets/pixel.svg") center/cover; image-rendering:pixelated; }
 .theme-swatch.cyber { background:#111124 url("/theme-assets/cyber.svg") center/cover; }
 .theme-swatch.blackgold { border-color:#c5a454; background:radial-gradient(circle at 75% 24%,#f3d887 0 4%,transparent 24%),linear-gradient(145deg,#191713,#020202 58%,#5e4315); }
 .theme-swatch.pale { border-color:#cdd1d8; background:linear-gradient(125deg,#fff,#edf0f5 24%,#fcfcfd 43%,#ece9ed 62%,#f6f5f1 78%,#dce3eb); }
 .theme-swatch.kawaii { border-color:#d7a8c4; background:#fbe4ef url("/theme-assets/kawaii.svg") center/cover; }
-.theme-swatch.aurora { border-color:#61d9c2; background:radial-gradient(ellipse at 12% 20%,#5ee8cb 0 8%,transparent 40%),radial-gradient(ellipse at 90% 62%,#8b66e7 0 8%,transparent 42%),#071924; }
+.theme-swatch.aurora { border-color:#61d9c2; background:radial-gradient(ellipse at 30% 72%,#57e9c666 0 9%,transparent 42%),radial-gradient(ellipse at 74% 82%,#875cff5c 0 8%,transparent 44%),#06131d; }
+.theme-swatch.pelican { background:linear-gradient(180deg,#241c2e,#66395a 42%,#c96b45 72%,#f5b26a 92%); }
 .theme-swatch.deepsea { border-color:#527b80; background:repeating-radial-gradient(ellipse at 50% -20%,transparent 0 7px,#8abeb72b 8px 9px,transparent 10px 15px),linear-gradient(#18343c,#071820); }
 .theme-swatch.baroque { border-color:#ad7b22; background:#f2dda5 url("/theme-assets/baroque.svg") center/cover; }
 .theme-motion-note { display:flex; align-items:center; gap:9px; margin:10px 0 0; padding:9px 11px; border:1px solid color-mix(in srgb,var(--green) 26%,var(--surface-border)); border-radius:12px; background:color-mix(in srgb,var(--jade) 72%,transparent); color:var(--green); }
@@ -902,7 +1033,7 @@ html[data-theme="dark"] .feedback-email { border-color: #8d7040; background: #3c
   color:var(--ink);
 }
 :where(.settings-link small,.setting-row small,.record-info p,.record-info small,
-.visual-option-grid small,.visual-theme-note,.theme-preference small,.export-primary-card small,
+.visual-option-grid small,.visual-theme-note,.export-primary-card small,
 .export-format-heading small,.section-note,.helper,.branch-list small,.branch-bookmarks-head small,
 .bookmark-jump small,.position-note-card small,.vcf-result small) { color:var(--muted); }
 :where(.dock-tabs button.active,.dock-panel button:not(.accent),.library-search button:hover,
@@ -910,11 +1041,17 @@ html[data-theme="dark"] .feedback-email { border-color: #8d7040; background: #3c
 .transport button:not(.primary-step):hover,.settings-link:hover,.visual-option-grid > button:not(.selected):hover) {
   background:var(--surface-hover);
 }
+/* 暗色主题：把整壳的继承文字色切到 --ink。
+   ⚠ 这张名单必须**收全所有暗色主题**：漏一个，那个主题里凡是「没自己设 color、靠继承」的文字
+   （快捷中心的分节标题/选项标题、抽屉头标题…）就会继承到 :root 的浅色主题墨色 #292620，
+   在深底上等于隐身。pelican 就是被漏掉的那个（用户 10-08：「播放、分析这些字完美隐身在背景里」）。
+   新增暗色主题时记得往这里加一笔。 */
 html[data-theme="dark"] .app-shell,html[data-theme="rain"] .app-shell,
 html[data-theme="jiangnan"] .app-shell,html[data-theme="firefly"] .app-shell,
 html[data-theme="pixel"] .app-shell,html[data-theme="cyber"] .app-shell,
 html[data-theme="blackgold"] .app-shell,html[data-theme="aurora"] .app-shell,
-html[data-theme="deepsea"] .app-shell { color:var(--ink); }
+html[data-theme="deepsea"] .app-shell,html[data-theme="pelican"] .app-shell,
+html[data-theme="dunhuang"] .app-shell,html[data-theme="soul"] .app-shell { color:var(--ink); }
 .topbar,.bottom-nav { background:color-mix(in srgb,var(--paper) 92%,transparent); border-color:var(--line); }
 :where(.position-match-list > button,.puzzle-heading > button,.puzzle-controls button,
 .puzzle-collection-list > button,.workspace-current,.workspace-mode-toggle,
@@ -964,8 +1101,18 @@ html[data-theme="dark"] :is(.bottom-sheet,.settings-group,.timeline-card,.commen
   background: #26312d;
 }
 html[data-theme] :is(.moves-row button svg) { color:var(--green); }
-html[data-theme] :is(.moves-row button.accent) { background:var(--green); border-color:var(--green); color:#fff; }
-html[data-theme] :is(.moves-row button.accent svg) { color:#fff; }
+/* 又一批「只按浅色主题写」的老卡片（2026-10-02 用 .tmp-light-cards.mjs 逐个类塞进 20 套主题量出来）：
+   卡片底色写死 #fff、说明文字写死灰，只有 dark 一套打过补丁，其余 8 套深色主题里就是
+   「白卡片 + 浅色字」或「白卡片刺眼」。这里跟着上面那条兜底的口径一起收进主题变量。 */
+html[data-theme] :is(.recent-import-item, .ai-rule-choice, .ai-strength-free-option, .selector-master-toggle, .collection-accordion-head, .recent-puzzle-toggle, .data-safety-action, .mode-switch, .find-result-nav) {
+  background: color-mix(in srgb, var(--paper, #f8f6f1) 58%, var(--surface, #fff));
+  border-color: var(--surface-border);
+  color: var(--ink);
+}
+html[data-theme] :is(.recent-import-item small, .ai-rule-choice small, .ai-strength-free-option small, .selector-master-toggle small, .collection-accordion-head small, .recent-puzzle-toggle small, .data-safety-action small) { color: var(--muted); }
+html[data-theme] :is(.storage-remove) { background: var(--surface, var(--paper)); color: color-mix(in srgb, var(--red) 78%, var(--ink)); border-color: var(--surface-border); }
+html[data-theme] :is(.moves-row button.accent) { background:var(--green); border-color:var(--green); color:var(--on-accent); }
+html[data-theme] :is(.moves-row button.accent svg) { color:var(--on-accent); }
 html[data-theme] :is(.context-dock,.branch-switcher,.export-format-section,.ai-free-controls,.mark-preset-grid button,.custom-mark-row input,.annotation-color-grid button,.board-share-options i) {
   background:var(--surface-3);
   border-color:var(--surface-border);
@@ -980,13 +1127,33 @@ html[data-theme] .settings-section-content { background:var(--surface-2); }
 html[data-theme] :is(.setting-row,.settings-link) { border-color:var(--surface-border); }
 html[data-theme] :is(.form-grid input,.form-grid select,.sheet-body textarea,.bookmark-edit input,.custom-mark-row input) { color-scheme:inherit; }
 
+/* 上一批兜底名单（2026-10-02）漏掉的一批：同样是「底色写死浅色 + color:var(--ink)」，
+   在**任何暗色主题**下都是浅字压浅底＝隐身（pelican 里的「继续上次研究」卡片就是这么废的：
+   底色写死 #e4efe7→#fbf5e8 的浅渐变，文字却是 var(--ink)，暗色主题下 --ink 是浅色）。
+   这里把它们一起收进主题变量。用 html[data-theme]（选择过主题才命中）而不是只列暗色：
+   浅色主题下 color-mix 的结果本来就是浅色，等于原样，不会改观感。
+   ⚠ 只收「文字用 var(--ink)（主题色）」的组件——若它内部文字是写死的深灰，把底改深会反而看不见，
+   所以下面同时把这类组件内部的 small/em 一并归到 --muted。 */
+html[data-theme] :is(.continue-research-card,.theme-preference > button,.visual-option-grid > button,
+  .feedback-kind button,.custom-background-controls label,.mark-studio-options button,
+  .position-text-field input,.comment-preview,.puzzle-split-range input,.storage-path,
+  .feedback-message textarea,.feedback-contact input,.puzzle-collection-select select,
+  .online-field > input,.online-field > select,.dock-panel-vcf .vcf-chip,
+  .dock-panel-vcf .vcf-seg button,.dock-panel-vcf .vcf-actions > button,.coach-mark,.error-boundary) {
+  background:color-mix(in srgb, var(--paper, #f8f6f1) 58%, var(--surface, #fff));
+  border-color:var(--surface-border);
+  color:var(--ink);
+}
+html[data-theme] :is(.continue-research-card,.theme-preference,.visual-option-grid,.feedback-kind,
+  .custom-background-controls,.dock-panel-vcf,.coach-mark) :is(small,em) { color:var(--muted); }
+
 /* Settings now live in one semantic container so search, visual order and
  * keyboard traversal always agree. */
 .app-main:has(.settings-page) { display:block; }
 .settings-page { width:100%; max-width:760px; margin-inline:auto; padding-top:12px; }
 .settings-page::before,.settings-page::after { display:none !important; content:none !important; }
 .settings-page > .settings-group { margin-top:12px; }
-.settings-page > .version-note { margin-top:0; padding-bottom:calc(28px + env(safe-area-inset-bottom)); }
+.settings-page > .version-note { margin-top:0; padding-bottom:calc(28px + var(--safe-area-bottom, env(safe-area-inset-bottom))); }
 
 .settings-command-header { padding:16px; border:1px solid color-mix(in srgb,var(--green) 22%,var(--line)); border-radius:20px; background:linear-gradient(145deg,color-mix(in srgb,var(--jade) 82%,var(--paper)),var(--paper)); box-shadow:0 10px 28px color-mix(in srgb,var(--green) 10%,transparent); }
 .settings-command-copy { display:flex; flex-direction:column; gap:3px; }
@@ -1012,7 +1179,7 @@ html[data-theme] :is(.form-grid input,.form-grid select,.sheet-body textarea,.bo
 .settings-overview-total { min-width:40px; color:var(--green); text-align:center; font:700 18px/1 Georgia,serif; }
 .settings-overview-total small { display:block; margin-top:3px; color:var(--muted); font:500 11px/1 sans-serif; }
 .appearance-center-intro { margin:12px; padding:12px; display:flex; align-items:center; gap:10px; border-radius:14px; background:color-mix(in srgb,var(--jade) 72%,var(--paper)); }
-.appearance-center-intro > span { width:38px; height:38px; flex:0 0 38px; display:grid; place-items:center; border-radius:12px; background:var(--green); color:#fff; }
+.appearance-center-intro > span { width:38px; height:38px; flex:0 0 38px; display:grid; place-items:center; border-radius:12px; background:var(--green); color:var(--on-accent); }
 .appearance-center-intro svg { width:18px; }
 .appearance-center-intro b,.appearance-center-intro small { display:block; }
 .appearance-center-intro b { font-size:11px; }
@@ -1029,7 +1196,7 @@ html[data-theme] :is(.form-grid input,.form-grid select,.sheet-body textarea,.bo
 .appearance-center-icon svg { width:16px; height:16px; }
 .appearance-center-label > span:last-child { min-width:0; display:flex; flex-direction:column; gap:3px; }
 .appearance-center-label b { font-size:12px; }
-.appearance-center-label small { overflow:hidden; color:var(--button-muted-text); font-size:11px; line-height:1.35; text-overflow:ellipsis; white-space:nowrap; }
+.appearance-center-label small { overflow:hidden; color:var(--button-muted-text); font-size:11px; line-height:1.35; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; white-space:normal; }
 .appearance-center-subsection-body { border-top:1px solid var(--surface-border,var(--line)); padding:0 12px 12px; }
 .appearance-center-subsection .theme-preference { padding:10px 0 0; }
 /* 主题列表一行两列：16+ 个主题单列要滚很久；两列下描述文字省略号截断，
@@ -1037,8 +1204,12 @@ html[data-theme] :is(.form-grid input,.form-grid select,.sheet-body textarea,.bo
 .appearance-center-subsection .theme-preference { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
 .appearance-center-subsection .theme-preference > button { position:relative; flex-direction:column; align-items:flex-start; gap:5px; min-height:66px; padding:8px 26px 8px 8px; border-radius:12px; }
 .appearance-center-subsection .theme-preference > button > span:nth-child(2) { width:100%; flex:0 1 auto; }
-.appearance-center-subsection .theme-preference b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.appearance-center-subsection .theme-preference small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px; font-size:10px; line-height:1.3; }
+/* 外观选项卡里的标题与说明：**特大字下不许截成半句话**（用户 2026-10-02 找 bug 轮）。
+   以前一律 nowrap + ellipsis，11px 时刚好放得下，字号开到 1.3 就整片丢字（实测 20 张主题卡
+   的说明各少 15–67px，标题也少 17px）。改成最多两行：短文案一行不变，长文案折行读完，
+   卡片自己长高（网格是 auto 行，不会挤到别处）。
+   棋谱名/题集名那类**用户数据**仍保持单行省略——那里截断是设计，不是丢信息。 */
+.appearance-center-subsection .theme-preference b { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; white-space:normal; overflow:hidden; }
 .appearance-center-subsection .theme-preference .theme-check { position:absolute; top:7px; right:7px; width:14px; margin:0; }
 .appearance-center-subsection .theme-swatch { width:100%; height:26px; flex:0 0 auto; border-radius:8px; }
 @media (max-width:359px) { .appearance-center-subsection .theme-preference { grid-template-columns:minmax(0,1fr); } }
@@ -1047,10 +1218,35 @@ html[data-theme] :is(.form-grid input,.form-grid select,.sheet-body textarea,.bo
 .appearance-center-subsection-body > .stone-opacity-setting,
 .appearance-center-subsection-body > .board-opacity-setting { margin-inline:0; background: var(--surface-2); }
 .appearance-center-subsection-body > .settings-subsection { margin-inline:0; }
+/* 外观选项翻页（用户 2026-10-06）：主题 22 / 棋盘 28 / 棋子 31 项一长条排下去，
+   预览被挤到屏幕外，要滑很久。改成**横向整页 snap**：每页 2 列 × 5 行 = 10 项，
+   左右滑动切页；桌面无横向滑动，另给圆点与左右箭头。
+   ⚠ 内层网格**沿用既有 .visual-option-grid / .theme-preference**，这层壳不另起一套卡片视觉。
+   ⚠ 不用 CSS multi-column：column 会把 grid 拆坏，也控不住"每页 5 行"。
+   ⚠ 放在 .appearance-center-subsection 规则之后，靠源码顺序压过它的 theme-preference padding。 */
+.visual-pager { display:grid; gap:8px; }
+.visual-pager-track { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; overscroll-behavior-x:contain; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.visual-pager-track::-webkit-scrollbar { display:none; }
+.visual-pager-track:focus-visible { outline:3px solid #88a798; outline-offset:2px; }
+/* 每页占满一屏宽；页内网格固定 2 列，最后一页不满也不改变列数。 */
+.visual-pager-page { flex:0 0 100%; min-width:0; scroll-snap-align:start; scroll-snap-stop:always; padding:1px; }
+.visual-pager-page > .visual-option-grid,
+.visual-pager-page > .theme-preference { padding:0; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.visual-pager-controls { display:flex; align-items:center; justify-content:center; gap:10px; }
+.visual-pager-arrow { width:34px; height:34px; padding:0; border:1px solid var(--surface-border,var(--line)); border-radius:10px; background:var(--surface-2); color:var(--green); display:grid; place-items:center; }
+.visual-pager-arrow:disabled { opacity:.38; }
+.visual-pager-arrow svg { width:16px; height:16px; }
+.visual-pager-dots { display:flex; align-items:center; gap:7px; min-height:20px; }
+.visual-pager-dot { width:10px; height:10px; padding:0; border:0; border-radius:50%; background:color-mix(in srgb,var(--green) 30%,transparent); }
+.visual-pager-dot.selected { width:24px; border-radius:6px; background:var(--green); }
+html[data-theme="dark"] .visual-pager-arrow { background:#26312d; border-color:#3b4842; }
+html[data-theme="dark"] .visual-pager-dot { background:#4a5850; }
+html[data-theme="dark"] .visual-pager-dot.selected { background:#9fc7b2; }
+
 .annotation-highlight-setting { margin-top:10px; padding:12px; border:1px solid var(--surface-border,var(--line)); border-radius:14px; background: var(--surface-2); }
 .annotation-highlight-heading { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
 .annotation-highlight-heading b { color:var(--ink); font-size:12px; }
-.annotation-highlight-heading small { overflow:hidden; color:var(--muted); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.annotation-highlight-heading small { overflow:hidden; color:var(--muted); font-size:11px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; white-space:normal; }
 .annotation-highlight-options { margin-top:9px; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; padding:3px; border:1px solid var(--surface-border,var(--line)); border-radius:13px; background: var(--surface-2); }
 .annotation-highlight-options button { min-width:0; min-height:44px; padding:0 4px; border:1px solid transparent; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:5px; background:transparent; color:var(--muted); font-size:11px; font-weight:700; }
 .annotation-highlight-options button.selected { border-color:var(--green); background: var(--surface); color:var(--ink); box-shadow:0 2px 8px var(--surface-shadow,#0001); }
@@ -1060,8 +1256,13 @@ html[data-theme] :is(.form-grid input,.form-grid select,.sheet-body textarea,.bo
 .annotation-highlight-options .highlight-white i { border-color:#fff; box-shadow:0 0 0 1px #7b807b,0 0 5px #fff; }
 .annotation-highlight-options .highlight-gold i { border-color:#ffd76a; box-shadow:0 0 5px #e8b833; }
 .annotation-highlight-options .highlight-blue i { border-color:#6ec8ff; box-shadow:0 0 5px #49b4f4; }
-.annotation-highlight-setting > p { margin:8px 0 0; overflow:hidden; color:var(--muted); font-size:11px; line-height:1.35; text-align:center; text-overflow:ellipsis; white-space:nowrap; }
-.board-opacity-setting { margin-top:14px; padding:13px; border:1px solid var(--line); border-radius:16px; background: var(--surface-2); }
+.annotation-highlight-setting > p { margin:8px 0 0; overflow:hidden; color:var(--muted); font-size:11px; line-height:1.35; text-align:center; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; line-clamp:3; white-space:normal; }
+/* 透明度两项（棋盘 / 棋子）融入同页 `SettingRow` 的视觉语言（用户 2026-10-09：
+   「棋盘显示里面的棋盘和棋子的透明度的设置条怎么和其他的不一样，你融入一下」）。
+   原来它俩是**独立卡片**：四边边框 + 16px 圆角 + 13px 内边距，滑杆高到 32px；
+   而同页其他设置项是「只有上分隔线、无圆角、10px 2px 内边距、滑杆 16px」——两套并存所以看着不像一家。
+   现在对齐到 SettingRow 那套，但**保留**两个原有细节：右上角的百分比读数、底部说明与「恢复默认」。 */
+.board-opacity-setting { margin:0; padding:10px 2px 12px; border:0; border-top:1px solid var(--line); border-radius:0; background:transparent; }
 .board-opacity-heading { display:flex; align-items:flex-start; gap:10px; }
 .board-opacity-heading > span { min-width:0; flex:1; }
 .board-opacity-heading b,.board-opacity-heading small { display:block; }
@@ -1076,21 +1277,53 @@ html[data-theme] :is(.form-grid input,.form-grid select,.sheet-body textarea,.bo
 .board-opacity-preview > b,.board-opacity-preview > em { position:absolute; z-index:3; font-style:normal; font-size:12px; font-weight:700; }
 .board-opacity-preview > b { left:calc(26% + 10px); top:32px; color:#f8f3e7; }
 .board-opacity-preview > em { right:calc(26% - 19px); top:27px; padding:3px 5px; border:2px solid #b23f35; border-radius:50%; background:#fff9; color:#9f342d; }
-.board-opacity-setting > input { width:100%; height:32px; accent-color:var(--green); touch-action:pan-x; }
+.board-opacity-setting > input { width:100%; height:16px; margin:6px 0 2px; accent-color:var(--green); touch-action:pan-x; }
 .board-opacity-footer { display:flex; align-items:center; gap:10px; }
 .board-opacity-footer small { flex:1; color:var(--muted); font-size:11px; line-height:1.4; }
 .board-opacity-footer button { min-height:36px; padding:0 10px; border:1px solid var(--line); border-radius:10px; background:var(--paper); color:var(--green); font-size:11px; font-weight:700; }
 .board-opacity-footer button:disabled { opacity:.45; }
-.material-live-preview { position:relative; height:78px; margin:11px 0 8px; overflow:hidden; border:1px solid color-mix(in srgb,var(--green) 38%,var(--line)); border-radius:14px; background:var(--paper); isolation:isolate; }
+/* ⚠ 预览框必须是**正方**的：材质缩略图是正方形棋盘（viewBox 620×620），
+   塞进 78px 高的扁条里会被 preserveAspectRatio 上下留白 —— 表现为"中间一个小方块"，
+   等于没在预览（用户 2026-10-02：「底下那个不是棋盘，不能预览吗？」）。
+   改成居中的 200×200 方框，棋盘才铺得满、材质才看得出。 */
+/* 预览框 = **真实棋盘 + 真棋子的局部截取**（用户 2026-10-02：「我要的是真实棋盘棋子的
+   预览，不是颜色预览、缩略框预览这种的，之前我们的不就是真实棋盘截取的一部分的预览吗」）。
+   所以这一块不再有假背景/假网格/假棋子：内容全部来自 MaterialBoardCrop，它走的是本体
+   真正的渲染路（boardLayers + 现算网格 + stoneMarkup），按 viewBox 截取盘心 5 格放大。
+   ⚠ 下面那些 `.material-preview-*` 旧规则（wallpaper/grid/stone/12/荐）已经没有元素再用，
+     留着不影响渲染；下次清 CSS 时可以一并删掉。 */
+/* ⚠ 满宽长条 + 高度不变（用户 2026-10-02：「你整一个方块，但是整个背景是长条，
+   你不能在那个长条全部显示吗，就是高度不变，宽度有多少放多少，宽度如果已经放完棋盘了，
+   那就不用继续放了」）。原来是 196×196 的居中方块，跟这一栏的长条版式不搭。
+   现在宽度铺满、高度仍是 196；crop 的 svg 本来就是 width/height:100%，跟着填。
+   棋盘是正方形，所以它按高度定尺寸、两侧自然留白 —— 正是"宽度够放棋盘就不用继续放"。
+   ⚠ 分支树那个预览用的是另一套类名（BoardSwatch / .material-swatch），不受这里影响。 */
+.material-live-preview { position:relative; width:auto; height:196px; margin:11px 0 8px; overflow:hidden; border:1px solid color-mix(in srgb,var(--green) 38%,var(--line)); border-radius:14px; background:var(--paper); isolation:isolate; }
+.material-preview-crop { position:absolute; inset:0; }
+.material-preview-crop > svg { display:block; width:100%; height:100%; }
 .material-preview-wallpaper { position:absolute; z-index:0; inset:0; background:radial-gradient(circle at 18% 20%,#ffe28a 0 4%,transparent 5%),radial-gradient(circle at 83% 72%,#7ad4c1 0 5%,transparent 6%),linear-gradient(135deg,#f4d5a4,#cce5da 52%,#e7c0d5); opacity:.9; }
-.material-live-preview .material-preview-board { position:absolute; z-index:1; inset:8px; width:auto; height:auto; border-radius:8px; background-position:12px 12px; background-size:24px 24px,24px 24px,auto; box-shadow:0 2px 8px #1c1a1430; }
+.material-live-preview .material-preview-board { position:absolute; z-index:1; inset:8px; width:auto; height:auto; border-radius:8px; box-shadow:0 2px 8px #1c1a1430; }
+/* 材质缩略图**撑满整块预览**（用户 2026-10-02：「你就在左边七八分之一的地方放一个小小的棋盘，
+   多此一举了不是吗，底下那个不是棋盘，不能预览吗？」）。
+   之前 BoardChip 传的是固定 44px，于是在 314×44 的板位里只有左边一小块是真材质，
+   其余是假背景 —— 那等于没在预览。
+   ⚠ SVG 的 width/height 呈现属性优先级低于 CSS，所以这里直接写 100% 就能覆盖，
+     不必加 !important，也不用改 BoardChip 的 size 参数（列表里的小色块仍然用 32px）。 */
+.material-live-preview .material-preview-board > svg,
+.material-live-preview .material-preview-board > i { display:block; width:100%; height:100%; border-radius:8px; }
+/* 真材质自带网格线（BoardSwatchFrom 画了 5 根线 + 星位）与棋子子件，
+   所以这块 CSS 假网格、假棋子底纹都是**重复画**，撤掉；
+   下面那几条 `board-X` 的配色覆盖随之失效（留着无害，删了也行）。 */
+.material-live-preview .material-preview-grid { display:none; }
+.material-live-preview .material-preview-stone.black,
+.material-live-preview .material-preview-stone.white { background:none; }
 .material-preview-grid { position:absolute; z-index:2; inset:8px; border-radius:8px; background-image:linear-gradient(#594a365c 1px,transparent 1px),linear-gradient(90deg,#594a365c 1px,transparent 1px); background-position:12px 12px; background-size:24px 24px; pointer-events:none; }
 .material-live-preview.board-emerald .material-preview-grid,.material-live-preview.board-blackgold .material-preview-grid { background-image:linear-gradient(#e6c778a6 1px,transparent 1px),linear-gradient(90deg,#e6c778a6 1px,transparent 1px); }
 .material-live-preview.board-circuit .material-preview-grid,.material-live-preview.board-aurora .material-preview-grid { background-image:linear-gradient(#9be8dc80 1px,transparent 1px),linear-gradient(90deg,#9be8dc80 1px,transparent 1px); }
 .material-live-preview.board-walnut .material-preview-grid { background-image:linear-gradient(#e5bd7a8a 1px,transparent 1px),linear-gradient(90deg,#e5bd7a8a 1px,transparent 1px); }
 .material-live-preview.board-kawaii .material-preview-grid { background-image:linear-gradient(#985a8278 1px,transparent 1px),linear-gradient(90deg,#985a8278 1px,transparent 1px); }
 .material-live-preview.board-porcelain .material-preview-grid { background-image:linear-gradient(#315f848f 1px,transparent 1px),linear-gradient(90deg,#315f848f 1px,transparent 1px); }
-.material-live-preview .material-preview-stone { position:absolute; z-index:3; top:22px; width:34px; height:34px; overflow:visible; border-radius:50%; box-shadow:0 3px 7px #0005,inset 5px 4px 5px #fff4,inset -4px -5px 5px #0007; }
+.material-live-preview .material-preview-stone { position:absolute; z-index:3; left:50%; top:62%; transform:translate(-50%,-50%); width:56px; height:56px; overflow:visible; border-radius:50%; }
 .material-live-preview .material-preview-stone.black { left:26%; background:radial-gradient(circle at 30% 24%,#666,#242420 45%,#090a09); }
 .material-live-preview .material-preview-stone.white { right:26%; background:radial-gradient(circle at 30% 24%,#fffef8,#e8e2d5 60%,#aaa397); }
 .material-live-preview .material-preview-stone::before { display:none; }
@@ -1146,7 +1379,7 @@ html[data-theme] :is(.form-grid input,.form-grid select,.sheet-body textarea,.bo
 .settings-search-empty > svg { width:30px; height:30px; color:var(--green); }
 .settings-search-empty b { margin-top:10px; color:var(--ink); font-size:13px; }
 .settings-search-empty small { margin-top:5px; font-size:12px; line-height:1.5; }
-.settings-search-empty button { min-height:44px; margin-top:14px; padding:0 18px; border:0; border-radius:12px; background:var(--green); color:#fff; font-size:11px; font-weight:700; }
+.settings-search-empty button { min-height:44px; margin-top:14px; padding:0 18px; border:0; border-radius:12px; background:var(--green); color:var(--on-accent); font-size:11px; font-weight:700; }
 .manual-entry-link { background:linear-gradient(135deg,color-mix(in srgb,var(--jade) 72%,var(--paper)),var(--surface,#fff)); }
 
 @media (max-width:390px) {
@@ -1188,7 +1421,7 @@ html[data-theme] :is(.form-grid input,.form-grid select,.sheet-body textarea,.bo
 .continue-research-card { width:100%; min-height:84px; padding:11px; border:1px solid #8eaf99; border-radius:17px; display:flex; align-items:center; gap:10px; text-align:left; background:linear-gradient(135deg,#e4efe7,#fbf5e8); color:var(--ink); box-shadow:0 9px 22px #365e4b18; }
 .continue-research-card > span:nth-child(2) { min-width:0; flex:1; }
 .continue-research-card > svg { width:18px; color:var(--green); }
-.continue-research-icon { width:46px; height:46px; flex:0 0 46px; border-radius:14px; display:grid; place-items:center; background:var(--green); color:#fff; }
+.continue-research-icon { width:46px; height:46px; flex:0 0 46px; border-radius:14px; display:grid; place-items:center; background:var(--green); color:var(--on-accent); }
 .continue-research-icon svg { width:20px; fill:currentColor; }
 .continue-research-card small,.continue-research-card b,.continue-research-card em { display:block; }
 .continue-research-card small { color:var(--green); font-size:11px; font-weight:700; letter-spacing:.08em; }
@@ -1198,7 +1431,7 @@ html[data-theme] :is(.form-grid input,.form-grid select,.sheet-body textarea,.bo
 .research-overview-heading > span { display:flex; align-items:center; gap:5px; }
 .research-overview-heading > span svg { width:15px; color:var(--green); }
 .research-overview-heading b { font-size:11px; }
-.research-overview-heading > button { min-height:38px; padding:5px 8px; border:1px solid #dce3de; border-radius:10px; display:flex; align-items:center; gap:5px; background:#fff; color:var(--green); font-size:11px; font-weight:700; }
+.research-overview-heading > button { min-height:38px; padding:5px 8px; border:1px solid var(--surface-border, var(--line)); border-radius:10px; display:flex; align-items:center; gap:5px; background:var(--surface-2, var(--paper)); color:var(--green); font-size:11px; font-weight:700; }
 .research-overview-heading > button svg { width:15px; }
 .research-overview-heading > button small { color:var(--muted); font-size:11px; font-weight:500; }
 .recent-research-list { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
@@ -1214,7 +1447,7 @@ html[data-theme] :is(.form-grid input,.form-grid select,.sheet-body textarea,.bo
 .record-filter-bar { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-top:11px; }
 .record-filter-bar button { min-height:42px; border:1px solid var(--surface-border,#ddd8cf); border-radius:10px; background: var(--surface-2); color:var(--muted); font-size:11px; font-weight:700; }
 .record-filter-bar button small { display:block; margin-top:2px; font-size:11px; font-weight:500; }
-.record-filter-bar button.active { border-color:var(--green); background:var(--green); color:#fff; }
+.record-filter-bar button.active { border-color:var(--green); background:var(--green); color:var(--on-accent); }
 .record-filter-note { margin:6px 2px 0; color:var(--muted); font-size:11px; line-height:1.45; }
 .recent-puzzle-section { margin:11px 0 15px; }
 .recent-puzzle-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 1px 7px; }
@@ -1237,7 +1470,7 @@ html[data-theme] :is(.form-grid input,.form-grid select,.sheet-body textarea,.bo
 .recent-puzzle-empty { margin:0; padding:12px; border:1px dashed #d8d2c8; border-radius:12px; color:var(--muted); font-size:11px; text-align:center; }
 .data-safety-panel { display:flex; flex-direction:column; gap:9px; }
 .data-safety-summary { padding:12px; border:1px solid var(--surface-border,#cddbd2); border-radius:15px; display:flex; align-items:center; gap:10px; background:linear-gradient(135deg, color-mix(in srgb, var(--green) 7%, var(--surface,var(--paper))), color-mix(in srgb, var(--gold,#c79c4a) 8%, var(--surface,var(--paper)))); }
-.data-safety-icon { width:42px; height:42px; flex:0 0 42px; border-radius:13px; display:grid; place-items:center; background:var(--green); color:#fff; }
+.data-safety-icon { width:42px; height:42px; flex:0 0 42px; border-radius:13px; display:grid; place-items:center; background:var(--green); color:var(--on-accent); }
 .data-safety-summary b,.data-safety-summary small,.data-safety-action b,.data-safety-action small { display:block; }
 .data-safety-summary b { font-size:12px; }
 .data-safety-summary small { margin-top:4px; color:var(--muted); font-size:11px; line-height:1.45; }
@@ -1296,6 +1529,10 @@ html[data-theme="dark"] .find-results > button.active { background:#30443a; bord
   .dock-panel > button svg { flex:0 0 auto; }
   .dock-panel.dock-panel-moves > button svg { width: 15px; height: 15px; }
   .dock-panel > label { display: flex; flex: 1 1 0; align-items: center; justify-content: center; }
+  /* 棋盘路数那一格不参与「等分挤压」。原生 <select> 一旦放不下不会换行，而是把值渲染成
+     「1…」（用户 2026-10-02：「打谱页面，更换棋盘尺寸那里，都是省略号，应该要是x路，xx路才对」）。
+     这一格按内容占位，剩下的按钮继续等分——按钮本来就有省略号策略，数字被截是另一回事。 */
+  .dock-panel > label.dock-board-size { flex: 0 0 auto; width: auto; min-width: max-content; }
   .dock-tabs button, .dock-tabs button.active { box-shadow: none; }
 }
 
@@ -1381,7 +1618,7 @@ html[data-theme="dark"] .find-results > button.active { background:#30443a; bord
 .dock-panel-vcf .vcf-actions { display: flex; gap: 5px; }
 .dock-panel-vcf .vcf-actions > button { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 4px 6px; border: 0; border-radius: 11px; background: var(--surface-3, #f5f3ee); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 700; cursor: pointer; }
 .dock-panel-vcf .vcf-actions > button svg { width: 14px; height: 14px; }
-.dock-panel-vcf .vcf-actions > button.accent { background: var(--green); color: #fff; }
+.dock-panel-vcf .vcf-actions > button.accent { background: var(--green); color: var(--on-accent); }
 .dock-panel-vcf .vcf-actions > button.danger { background: #b94b3f; color: #fff; }
 .dock-panel-vcf .vcf-actions > button:disabled { opacity: .32; cursor: default; }
 .dock-panel-vcf .vcf-panel > p.vcf-progress { margin: 0; padding: 0 3px; font-size: 11px; line-height: 1.5; color: var(--muted); }
@@ -1423,3 +1660,112 @@ article, .library-folder-head, .puzzle-row-drag, .puzzle-collection-main { -webk
 /* 二级入口与一级文件夹之间留出间隔，强化分组。 */
 .library-page .library-actions { margin-bottom: 14px; }
 .library-page .folder-library-list { margin-top: 2px; }
+
+/* ── 设置行的字号放大适配（用户 2026-10-05：「130 时有些地方布局就乱」）────────────
+   `.setting-choice-row` 正常字号是「标签 | 控件」两列（38% 归控件）。字号放大后这个比例不够：
+   标签被挤成两三行、下拉还会按最长选项撑宽。放大档改成**上下堆叠**——标签与说明在上、
+   控件整行在下：标签折行也整齐（对齐），控件与值的关系一眼可见（亲密性），
+   而所有设置行用同一套版式（重复）。 */
+.app-shell:is(.font-scale-large, .font-scale-xlarge) .setting-choice-row {
+  grid-template-columns: minmax(0, 1fr); gap: 6px; align-items: start;
+}
+.app-shell:is(.font-scale-large, .font-scale-xlarge) .setting-choice-row > select,
+.app-shell:is(.font-scale-large, .font-scale-xlarge) .setting-choice-row > input { width: 100%; min-width: 0; }
+/* 材质卡的第二行说明在 360px + 特大字下会横向顶出去 4px：截断成两行，别把卡片撑破。 */
+.visual-option-grid button small {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+
+/* ── 外观「三版面」（2026-10-09）────────────────────────────────────────────
+   共用一块预览棋盘，下面横向排「棋盘 / 棋子 / 特效」三个标签；切到哪个就调哪个。
+   预览本身沿用既有 .material-live-preview 的尺寸与边框，只补标签与角标。 */
+.appearance-panes { display:block; }
+.appearance-pane-tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin:9px 0 0; }
+.appearance-pane-tabs > button {
+  min-height:38px; border:1px solid var(--surface-border, var(--line)); border-radius:12px;
+  background:var(--surface); color:var(--ink); font-size:12px; font-weight:700; cursor:pointer;
+  transition:background .15s ease, border-color .15s ease; }
+.appearance-pane-tabs > button.selected {
+  background:var(--green); border-color:var(--green); color:var(--on-accent); }
+.appearance-pane-hint { margin:7px 0 12px; color:var(--muted); font-size:11px; line-height:1.5; }
+.appearance-pane-body { display:block; }
+/* 预览角上的版面名：让"现在预览的是哪一块"一眼可见 */
+.appearance-panes .pane-badge {
+  position:absolute; right:8px; bottom:8px; z-index:2; font-style:normal;
+  padding:2px 7px; border-radius:8px; font-size:10px; font-weight:700;
+  background:color-mix(in srgb, var(--ink) 62%, transparent); color:var(--paper); }
+/* 三个版面的"调试态"：靠一层极淡的底色提示当前聚焦对象（不改变材质本身） */
+.appearance-panes .pane-board { box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--green) 34%, transparent); }
+.appearance-panes .pane-stone { box-shadow:inset 0 0 0 2px color-mix(in srgb, #b0525f 30%, transparent); }
+.appearance-panes .pane-motion { box-shadow:inset 0 0 0 2px color-mix(in srgb, #4f6f9c 26%, transparent); }
+
+
+/* 预览里重演落子动效的那一枚棋子（外观「特效」版面）：
+   用户 2026-10-09「落子动效的话，就挑预览里面其中一手播放动效就行」——
+   不给第二块预览，就在共用预览里让一枚子按"落下 → 回弹 → 稳定"演一遍，然后停一拍再来。
+   ⚠ 只动 transform，且 transform-box:fill-box 让缩放以棋子自身为中心。 */
+.material-crop .crop-stone-demo {
+  transform-box: fill-box; transform-origin: center;
+  animation: crop-stone-drop 2.6s cubic-bezier(.2,.9,.3,1.2) infinite; }
+@keyframes crop-stone-drop {
+  0%   { transform: translateY(-46px) scale(1.34); opacity:0 }
+  18%  { transform: translateY(0) scale(1.06); opacity:1 }
+  30%  { transform: translateY(-5px) scale(.97) }
+  42%  { transform: translateY(0) scale(1) }
+  88%  { transform: translateY(0) scale(1); opacity:1 }
+  100% { transform: translateY(-46px) scale(1.34); opacity:0 }
+}
+/* 关动效时别让它停在"消失"那一帧（同 plum 那批的坑） */
+@media (prefers-reduced-motion: reduce) {
+  .material-crop .crop-stone-demo { animation:none; opacity:1; transform:none }
+}
+:root[data-motion="off"] .material-crop .crop-stone-demo { animation:none!important; opacity:1; transform:none }
+
+
+/* 功能区按钮透明度：见 src/action-opacity.css（单独一层、在 main.tsx 最后加载）。
+   这里不再重复定义 —— 两处写同一件事会互相打架（第一版就是因此"调了没反应"）。 */
+
+
+/* 外观「棋盘与棋子」：预览上方的两条透明度滑杆（棋盘 / 棋子）。
+   只留「名字 + 滑杆 + 读数」，与预览同一块里就近联动。 */
+.appearance-opacity-row { display:flex; flex-direction:column; gap:2px; margin:0 0 8px; }
+.appearance-opacity-row > label { display:grid; grid-template-columns:82px 1fr 44px; align-items:center; gap:8px; padding:5px 2px; }
+.appearance-opacity-row > label > span { color:var(--ink); font-size:12px; font-weight:700; }
+.appearance-opacity-row > label > input { width:100%; height:16px; accent-color:var(--green); touch-action:pan-x; }
+.appearance-opacity-row > label > output { color:var(--muted); font-size:11px; font-weight:700; text-align:right; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   暗色主题的两处配色订正（2026-10-13，作品集截图审查时逐像素量出来的）
+
+   ① 列表里的**迷你棋盘缩略图**：底色在主规则里写死木色 `#d3aa6b`。
+      浅色主题上是"小木盘"，成立；但在**暗色主题**上就是一块暖木板贴在墨色卡上，
+      主题越冷越扎眼（棋魂主题实拍最明显）。这里只给暗色主题换成跟随主题的中性盘面。
+      ⚠ `.mini-board` 写两遍是为了**抬特异性**：themes.css 里有一条
+        `html[data-theme="pelican"] .mini-board{color:#382817}`，它与本条同特异性
+        但加载在 styles.css 之后（main.tsx 第 8 行）。不抬的话那条深棕字会落到
+        新的深色底上＝隐身。
+      ⚠ 浅色主题**不动**：木色棋盘在浅底上是本来就成立的观感，没必要改。
+
+   ② 「统一调整视觉与反馈」卡片左边那枚图标块（`.appearance-center-intro > span`）：
+      底色是 `var(--green)`。在棋魂（单色水墨）里 --green 是**浅灰 #d4d4d4**，
+      于是一整块 38×38 的亮方块压在深色卡上 —— 整屏最跳的一处。
+      只在 soul 下改成"描边小方块"：底色透明、靠 1px 边和字色立形。
+      ⚠ 只改 soul：其余暗色主题的 --green 是真实品牌色，实心底本来是对的。
+   ══════════════════════════════════════════════════════════════════════ */
+html:is([data-theme="dark"],[data-theme="rain"],[data-theme="jiangnan"],[data-theme="firefly"],
+        [data-theme="pixel"],[data-theme="cyber"],[data-theme="blackgold"],[data-theme="aurora"],
+        [data-theme="deepsea"],[data-theme="pelican"],[data-theme="soul"],
+        html[data-theme="dunhuang"]) .mini-board.mini-board{
+  background-color:color-mix(in srgb,var(--paper,#12161a) 74%,#ffffff1f);
+  background-image:
+    linear-gradient(color-mix(in srgb,var(--ink,#e9eef2) 22%,transparent) 1px,transparent 1px),
+    linear-gradient(90deg,color-mix(in srgb,var(--ink,#e9eef2) 22%,transparent) 1px,transparent 1px);
+  color:var(--muted,#9aa7b0);
+}
+html[data-theme="soul"] .appearance-center-intro > span{
+  background:transparent;
+  border:1px solid var(--surface-border,#333e46);
+  color:var(--ink);
+}

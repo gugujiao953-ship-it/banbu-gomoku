@@ -1,0 +1,446 @@
+/* 成就解锁弹窗（2026-10-09）。
+ *
+ * ⚠ 本文件必须被 src/**\/*.css 的通配覆盖（vite 的 scalableUiFonts 插件扫的是
+ *   `src/**\/*.css`），所以这里的 font-size 会随「特大字」档一起缩放——
+ *   这是有意的：特大字下弹窗文字也该变大。但**卡片宽度**用 vw 夹取，
+ *   避免字体放大后横向溢出（对照 R115 那批「特大字被省略号吃掉」的教训）。
+ *
+ * 定位思路见 ProgressReward.tsx 的注释：顶部滑入、无遮罩、不拦操作。
+ * z-index 取 85：高于 app-toast（95 之下）、高于 sheet-backdrop（60），
+ * 低于 first-run（120）/ 引导（160）——那些是真正需要独占屏幕的时刻。
+ * 这里取 85 而不是 95 是有意的：提示类的东西**不该压住**用户正在看的浮层内容。
+ */
+
+.achievement-unlock {
+  position: fixed;
+  /* **最上面区域**（用户 2026-10-10 第三轮：「然后成就的那个还不够靠上，
+     你最好是放到最上面区域，不要挡住棋盘了」）。
+     ⚠ 顶栏实测高 68px、**棋盘从 108px 开始**（390×844 实测）——
+     原来的 74px 落在顶栏与棋盘之间那条窄缝里，看着"还不够靠上"，
+     而且稍高的卡片（带两行说明时）下沿会压到棋盘上沿。
+     现在压到 8px（卡片 60px 高；居中本该是 (68 − 60) / 2 = 4，但实测页面顶部有约
+     9px 的视觉偏移 —— app-shell 的上外边距加顶栏内边距 —— 4px 会让卡片上沿被切掉
+     一点（实测 top = −9）。8px 落在顶栏内、又不切。 */
+  top: calc(var(--safe-area-top, env(safe-area-inset-top)) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 85;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  /* 间距与内边距一起收（用户：「多考虑手机的大小啊」）：
+     原来的 10px/12px 是按三行内容配的，压成两行之后可以更紧。 */
+  gap: 8px;
+  width: min(calc(100vw - 24px), 420px);
+  padding: 9px 10px 9px 11px;
+  border: 1px solid #d9c489;
+  border-radius: 18px;
+  /* 显式 background-color（不只是 gradient）：渐变是 background-image，
+     有些量测/合成路径读不到它，加一个同色底色让对比度可判定。 */
+  background-color: #fffdf4;
+  background-image: linear-gradient(152deg, #fffdf4 0%, #fdf6e3 52%, #f8eeda 100%);
+  color: var(--ink, #292620);
+  box-shadow:
+    0 18px 42px #6d55202e,
+    0 2px 0 #ffffffcc inset,
+    0 0 0 1px #ffffff8c inset;
+  overflow: hidden;
+  /* 只有卡片本身可点（关按钮）；卡片之外一律透传，下面照常操作。 */
+  pointer-events: auto;
+  animation: achievement-unlock-enter 520ms var(--ease-enter, cubic-bezier(.22,.9,.25,1)) both;
+}
+
+.achievement-unlock.is-leaving {
+  animation: achievement-unlock-leave 260ms ease-in both;
+}
+
+/* ── 动效层（三层，互不干扰） ───────────────────────────────────────── */
+
+/* ① 光晕：从勋章位置扩散出去的一团暖光 */
+.achievement-unlock-glow {
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  width: 132px;
+  height: 132px;
+  margin: -66px 0 0 -66px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd97a8f 0%, #ffd97a2e 42%, transparent 70%);
+  pointer-events: none;
+  animation: achievement-unlock-glow 1500ms ease-out both;
+}
+
+/* ② 光芒：缓慢旋转的细射线，像一枚奖章在闪。
+ *
+ * ⚠ 这是整张成就卡里**唯一可能吃性能**的东西（用户 10-09 第十轮点名：
+ * 「成就动效如果有会影响性能的，就搞成没那么影响性能但是基本无损的」）。
+ * 原因：它一边是 `repeating-conic-gradient` 背景、一边带 `mask-image`，
+ * 而旋转默认会**每帧重新光栅化整个元素**（渐变 + 蒙版都得重画一遍）。
+ *
+ * 修法是"把它提到自己的合成层"（`will-change: transform` + `translateZ(0)`）：
+ * 光栅化只做一次，之后每帧只做矩阵变换 ⇒ **观感完全不变**（还是同一张矢量渐变+蒙版），
+ * 但每帧成本从"重画一张带蒙版的渐变"降到"搬一个图层"。
+ * 再配 `contain: paint` 把绘制范围锁在自己的盒子里，避免牵连邻居的重绘判断。
+ * 因为同一时刻只会有一张成就卡在播（3.6 秒），常驻一个图层的内存可以接受。 */
+.achievement-unlock-rays {
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  width: 96px;
+  height: 96px;
+  margin: -48px 0 0 -48px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: .5;
+  background: repeating-conic-gradient(from 0deg, #e8b75c66 0deg 7deg, transparent 7deg 26deg);
+  mask-image: radial-gradient(circle, transparent 26%, #000 40%, transparent 72%);
+  -webkit-mask-image: radial-gradient(circle, transparent 26%, #000 40%, transparent 72%);
+  contain: paint;
+  will-change: transform;
+  transform: translateZ(0);
+  animation: achievement-unlock-rays 2400ms linear infinite;
+}
+
+.achievement-unlock-medal {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #6b4c17;
+  background: linear-gradient(150deg, #ffe9a8, #e6b955 55%, #cfa14a);
+  box-shadow: 0 4px 12px #a97f2740, 0 1px 0 #fff6d9cc inset;
+  animation: achievement-unlock-medal 900ms var(--ease-enter, cubic-bezier(.22,.9,.25,1)) both;
+}
+
+.achievement-unlock-copy {
+  min-width: 0;
+}
+
+/* 标题行：标题在左、级别与奖励两枚小徽章在右（用户 2026-10-10 要压高度：
+   原来那两枚徽章另起一行，白白多占 22px + 间距）。 */
+.achievement-unlock-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.achievement-unlock-head b {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  color: #6b4c17;
+  /* 标题过长时省略而不换行 —— 换行会把卡片顶高（这一整块的目标就是"最多两行"） */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 标题行里的 meta **不再自带 margin-top**（它现在和标题同一行） */
+.achievement-unlock-head .achievement-unlock-meta { margin-top: 0; flex: 0 0 auto; }
+
+/* 说明：**最多两行**（用户：「里面的字最多两行就顶天了」）。
+   用 -webkit-line-clamp 而不是截断字符串 —— 省略号由浏览器按实际宽度算，断点自然。 */
+.achievement-unlock-copy .achievement-unlock-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.4;
+  /* 用主题令牌而不是写死色：各主题的 --muted 已经过对比度审计（R112/R117 的教训）。 */
+  color: var(--muted, #68635b);
+}
+
+.achievement-unlock-soul {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 9px;
+  /* 徽章底色与两档字色走令牌：深色主题下底色变深、字色跟着变亮
+     （同一个套路照 --on-accent：底色变了字色必须一起变，写死任何一头都会翻车）。
+     实测过的坑：#96835c 在浅底 3.0–3.4、#6a5a38 在深底 1.86。 */
+  background: var(--progress-soul-badge, #f4e4bd);
+  color: var(--progress-soul-ink, #6b4c17);
+}
+
+/* ── 级别（用户 2026-10-10：「这些等级对应不同等级，不同层次设计的成就弹窗」）──
+   四级各有排场，靠 `is-tier-N` 在**同一个组件**上换三样东西：
+   ① 光芒的可见度（1 级几乎看不见，4 级是完整一圈）；
+   ② 光晕的大小与强度；
+   ③ 勋章的外圈（3 级起才有第二道环，4 级再多一层柔光）。
+
+   为什么用 CSS 类而不是在 JS 里算样式：门禁可以直接断言 `is-tier-4` 这类类名
+   与 `data-achievement-tier`，不必去解析行内 style（那种断言一改实现就假失败）。
+
+   ⚠ 加的这些层级**不新增动画**：全部只改 opacity / 尺寸 / 阴影，
+   所以那张卡的每帧成本与改前完全一样（4 级的光芒本来就是既有那条旋转射线，
+   只是把低级别的 opacity 压下去 —— 低级别的卡反而更省）。 */
+
+.achievement-unlock-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ① 光芒：低级别压暗（不是删掉 —— 删掉会让"有没有动效"变成两套 DOM） */
+.achievement-unlock.is-tier-1 .achievement-unlock-rays { opacity: .1; }
+.achievement-unlock.is-tier-2 .achievement-unlock-rays { opacity: .24; }
+.achievement-unlock.is-tier-3 .achievement-unlock-rays { opacity: .38; }
+.achievement-unlock.is-tier-4 .achievement-unlock-rays { opacity: .62; }
+
+/* ② 光晕：4 级更大更亮 */
+.achievement-unlock.is-tier-1 .achievement-unlock-glow { opacity: .5; }
+.achievement-unlock.is-tier-2 .achievement-unlock-glow { opacity: .72; }
+.achievement-unlock.is-tier-4 .achievement-unlock-glow { width: 168px; height: 168px; margin: -84px 0 0 -84px; }
+
+/* ③ 勋章：3 级起加一道外环，4 级再加一层柔光 */
+.achievement-unlock.is-tier-3 .achievement-unlock-medal {
+  box-shadow: 0 4px 12px #a97f2740, 0 1px 0 #fff6d9cc inset, 0 0 0 2px #d8b061;
+}
+.achievement-unlock.is-tier-4 .achievement-unlock-medal {
+  box-shadow: 0 4px 12px #a97f2740, 0 1px 0 #fff6d9cc inset, 0 0 0 2px #d8b061, 0 0 0 6px #f0d79a59;
+}
+
+/* 级别标签的底色：越高级越"金"（和上面三样同一套语义）。
+ *
+ * ⚠ 这一块试了三种写法，前两种都被对比度门禁打回（21 套主题逐条量）：
+ *  ① 写死浅金 + 深金字 → 深色主题 1.x:1（8 套红）；
+ *  ② `color-mix(金 N%, transparent)` → 半透明底压在深色卡片上合成中间色，2.1:1；
+ *  ③ `color-mix(金 N%, var(--surface))` → 深色主题的 --surface 本身就是深色，
+ *     混完还是深底 + 深金字，1.3–1.8:1。
+ *
+ * 正解是**照抄同一张卡里已经验过的令牌对**：`.achievement-unlock-soul` 那枚
+ * 「+N 棋魂」徽章用的是 `--progress-soul-badge`（底色）+ `--progress-soul-ink`
+ * （字色），而这两个令牌在深色主题下会被整组换成"深底 + 亮金"
+ * （见文件末尾那一段 `:is(html[data-theme="dark"], …)` 规则）。
+ * 所以级别标签直接用同一对，四档只调"往哪一端偏"：低级别偏 muted，高级别偏 ink。
+ */
+.achievement-unlock-tier {
+  padding: 2px 7px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  /* 兜底就是"和棋魂徽章一模一样"的那一对（浅色主题下最深金、深色主题下最亮金）。 */
+  background: var(--progress-soul-badge, #f4e4bd);
+  color: var(--progress-soul-ink, #6b4c17);
+}
+
+/* 低级别往"次级色"偏（--progress-soul-muted 也是成对定义的另一档字色） */
+.achievement-unlock.is-tier-1 .achievement-unlock-tier,
+.achievement-unlock.is-tier-2 .achievement-unlock-tier {
+  color: var(--progress-soul-muted, #6a5a38);
+}
+
+/* 4 级：多一道金边 + 字色压到最重的那一档（不换底色 —— 换底色每次都会撞对比度） */
+.achievement-unlock.is-tier-4 .achievement-unlock-tier {
+  color: var(--progress-soul-ink-strong, #6b4c17);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--progress-soul-ink, #6b4c17) 42%, transparent);
+}
+
+.achievement-unlock-soul .soul-flame { flex: 0 0 auto; }
+
+.achievement-unlock-soul em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.achievement-unlock-soul i {
+  font-style: normal;
+  font-size: 11px;
+  /* 次级文字：比主字稍淡，但仍走令牌（深色下自动变亮）。 */
+  color: var(--progress-soul-muted, #6a5a38);
+}
+
+.achievement-unlock-close {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: #efe3c8;
+  /* 实测 #7d6c4a 压 #efe3c8 只有 4.01:1（低于 4.5）→ 加深一档。 */
+  color: #5f4f2e;
+}
+
+.achievement-unlock-close:active {
+  background: #e5d6b4;
+}
+
+.achievement-unlock-count {
+  position: absolute;
+  right: 44px;
+  top: 8px;
+  font-size: 10px;
+  /* 实测 #a08e66 只有 2.6–3.0:1（低于 4.5）→ 主题 muted 令牌。 */
+  color: var(--muted, #5f5a52);
+}
+
+/* ── 动画 ─────────────────────────────────────────────────────────── */
+
+@keyframes achievement-unlock-enter {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-22px) scale(.94); }
+  58%  { opacity: 1; transform: translateX(-50%) translateY(3px) scale(1.012); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+@keyframes achievement-unlock-leave {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-16px) scale(.97); }
+}
+
+@keyframes achievement-unlock-glow {
+  0%   { opacity: 0; transform: scale(.35); }
+  32%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+@keyframes achievement-unlock-rays {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes achievement-unlock-medal {
+  0%   { opacity: 0; transform: scale(.4) rotate(-28deg); }
+  56%  { opacity: 1; transform: scale(1.16) rotate(6deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+/* 尊重系统的「减少动态效果」。只保留淡入淡出——**注意不能去掉 transform**，
+   因为卡片靠 translateX(-50%) 居中，去掉就跑到右半屏去了
+   （对照 styles.css 里 app-toast 的同类处理）。 */
+@media (prefers-reduced-motion: reduce) {
+  .achievement-unlock,
+  .achievement-unlock.is-leaving {
+    animation: achievement-unlock-fade 200ms ease-out both;
+    transform: translateX(-50%);
+  }
+  .achievement-unlock-glow,
+  .achievement-unlock-rays,
+  .achievement-unlock-medal {
+    animation: none;
+  }
+  .achievement-unlock-rays { opacity: .28; }
+  .achievement-unlock-glow { opacity: 0; }
+}
+
+@keyframes achievement-unlock-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── 深色主题 ─────────────────────────────────────────────────────── */
+
+/* 已知会落到深色底上的主题（与 styles.css 里 --on-accent 那批一致）。
+   用 `:is()` 一次列完，比逐个写省行；老 WebView 不支持 :is() 时整条失效，
+   退回浅色卡片——那种情况下卡片仍是浅底深字，可读性不受影响。 */
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievement-unlock {
+  border-color: #6d5a2e;
+  background-color: #2c2820;
+  background-image: linear-gradient(152deg, #2c2820 0%, #262218 52%, #211d15 100%);
+  color: #f2ecdd;
+  box-shadow: 0 18px 42px #00000059, 0 1px 0 #ffffff14 inset;
+}
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievement-unlock-copy b { color: #e8cd8a; }
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievement-unlock-copy small { color: var(--muted, #b5aea1); }
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievement-unlock-soul {
+  background: #3b3322;
+  color: #e0c17d;
+}
+
+/* 深色徽章与级别标签是兄弟节点，成对的底色/字色令牌必须挂在整张卡上。 */
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievement-unlock {
+  --progress-soul-badge: #3b3322;
+  --progress-soul-ink: #e0c17d;
+  --progress-soul-muted: #cbb488;
+  --progress-soul-ink-strong: #e8cd8a;
+}
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievement-unlock-soul em { color: #e0c17d; }
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .achievement-unlock-close {
+  background: #3a3428;
+  color: #d3c49f;
+}
+
+/* 窄屏：卡片左右各留 12px；再窄就压掉一点内边距（对照 app-toast 的 380px 断点）。 */
+@media (max-width: 380px) {
+  .achievement-unlock {
+    padding: 10px 10px 10px 12px;
+    gap: 8px;
+    border-radius: 16px;
+  }
+  .achievement-unlock-medal { width: 34px; height: 34px; }
+  .achievement-unlock-glow { left: 20px; }
+  .achievement-unlock-rays { left: 20px; }
+}
+
+/* 宽屏：和 app-toast 一样，贴右上角而不是屏幕正中上方（桌面视觉重心在右上）。
+   `--ease-enter` 等变量沿用全局，不重复定义。 */
+@media (min-width: 700px) {
+  .achievement-unlock {
+    /* 桌面：同样压在顶栏那一条里（宽屏 app-shell 有 18px 外边距 ⇒ 26px 落在顶栏内） */
+    top: calc(var(--safe-area-top, env(safe-area-inset-top)) + 26px);
+    left: auto;
+    right: 28px;
+    transform: none;
+    width: min(380px, calc(100vw - 56px));
+  }
+  @keyframes achievement-unlock-enter {
+    0%   { opacity: 0; transform: translateY(-22px) scale(.94); }
+    58%  { opacity: 1; transform: translateY(3px) scale(1.012); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes achievement-unlock-leave {
+    0%   { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-16px) scale(.97); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .achievement-unlock,
+    .achievement-unlock.is-leaving {
+      animation: achievement-unlock-fade 200ms ease-out both;
+      transform: none;
+    }
+  }
+}

@@ -4,10 +4,12 @@ import { emptyBoard } from "../../game";
 import { winnerAt } from "../../puzzle-ai";
 import type { Cell, Position } from "../../types";
 import {
+  DAILY_PUZZLE_RULE_MODE,
   PUZZLE_RULE_PREFERENCE_KEY,
   loadPuzzleRulePreference,
   parsePuzzleRule,
   puzzleMoveLegality,
+  resolveDailyPuzzleRule,
   resolvePuzzleRule,
   savePuzzleRulePreference,
 } from "./puzzle-rules";
@@ -65,6 +67,44 @@ describe("doing-puzzle rule compatibility", () => {
     place(black, "black", row(8, [3, 4, 5, 6, 7, 8]));
     expect(winnerAt(black, { row: 8, col: 7 }, "renju")).toBeNull();
     expect(winnerAt(black, { row: 8, col: 7 }, "freestyle")).toBe("black");
+  });
+});
+
+/**
+ * 每日一题的默认规则（用户 2026-10-12：「不用切换有无禁，默认就有禁吧，
+ * 但是不是全局生效，就这个生效」）。
+ *
+ * 背景：内置 17 个题集一个都没声明规则，若沿用"用户偏好"就会默认成无禁手，
+ * 而 66% 的黑先题里禁手正是判据。所以每日一题固定默认有禁手，且**只作用于它自己**。
+ */
+describe("每日一题的默认规则", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("没声明规则的题：每日一题按有禁手判（不看全局偏好）", () => {
+    expect(resolveDailyPuzzleRule({}, {})).toMatchObject({ mode: "forbidden", rule: "renju", source: "preference" });
+    expect(DAILY_PUZZLE_RULE_MODE).toBe("forbidden");
+  });
+
+  it("题目 / 题集显式声明的规则照旧优先（显式元数据压过默认值）", () => {
+    expect(resolveDailyPuzzleRule({ rule: "freestyle" }, { rule: "renju" }))
+      .toMatchObject({ mode: "unrestricted", source: "puzzle", locked: true });
+    expect(resolveDailyPuzzleRule({}, { rule: "renju" }))
+      .toMatchObject({ mode: "forbidden", source: "collection", locked: true });
+  });
+
+  it("不读也不写全局偏好：偏好设成无禁手，每日一题仍是有禁手，偏好本身也没被动", () => {
+    savePuzzleRulePreference("unrestricted");
+    expect(resolveDailyPuzzleRule({}, {}).mode).toBe("forbidden");
+    // 关键：每日一题不去改那个键 —— 它属于「打谱 → 做题」那套（自由五子棋类的题在那儿）
+    expect(localStorage.getItem(PUZZLE_RULE_PREFERENCE_KEY)).toBe("unrestricted");
+    expect(loadPuzzleRulePreference()).toBe("unrestricted");
+  });
+
+  it("反向确认：「打谱 → 做题」那条路不受影响（偏好仍说了算）", () => {
+    // 同一道没声明规则的题：工作区那条路按用户偏好走，每日一题那条路固定有禁手
+    expect(resolvePuzzleRule({}, {}, "unrestricted")).toMatchObject({ mode: "unrestricted", source: "preference" });
+    expect(resolvePuzzleRule({}, {}, "forbidden")).toMatchObject({ mode: "forbidden", source: "preference" });
+    expect(resolveDailyPuzzleRule({}, {}).mode).toBe("forbidden");
   });
 });
 

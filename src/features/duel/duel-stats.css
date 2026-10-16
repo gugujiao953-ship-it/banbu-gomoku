@@ -1,0 +1,81 @@
+/* 对弈战绩与等级分面板（DuelStatsSheet）。
+   配色一律走 --surface/--line/--ink/--muted/--green 这套：底色必须能跟着 20 套主题走
+   （对比度门禁 scripts/lib/theme-matrix.mjs 沿祖先链逐层合成底色，用 --color-surface-raised
+   那种"主题块不覆盖的变量"会在深色主题下变成白纸——本仓库踩过三次）。
+   字号都乘 --ui-font-scale，大字号档由 qa/ui-font-scale.mjs 守。 */
+
+.duel-stats-sheet { display: flex; flex-direction: column; gap: 10px; }
+.duel-stats-sheet h3 { margin: 6px 0 0; font-size: calc(13px * var(--ui-font-scale, 1)); color: var(--ink); }
+
+/* 入口按钮：对弈首页与对弈界面共用一枚（几何照 .duel-screen-close，两处看着是同一个东西）。 */
+.duel-stats-button { width: 36px; height: 36px; flex: 0 0 auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface, var(--paper)); color: var(--muted); display: grid; place-items: center; }
+.duel-stats-button:active { color: var(--green); border-color: var(--green); }
+
+/* ── 两个标签（人机 / VCF）：面板是固定骨架，切换只换内容区，标签条本身永远在 ── */
+.duel-stats-tabs { display: flex; gap: 6px; }
+.duel-stats-tabs button { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 42px; padding: 0 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface, var(--paper)); color: var(--ink); font-size: calc(12.5px * var(--ui-font-scale, 1)); font-weight: 700; }
+.duel-stats-tabs button svg { flex: 0 0 auto; color: var(--muted); }
+.duel-stats-tabs button small { font-weight: 600; font-size: calc(10px * var(--ui-font-scale, 1)); color: var(--muted); }
+/* 选中态：字用「主色压深」而不是主色本色（同 .duel-stats-result 的理由，纯 --green 压淡底不到 4.5:1） */
+.duel-stats-tabs button.active { border-color: var(--green); color: color-mix(in srgb, var(--green) 55%, var(--ink)); background: color-mix(in srgb, var(--green) 12%, var(--surface, var(--paper))); }
+
+/* 空数据的行/格：位置留着、话说清楚，不整块塌成空态卡 */
+.duel-stats-blank { text-align: center; color: var(--muted); font-size: calc(11px * var(--ui-font-scale, 1)); line-height: 1.6; }
+/* 最近列表那一格是 grid（26px 徽章列 + 正文列），没有徽章的空行会被挤进 26px 列里逐字换行 */
+.duel-stats-recent .duel-stats-blank { display: block; text-align: left; }
+/* VCF 那一页的分数位是占位符，不该长得像一个大号数字 */
+.duel-stats-score.pending { color: var(--muted); font-weight: 600; }
+.duel-stats-sheet code { padding: 1px 4px; border-radius: 5px; background: var(--surface-2, var(--paper)); font-size: calc(10.5px * var(--ui-font-scale, 1)); }
+.duel-stats-curve-plot { position: relative; }
+.duel-stats-curve-hint { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: calc(11px * var(--ui-font-scale, 1)); color: var(--muted); }
+
+/* ── 等级分卡 ── */
+.duel-stats-rating { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface, var(--paper)); }
+.duel-stats-rating-head { display: flex; align-items: center; gap: 12px; }
+.duel-stats-score { font-size: calc(34px * var(--ui-font-scale, 1)); font-weight: 800; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.duel-stats-rating-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.duel-stats-rating-meta em { font-style: normal; font-size: calc(12.5px * var(--ui-font-scale, 1)); font-weight: 700; color: var(--green); }
+.duel-stats-rating-meta small { font-size: calc(11px * var(--ui-font-scale, 1)); color: var(--muted); }
+
+.duel-stats-curve { display: flex; gap: 6px; height: 92px; }
+.duel-stats-curve .ai-curve-axis { font-size: calc(9.5px * var(--ui-font-scale, 1)); color: var(--muted); font-variant-numeric: tabular-nums; }
+.duel-stats-curve-plot { height: 92px; }
+.duel-stats-curve-plot svg { display: block; width: 100%; height: 100%; }
+.duel-stats-curve-line { fill: none; stroke: var(--green); stroke-width: 1.8; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.duel-stats-curve-dot { fill: var(--green); }
+.duel-stats-baseline { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; stroke-dasharray: 3 3; }
+.duel-stats-curve-empty { margin: 0; }
+
+/* ── 概览六格（弈境那种遥测栅格：一格一个指标，标签在上、值在下） ── */
+.duel-stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.duel-stats-cell { display: flex; flex-direction: column; gap: 1px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface, var(--paper)); }
+.duel-stats-cell small { font-size: calc(10.5px * var(--ui-font-scale, 1)); color: var(--muted); }
+.duel-stats-cell b { font-size: calc(16px * var(--ui-font-scale, 1)); color: var(--ink); font-variant-numeric: tabular-nums; }
+.duel-stats-cell span { font-size: calc(10px * var(--ui-font-scale, 1)); color: var(--muted); }
+@media (min-width: 460px) { .duel-stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* ── 分档表 ── */
+.duel-stats-table { width: 100%; border-collapse: collapse; font-size: calc(11.5px * var(--ui-font-scale, 1)); }
+.duel-stats-table th, .duel-stats-table td { padding: 5px 4px; border-bottom: 1px solid var(--line); text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+.duel-stats-table th { color: var(--muted); font-weight: 600; }
+.duel-stats-table th:nth-child(-n+2), .duel-stats-table td:nth-child(-n+2) { text-align: left; }
+
+/* ── 最近对局 ── */
+.duel-stats-recent { display: flex; flex-direction: column; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.duel-stats-recent li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 2px 8px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface, var(--paper)); }
+.duel-stats-result { grid-row: 1 / span 3; display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; font-size: calc(12px * var(--ui-font-scale, 1)); font-weight: 800; }
+/* 底色用主色**淡入面板色**、字用「主色压深」（主色 55% + --ink）：
+   白字压 --green 只有 3.2:1，纯 --green 压淡底在 9 套主题上也只有 3.8~4.4:1，
+   都不过正文 4.5:1 那条线（P8 全主题矩阵量的就是这个）。 */
+.duel-stats-result.won { background: color-mix(in srgb, var(--green) 18%, var(--surface, var(--paper))); color: color-mix(in srgb, var(--green) 55%, var(--ink)); }
+.duel-stats-result.lost { background: color-mix(in srgb, var(--red) 16%, var(--surface, var(--paper))); color: color-mix(in srgb, var(--red) 55%, var(--ink)); }
+.duel-stats-result.draw { background: color-mix(in srgb, var(--muted) 20%, var(--surface, var(--paper))); color: color-mix(in srgb, var(--muted) 55%, var(--ink)); }
+.duel-stats-when { font-size: calc(11.5px * var(--ui-font-scale, 1)); font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.duel-stats-vs, .duel-stats-detail, .duel-stats-reason { font-size: calc(10.5px * var(--ui-font-scale, 1)); color: var(--muted); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .duel-stats-curve-line { stroke-dasharray: 400; stroke-dashoffset: 400; animation: duel-stats-draw .5s ease-out forwards; }
+  .duel-stats-curve-dot { opacity: 0; animation: duel-stats-pop .2s ease-out .35s forwards; }
+}
+@keyframes duel-stats-draw { to { stroke-dashoffset: 0; } }
+@keyframes duel-stats-pop { to { opacity: 1; } }

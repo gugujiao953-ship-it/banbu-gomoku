@@ -2,7 +2,7 @@ import { chromium } from "playwright";
 
 // UI flow check: rolling auto-analysis (depth must keep climbing across samples),
 // candidates ranked descending, no deadlock after moves.
-// 流程注意（2026-09-14）：为验证强力引擎，本脚本先经设置页下载引擎包，而离开
+// 流程注意（2026-09-14）：为验证 rapfi 引擎，本脚本先经设置页下载引擎包，而离开
 // 打谱页会按设计关掉持续分析；回到打谱后必须再用面板头部开关把分析打开，否则
 // 采样全是「-」（脚本曾因此长期打出空值，误看成节点冻结）。末行会给爬升判定。
 // Rolling auto-analysis UI regression. Usage:
@@ -29,7 +29,7 @@ await page.waitForTimeout(2500);
 await page.evaluate(() => { [...document.querySelectorAll('button')].find(e => (e.textContent||'').trim() === '设置')?.click(); });
 await page.waitForTimeout(2000);
 const dl = await page.evaluate(() => {
-  const btn = [...document.querySelectorAll('button')].find(e => (e.textContent||'').includes('下载强力引擎包'));
+  const btn = [...document.querySelectorAll('button')].find(e => (e.textContent||'').match(/下载\s*rapfi\s*引擎包/));
   if (btn) { btn.click(); return true; }
   return false;
 });
@@ -75,12 +75,44 @@ for (let i = 0; i < 5; i++) {
 }
 // 观测脚本也要能一眼看出坏没坏：深度/节点必须随时间真的爬升。
 const depthOf = (t) => Number((t.match(/深度\s*(\d+)/) || [])[1] || 0);
-const nodesOf = (t) => Number(((t.match(/节点\s*([\d,]+)/) || [])[1] || "").replace(/,/g, "") || 0);
+// 节点/速度都按「过千用 k、到 1000k 进位成 M（一位小数）」显示（用户 09-15），
+// 解析时要把单位还原成量级，否则 9k→423k 会被读成 9→423、1.0M 会被读成 1。
+const countOf = (text) => {
+  const match = String(text).match(/(\d+(?:\.\d+)?)([kM]?)/i);
+  if (!match) return 0;
+  const unit = match[2].toUpperCase();
+  const scale = unit === "K" ? 1000 : unit === "M" ? 1000000 : 1;
+  return Number(match[1]) * scale;
+};
+const nodesOf = (t) => countOf((t.match(/节点\s*([\d.,]+[kM]?)/i) || [])[1] || "");
 const depths = samples.map(depthOf);
 const nodes = samples.map(nodesOf);
 console.log(depths[depths.length - 1] > depths[0] && nodes[nodes.length - 1] > nodes[0]
   ? `OK 深度/节点随时间爬升：深度 ${depths.join("→")}｜节点 ${nodes.join("→")}`
   : `SUSPECT 深度/节点未爬升（分析未启动或冻结）：深度 ${depths.join("→")}｜节点 ${nodes.join("→")}`);
+// 统计行固定五格、顺序固定：深度 · 速度 · 评估分 · 黑方胜率 · 节点。
+// 速度是 2026-09-15 新加的（用户要求在深度右边），且数值一律「过千用 k」。
+const statCells = await page.evaluate(() => [...document.querySelectorAll('.ai-analysis-stats > span')].map((node) => ({
+  label: node.querySelector('small')?.textContent?.trim() || "",
+  value: node.querySelector('b')?.textContent?.trim() || "",
+})));
+const statLabels = statCells.map((cell) => cell.label).join('/');
+if (statLabels !== '深度/速度/评估分/黑方胜率/节点') {
+  throw new Error(`统计行格数或顺序不对：期望 深度/速度/评估分/黑方胜率/节点，实际 ${statLabels}`);
+}
+for (const [index, cell] of statCells.entries()) {
+  const value = cell.value;
+  // 计数类（速度/节点）必须是「数字」/「数字+k」/「数字.数字+M」（1000k 进位成 M，
+  // 固定一位小数）；k 只能在 1k~999k 区间，M 必须 ≥ 1M。
+  if (index === 1 || index === 4) {
+    if (value !== '-' && !/^(?:\d+k?|\d+\.\dM)$/.test(value)) throw new Error(`${cell.label} 显示格式不对：${value}`);
+    if (value.endsWith('k') && Number(value.slice(0, -1)) < 1) throw new Error(`${cell.label} 用 k 但不足 1k：${value}`);
+    if (value.endsWith('M') && Number(value.slice(0, -1)) < 1) throw new Error(`${cell.label} 用 M 但不足 1M：${value}`);
+    if (!/[kM]$/.test(value) && value !== '-' && Number(value) >= 1000) throw new Error(`${cell.label} 过千却没用 k：${value}`);
+  }
+}
+console.log(`stats-cells: ${statCells.map((cell) => `${cell.label}=${cell.value}`).join(' | ')}`);
+
 // 选点数量下拉：切到 2 选后候选点数量随动（2026-09-14：旧的
 // `.ai-analysis-pick-count select` 已被面板头部 PanelSelect 取代）。
 const pick = await page.evaluate(() => {

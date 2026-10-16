@@ -8,7 +8,7 @@ export const ACTION_LABELS = {
   comment: "注释框", new: "新建", save: "保存", delete: "删除", color: "落子颜色",
   navStart: "起点", navPrev: "上一手", navNext: "下一手", navEnd: "终点",
   navUndo: "撤销", navRedo: "重做", navDiscard: "放弃", playback: "播放",
-  analysis: "分析", analysisToggle: "分析开关", annotation: "标注", notes: "编辑", tree: "分支树", view: "更多", play: "应战", setup: "摆棋", vcf: "VCF", rule: "禁手规则",
+  analysis: "分析", analysisToggle: "分析开关", annotation: "标注", notes: "编辑", tree: "分支树", view: "更多", play: "应战", setup: "摆棋", rule: "禁手规则",
 } as const;
 export type ActionId = keyof typeof ACTION_LABELS;
 // 三个功能区：常驻操作区（上）、走棋功能区（中，导航按钮逐个独立可移动）、
@@ -49,16 +49,16 @@ export function defaultModeLayout(mode: AppMode): ModeLayout {
     // 播放）；其余在首行。简略模板只是这套布局去掉文字，不搬按钮。
     //
     // 做题（用户 2026-09-10 二次钦定 + 同日复选补正 + 09-10 反馈）：**只两行**——首行
-    // 功能区 = 分析/应战·摆棋/VCF/禁手规则/更多（黑白切换已移出首行，固定在状态条
+    // 功能区 = 分析/应战·摆棋/禁手规则/更多（黑白切换已移出首行，固定在状态条
     // 右侧=首行之上；应战与摆棋是同一枚按钮的两种状态，按当前是否在摆棋互斥显示，
-    // 见 App 的 renderWorkspaceAction，所以一行是 5 格、392px 上不折行）。常驻走棋区 =
+    // 见 App 的 renderWorkspaceAction，所以一行是 4 格、392px 上不折行）。常驻走棋区 =
     // 上一题/选题/下一题/悔棋/重启（固定渲染、不进布局池；摆棋时**保持五键不变**，摆棋
     // 的局面导航仍在弹出的面板里）。做题不需要标注/编辑/分支树，故不进池子；状态文字
     // 与黑白切换渲染在首行功能区之上。
     top: mode === "puzzle" ? [] : ["comment", "save", "new", "delete", "rule", "color"],
     moves: mode === "puzzle" ? [] : nav,
-    bottom: mode === "puzzle" ? ["analysis", "play", "setup", "vcf", "rule", "view"] : ["analysis", "annotation", "notes", "tree", "view"],
-    hidden: [], size: "standard", iconsOnly: false, movesLabels: true,
+    bottom: mode === "puzzle" ? ["analysis", "play", "setup", "rule", "view"] : ["analysis", "annotation", "notes", "tree", "view"],
+    hidden: [], size: "compact", iconsOnly: false, movesLabels: true,
   };
 }
 const object = (value: unknown): Record<string, unknown> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -66,7 +66,9 @@ const object = (value: unknown): Record<string, unknown> => value && typeof valu
 export function normalizeModeLayout(value: unknown, mode: AppMode): ModeLayout {
   const fallback = defaultModeLayout(mode);
   const input = object(value);
-  const allowed = new Set<ActionId>([...fallback.top, ...fallback.moves, ...fallback.bottom]);
+  // Optional actions are valid saved entries without being seeded into the
+  // default layout. App enables the analysis switch through its preference.
+  const allowed = new Set<ActionId>([...fallback.top, ...fallback.moves, ...fallback.bottom, "analysisToggle"]);
   const seen = new Set<ActionId>();
   const clean = (ids: unknown): ActionId[] => (Array.isArray(ids) ? ids : []).filter((id): id is ActionId => {
     if (!allowed.has(id as ActionId) || seen.has(id as ActionId)) return false;
@@ -83,12 +85,36 @@ export function normalizeModeLayout(value: unknown, mode: AppMode): ModeLayout {
     if (!seen.has(id)) { zones[zone].push(id); seen.add(id); }
   }
   const hidden = [...new Set(Array.isArray(input.hidden) ? input.hidden : [])].filter((id): id is ActionId => allowed.has(id as ActionId));
-  return { top: zones.top, moves: zones.moves, bottom: zones.bottom, hidden, size: input.size === "compact" || input.size === "large" ? input.size : "standard", iconsOnly: input.iconsOnly === true, movesLabels: input.movesLabels !== false };
+  // 缺字段/坏值回到默认档（compact，用户 10-02：「我们现在默认就要比较窄、比较不高」）；
+  // 但**显式存过的 standard 要保住**，否则在设置里选「标准」刷新就被吞回紧凑，选项成了摆设。
+  return { top: zones.top, moves: zones.moves, bottom: zones.bottom, hidden, size: input.size === "compact" || input.size === "standard" || input.size === "large" ? input.size : "compact", iconsOnly: input.iconsOnly === true, movesLabels: input.movesLabels !== false };
 }
 
 export function visibleModeLayout(layout: ModeLayout): ModeLayout {
   const visible = (ids: ActionId[]) => ids.filter((id) => !layout.hidden.includes(id));
   return { ...layout, top: visible(layout.top), moves: visible(layout.moves), bottom: visible(layout.bottom) };
+}
+
+/** Keep the optional switch in its chosen zone, adding it only when absent. */
+export function withAnalysisToggle(layouts: ActionLayouts, enabled: boolean): ActionLayouts {
+  let changed = false;
+  const modes = { ...layouts.modes };
+  for (const mode of LAYOUT_MODES) {
+    const layout = modes[mode];
+    const present = ZONES.some((zone) => layout[zone].includes("analysisToggle"));
+    if (enabled && !present) {
+      const bottom = [...layout.bottom];
+      const index = bottom.indexOf("analysis");
+      bottom.splice(index < 0 ? bottom.length : index, 0, "analysisToggle");
+      modes[mode] = { ...layout, bottom, hidden: layout.hidden.filter((id) => id !== "analysisToggle") };
+      changed = true;
+    } else if (!enabled && (present || layout.hidden.includes("analysisToggle"))) {
+      const clean = (ids: ActionId[]) => ids.filter((id) => id !== "analysisToggle");
+      modes[mode] = { ...layout, top: clean(layout.top), moves: clean(layout.moves), bottom: clean(layout.bottom), hidden: clean(layout.hidden) };
+      changed = true;
+    }
+  }
+  return changed ? { ...layouts, modes } : layouts;
 }
 
 export function normalizeActionLayouts(value: unknown, legacy?: Pick<EnhancementSettings, "dockMergeMoves" | "movesTextDisplay">): ActionLayouts {
@@ -154,4 +180,60 @@ export function loadActionLayouts(): ActionLayouts {
 export function saveActionLayouts(value: ActionLayouts): boolean {
   try { localStorage.setItem(ACTION_LAYOUT_KEY, JSON.stringify(normalizeActionLayouts(value))); return true; }
   catch { return false; }
+}
+
+// ── 自定义布局槽位（用户 09-17：「保存自定义布局，最多 3~5 个，一键切换」）──────
+// 快照的是**整套**（打谱/读谱/做题三个模式一起），所以「一键切换」换的是一整套排布，
+// 不是只换当前模式那一行——用户的原话是「以后换了布局，再点这个就切回那个布局」。
+export const SAVED_LAYOUTS_KEY = "banbu-action-layout-presets-v1";
+/** 上限 5：再多就得滑着找，反而比重新调一次慢。 */
+export const MAX_SAVED_LAYOUTS = 5;
+
+export interface SavedLayoutPreset {
+  id: string;
+  name: string;
+  savedAt: number;
+  layouts: ActionLayouts;
+}
+
+const presetName = (value: unknown, fallback: string): string => {
+  const text = typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
+  return text ? text.slice(0, 16) : fallback;
+};
+
+/** 槽位列表的归一化：坏数据整条丢弃（而不是塞半条进去），并按上限截断。 */
+export function normalizeSavedLayoutPresets(value: unknown): SavedLayoutPreset[] {
+  if (!Array.isArray(value)) return [];
+  const out: SavedLayoutPreset[] = [];
+  for (const entry of value) {
+    const input = object(entry);
+    const id = typeof input.id === "string" && input.id ? input.id : "";
+    const layouts = object(input.layouts);
+    if (!id || !Object.keys(layouts).length) continue;
+    out.push({
+      id,
+      name: presetName(input.name, `布局 ${out.length + 1}`),
+      savedAt: Number.isFinite(Number(input.savedAt)) ? Number(input.savedAt) : 0,
+      layouts: normalizeActionLayouts(input.layouts),
+    });
+    if (out.length >= MAX_SAVED_LAYOUTS) break;
+  }
+  return out;
+}
+
+export function loadSavedLayoutPresets(): SavedLayoutPreset[] {
+  try { return normalizeSavedLayoutPresets(JSON.parse(localStorage.getItem(SAVED_LAYOUTS_KEY) || "null")); }
+  catch { return []; }
+}
+
+export function saveSavedLayoutPresets(value: SavedLayoutPreset[]): boolean {
+  try { localStorage.setItem(SAVED_LAYOUTS_KEY, JSON.stringify(normalizeSavedLayoutPresets(value))); return true; }
+  catch { return false; }
+}
+
+/** 槽位副标题：三个模式各有多少个可见按钮，让用户一眼认出这是哪套布局。 */
+export function savedLayoutSummary(layouts: ActionLayouts): string {
+  return LAYOUT_MODES
+    .map((mode) => `${MODE_LABELS[mode]} ${visibleModeLayout(layouts.modes[mode]).bottom.length + visibleModeLayout(layouts.modes[mode]).moves.length + visibleModeLayout(layouts.modes[mode]).top.length}`)
+    .join(" · ");
 }

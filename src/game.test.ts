@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMove, addMoveAs, boardAt, createDocument, deleteVariation, depthOf, emptyBoard, insertMove, nextPlayerAt, parseCoordinate, preferredNext, replaceMove, setLabelMark } from "./game";
+import { addMove, addMoveAs, boardAt, createDocument, deleteVariation, depthOf, emptyBoard, insertMove, isSupportedBoardSize, MAX_BOARD_SIZE, MIN_BOARD_SIZE, nextPlayerAt, nodeIdAtDepth, parseCoordinate, preferredNext, replaceMove, setLabelMark, updateNode } from "./game";
 import { analyzeCandidates } from "./analysis";
 import { exportPos, exportSgf, importRecordFile, importRenLibLegacy } from "./formats";
 import { importLegacyDpDatabase } from "./legacy-dp";
@@ -13,6 +13,60 @@ import { applyDraftToDocument, buildDraftOverlay, emptyDraft, hasDraft, isProjec
 import { documentSignature } from "./storage";
 
 describe("game tree", () => {
+  it.each([{ row: -1, col: 7 }, { row: 15, col: 7 }, { row: 7, col: 15 }, { row: 0.5, col: 7 }, { row: 7, col: NaN }])("rejects invalid edit coordinates without corrupting the tree: %j", (position) => {
+    const original = createDocument();
+    expect(addMove(original, original.rootId, position)).toMatchObject({ document: original, created: false });
+    expect(addMoveAs(original, original.rootId, position, "black")).toMatchObject({ document: original, created: false });
+    const valid = addMove(original, original.rootId, { row: 7, col: 7 });
+    expect(replaceMove(valid.document, valid.nodeId, position).changed).toBe(false);
+  });
+
+  it("keeps explicitly coloured alternatives distinct from normal moves", () => {
+    const original = createDocument();
+    const white = addMoveAs(original, original.rootId, { row: 7, col: 7 }, "white");
+    const black = addMove(white.document, original.rootId, { row: 7, col: 7 });
+    expect(black.created).toBe(true);
+    expect(black.document.nodes[black.nodeId].move?.player).toBe("black");
+  });
+
+  it("does not manufacture partial nodes when editing a missing node", () => {
+    const original = createDocument();
+    expect(updateNode(original, "missing", { comment: "edit" })).toBe(original);
+  });
+
+  it("deletes a deep subtree without exhausting the call stack", () => {
+    const document = createDocument();
+    let parent = document.nodes[document.rootId];
+    for (let index = 0; index < 12000; index += 1) {
+      const id = `deep-${index}`;
+      parent.children = [id];
+      document.nodes[id] = { id, parentId: parent.id, children: [], move: null, comment: "", marks: [] };
+      parent = document.nodes[id];
+    }
+    expect(Object.keys(deleteVariation(document, "deep-0").document.nodes)).toEqual([document.rootId]);
+  });
+
+  it("round-trips deep annotation trees through RENJU JSON and SGF", async () => {
+    const document = createDocument();
+    let parent = document.nodes[document.rootId];
+    for (let index = 0; index < 12000; index += 1) {
+      const id = `deep-format-${index}`;
+      parent.children = [id];
+      document.nodes[id] = { id, parentId: parent.id, children: [], move: null, comment: `note ${index}`, marks: [] };
+      parent = document.nodes[id];
+    }
+    const json = await importRecordFile(new File([JSON.stringify(document)], "deep.renju"));
+    expect(Object.keys(json.document.nodes)).toHaveLength(12001);
+    const sgf = await importRecordFile(new File([exportSgf(document)], "deep.sgf"));
+    expect(Object.keys(sgf.document.nodes)).toHaveLength(12001);
+  });
+
+  it("rejects a preferred main-line pointer outside a node's children", async () => {
+    const document = createDocument();
+    document.nodes[document.rootId].preferredChildId = "missing";
+    await expect(importRecordFile(new File([JSON.stringify(document)], "broken.renju"))).rejects.toThrow(/主线/);
+  });
+
   it("imports Kaibao setup JSON and restarts without clearing the puzzle", () => {
     const report = importKaibaoPuzzleJson(JSON.stringify([[], ["★", "H8,1", "H9,2"]]), "test set");
     expect(report.skipped).toBe(1);
@@ -433,11 +487,58 @@ describe("record formats", () => {
     expect(move?.renLibExtendedFlags).toBe(0x100);
   });
 
-  it("only applies the webpage reader's W/L/v/m label formatting", () => {
-    expect(formatRenLibWebLabel("W12", 3)).toBe(" W9");
-    expect(formatRenLibWebLabel("v200", 1)).toBe("26%");
-    expect(formatRenLibWebLabel("斜", 4)).toBe("斜");
-    expect(formatRenLibWebLabel("中文长标签", 4)).toBe("中文长标签");
+  // Transcribed from the reference reader the native LIB view mirrors
+  // (ReadLib/script/RenjuLib.js, "参考 Rapfi 源码 兼容制谱器胜率谱显示").
+  // Kept verbatim as the referee: a flipped sign or a shifted ply in
+  // formatRenLibWebLabel has to fail here instead of reaching users.
+  const referenceReadLabel = (text: string, playedPly: number) => {
+    const valueToWinRate = (v: number) => (v >= 29500 ? 1 : v <= -29500 ? 0 : 1 / (1 + Math.exp(-v / 200)));
+    const referenceWinRate = (value: number) => {
+      const winRate = valueToWinRate(-value);
+      const label = Number.parseInt(String(Math.max(0, Math.min(winRate * 100, 99))), 10).toString();
+      return `${"  ".slice(0, 2 - label.length)}${label}%`;
+    };
+    if (text[0] === "W" || text[0] === "L") {
+      const step = Number.parseInt(text.slice(1), 10) - playedPly;
+      let stepped = text[0] + (step > 0 ? step : "");
+      if (stepped.length < 3) stepped = "  ".slice(0, 3 - stepped.length) + stepped;
+      return stepped;
+    }
+    if ((text[0] === "v" || text[0] === "m") && text.length > 1) {
+      const value = Number.parseInt(text.slice(1), 10);
+      return referenceWinRate(text[0] === "v" ? -value : value);
+    }
+    return text;
+  };
+
+  it("formats LIB labels exactly like the reference webpage reader", () => {
+    // Real tokens from a 90%-win-rate opening book (疏星3打), plus the shapes
+    // the reference leaves untouched. playedPly is how many moves are already
+    // on the board at the position whose children carry the label.
+    const tokens = ["W12", "W41 ", "W27 ", "L41 ", "L33 ", "L25 ", "m463", "v463", "m275", "v275", "m26 ", "v26 ", "m1  ", "v1  ", "#   ", "A", "斜", "中文长标签"];
+    for (const token of tokens) {
+      for (const playedPly of [0, 1, 3, 6, 7, 13, 40]) {
+        expect(`${token}@${playedPly}=${formatRenLibWebLabel(token, playedPly)}`)
+          .toBe(`${token}@${playedPly}=${referenceReadLabel(token, playedPly)}`);
+      }
+    }
+  });
+
+  it("keeps the two 1.1.8.1 win-rate-book label defects fixed", () => {
+    // User 09-19 on 疏星3打-90胜率谱: the reference reader shows this row as
+    // L35 / L27 / L19 while we showed L34 / L26 / L18. We passed the labelled
+    // node's own depth (7) where the reference passes the moves already on the
+    // board (6), shifting every number by one.
+    expect(formatRenLibWebLabel("L41 ", 6)).toBe("L35");
+    expect(formatRenLibWebLabel("L33 ", 6)).toBe("L27");
+    expect(formatRenLibWebLabel("L25 ", 6)).toBe("L19");
+    expect(formatRenLibWebLabel("L41 ", 7)).toBe("L34"); // what the shifted ply produced
+    // The same row's win rates were complemented: "m" is the unfavourable sign
+    // and "v" the favourable one, so 8% read as 91% ("胜率写反").
+    expect(formatRenLibWebLabel("m463", 6)).toBe(" 8%");
+    expect(formatRenLibWebLabel("v463", 6)).toBe("91%");
+    expect(formatRenLibWebLabel("m275", 6)).toBe("20%");
+    expect(formatRenLibWebLabel("v275", 6)).toBe("79%");
   });
 
   it("builds a compact parent/child/sibling index for large-library storage", () => {
@@ -699,5 +800,99 @@ describe("proof search and position index", () => {
     expect(positionKey(boardAt(document, second.nodeId), "black", true)).toBe(positionKey(rotated, "black", true));
     expect(findPositionMatches([document], rotated, "black", false)).toHaveLength(0);
     expect(findPositionMatches([document], rotated, "black", true)).toEqual(expect.arrayContaining([expect.objectContaining({ documentId: document.id, nodeId: second.nodeId, depth: 2 })]));
+  });
+});
+
+describe("nodeIdAtDepth（用户 09-17 第二批③：手数滑轨与跳手的主线第 N 手解析）", () => {
+  const buildLine = () => {
+    let document = createDocument("rail");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 });
+    document = first.document;
+    const second = addMove(document, first.nodeId, { row: 7, col: 8 });
+    document = second.document;
+    const third = addMove(document, second.nodeId, { row: 7, col: 9 });
+    document = third.document;
+    return { document, ids: [document.rootId, first.nodeId, second.nodeId, third.nodeId] };
+  };
+
+  it("深度 0 返回起始局面，逐手解析与 depthOf 互逆", () => {
+    const { document, ids } = buildLine();
+    expect(nodeIdAtDepth(document, 0)).toBe(ids[0]);
+    for (let depth = 1; depth <= 3; depth += 1) {
+      const id = nodeIdAtDepth(document, depth);
+      expect(id).toBe(ids[depth]);
+      expect(depthOf(document, id)).toBe(depth);
+    }
+  });
+
+  it("超出主线长度时返回主线最后一手（滑轨拖到区间外不抛错）", () => {
+    const { document, ids } = buildLine();
+    expect(nodeIdAtDepth(document, 3)).toBe(ids[3]);
+    expect(nodeIdAtDepth(document, 30)).toBe(ids[3]);
+  });
+
+  it("负数按 0 处理", () => {
+    const { document, ids } = buildLine();
+    expect(nodeIdAtDepth(document, -5)).toBe(ids[0]);
+  });
+
+  it("沿 preferredChild 走主线，不落到非首选分支", () => {
+    let document = createDocument("rail-main");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 });
+    document = first.document;
+    const main = addMove(document, first.nodeId, { row: 7, col: 8 });
+    document = main.document;
+    const side = addMove(document, first.nodeId, { row: 8, col: 7 });
+    document = side.document;
+    // 新分支默认成为 preferredChild，这里显式把主线钉回 main 再验证。
+    document = { ...document, nodes: { ...document.nodes, [first.nodeId]: { ...document.nodes[first.nodeId], preferredChildId: main.nodeId } } };
+    expect(nodeIdAtDepth(document, 2)).toBe(main.nodeId);
+    expect(nodeIdAtDepth(document, 3)).toBe(main.nodeId);
+  });
+
+  it("过手节点也计一手，与 depthOf 口径一致", () => {
+    let document = createDocument("rail-pass");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 });
+    document = first.document;
+    const passNodeId = "rail-pass-node";
+    document = {
+      ...document,
+      nodes: {
+        ...document.nodes,
+        [first.nodeId]: { ...document.nodes[first.nodeId], children: [passNodeId], preferredChildId: passNodeId },
+        [passNodeId]: { id: passNodeId, parentId: first.nodeId, children: [], move: null, passPlayer: "white" as const, comment: "", marks: [] },
+      },
+    };
+    expect(nodeIdAtDepth(document, 2)).toBe(passNodeId);
+    expect(depthOf(document, passNodeId)).toBe(2);
+  });
+});
+
+describe("棋盘路数上限口径统一（用户 09-23：新建 21 路 vs 导入 25 路不一致）", () => {
+  it("isSupportedBoardSize 接受 5–30、拒绝范围外", () => {
+    expect(isSupportedBoardSize(MIN_BOARD_SIZE)).toBe(true);
+    expect(isSupportedBoardSize(MAX_BOARD_SIZE)).toBe(true);
+    expect(isSupportedBoardSize(23)).toBe(true);
+    for (const size of [4, 31, 0, -1]) expect(isSupportedBoardSize(size)).toBe(false);
+    for (const size of [5.5, Number.NaN, Number.POSITIVE_INFINITY]) expect(isSupportedBoardSize(size)).toBe(false);
+  });
+
+  it("新建棋谱可选路数覆盖整个合法区间（含 22–25 路，原先写死 17 项只到 21）", () => {
+    // 与 App.tsx 的 BOARD_SIZE_CHOICES 同一推导方式：从 MIN/MAX 展开。
+    const choices = Array.from({ length: MAX_BOARD_SIZE - MIN_BOARD_SIZE + 1 }, (_, index) => index + MIN_BOARD_SIZE);
+    expect(choices[0]).toBe(MIN_BOARD_SIZE);
+    expect(choices[choices.length - 1]).toBe(MAX_BOARD_SIZE);
+    expect(choices).toHaveLength(MAX_BOARD_SIZE - MIN_BOARD_SIZE + 1);
+    // 每一个可选项都必须能真的建出棋谱（口径一致的实质检验）。
+    choices.forEach((size) => {
+      const document = createDocument("路数", size);
+      expect(document.metadata.boardSize).toBe(size);
+      expect(document.nodes[document.rootId]).toBeTruthy();
+    });
+  });
+
+  it("范围外路数建谱会明确抛错，不静默降级", () => {
+    expect(() => createDocument("路数", MAX_BOARD_SIZE + 1)).toThrow();
+    expect(() => createDocument("路数", MIN_BOARD_SIZE - 1)).toThrow();
   });
 });

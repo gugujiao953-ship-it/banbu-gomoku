@@ -1,11 +1,24 @@
 import { addMove, addMoveAs, coordinateName, createDocument, isSupportedBoardSize, otherPlayer, parseCoordinate, toggleMark } from "./game";
-import type { BoardMark, CompactRenLibDraftNode, CompactRenLibIndex, GameDocument, ImportResult, NodeEvaluation, Player, Position, RecordNode } from "./types";
+import type { BoardMark, BoardMarkKind, BoardMarkStyle, CompactRenLibDraftNode, CompactRenLibIndex, GameDocument, ImportResult, NodeEvaluation, Player, Position, RecordNode, RuleSet } from "./types";
+import { MARK_SGF_PROPERTY, markKindForStyle } from "./annotation-presets";
 import { RenLibArrayBuilder, createLazyDocument } from "./compact-index";
 
 interface SgfNode { props: Record<string, string[]>; children: SgfNode[] }
 
 const readU32LE = (bytes: Uint8Array, offset: number) => (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
-const MAX_DP_DECODED_BYTES = Number.MAX_SAFE_INTEGER;
+/**
+ * 解压后允许占多少字节。以前这里是 `Number.MAX_SAFE_INTEGER`（等于不设限），于是 33MB 的库
+ * 解出 309MB、加上索引常驻 3.6GB，手机网页内核被系统直接杀掉——用户看到的是「db 打不开」，
+ * 一句解释都没有。现在按设备给个预算：`deviceMemory` 只有安卓 Chrome 提供（粗粒度 GB），
+ * 拿不到就按桌面处理（1.5GB）。预算 = GB × 128MB，下限 192MB。
+ */
+const dpDecodedBudgetBytes = () => {
+  const memory = (globalThis as { navigator?: { deviceMemory?: number } }).navigator?.deviceMemory;
+  if (typeof memory !== "number" || memory <= 0) return 1536 * 1048576;
+  return Math.max(192, Math.round(memory * 128)) * 1048576;
+};
+const MAX_DP_DECODED_BYTES = dpDecodedBudgetBytes();
+const dpMegabytes = (bytes: number) => `${(bytes / 1048576).toFixed(0)}MB`;
 const appendLz4History = (dictionary: number[], block: Uint8Array) => {
   const keepFromDictionary = Math.max(0, 65536 - block.length);
   const history = keepFromDictionary ? dictionary.slice(-keepFromDictionary) : [];
@@ -80,7 +93,7 @@ export const decodeDpDatabaseFrame = (bytes: Uint8Array) => {
     const block = bytes.subarray(offset, offset + blockLength); offset += blockLength;
     const blockDictionary = independentBlocks ? [] : dictionary;
     const remaining = MAX_DP_DECODED_BYTES - outputLength;
-    if (remaining <= 0 || (uncompressed && block.length > remaining)) throw new Error("DP 数据库解压后超过当前设备可用内存");
+    if (remaining <= 0 || (uncompressed && block.length > remaining)) throw new Error(`这份数据库解压后超过本机内存预算（约 ${dpMegabytes(MAX_DP_DECODED_BYTES)}，本机内存越小这个预算越小）：请在电脑上打开这一份`);
     const decoded = uncompressed ? { decoded: block, history: appendLz4History(blockDictionary, block) } : decodeLz4Block(block, blockDictionary, Math.min(remaining, maximumBlockSize));
     chunks.push(decoded.decoded);
     outputLength += decoded.decoded.length;
@@ -194,8 +207,71 @@ export const dpCanonicalKey = (position: Uint8Array, sideToMove: 0 | 1) => {
   const key = new Uint8Array([2, 15, 15, ...(best.length === 2 && best[0] === 0xffff ? [] : best)]);
   return { key, trans: bestTrans };
 };
-const decodeDpLabel = (bytes: Uint8Array) => {
-  try { return new TextDecoder("utf-8", { fatal: true }).decode(bytes).trim(); }
+/**
+ * 子节点查找的快路径。
+ *
+ * 朴素实现为每个候选空点重算一次 dpCanonicalKey，而 dpCanonicalKey 会对 8 个朝向
+ * 各扫一遍整盘（225 格）——一个局面 225 个候选 = 约 80 万次格子访问，实测中位
+ * 13ms/局面。父局面已经算过规范形，于是子局面只是在「规范朝向下的棋子表」里多插
+ * 一颗子：对 8 个朝向变换这张短表并重排，就得到与整盘扫描完全相同的 stones 序列。
+ *
+ * 逐位等价由 qa 之外的 dp-canonical-parity 单测用真实库背书（同局面比对两条路径）。
+ */
+const dpInsertStone = (stones: number[], x: number, y: number) => {
+  const out = stones.slice();
+  let insertAt = out.length;
+  for (let index = 0; index < out.length; index += 2) {
+    if (out[index] > x || (out[index] === x && out[index + 1] > y)) { insertAt = index; break; }
+  }
+  out.splice(insertAt, 0, x, y);
+  return out;
+};
+
+/** 按朝向变换一张棋子表；扫描顺序是 x 主序 y 次序，故变换后重排等价于重扫整盘。 */
+const dpTransformStoneList = (stones: number[], trans: number, size = 15) => {
+  const out: number[] = [];
+  const turns = trans === 4 ? 0 : trans > 4 ? trans - 4 : trans;
+  for (let index = 0; index < stones.length; index += 2) {
+    let x = stones[index], y = stones[index + 1];
+    if (trans >= 4) y = size - 1 - y;
+    for (let turn = 0; turn < turns; turn += 1) { const nextX = size - 1 - y; y = x; x = nextX; }
+    out.push(x, y);
+  }
+  for (let index = 2; index < out.length; index += 2) {
+    const x = out[index], y = out[index + 1];
+    let cursor = index - 2;
+    while (cursor >= 0 && (out[cursor] > x || (out[cursor] === x && out[cursor + 1] > y))) {
+      out[cursor + 2] = out[cursor]; out[cursor + 3] = out[cursor + 1]; cursor -= 2;
+    }
+    out[cursor + 2] = x; out[cursor + 3] = y;
+  }
+  return out;
+};
+
+/** 父局面规范形里的黑白棋子表（去掉尾部过手填充）。 */
+const dpCanonicalStoneLists = (key: Uint8Array, blackCount: number, whiteCount: number) => {
+  const stones = Array.from(key.slice(3));
+  return { black: stones.slice(0, blackCount * 2), white: stones.slice(blackCount * 2, blackCount * 2 + whiteCount * 2) };
+};
+
+/** 子局面（父规范形 + 一手棋）的键字节。以前返回逗号字符串，一次查询要拼 225 次，
+ *  而索引现在直接收字节 —— 拼字符串既花时间又临时产生几百个短命字符串。 */
+const dpChildKeyBytes = (black: number[], white: number[], sideToMove: 0 | 1, point: Position) => {
+  const nextBlack = sideToMove === 0 ? dpInsertStone(black, point.col, point.row) : black;
+  const nextWhite = sideToMove === 1 ? dpInsertStone(white, point.col, point.row) : white;
+  const nextSide = (sideToMove ^ 1) as 0 | 1;
+  // 与 dpCanonicalKey 相同的过手填充：两侧手数差与行棋方之差，取绝对值。
+  const padding = Math.abs((nextBlack.length - nextWhite.length) / 2 - nextSide);
+  let best: number[] | null = null;
+  for (let trans = 0; trans < 8; trans += 1) {
+    const stones = dpTransformStoneList(nextBlack, trans).concat(dpTransformStoneList(nextWhite, trans));
+    for (let index = 0; index < padding; index += 1) stones.push(0xff, 0xff);
+    if (!best || dpStonesCompare(stones, best) <= 0) best = stones;
+  }
+  return new Uint8Array([2, 15, 15, ...(best as number[])]);
+};
+
+const decodeDpLabel = (bytes: Uint8Array) => {  try { return new TextDecoder("utf-8", { fatal: true }).decode(bytes).trim(); }
   catch { return new TextDecoder("gb18030").decode(bytes).trim(); }
 };
 
@@ -229,36 +305,258 @@ const parseDpRecordText = (text: Uint8Array) => {
   return { boardText, comment: decodeDpLabel(text.subarray(commentStart)) };
 };
 
+/** FNV-1a 32 位。DP 的键只有几十字节，一次线性扫描就够。 */
+const dpKeyHash = (bytes: Uint8Array) => {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < bytes.length; index += 1) { hash ^= bytes[index]; hash = Math.imul(hash, 0x01000193); }
+  return hash >>> 0;
+};
+
+const dpKeyBytesFromString = (key: string) => Uint8Array.from(key.split(",").map((part) => Number(part) || 0));
+
+/** 分块字节袋：按 16MB 定长分块追加，避免"翻倍扩容"时同时握着新旧两份（那会让开库峰值反而变大）。 */
+class DpBlobStore {
+  private readonly chunks: Uint8Array[] = [];
+  private length = 0;
+  private static readonly CHUNK = 16 * 1048576;
+
+  get byteLength() { return this.length; }
+
+  append(source: Uint8Array, start: number, end: number): number {
+    const at = this.length;
+    let from = start, cursor = at;
+    while (from < end) {
+      const chunkIndex = Math.floor(cursor / DpBlobStore.CHUNK);
+      while (this.chunks.length <= chunkIndex) this.chunks.push(new Uint8Array(DpBlobStore.CHUNK));
+      const chunk = this.chunks[chunkIndex];
+      const within = cursor - chunkIndex * DpBlobStore.CHUNK;
+      const take = Math.min(end - from, chunk.length - within);
+      chunk.set(source.subarray(from, from + take), within);
+      from += take; cursor += take;
+    }
+    this.length = cursor;
+    return at;
+  }
+
+  read(at: number, length: number): Uint8Array {
+    const out = new Uint8Array(length);
+    let done = 0;
+    while (done < length) {
+      const cursor = at + done;
+      const chunk = this.chunks[Math.floor(cursor / DpBlobStore.CHUNK)];
+      const take = Math.min(length - done, DpBlobStore.CHUNK - (cursor % DpBlobStore.CHUNK));
+      out.set(chunk.subarray(cursor % DpBlobStore.CHUNK, cursor % DpBlobStore.CHUNK + take), done);
+      done += take;
+    }
+    return out;
+  }
+
+  equals(at: number, length: number, other: Uint8Array) {
+    let done = 0;
+    while (done < length) {
+      const cursor = at + done;
+      const chunk = this.chunks[Math.floor(cursor / DpBlobStore.CHUNK)];
+      const take = Math.min(length - done, DpBlobStore.CHUNK - (cursor % DpBlobStore.CHUNK));
+      for (let index = 0; index < take; index += 1) {
+        if (chunk[cursor % DpBlobStore.CHUNK + index] !== other[done + index]) return false;
+      }
+      done += take;
+    }
+    return true;
+  }
+}
+
+/**
+ * 键压缩：DP 的键是 `[2,15,15] + 列行成对的棋子表`，而列与行都在 0-14 之间，
+ * 所以一对棋子能塞进一个字节（高 4 位列、低 4 位行），过手对 `(0xff,0xff)` 用单字节 `0xff` 表示
+ * （`0xff` 不会和任何合法棋子字节撞上，合法值最大是 0xee）。
+ * 实测 384 万局面的溪月a8.db 平均每条键 68 字节，压完 34 字节——**省下的正是那 130MB**。
+ * 遇到不合规的键（长度不是成对、坐标超 14）整条按原样存，用 keyPacked 标出来，不猜。
+ */
+const dpPackKeyInto = (source: Uint8Array, keyStart: number, keyLength: number, scratch: Uint8Array) => {
+  const stones = keyLength - 3;
+  if (stones < 0 || (stones & 1) === 1) return -1;
+  let at = 0;
+  for (let index = 0; index < stones; index += 2) {
+    const col = source[keyStart + 3 + index], row = source[keyStart + 4 + index];
+    if (col === 0xff && row === 0xff) scratch[at++] = 0xff;
+    else if (col <= 14 && row <= 14) scratch[at++] = (col << 4) | row;
+    else return -1;
+  }
+  return at;
+};
+
+const dpUnpackKey = (packed: Uint8Array) => {
+  const out = new Uint8Array(3 + packed.length * 2);
+  out[0] = 2; out[1] = 15; out[2] = 15;
+  for (let index = 0; index < packed.length; index += 1) {
+    const byte = packed[index];
+    if (byte === 0xff) { out[3 + index * 2] = 0xff; out[4 + index * 2] = 0xff; }
+    else { out[3 + index * 2] = byte >> 4; out[4 + index * 2] = byte & 15; }
+  }
+  return out;
+};
+
+/** DP 局面索引（2026-10-03 两次重写，为的是手机上能开大库）。
+ *
+ * 第一版是 `Map<string, DpState>`：每条局面在建索引那一刻就生成字符串键、225 字节棋盘、
+ * key/record 两份拷贝、一个对象，还要把注释文本解析一遍。实测 384 万局面常驻 3.6GB、建表 270 秒。
+ * 现在：键压成单字节存进分块袋、记录单独存一袋（**解压缓冲用完就丢**），棋盘与注释文本推迟到查询时算。
+ * 语义与 Map 对齐（12 份真实库逐字节指纹对照过）：同键后者覆盖、遍历按首次出现。
+ */
+export class DpStateIndex {
+  private readonly keyStart: Uint32Array;
+  private readonly keyLength: Uint16Array;
+  private readonly keyPacked: Uint8Array;
+  private readonly recordStart: Uint32Array;
+  private readonly recordLength: Uint16Array;
+  private readonly chain: Int32Array;
+  private readonly buckets: Int32Array;
+  private readonly keys = new DpBlobStore();
+  private readonly records = new DpBlobStore();
+  private filled = 0;
+  private scratch = new Uint8Array(512);
+
+  constructor(capacity: number) {
+    this.keyStart = new Uint32Array(capacity);
+    this.keyLength = new Uint16Array(capacity);
+    this.keyPacked = new Uint8Array(capacity);
+    this.recordStart = new Uint32Array(capacity);
+    this.recordLength = new Uint16Array(capacity);
+    this.chain = new Int32Array(capacity).fill(-1);
+    let buckets = 16;
+    while (buckets < capacity * 2 && buckets < (1 << 26)) buckets *= 2;
+    this.buckets = new Int32Array(buckets);   // 存 slot + 1，0 表示空桶
+  }
+
+  get size() { return this.filled; }
+
+  /** 常驻内存估算：用于「这台机器开不开得动」的判断与提示。 */
+  get residentBytes() {
+    return this.keys.byteLength + this.records.byteLength + this.keyStart.byteLength + this.keyLength.byteLength
+      + this.keyPacked.byteLength + this.recordStart.byteLength + this.recordLength.byteLength + this.chain.byteLength + this.buckets.byteLength;
+  }
+
+  /** 把一条原始键压进暂存区（暂存区按需长大），返回长度；-1 表示这条压不了。 */
+  private packKey(source: Uint8Array, start: number, length: number) {
+    if (this.scratch.length < length) this.scratch = new Uint8Array(length * 2);
+    return dpPackKeyInto(source, start, length, this.scratch);
+  }
+
+  private storedKeyLength(slot: number) { return this.keyLength[slot]; }
+
+  private sameKey(slot: number, bytes: Uint8Array) {
+    return this.keyLength[slot] === bytes.length && this.keys.equals(this.keyStart[slot], bytes.length, bytes);
+  }
+
+  /** 收一条局面：`source` 是解压缓冲，只在这一刻读它，之后就可以扔掉。 */
+  add(source: Uint8Array, keyStart: number, keyLength: number, recordStart: number, recordLength: number) {
+    let keyAt: number, keyBytes: number, packed: number;
+    const packedLength = this.packKey(source, keyStart, keyLength);
+    if (packedLength >= 0) {
+      keyAt = this.keys.append(this.scratch, 0, packedLength); keyBytes = packedLength; packed = 1;
+    } else {
+      keyAt = this.keys.append(source, keyStart, keyStart + keyLength); keyBytes = keyLength; packed = 0;
+    }
+    const bucket = dpKeyHash(this.keys.read(keyAt, keyBytes)) % this.buckets.length;
+    for (let slot = this.buckets[bucket] - 1; slot >= 0; slot = this.chain[slot]) {
+      if (!this.sameKey(slot, packed ? this.scratch.subarray(0, keyBytes) : source.subarray(keyStart, keyStart + keyLength))) continue;
+      this.keyStart[slot] = keyAt; this.keyLength[slot] = keyBytes; this.keyPacked[slot] = packed;
+      this.recordStart[slot] = this.records.append(source, recordStart, recordStart + recordLength);
+      this.recordLength[slot] = recordLength;
+      return;   // 后者覆盖，位置保持在首次出现处
+    }
+    const slot = this.filled;
+    this.keyStart[slot] = keyAt; this.keyLength[slot] = keyBytes; this.keyPacked[slot] = packed;
+    this.recordStart[slot] = this.records.append(source, recordStart, recordStart + recordLength);
+    this.recordLength[slot] = recordLength;
+    this.chain[slot] = this.buckets[bucket] - 1;
+    this.buckets[bucket] = slot + 1;
+    this.filled += 1;
+  }
+
+  indexOf(key: Uint8Array): number {
+    const packedLength = this.packKey(key, 0, key.length);
+    const bytes = packedLength >= 0 ? this.scratch.subarray(0, packedLength) : key;
+    const bucket = dpKeyHash(bytes) % this.buckets.length;
+    for (let slot = this.buckets[bucket] - 1; slot >= 0; slot = this.chain[slot]) {
+      if (this.sameKey(slot, bytes)) return slot;
+    }
+    return -1;
+  }
+
+  /** 热路径用字节键（省一次字符串拼接与拆分）。 */
+  byKey(key: Uint8Array): DpState | undefined {
+    const slot = this.indexOf(key);
+    return slot < 0 ? undefined : this.stateAt(slot);
+  }
+
+  /** 兼容旧调用：既收字节键，也收 `2,15,15,...` 字符串键（legacy 导入器还在用）。 */
+  get(key: Uint8Array | string): DpState | undefined {
+    return this.byKey(typeof key === "string" ? dpKeyBytesFromString(key) : key);
+  }
+
+  /** 一条局面按需展开：键要解包、记录从袋里拷出来，棋盘与注释文本在这里才算。 */
+  stateAt(slot: number): DpState {
+    // 键本身已经处在数据库的规范坐标系里：记录与它的标注坐标必须成对使用，
+    // 在这里再规范一次会把不同局面并成一个，并把错误的标注集挂到可导航的那条路上。
+    const stored = this.keys.read(this.keyStart[slot], this.storedKeyLength(slot));
+    const key = this.keyPacked[slot] ? dpUnpackKey(stored) : stored;
+    const record = this.records.read(this.recordStart[slot], this.recordLength[slot]);
+    const stones = key.subarray(3);
+    const position = new Uint8Array(225);
+    const blackBytes = (((stones.length >>> 1) + 1) >>> 1) * 2;
+    for (let index = 0; index + 1 < stones.length; index += 2) position[stones[index + 1] * 15 + stones[index]] = index < blackBytes ? 1 : 2;
+    let black = 0, white = 0;
+    // 与旧实现一样按**格子**数（同一格被写两次也只算一次），不是按棋子条目数
+    for (let index = 0; index < 225; index += 1) { const cell = position[index]; if (cell === 1) black += 1; else if (cell === 2) white += 1; }
+    return { key, record, position, sideToMove: (black === white ? 0 : 1), ...parseDpRecordText(record.subarray(5)) };
+  }
+
+  *values(): IterableIterator<DpState> {
+    for (let slot = 0; slot < this.filled; slot += 1) yield this.stateAt(slot);
+  }
+
+  *[Symbol.iterator](): IterableIterator<[string, DpState]> {
+    for (let slot = 0; slot < this.filled; slot += 1) { const state = this.stateAt(slot); yield [dpKeyString(state.key), state]; }
+  }
+}
+
 export const parseDpDatabaseStates = (bytes: Uint8Array) => {
   if (bytes.length < 4) throw new Error("DP 数据库内容不完整");
-  const count = readU32LE(bytes, 0); let offset = 4;
-  const states = new Map<string, DpState>();
-  for (let index = 0; index < count && offset + 2 <= bytes.length; index += 1) {
+  const declared = readU32LE(bytes, 0);
+  // 每条记录至少占 5 字节（1 字节键 + 2 长度 + 2 记录头），据此给容量封顶，
+  // 免得文件头里写个天文数字就先去分配几十亿的数组。
+  const capacity = Math.max(1, Math.min(declared, Math.floor((bytes.length - 4) / 5)));
+  const states = new DpStateIndex(capacity);
+  let offset = 4;
+  for (let index = 0; index < declared && offset + 2 <= bytes.length; index += 1) {
     const keyLength = bytes[offset] | (bytes[offset + 1] << 8); offset += 2;
     if (!keyLength || offset + keyLength + 2 > bytes.length) break;
-    const key = bytes.slice(offset, offset + keyLength); offset += keyLength;
+    const keyStart = offset; offset += keyLength;
     const recordLength = bytes[offset] | (bytes[offset + 1] << 8); offset += 2;
     if (offset + recordLength > bytes.length) break;
-    const record = bytes.slice(offset, offset + recordLength); offset += recordLength;
-    if (key.length < 3 || key[0] !== 2 || key[1] !== 15 || key[2] !== 15) continue;
-    const stones = key.slice(3); const position = new Uint8Array(225);
-    const blackBytes = (((stones.length >>> 1) + 1) >>> 1) * 2;
-    for (let i = 0; i + 1 < stones.length; i += 2) position[stones[i + 1] * 15 + stones[i]] = i < blackBytes ? 1 : 2;
-    const black = position.filter((v) => v === 1).length, white = position.filter((v) => v === 2).length;
-    const parsed = parseDpRecordText(record.slice(5));
-    // DP position keys are already in the database's canonical coordinate
-    // system. Keep the record and its annotation coordinates together; a
-    // second canonicalization here can merge distinct records and associate
-    // the wrong annotation set with a navigable path.
-    states.set(dpKeyString(key), { key, record, position, sideToMove: (black === white ? 0 : 1), ...parsed });
+    const recordStart = offset; offset += recordLength;
+    if (keyLength < 3 || bytes[keyStart] !== 2 || bytes[keyStart + 1] !== 15 || bytes[keyStart + 2] !== 15) continue;
+    states.add(bytes, keyStart, keyLength, recordStart, recordLength);
   }
   return states;
 };
 
+/**
+ * DP 记录里的评估值（有符号 16 位）。
+ * 符号约定从 dpRecordDisplayLabel 反推并经真实库核对：**越小越利于该局面的行棋方**
+ * （'w' 胜 ≈ −29500、'l' 负 ≈ +29500、0xff 档按 −value 算胜率）。
+ * 父局面挑「最优子」＝挑值最小的那个子（子的值是从子的行棋方算的）。
+ */
+export const dpRecordValue = (record: Uint8Array) => {
+  const unsignedValue = (record[1] || 0) | ((record[2] || 0) << 8);
+  return unsignedValue & 0x8000 ? unsignedValue - 0x10000 : unsignedValue;
+};
+
 const dpRecordDisplayLabel = (record: Uint8Array, sideToMove: 0 | 1) => {
   const label = record[0] || 0;
-  const unsignedValue = (record[1] || 0) | ((record[2] || 0) << 8);
-  const value = unsignedValue & 0x8000 ? unsignedValue - 0x10000 : unsignedValue;
+  const value = dpRecordValue(record);
   const bound = ((record[3] || 0) | ((record[4] || 0) << 8)) & 0x03;
   const mateInMaxPly = 30000 - 500;
   const matedInMaxPly = -30000 + 500;
@@ -299,9 +597,9 @@ const dpPositionsEqual = (left: Uint8Array, right: Uint8Array) => {
  * does not infer or materialize a game tree: every empty point is looked up
  * directly in the canonical database index, exactly as the reference worker's
  * getBranchNodes does. */
-export const queryDpPosition = (states: Map<string, DpState>, position: Uint8Array, sideToMove: 0 | 1): DpPositionQuery => {
+export const queryDpPosition = (states: DpStateIndex, position: Uint8Array, sideToMove: 0 | 1): DpPositionQuery => {
   const canonical = dpCanonicalKey(position, sideToMove);
-  const state = states.get(dpKeyString(canonical.key));
+  const state = states.byKey(canonical.key);
   const nativeEntries = (state?.boardText || []).map((entry) => ({
     ...entry,
     position: dpInversePointTransform(entry.position, canonical.trans),
@@ -323,13 +621,20 @@ export const queryDpPosition = (states: Map<string, DpState>, position: Uint8Arr
     .filter((entry) => !position[entry.position.row * 15 + entry.position.col] && Boolean(entry.text))
     .map((entry) => ({ ...entry.position, kind: "label", style: "text", label: entry.text, color: "#1d1c19", renLibNativeLabel: true }));
   const branches: DpPositionBranch[] = [];
+  // 复用父局面的规范形做子节点查找：一个局面要试 225 个空点，朴素路径每个点都要
+  // 重算一次全盘规范键（实测 13ms/局面），这里只在规范棋子表里插一颗子。
+  let blackCount = 0, whiteCount = 0;
+  for (let index = 0; index < 225; index += 1) {
+    const cell = position[index];
+    if (cell === 1) blackCount += 1; else if (cell === 2) whiteCount += 1;
+  }
+  const canonicalStones = dpCanonicalStoneLists(canonical.key, blackCount, whiteCount);
   for (let index = 0; index < 225; index += 1) {
     if (position[index]) continue;
-    const next = position.slice(); next[index] = sideToMove + 1;
-    const childKey = dpCanonicalKey(next, (sideToMove ^ 1) as 0 | 1).key;
-    const child = states.get(dpKeyString(childKey));
-    if (!child) continue;
     const point = { row: Math.floor(index / 15), col: index % 15 };
+    // 候选点要先变换到父局面的规范朝向上，才能插进那张规范棋子表。
+    const child = states.byKey(dpChildKeyBytes(canonicalStones.black, canonicalStones.white, sideToMove, dpPointTransform(point, canonical.trans)));
+    if (!child) continue;
     branches.push({ position: point, label: labelAt.get(`${point.row},${point.col}`) || dpRecordDisplayLabel(child.record, sideToMove), state: child });
   }
   return { state, comment: state?.comment || "", marks, branches, canonicalTransform: canonical.trans };
@@ -337,8 +642,11 @@ export const queryDpPosition = (states: Map<string, DpState>, position: Uint8Arr
 
 export const openDpDatabaseIndex = async (source: Blob) => parseDpDatabaseStates(decodeDpDatabaseFrame(new Uint8Array(await source.arrayBuffer())));
 
-const decodeText = (buffer: ArrayBuffer) => {
-  const bytes = new Uint8Array(buffer);
+/** Charset sniffing shared by every text import path: BOM, UTF-16 by zero-byte
+ *  parity, then strict UTF-8 with a GB18030 fallback. Also used by the online
+ *  sources so a GBK community page is not mangled. */
+export const decodeText = (buffer: ArrayBuffer | Uint8Array) => {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder("utf-16le").decode(bytes.subarray(2));
   if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder("utf-16be").decode(bytes.subarray(2));
   if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) return new TextDecoder("utf-8").decode(bytes.subarray(3));
@@ -362,6 +670,10 @@ const normalizeLegacySgfMoveSeparators = (text: string) => {
       else if (char === "]") inValue = false;
       continue;
     }
+    // 从 .lib 导出的 SGF 常见一种写法：按固定缓冲区落盘，没用满的部分全填 0。实测用户
+    // 那批文件里有两份各拖着 2 万与 30 万字节这种尾巴，顶层扫描把它们当成"无法识别的
+    // 尾部内容"，一整份完好的谱就此拒掉。属性值**里面**的 0 是合法内容，不能丢，所以只在值外丢。
+    if (char === "\0") { index += 1; continue; }
     if (char === "[") { inValue = true; normalized += char; index += 1; continue; }
     if (char === ";" || char === "(") { nodeHasProperty = false; normalized += char; index += 1; continue; }
     if (char === ")") { nodeHasProperty = false; normalized += char; index += 1; continue; }
@@ -398,31 +710,53 @@ const parseSgfCollection = (text: string): SgfNode[] => {
       let key = ""; while (/[A-Za-z0-9]/.test(text[index] ?? "")) key += text[index++].toUpperCase();
       skipSpace();
       if (text[index] !== "[") throw new Error(`SGF 属性 ${key} 缺少值`);
-      props[key] = []; while (text[index] === "[") { props[key].push(value()); skipSpace(); }
+      // 同名属性出现在同一节点里要**合并**而不是覆盖。规范写法是 CR[aa][bb]，
+      // 但真实文件（含我们老版本导出的）常写成 CR[aa]CR[bb]；以前这里 `props[key] = []`
+      // 会把前一次整个丢掉——实测 7 个标注只能读回 5 个。
+      const list = props[key] || (props[key] = []);
+      while (text[index] === "[") { list.push(value()); skipSpace(); }
     }
     return { props, children: [] };
   };
-  const tree = (): SgfNode => {
+  const beginTree = (): { root: SgfNode | null; tail: SgfNode | null } => {
     skipSpace(); if (text[index] !== "(") throw new Error("SGF 缺少游戏树起点"); index += 1; skipSpace();
     let root: SgfNode | null = null, tail: SgfNode | null = null;
     while (text[index] === ";") { const current = node(); if (!root) root = current; if (tail) tail.children.push(current); tail = current; skipSpace(); }
-    while (text[index] === "(") { const child = tree(); tail?.children.push(child); skipSpace(); }
-    if (text[index] !== ")") throw new Error("SGF 游戏树没有闭合"); index += 1;
-    if (!root) throw new Error("SGF 中没有节点"); return root;
+    return { root, tail };
+  };
+  const tree = (): SgfNode => {
+    // FF4 的游戏树 = 节点序列 + 同级变体。显式帧栈保留原文件的分支顺序，
+    // 让深层括号和长序列一样不依赖 JavaScript 调用栈。
+    const frames = [beginTree()];
+    while (frames.length) {
+      if (text[index] === "(") { frames.push(beginTree()); continue; }
+      // 位置要报出来：坏文件只说"没有闭合"的话用户无法定位。
+      if (text[index] !== ")") throw new Error(`SGF 游戏树没有闭合（第 ${index + 1} 个字符处读到 ${JSON.stringify(text.slice(index, index + 16))}）`);
+      index += 1;
+      const current = frames.pop()!;
+      if (!current.root) throw new Error("SGF 中没有节点");
+      if (!frames.length) return current.root;
+      frames[frames.length - 1].tail?.children.push(current.root);
+      skipSpace();
+    }
+    throw new Error("SGF 中没有节点");
   };
   skipSpace();
   const trees: SgfNode[] = [];
   while (index < text.length) {
-    if (text[index] !== "(") throw new Error("SGF 顶层包含无法识别的尾部内容");
+    if (text[index] !== "(") throw new Error(`SGF 顶层包含无法识别的尾部内容（第 ${index + 1} 个字符处读到 ${JSON.stringify(text.slice(index, index + 16))}）`);
     trees.push(tree()); skipSpace();
   }
   if (!trees.length) throw new Error("SGF 中没有游戏树");
   return trees;
 };
 
+/** SGF 点值。规范写小写（`aa`–`ss`），但**大小写都收**：部分国产/老软件导出的是大写
+ *  （`B[HH]`），按规范判非法会把整份棋谱拒之门外（09-19 实测）。大小写混写也一并归一。 */
 const sgfPosition = (value?: string, size = 15): Position | null => {
   if (!value || value.length < 2) return null;
-  const col = value.charCodeAt(0) - 97, row = value.charCodeAt(1) - 97;
+  const lower = value.toLowerCase();
+  const col = lower.charCodeAt(0) - 97, row = lower.charCodeAt(1) - 97;
   return row >= 0 && row < size && col >= 0 && col < size ? { row, col } : null;
 };
 
@@ -470,6 +804,9 @@ const hasProp = (props: Record<string, string[]>, key: string) => Object.prototy
 const applySgfAnnotations = (node: RecordNode, props: Record<string, string[]>, warnings: string[], hasMove: boolean, size = 15) => {
   if (props.C?.[0] !== undefined) node.comment = props.C[0];
   if (props.N?.[0] !== undefined) node.boardText = props.N[0];
+  // RenLib 的「起始」标记（范围导出的范围根）在 SGF 里没有标准属性，用私有属性 XST 承载，
+  // 与 XEV 同一套做法：只在存在时写出，读回时缺失即不设置——SGF→LIB 不会把它洗掉。
+  if (hasProp(props, "XST")) node.startPosition = true;
   const standard = (["TE", "BM", "DO", "IT"] as const).filter((key) => hasProp(props, key));
   const hasEvaluation = standard.length > 0 || hasProp(props, "XEV");
   if (hasEvaluation && !hasMove) warnings.push("忽略了无落子节点上的着法评价");
@@ -487,17 +824,37 @@ const applySgfAnnotations = (node: RecordNode, props: Record<string, string[]>, 
       if (rawLevel !== "1" && rawLevel !== "2") warnings.push(`${standard[0]}[${rawLevel || ""}] 已按一级评价读取`);
     } else node.evaluationLevel = undefined;
   }
-  const markKeys = ["CR", "TR", "MA", "LB"];
+  // SQ（方块）以前完全没读：别的软件写的方块标注会被整条丢掉。
+  const markKeys = ["CR", "TR", "SQ", "MA", "LB"];
   if (markKeys.some((key) => hasProp(props, key))) {
-    const shapeMarks = [["CR", "circle"], ["TR", "triangle"], ["MA", "cross"]] as const;
-    node.marks = shapeMarks.flatMap(([key, kind]) => (props[key] || [])
+    // 语义来自属性名，画法按语义给一个默认（空心圆/空心三角/实心方块/叉）。
+    const styleForKind: Record<BoardMarkKind, BoardMarkStyle> = {
+      circle: "circle", triangle: "triangle", square: "square-solid", cross: "cross", check: "cross", label: "text",
+    };
+    const shapeKeys = [["CR", "circle"], ["TR", "triangle"], ["SQ", "square"], ["MA", "cross"]] as const;
+    node.marks = shapeKeys.flatMap(([key, kind]) => (props[key] || [])
       .map((point) => sgfPosition(point, size))
       .filter((point): point is Position => Boolean(point))
-      .map((point) => ({ ...point, kind })));
+      .map((point) => ({ ...point, kind, style: styleForKind[kind] })));
     node.marks = [...node.marks, ...(props.LB || []).flatMap((value) => {
       const separator = value.indexOf(":");
       const point = sgfPosition(separator >= 0 ? value.slice(0, separator) : value, size);
-      return point ? [{ ...point, kind: "label" as const, label: separator >= 0 ? Array.from(value.slice(separator + 1)).slice(0, 4).join("") : "?" }] : [];
+      if (!point) return [];
+      // 导入**不截断**：SGF 的 LB 没有长度上限，别的软件（爱五子棋/五林等）常写整句话，
+      // 截到 4 字就是静默丢数据（09-19 实测：`LB[dd:这是一个很长的标注文字]` → 「这是一个」，
+      // 再导出只剩 4 字）。4 字上限只属于「手工输入」与「LIB 盘面文字那一格」——
+      // LIB 导出时超长部分本来就会走注释清单通道（见 lib-mark-annotations），不会丢。
+      // 首尾空格 trim：标注是棋盘点上的短字形，外层空格没有意义；导出侧本来就裁掉它们，
+      // 导入不裁会让「导入→导出→再导入」不一致（09-19 实测 ⑬）。
+      const label = (separator >= 0 ? value.slice(separator + 1) : "?").trim();
+      // 我们导出图形标注时会「形状属性 + 同点 LB」成对写出（形状属性没有文字位）。
+      // 读回来要**并回同一个标注**，否则会多出一个重复的文字标注。
+      const shape = node.marks.find((mark) => mark.row === point.row && mark.col === point.col && mark.kind !== "label");
+      if (shape) { shape.label = label; return []; }
+      // 空文字 LB（`LB[dd:]`，别的软件用它「清掉标签」）不造标注：造出来是个看不见的
+      // 标注——用户既看不到也删不掉，导出时还会消失（往返不一致，09-19 实测 ⑪）。
+      if (!label) return [];
+      return [{ ...point, kind: "label" as const, style: "text" as const, label }];
     })];
   }
 };
@@ -506,14 +863,33 @@ const importSgfTree = (tree: SgfNode, fallbackTitle: string): { document: GameDo
   const rawSize = tree.props.SZ?.[0];
   const sizeParts = rawSize?.split(":") || [];
   const size = rawSize ? Number(sizeParts[0]) : 15;
-  if (!isSupportedBoardSize(size) || (sizeParts[1] && Number(sizeParts[1]) !== size)) throw new Error(`不支持的 SGF 棋盘尺寸：SZ[${rawSize || "?"}]（支持 5-25 路方形棋盘）`);
+  if (!isSupportedBoardSize(size) || (sizeParts[1] && Number(sizeParts[1]) !== size)) throw new Error(`不支持的 SGF 棋盘尺寸：SZ[${rawSize || "?"}]（支持 5-30 路方形棋盘）`);
   const warnings: string[] = [];
   if (!rawSize) warnings.push("SGF 未声明 SZ，已按十五路读取");
   const document = createDocument(tree.props.GN?.[0] || fallbackTitle, size);
   document.metadata.black = tree.props.PB?.[0] || "黑方"; document.metadata.white = tree.props.PW?.[0] || "白方";
   document.metadata.event = tree.props.EV?.[0] || ""; document.metadata.date = tree.props.DT?.[0] || document.metadata.date;
   document.metadata.result = tree.props.RE?.[0] || "";
-  const rule = (tree.props.RU?.[0] || "").toLowerCase(); document.metadata.rule = rule.includes("free") ? "freestyle" : rule.includes("standard") ? "standard" : "renju";
+  const ruleText = tree.props.RU?.[0] || "";
+  const rule = ruleText.toLowerCase(); document.metadata.rule = rule.includes("free") ? "freestyle" : rule.includes("standard") ? "standard" : "renju";
+  // Full game-information properties. Each stays undefined when absent so that
+  // re-exporting an untouched record never invents empty properties.
+  const infoText = (key: string) => {
+    const value = tree.props[key]?.[0]?.replace(/\s+/g, " ").trim();
+    return value ? value : undefined;
+  };
+  document.metadata.round = infoText("RO");
+  document.metadata.place = infoText("PC");
+  document.metadata.blackRank = infoText("BR");
+  document.metadata.whiteRank = infoText("WR");
+  document.metadata.komi = infoText("KM");
+  document.metadata.timeLimit = infoText("TM");
+  document.metadata.overtime = infoText("OT");
+  document.metadata.openingName = infoText("ON") || infoText("OP");
+  document.metadata.annotator = infoText("AN");
+  document.metadata.copyright = infoText("CP");
+  document.metadata.sourceUrl = infoText("SO");
+  document.metadata.ruleText = infoText("RU");
   const appendNode = (parentId: string, source: SgfNode) => {
     const hasBlack = hasProp(source.props, "B"), hasWhite = hasProp(source.props, "W");
     if (hasBlack && hasWhite) throw new Error("SGF 同一节点不能同时包含黑白着法");
@@ -531,13 +907,19 @@ const importSgfTree = (tree: SgfNode, fallbackTitle: string): { document: GameDo
     applySgfAnnotations(node, source.props, warnings, Boolean(player), size);
     document.nodes[id] = node;
     const parent = document.nodes[parentId]; parent.children.push(id); if (!parent.preferredChildId) parent.preferredChildId = id;
-    source.children.forEach((child) => appendNode(id, child));
+    return id;
   };
-  if (hasProp(tree.props, "B") || hasProp(tree.props, "W")) appendNode(document.rootId, tree);
+  const pending: Array<{ parentId: string; source: SgfNode }> = [];
+  if (hasProp(tree.props, "B") || hasProp(tree.props, "W")) pending.push({ parentId: document.rootId, source: tree });
   else {
     const root = document.nodes[document.rootId]; root.setup = setupFromSgf(tree.props, size);
     applySgfAnnotations(root, tree.props, warnings, false, size);
-    tree.children.forEach((child) => appendNode(document.rootId, child));
+    for (let index = tree.children.length - 1; index >= 0; index -= 1) pending.push({ parentId: document.rootId, source: tree.children[index] });
+  }
+  while (pending.length) {
+    const { parentId, source } = pending.pop()!;
+    const id = appendNode(parentId, source);
+    for (let index = source.children.length - 1; index >= 0; index -= 1) pending.push({ parentId: id, source: source.children[index] });
   }
   document.updatedAt = new Date().toISOString();
   return { document, warnings };
@@ -580,23 +962,76 @@ const importPsq = (text: string, filename: string): ImportResult => {
   const match = /^Piskvorky\s+(\d+)x(\d+)\s*,/i.exec(header);
   if (!match) throw new Error("PSQ 文件头无效；应以 Piskvorky 宽x高 开头");
   const width = Number(match[1]), height = Number(match[2]);
-  if (width !== height || !isSupportedBoardSize(width)) throw new Error(`不支持的 PSQ 棋盘尺寸：${width}x${height}（支持 5-25 路方形棋盘）`);
+  if (width !== height || !isSupportedBoardSize(width)) throw new Error(`不支持的 PSQ 棋盘尺寸：${width}x${height}（支持 5-30 路方形棋盘）`);
   const moveLines = lines.map((line, index) => ({ line: line.trim(), number: index + 2 })).filter((entry) => entry.line);
   if (!moveLines.length) throw new Error("PSQ 落子列表为空");
+  // 第三列在真实世界里有两种方言，两种都要能读：
+  //   · 颜色 0/1 —— 例如 2018 祁观 vs 弈心 人机大战的官方存档（本项目导出也是这一种）；
+  //   · 每手用时毫秒 —— Gomocup 官方成绩存档（开局库着法为 0，之后是 32098、46677 这类值）。
+  // 整列都落在 {0,1} 才当颜色，否则按手序交替推黑白（两者对正常交替对局结果相同）。
+  const movePattern = /^(\d+)\s*,\s*(\d+)\s*,\s*(-?\d+)$/;
+  const parsedLines: Array<{ entry: { line: string; number: number }; col: number; rowFromBottom: number; third: number }> = [];
+  const footer: string[] = [];
+  for (const entry of moveLines) {
+    const fields = movePattern.exec(entry.line);
+    // 真实 Gomocup 成绩存档在着法之后还有页脚：两份 AI 的 zip 名、-1、以及「规则号,规则名」
+    // （1,Renju / 2,Freestyle4 / …）。着法列表在第一个不像着法的行处结束，其余按页脚处理——
+    // 不这样容忍，整个 Gomocup PSQ 语料都会因为最后一行「不是着法」而导入失败。
+    if (!fields) { footer.push(entry.line); continue; }
+    if (footer.length) continue;
+    parsedLines.push({ entry, col: Number(fields[1]), rowFromBottom: Number(fields[2]), third: Number(fields[3]) });
+  }
+  if (!parsedLines.length) throw new Error(`PSQ 第 ${moveLines[0].number} 行无法识别：${moveLines[0].line}`);
+  // 列号的起算基准在真实世界里有两种，且都能拿到实证：
+  //   · Piskvork 自己的写法是 **1 起算** —— Gomocup 官方裁判就是 Piskvork，其成绩存档里
+  //     15 路文件的列落在 1..13、20 路落在 1..20，从不出现 0；同一局棋的 .psq/.sgf 配对
+  //     （首手天元）也证实这一点。本项目导出的 PSQ 现在也是这一种。
+  //   · 弈心等工具导出的是 **0 起算** —— 2018 祁观 vs 弈心人机大战的官方存档里 col 取到 0，
+  //     且与同局 SGF 逐手一致（首手落在天元）。
+  // 判别顺序（从确定到启发式；无法确定时取 1 起算，也就是我们自己写出的那一种）：
+  //   ① 出现 col=0 → 只能是 0 起算；出现 col=size → 只能是 1 起算。
+  //   ② 否则看首手：天元是连珠/标准/自由开局的落点，两种读法各算一次列号，**恰好命中天元**
+  //      的那个胜出。这一条救的是「没有 col 0 的 0 起算文件」——实测人机大战第 1、4 局就是。
+  //   ③ 都不成立 → 1 起算（Piskvork 是格式拥有者，且我们自己的写出约定也是 1 起算，
+  //      这样自产文件往返永不变形）。
+  const centerColumns = [Math.floor((width - 1) / 2), Math.ceil((width - 1) / 2)];
+  const firstColumn = parsedLines[0].col;
+  const zeroBasedColumns = (() => {
+    if (parsedLines.some((move) => move.col === 0)) return true;
+    if (parsedLines.some((move) => move.col === width)) return false;
+    const zeroCentered = centerColumns.includes(firstColumn);
+    const oneCentered = centerColumns.includes(firstColumn - 1);
+    return zeroCentered !== oneCentered ? zeroCentered : false;
+  })();
+  const warnings: string[] = [];
+  if (zeroBasedColumns) warnings.push("该 PSQ 的列号按 0 起算读取（弈心等工具的写法）");
+  else if (!parsedLines.some((move) => move.col === width) && !centerColumns.includes(firstColumn - 1)) {
+    warnings.push(`该 PSQ 没有列 0 也没有列 ${width}，已按 Piskvork 惯例把列号当作 1 起算；若整盘横向偏了一列，请反馈该文件`);
+  }
+  const colorAnnotated = parsedLines.every((move) => move.third === 0 || move.third === 1);
+  if (!colorAnnotated) warnings.push("PSQ 第 3 列是每手用时（不是颜色），已按手序交替推黑白");
+  // 页脚里的「规则号,规则名」是自描述的：名字里带 renju / standard / free 就能对上我们的规则集。
+  const footerRule = footer.map((line) => /^\d+\s*,\s*(.+)$/.exec(line)?.[1]?.trim()).find(Boolean);
+  const footerRuleSet: RuleSet | null = !footerRule ? null
+    : footerRule.toLowerCase().includes("renju") ? "renju"
+    : footerRule.toLowerCase().includes("standard") ? "standard"
+    : footerRule.toLowerCase().includes("free") ? "freestyle" : null;
+  if (footerRuleSet) warnings.push(`已按文件页脚识别规则：${footerRule} → ${footerRuleSet}`);
+  if (footer.length) warnings.push(`忽略了着法之后的 ${footer.length} 行页脚（Gomocup 存档会附带 AI 名与规则行）`);
   let document = createDocument(filename.replace(/\.[^.]+$/, ""), width), currentId = document.rootId;
-  for (let index = 0; index < moveLines.length; index += 1) {
-    const entry = moveLines[index];
-    const fields = /^(\d+)\s*,\s*(\d+)\s*,\s*([01])$/.exec(entry.line);
-    if (!fields) throw new Error(`PSQ 第 ${entry.number} 行无法识别：${entry.line}`);
-    const col = Number(fields[1]), rowFromBottom = Number(fields[2]);
-    if (col < 0 || col >= width || rowFromBottom < 1 || rowFromBottom > height) throw new Error(`PSQ 第 ${index + 1} 手坐标越界：${col},${rowFromBottom}`);
+  for (let index = 0; index < parsedLines.length; index += 1) {
+    const move = parsedLines[index];
+    const { rowFromBottom } = move;
+    const col = zeroBasedColumns ? move.col : move.col - 1;
+    if (col < 0 || col >= width || rowFromBottom < 1 || rowFromBottom > height) throw new Error(`PSQ 第 ${index + 1} 手坐标越界：${move.col},${rowFromBottom}`);
     const position = { row: height - rowFromBottom, col };
-    const player: Player = fields[3] === "0" ? "black" : "white";
+    const player: Player = colorAnnotated ? (move.third === 0 ? "black" : "white") : (index % 2 === 0 ? "black" : "white");
     const added = addMoveAs(document, currentId, position, player);
-    if (!added.created) throw new Error(`PSQ 第 ${index + 1} 手与已有棋子冲突：${col},${rowFromBottom}`);
+    if (!added.created) throw new Error(`PSQ 第 ${index + 1} 手与已有棋子冲突：${move.col},${rowFromBottom}（该点此前已落子；真实存档偶见这类异常记录，此文件无法作为完整对局导入）`);
     document = added.document; currentId = added.nodeId;
   }
-  return { document, warnings: [], format: "PSQ (Piskvorky)" };
+  if (footerRuleSet) document = { ...document, metadata: { ...document.metadata, rule: footerRuleSet } };
+  return { document, warnings, format: "PSQ (Piskvorky)" };
 };
 
 /** A byte reader that keeps the LIB import off the main thread without ever
@@ -808,17 +1243,18 @@ export const importRenLibLegacy = async (source: Blob, title: string, onPreview?
   return { document: lazyDocument, compactIndex, warnings, format: "RenLib LIB", stats };
 };
 
-const validateJsonDocument = (value: unknown): GameDocument => {
-  if (!value || typeof value !== "object") throw new Error("RENJU 文件不是有效对象");
+export const validateJsonDocument = (value: unknown): GameDocument => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("RENJU 文件不是有效对象");
   const document = value as GameDocument;
-  if (document.version !== 1 || typeof document.id !== "string" || typeof document.rootId !== "string" || !document.nodes || typeof document.nodes !== "object") throw new Error("RENJU 文件缺少有效的版本、ID 或节点表");
+  if (document.version !== 1 || typeof document.id !== "string" || typeof document.rootId !== "string" || !document.nodes || typeof document.nodes !== "object" || Array.isArray(document.nodes) || !Object.prototype.hasOwnProperty.call(document.nodes, document.rootId)) throw new Error("RENJU 文件缺少有效的版本、ID 或节点表");
   if (!document.metadata || typeof document.metadata.title !== "string" || typeof document.metadata.black !== "string" || typeof document.metadata.white !== "string" || !["renju", "standard", "freestyle"].includes(document.metadata.rule) || !isSupportedBoardSize(document.metadata.boardSize)) throw new Error("RENJU 文件的棋谱信息不完整或规则无效");
   if (typeof document.createdAt !== "string" || typeof document.updatedAt !== "string" || !Number.isFinite(Date.parse(document.createdAt)) || !Number.isFinite(Date.parse(document.updatedAt))) throw new Error("RENJU 文件的时间信息无效");
   const root = document.nodes[document.rootId];
   if (!root || root.parentId !== null || root.move !== null || root.passPlayer) throw new Error("RENJU 文件的根节点无效");
   const evaluationKinds: NodeEvaluation[] = ["good", "bad", "doubtful", "interesting", "forced", "only", "study"];
   Object.entries(document.nodes).forEach(([id, node]) => {
-    if (!node || node.id !== id || !Array.isArray(node.children) || typeof node.comment !== "string" || !Array.isArray(node.marks)) throw new Error(`RENJU 节点 ${id} 结构无效`);
+    if (!node || node.id !== id || !Array.isArray(node.children) || !node.children.every((child) => typeof child === "string" && Object.prototype.hasOwnProperty.call(document.nodes, child)) || typeof node.comment !== "string" || !Array.isArray(node.marks)) throw new Error(`RENJU 节点 ${id} 结构无效`);
+    if (node.preferredChildId !== undefined && (typeof node.preferredChildId !== "string" || !node.children.includes(node.preferredChildId))) throw new Error(`RENJU 节点 ${id} 的主线指针无效`);
     if (node.parentId !== null && typeof node.parentId !== "string") throw new Error(`RENJU 节点 ${id} 的父节点无效`);
     const size = document.metadata.boardSize;
     if (node.move && (!Number.isInteger(node.move.row) || !Number.isInteger(node.move.col) || node.move.row < 0 || node.move.row >= size || node.move.col < 0 || node.move.col >= size || !["black", "white"].includes(node.move.player))) throw new Error(`RENJU 节点 ${id} 的落子无效`);
@@ -843,24 +1279,27 @@ const validateJsonDocument = (value: unknown): GameDocument => {
     if (node.evaluation && !evaluationKinds.includes(node.evaluation)) throw new Error(`RENJU 节点 ${id} 的评价无效`);
     if (node.evaluationLevel && node.evaluationLevel !== 1 && node.evaluationLevel !== 2) throw new Error(`RENJU 节点 ${id} 的评价级别无效`);
     node.marks.forEach((mark) => {
-      if (!Number.isInteger(mark.row) || !Number.isInteger(mark.col) || mark.row < 0 || mark.row >= size || mark.col < 0 || mark.col >= size || !["circle", "triangle", "cross", "label"].includes(mark.kind)) throw new Error(`RENJU 节点 ${id} 含有无效棋盘标记`);
+      // 允许的标注语义类别。以前这里是写死的旧四项，新增 square/check 之后，
+      // 带这两种标注的 JSON 会被判「无效棋盘标记」而**整份导不回来**（还会连累
+      // .json 回落到别的解析器、把画法也弄丢）。改成按唯一出处校验。
+      const kindOk = Object.prototype.hasOwnProperty.call(MARK_SGF_PROPERTY, mark.kind);
+      if (!Number.isInteger(mark.row) || !Number.isInteger(mark.col) || mark.row < 0 || mark.row >= size || mark.col < 0 || mark.col >= size || !kindOk) throw new Error(`RENJU 节点 ${id} 含有无效棋盘标记`);
     });
   });
-  const visited = new Set<string>(), active = new Set<string>();
-  const visit = (id: string) => {
-    if (active.has(id)) throw new Error("RENJU 节点树存在循环");
+  const visited = new Set<string>();
+  const pending = [document.rootId];
+  while (pending.length) {
+    const id = pending.pop()!;
     if (visited.has(id)) throw new Error(`RENJU 节点 ${id} 被多个分支重复引用`);
     const node = document.nodes[id];
     if (!node) throw new Error(`RENJU 缺少节点 ${id}`);
-    active.add(id); visited.add(id);
+    visited.add(id);
     node.children.forEach((childId) => {
       const child = document.nodes[childId];
       if (!child || child.parentId !== id) throw new Error(`RENJU 节点 ${childId} 的父子关系不一致`);
-      visit(childId);
+      pending.push(childId);
     });
-    active.delete(id);
-  };
-  visit(document.rootId);
+  }
   if (visited.size !== Object.keys(document.nodes).length) throw new Error("RENJU 文件含有未连接到根节点的孤立节点");
   return document;
 };
@@ -903,7 +1342,48 @@ const hasBytes = (buffer: ArrayBuffer, values: number[]) => {
   return values.every((value, index) => bytes[index] === value);
 };
 
-export const importRecordFile = async (file: File, _options?: { onPreview?: (preview: RenLibPreview) => Promise<void> | void }): Promise<ImportResult> => {
+/** Optional metadata patch for imports whose format cannot express everything
+ *  the caller already knows. The online sources use it for the ruleset: a RIF
+ *  rule name is free text and cannot be mapped to `rule` by string matching
+ *  ("Swap-5 free" contains "free" but is a renju rule), so the source resolves
+ *  it from the federation's own rule table and passes the result in here. */
+export interface ImportMetadataOverride { metadata?: Partial<GameDocument["metadata"]> }
+
+export const importRecordFile = async (file: File, options?: ImportMetadataOverride & { onPreview?: (preview: RenLibPreview) => Promise<void> | void }): Promise<ImportResult> => {
+  const result = await importRecordFileRaw(file, options);
+  const patch = options?.metadata;
+  if (patch) patchMetadata(result.document, patch);
+  return result;
+};
+
+const patchMetadata = (document: GameDocument, patch: Partial<GameDocument["metadata"]>) => {
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) continue;
+    (document.metadata as unknown as Record<string, unknown>)[key] = value;
+  }
+  document.updatedAt = new Date().toISOString();
+};
+
+/** SGF 的 CA[...] 声明了文件所用字符集。GB2312/GBK 的字节序列经常**恰好也是合法
+ *  UTF-8**，所以 decodeText 的「先试严格 UTF-8」在中文棋谱上会静默解出乱码而不是报错：
+ *  renju.net、爱五子棋等中文软件导出的 SGF，以及官方 RenLib 核心 lib2sgf 的输出，
+ *  都声明 CA[gb2312]。声明存在且不是 UTF-8 时按声明解码（标签走 WHATWG 标准名，
+ *  认不出来再回落到字节探测）。 */
+const decodeSgfBytes = (buffer: ArrayBuffer) => {
+  const bytes = new Uint8Array(buffer);
+  const head = new TextDecoder("latin1").decode(bytes.subarray(0, Math.min(bytes.length, 4096)));
+  const declared = /CA\[([^\]]{1,40})\]/.exec(head)?.[1]?.trim().toLowerCase();
+  if (declared && !/^utf-?8$/.test(declared)) {
+    try { return new TextDecoder(declared).decode(bytes); } catch { /* 未知标签：回落探测 */ }
+  }
+  return decodeText(bytes);
+};
+
+const looksLikeSgf = (buffer: ArrayBuffer, extension: string) =>
+  ["sgf", "fgf", "ren", "renjs", "wzq"].includes(extension)
+  || new TextDecoder("latin1").decode(new Uint8Array(buffer).subarray(0, 64)).trimStart().startsWith("(");
+
+const importRecordFileRaw = async (file: File, _options?: { onPreview?: (preview: RenLibPreview) => Promise<void> | void }): Promise<ImportResult> => {
   const extension = file.name.split(".").pop()?.toLowerCase() || "";
   if (extension === "db" || extension === "dp") {
     throw new Error("真实 .db/.dp 数据库必须通过动态局面查询会话打开");
@@ -915,7 +1395,8 @@ export const importRecordFile = async (file: File, _options?: { onPreview?: (pre
     throw new Error("真实 .lib 棋谱必须通过网页 RenLib 动态查询会话打开");
   }
   const buffer = await file.arrayBuffer();
-  const text = decodeText(buffer);
+  const sgfInput = looksLikeSgf(buffer, extension);
+  const text = sgfInput ? decodeSgfBytes(buffer) : decodeText(buffer);
   const trimmed = text.trimStart();
   if (extension === "renju" || extension === "json") {
     let parsed: unknown;
@@ -955,22 +1436,84 @@ const setupSgf = (node: RecordNode) => {
 const annotationSgf = (node: RecordNode) => {
   const comment = node.comment ? `C[${escapeSgf(node.comment)}]` : "";
   const boardText = node.boardText ? `N[${escapeSgfSimpleText(node.boardText)}]` : "";
-  const marks = node.marks.map((mark) => mark.kind === "label" ? `LB[${toSgfCoord(mark)}:${escapeSgf(mark.label || "?")}]` : `${mark.kind === "circle" ? "CR" : mark.kind === "triangle" ? "TR" : "MA"}[${toSgfCoord(mark)}]`).join("");
-  return `${boardText}${comment}${evaluationSgf(node)}${marks}`;
+  // 按标注的**语义类别**选 SGF 属性。语义一律从画法（style）推导，style 缺失时才用
+  // 存的 kind：老版本 UI 建标注时把 kind 写成 "label"，那些文档里 kind 已经不可信，
+  // 只有 style 记得用户当初选的是圆圈还是三角。
+  // 以前这里直接读 kind，于是圆圈/三角/叉全被写成 `LB[xx:?]`——导出到别的软件只剩问号。
+  // label 类且没有文字时**不写出**：空的 LB 没有信息量，写出去只会变成 "?" 噪声。
+  // 同一属性要**合并成一次多值**（CR[aa][bb]）而不是重复写属性名，这是规范写法，
+  // 也让同类标注在别的软件里稳定读回。
+  const grouped = new Map<string, string[]>();
+  const add = (property: string, value: string) => {
+    const list = grouped.get(property) || grouped.set(property, []).get(property)!;
+    if (!list.includes(value)) list.push(value);
+  };
+  for (const mark of node.marks) {
+    const kind = mark.style ? markKindForStyle(mark.style) : mark.kind;
+    const property = MARK_SGF_PROPERTY[kind] || "MA";
+    const text = (mark.label || "").trim();
+    if (property === "LB") {
+      if (text) add("LB", `${toSgfCoord(mark)}:${escapeSgf(text)}`);
+      continue;
+    }
+    add(property, toSgfCoord(mark));
+    // 形状属性（CR/TR/SQ/MA）**没有文字位**，图形标注上写的字会就此丢掉。
+    // 同一个点再补一条 LB，形状与文字就都保住了（别的软件通常两者都画）。
+    if (text) add("LB", `${toSgfCoord(mark)}:${escapeSgf(text)}`);
+  }
+  // 顺序固定为 CR/TR/SQ/MA/LB，保证同一份文档每次导出逐字节一致。
+  const marks = ["CR", "TR", "SQ", "MA", "LB"].flatMap((property) => {
+    const values = grouped.get(property);
+    return values?.length ? [`${property}${values.map((v) => `[${v}]`).join("")}`] : [];
+  }).join("");
+  const renLibStart = node.startPosition ? "XST[]" : "";
+  return `${boardText}${comment}${evaluationSgf(node)}${marks}${renLibStart}`;
+};
+/** Game-information properties beyond the core set. Written only when a value
+ * exists, so records that never had them export byte-identically to before. */
+const infoSgf = (metadata: GameDocument["metadata"]) => {
+  const entries: Array<[string, string | undefined]> = [
+    ["RO", metadata.round], ["PC", metadata.place], ["BR", metadata.blackRank], ["WR", metadata.whiteRank],
+    ["KM", metadata.komi], ["TM", metadata.timeLimit], ["OT", metadata.overtime], ["ON", metadata.openingName],
+    ["AN", metadata.annotator], ["CP", metadata.copyright], ["SO", metadata.sourceUrl],
+  ];
+  return entries
+    .filter(([, value]) => Boolean(value && value.trim()))
+    .map(([key, value]) => `${key}[${escapeSgfSimpleText(String(value))}]`)
+    .join("");
 };
 export const exportSgf = (document: GameDocument) => {
-  const nodeText = (node: RecordNode): string => {
-    const move = node.move
-      ? `${node.move.player === "black" ? "B" : "W"}[${toSgfCoord(node.move)}]`
-      : node.passPlayer ? `${node.passPlayer === "black" ? "B" : "W"}[]` : "";
+  // 主线（preferredChildId）必须排在同级第一支：SGF 没有「哪支是主线」这个属性，
+  // 惯例是文件里第一个分支即主线，导入侧（本文件 appendNode）也正是这样取的。
+  // 若按 children 原始数组序导出，用户「设为主线」过的分支会落在第二支，
+  // 导出再导入后主线就被换掉了。LIB 导出（lib-export.ts）里对同类限制有显式告警。
+  const orderedChildren = (node: RecordNode): RecordNode[] => {
     const children = node.children.map((id) => document.nodes[id]).filter(Boolean);
-    const own = `;${move}${setupSgf(node)}${annotationSgf(node)}`;
-    return children.length <= 1 ? `${own}${children[0] ? nodeText(children[0]) : ""}` : `${own}${children.map((child) => `(${nodeText(child)})`).join("")}`;
+    if (children.length <= 1) return children;
+    const index = node.preferredChildId ? children.findIndex((child) => child.id === node.preferredChildId) : -1;
+    return index <= 0 ? children : [children[index], ...children.slice(0, index), ...children.slice(index + 1)];
   };
   const meta = document.metadata, root = document.nodes[document.rootId];
-  const props = `(;GM[4]FF[4]CA[UTF-8]AP[RenjuNote:1.0]SZ[${meta.boardSize}]GN[${escapeSgf(meta.title)}]PB[${escapeSgf(meta.black)}]PW[${escapeSgf(meta.white)}]DT[${escapeSgf(meta.date)}]EV[${escapeSgf(meta.event)}]RE[${escapeSgf(meta.result)}]RU[${meta.rule}]${setupSgf(root)}${annotationSgf(root)}`;
-  const children = root.children.map((id) => document.nodes[id]).filter(Boolean);
-  return `${props}${children.length <= 1 ? (children[0] ? nodeText(children[0]) : "") : children.map((child) => `(${nodeText(child)})`).join("")})`;
+  const props = `(;GM[4]FF[4]CA[UTF-8]AP[RenjuNote:1.0]SZ[${meta.boardSize}]GN[${escapeSgf(meta.title)}]PB[${escapeSgf(meta.black)}]PW[${escapeSgf(meta.white)}]DT[${escapeSgf(meta.date)}]EV[${escapeSgf(meta.event)}]RE[${escapeSgf(meta.result)}]RU[${meta.rule}]${infoSgf(meta)}${setupSgf(root)}${annotationSgf(root)}`;
+  const parts = [props];
+  const pending: Array<RecordNode | string> = [")"];
+  const enqueueChildren = (node: RecordNode) => {
+    const children = orderedChildren(node);
+    for (let index = children.length - 1; index >= 0; index -= 1) {
+      if (children.length > 1) pending.push(")", children[index], "(");
+      else pending.push(children[index]);
+    }
+  };
+  enqueueChildren(root);
+  while (pending.length) {
+    const item = pending.pop()!;
+    if (typeof item === "string") { parts.push(item); continue; }
+    const move = item.move ? `${item.move.player === "black" ? "B" : "W"}[${toSgfCoord(item.move)}]`
+      : item.passPlayer ? `${item.passPlayer === "black" ? "B" : "W"}[]` : "";
+    parts.push(`;${move}${setupSgf(item)}${annotationSgf(item)}`);
+    enqueueChildren(item);
+  }
+  return parts.join("");
 };
 export const exportJson = (document: GameDocument) => JSON.stringify(document, null, 2);
 /** Deliberately simple interchange format: the preferred main line only.
@@ -981,11 +1524,20 @@ export const exportPos = (document: GameDocument) => {
   while (node?.children.length) {
     const next = document.nodes[node.preferredChildId || node.children[0]];
     if (!next) break;
+    // 过手在 POS 里没有写法：这里以前写 `pass` 这个记号，而 importPos 只认 A1–O15 坐标，
+    // 于是**我们自己导出的文件自己读不回来**（报「没有识别到 A1–O15 形式的落子序列」）。
+    // 与 PSQ 一致直接跳过；代价由导出侧的过手提示如实说明。
     if (next.move) result.push(coordinateName(next.move, document.metadata.boardSize));
-    else if (next.passPlayer) result.push("pass");
     node = next;
   }
   return result.length ? `${result.join(" ")}\n` : "";
+};
+/** 主线上的过手数量。PSQ / POS 只承载坐标，过手在它们里面无处安放（写了记号连我们自己的
+ *  导入器都读不回），导出时应据此如实告知用户丢了什么。 */
+export const mainLinePassCount = (document: GameDocument) => {
+  let count = 0, node = document.nodes[document.rootId];
+  while (node?.children.length) { node = document.nodes[node.preferredChildId || node.children[0]]; if (node?.passPlayer) count += 1; }
+  return count;
 };
 export const downloadFile = (content: BlobPart, filename: string, type: string) => {
   const url = URL.createObjectURL(new Blob([content], { type }));

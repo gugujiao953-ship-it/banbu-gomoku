@@ -43,14 +43,26 @@ try {
   assert(await page.getByRole("dialog", { name: "未保存草稿" }).count() === 1, "删除带草稿棋谱时没有弹出草稿门禁");
   assert(await page.locator(".record-list article", { hasText: "草稿删除门禁" }).count() === 1, "确认处理草稿前棋谱已被删除");
   await page.getByRole("button", { name: "放弃草稿并切换" }).click();
-  await page.waitForTimeout(300);
-  const deletionState = await page.evaluate((id) => ({
-    library: JSON.parse(localStorage.getItem("renju-note-library-v1") || "[]").map((item) => item.id),
-    active: localStorage.getItem("renju-note-active-v1"),
-    draft: localStorage.getItem(`renju-note-draft-v2:${id}`),
-  }), recordId);
+  // 等到落盘真的发生再断言：固定 300ms 在机器忙的时候会读到删除前的状态（本门禁曾因此假红）。
+  await page.waitForFunction((id) => !JSON.parse(localStorage.getItem("renju-note-library-v1") || "[]").some((item) => item.id === id), recordId, { timeout: 10_000 }).catch(() => {});
+  await page.waitForTimeout(200);
+  const deletionState = await page.evaluate((id) => {
+    const active = JSON.parse(localStorage.getItem("renju-note-active-v1") || "null");
+    return {
+      library: JSON.parse(localStorage.getItem("renju-note-library-v1") || "[]").map((item) => item.id),
+      activeId: active?.id ?? null,
+      activeTitle: active?.metadata?.title ?? null,
+      draft: localStorage.getItem(`renju-note-draft-v2:${id}`),
+    };
+  }, recordId);
   assert(!deletionState.library.includes(recordId), "确认放弃草稿后棋谱仍在库中");
-  assert(deletionState.active === null, "删除当前棋谱后活动快照没有清理");
+  // 活动快照的真实不变量（旧断言写的是「必须为 null」，那是老行为，早已不成立）：
+  //  ① 绝不能还指着刚删掉的那一份——否则重启会把已删除的棋谱恢复出来；
+  //  ② 若指向别的棋谱，那份棋谱必须确实还在库里（不能是悬挂快照）。
+  //  删掉当前棋谱后应用会改开一份新的空白棋谱并把它记为活动，这是有意行为，故不要求 null。
+  assert(deletionState.activeId !== recordId, `删除当前棋谱后活动快照仍指向已删除的棋谱（${deletionState.activeTitle}）`);
+  assert(deletionState.activeId === null || deletionState.library.includes(deletionState.activeId),
+    `活动快照指向了不在库里的棋谱（悬挂快照：${deletionState.activeId} / ${deletionState.activeTitle}）`);
   assert(deletionState.draft === null, "删除当前棋谱后本地草稿没有清理");
   await context.close();
 

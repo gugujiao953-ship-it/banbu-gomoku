@@ -26,7 +26,7 @@ export const ch08: TourStep[] = [
     lead: "棋盘截图也能变成棋谱。",
     sheet: "import",
     tips: [
-      { sel: ".import-choice:nth-of-type(2)", name: "图片识谱", desc: "选图后先进入对齐界面：放大、拖动图片，把方框对准棋盘四条外框线再点「识别」。固定按十五路识别，会区分黑子与印刷空心白子。", icon: Download },
+      { sel: ".import-choice:nth-of-type(2)", name: "图片识谱", desc: "选图后先进入对齐界面：放大、拖动图片，把方框对准棋盘四条外框线再点「识别」。默认按十五路识别；开启实验开关后可自动识别 5–30 路，并区分黑子与印刷空心白子。", icon: Download },
     ],
   },
   { id: "import-recent",

@@ -1,11 +1,21 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 
-const baseURL = process.env.QA_BASE_URL || "http://127.0.0.1:5173/";
+/**
+ * ⚠ baseURL 一定要带 `?qa=1`：本脚本在页内 `localStorage.clear()`（为了造干净起点）把
+ * 「首次欢迎已读」标记一起清掉了，`page.reload()` 之后首运行欢迎遮罩会重新盖住界面，
+ * 后续所有点击都被它拦下（实测报 `<div class="first-run-backdrop"> intercepts pointer events`）。
+ * `?qa=1` 是应用自带的抑制开关，比再写一次 localStorage 更稳。
+ */
+const baseURL = (() => {
+  const url = new URL(process.env.QA_BASE_URL || "http://127.0.0.1:5173/");
+  if (!url.searchParams.has("qa")) url.searchParams.set("qa", "1");
+  return url.toString();
+})();
 const browser = await chromium.launch({ headless: true });
 
 try {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, serviceWorkers: "block" });
   const page = await context.newPage();
   await page.addInitScript(() => localStorage.setItem("banbu-first-run-welcome-v1", "true"));
   await page.goto(baseURL);
@@ -20,7 +30,15 @@ try {
 
   await page.getByRole("button", { name: "设置" }).click();
   await page.getByText("可选增强功能", { exact: true }).click();
-  await page.getByLabel("最近导入列表").check();
+  /**
+   * 「最近导入」这一行 2026-10-04 改过名（原「最近导入列表」）并**改成默认开启**
+   * （字段 recentImports → importShelf）——本条门禁当时没跟着改，于是长期假红。
+   * 现在按真实标题找到那枚芯片，并且**只在关着的时候才点开**：
+   * 无脑 click 会把默认已开的那一项关掉，反而毁掉前置条件。
+   */
+  const shelfToggle = page.locator('.setting-chip:has-text("最近导入") input[type="checkbox"]').first();
+  await shelfToggle.waitFor({ state: "attached", timeout: 10_000 });
+  if (!(await shelfToggle.isChecked())) await shelfToggle.check();
   await page.getByRole("button", { name: "打谱" }).click();
 
   const input = page.locator('input[type="file"][accept*=".sgf"]');
@@ -38,7 +56,7 @@ try {
   assert.equal(await recent.locator(".recent-import-item").count(), 1, "成功导入后应出现最近导入记录");
   assert.match(await recent.innerText(), /最近导入测试\.sgf/);
   assert.match(await recent.innerText(), /可一键重开/);
-  await page.getByRole("button", { name: "关闭", exact: true }).click();
+  await page.getByRole("dialog", { name: "选择导入方式" }).getByRole("button", { name: "关闭", exact: true }).click();
 
   const reopenedPage = await context.newPage();
   await reopenedPage.goto(baseURL);

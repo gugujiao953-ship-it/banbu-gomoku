@@ -1,0 +1,15 @@
+import { chromium } from "playwright";
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 390, height: 844 } });
+const errs = [];
+p.on("pageerror", e => errs.push("pageerror: " + e.message.slice(0, 200)));
+p.on("console", m => { if (m.type() === "error") errs.push("console: " + m.text().slice(0, 200)); });
+await p.addInitScript(() => localStorage.setItem("banbu-theme-preference-v1", "plum"));
+await p.goto("http://localhost:5173/", { waitUntil: "load" });
+await p.waitForTimeout(3000);
+console.log("data-theme:", await p.evaluate(() => document.documentElement.getAttribute("data-theme")));
+console.log("theme-scene 存在:", await p.evaluate(() => !!document.querySelector(".theme-scene")));
+console.log("app-shell 存在:", await p.evaluate(() => !!document.querySelector(".app-shell")));
+console.log("页面文字长度:", await p.evaluate(() => (document.body.innerText || "").length));
+console.log(errs.length ? "报错:\n  " + errs.slice(0, 5).join("\n  ") : "无报错");
+await b.close();

@@ -22,19 +22,20 @@ export function BoardAlignScreen({
   onCancel,
   onRecognize,
   busy,
-  restoreMoveOrder,
-  restoreEnabled,
-  onRestoreMoveOrderChange,
+  anySize,
+  anySizeEnabled,
+  onAnySizeChange,
 }: {
   src: string;
   alt: string;
   onCancel: () => void;
   onRecognize: (roi: BoardRoi | null) => void;
   busy: boolean;
-  restoreMoveOrder: boolean;
-  // 「复原手序」是开发测试功能（设置→开发测试功能），未开启时整个开关不渲染。
-  restoreEnabled: boolean;
-  onRestoreMoveOrderChange: (value: boolean) => void;
+  // 「不限 15 路」同样挂在开发测试功能下：开启后本屏右上角出现路数开关，
+  // 打开它识别器才走自动路数检测（boardSize 传 0）。
+  anySize: boolean;
+  anySizeEnabled: boolean;
+  onAnySizeChange: (value: boolean) => void;
 }) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -192,7 +193,13 @@ export function BoardAlignScreen({
           <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
         </button>
         <b>对齐棋盘</b>
-        <span className="board-fs-icon-placeholder" aria-hidden="true"/>
+        {anySizeEnabled ? (
+          <label className="board-fs-anysize" title="自动识别棋盘路数（5–30 路）">
+            <span>不限 15 路</span>
+            <input type="checkbox" checked={anySize} disabled={busy} onChange={(event) => onAnySizeChange(event.target.checked)}/>
+            <i/>
+          </label>
+        ) : <span className="board-fs-icon-placeholder" aria-hidden="true"/>}
       </header>
       <div
         ref={stageRef}
@@ -233,14 +240,6 @@ export function BoardAlignScreen({
         </div>
       </div>
       <div className="board-fs-bottom">
-        {restoreEnabled && <label className="board-fs-restore-order">
-          <span>
-            <b>复原手序</b>
-            <small>开启后按棋子上的序号恢复落子顺序；仅支持带手数标记的截图，序号需完整连续</small>
-          </span>
-          <input type="checkbox" checked={restoreMoveOrder} disabled={busy} onChange={(event) => onRestoreMoveOrderChange(event.target.checked)}/>
-          <i/>
-        </label>}
         <div className="board-fs-actions">
           <button type="button" className="board-fs-action" onClick={resetTransform} disabled={busy}>
             <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>

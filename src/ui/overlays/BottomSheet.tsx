@@ -1,6 +1,8 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { useOverlayHistory } from "./useOverlayHistory";
+import { lockDocumentScroll } from "./document-scroll-lock";
+import { OverlayPattern, OverlayBrandMark, type OverlayAppearance } from "./OverlayBrand";
 
 interface BottomSheetProps {
   title: string;
@@ -8,9 +10,13 @@ interface BottomSheetProps {
   onClose: () => void;
   className?: string;
   manageHistory?: boolean;
+  /** 不渲染标题行：内容自己顶到抓手下面（棋谱树这么用，用户 09-23：「腾出空间」）。
+   *  关闭按钮仍在（浮在内容右上角），`aria-label` 也照旧，无障碍不受影响。 */
+  hideTitle?: boolean;
+  appearance?: OverlayAppearance;
 }
 
-export function BottomSheet({ title, children, onClose, className = "", manageHistory = false }: BottomSheetProps) {
+export function BottomSheet({ title, children, onClose, className = "", manageHistory = false, hideTitle = false, appearance = "utility" }: BottomSheetProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
@@ -20,7 +26,8 @@ export function BottomSheet({ title, children, onClose, className = "", manageHi
     const previous = globalThis.document?.activeElement as HTMLElement | null;
     const dialog = dialogRef.current;
     const focusable = () => dialog
-      ? Array.from(dialog.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])"))
+      ? Array.from(dialog.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), summary, [tabindex]:not([tabindex='-1'])"))
+        .filter((element) => element.getClientRects().length > 0)
       : [];
     const focusFirst = () => (focusable()[0] || closeRef.current || dialog)?.focus({ preventScroll: true });
     const timer = window.setTimeout(focusFirst, 0);
@@ -55,22 +62,10 @@ export function BottomSheet({ title, children, onClose, className = "", manageHi
     };
   }, []);
 
-  useEffect(() => {
-    const body = globalThis.document?.body;
-    if (!body) return undefined;
-    const previousOverflow = body.style.overflow;
-    const previousPaddingRight = body.style.paddingRight;
-    const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
-    if (scrollbarWidth > 0) {
-      const currentPaddingRight = Number.parseFloat(window.getComputedStyle(body).paddingRight) || 0;
-      body.style.paddingRight = `${currentPaddingRight + scrollbarWidth}px`;
-    }
-    body.style.overflow = "hidden";
-    return () => {
-      body.style.overflow = previousOverflow;
-      body.style.paddingRight = previousPaddingRight;
-    };
-  }, []);
+  // Lock before the first paint of the newly mounted sheet.  Doing this in
+  // useEffect lets Android WebView paint the page once, then change the root
+  // overflow in a second frame; that compositor pass is the visible flash.
+  useLayoutEffect(() => lockDocumentScroll(), []);
 
   useOverlayHistory(manageHistory, onClose);
 
@@ -78,17 +73,22 @@ export function BottomSheet({ title, children, onClose, className = "", manageHi
     <section
       ref={dialogRef}
       className="bottom-sheet"
+      data-overlay-appearance={hideTitle ? "utility" : appearance}
       onMouseDown={(event) => event.stopPropagation()}
       role="dialog"
       aria-modal="true"
       aria-label={title}
       tabIndex={-1}
     >
-      <div className="sheet-handle"/>
-      <div className="sheet-head">
-        <h2>{title}</h2>
-        <button ref={closeRef} className="icon-button" onClick={onClose} aria-label="关闭"><X size={20}/></button>
-      </div>
+      {!hideTitle && <div className="sheet-decoration" aria-hidden="true"><OverlayPattern/></div>}
+      <div className="sheet-handle" aria-hidden="true"/>
+      {hideTitle
+        ? <button ref={closeRef} className="icon-button sheet-close-floating" onClick={onClose} aria-label="关闭"><X size={20}/></button>
+        : <div className="sheet-head">
+          <span className="sheet-emblem" aria-hidden="true"><OverlayBrandMark/></span>
+          <h2>{title}</h2>
+          <button ref={closeRef} className="icon-button sheet-close" onClick={onClose} aria-label="关闭"><X size={18}/></button>
+        </div>}
       {children}
     </section>
   </div>;

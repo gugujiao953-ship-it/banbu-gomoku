@@ -1,0 +1,169 @@
+/* ══ 开局名浮字（用户 2026-10-09，第二轮：美术重做）═══════════════════════════
+   用户原话两条：
+     ①「这个弹窗好像受到了落子的影响，落子后一下子就没了，还不到1秒钟」——**这是真 bug**：
+        关键帧在 100% 淡到 opacity:0，但 animation 的时长写的是 260ms（那是**淡入**该用的时长），
+        于是整个揭示被压缩成 0.26 秒：淡入完立刻淡出，用户只看到一个闪。
+        修法：时长改由 `--reveal-ms` 统一驱动（与 TS 里的 OPENING_REVEAL_MS 同源），
+        关键帧按**百分比**分配「进场 8% / 停留到 78% / 退场 22%」，任何时长下节奏都对。
+        ⚠ 别再写「animation 260ms + 关键帧自带淡出」这种组合——两处各说各话正是本 bug 的成因。
+     ②「没有美术效果，没有设计感，应该要搞成那个毛笔字体，然后弹窗也不能太老实，里面应该
+        加一点东西什么的」——做成**一方宣纸题签**：楷体题名 + 竖排「直指/斜指」落款
+        + 朱红编号小印 + 笔锋扫过的高光。
+
+   三条硬约束（第一轮定的，不许退化）：
+   · **贴在棋盘中心下方**：绝对定位锚在 `.duel-board`（那里已有 position:relative）。
+     它**不进文档流**——`.duel-board` 是 flex + `margin-block:auto`，在附近新增正常流元素
+     会让 auto 边距重算、棋盘上下跳（R110 实测过 12px 位移，正是这类写法的后果）。
+   · **不影响点击**：整块 `pointer-events:none`。
+   · **不出现很久**：由组件在 OPENING_REVEAL_MS 后卸载，CSS 只负责节奏。
+
+   ⚠ 位置为什么在 70% 而不是贴着棋盘底边（第一版踩到、实测截图确认）：
+     贴底边时，**应用自己的 toast 会盖住它的下半截**——而五手两打摆完第 3 手正好会弹一句
+     「AI 选择保持当前执子方」，两块 UI 在真实使用里必然撞车。挪到棋盘高度的 70%
+     （中心线以下、底边以上）后，既不压住天元附近的开局三子，也避开了底部 toast 带。
+
+   配色：汉字走 `--ink`，印泥走 `--red`（design-tokens 既有令牌），纸底走 `--surface`。
+   全部 20 套主题下自动跟随，不写死颜色（check-hardcoded-ink 门禁会拦）。 */
+
+.opening-reveal{
+  position:absolute;
+  left:50%;
+  /* 落在棋盘下半部（中心线以下），避开底部 toast 带与天元附近的开局三子 */
+  top:70%;
+  transform:translateX(-50%);
+  z-index:3;
+  display:flex;
+  align-items:center;
+  gap:11px;
+  padding:8px 12px 8px 15px;
+  border-radius:3px;
+  /* 宣纸底：主色 + 一道极淡的斜向纤维纹，纸的质感来自这两层 */
+  background:
+    linear-gradient(104deg,color-mix(in srgb,var(--surface,var(--paper)) 97%,transparent) 0 46%,color-mix(in srgb,var(--ink) 3%,transparent) 46% 47%,color-mix(in srgb,var(--surface,var(--paper)) 97%,transparent) 47% 100%),
+    var(--surface,var(--paper));
+  box-shadow:
+    0 8px 22px #00000020,
+    /* 纸边：一道很细的墨线勾边，像手裁的宣纸 */
+    inset 0 0 0 1px color-mix(in srgb,var(--ink) 13%,transparent);
+  pointer-events:none;
+  user-select:none;
+  /* 时长由这一个变量驱动（组件按 OPENING_REVEAL_MS 注入），关键帧只按百分比走节奏 */
+  animation:opening-reveal-life var(--reveal-ms,2600ms) linear both;
+}
+
+/* 笔锋：左上角一道斜掠的淡墨光，像题字时笔尖先落下的那一扫。
+   刻意做得很轻（6% 墨色）——第一版做成实心竖条，截图里像一条 UI 故障条，已废弃。 */
+.opening-reveal::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:linear-gradient(118deg,transparent 0 38%,color-mix(in srgb,var(--ink) 7%,transparent) 46% 54%,transparent 62% 100%);
+  animation:opening-reveal-sheen var(--reveal-ms,2600ms) ease-out both;
+}
+
+/* 题名：毛笔字。楷体优先，退到宋体/衬线——本仓 brand/标题已有 serif 先例（design-tokens --font-display） */
+.opening-reveal-name{
+  position:relative;
+  font-family:"Kaiti SC",KaiTi,STKaiti,"Songti SC",STSong,serif;
+  font-size:24px;
+  font-weight:700;
+  line-height:1;
+  letter-spacing:.12em;
+  /* 墨色：主体纯墨、末梢略淡，像收笔的枯笔，但不至于被冲淡到看不清 */
+  background:linear-gradient(172deg,var(--ink) 0 74%,color-mix(in srgb,var(--ink) 80%,transparent) 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+  animation:opening-reveal-name var(--reveal-ms,2600ms) cubic-bezier(.16,.9,.24,1) both;
+}
+
+/* 落款小字：直指 / 斜指——26 开局的两大族，内行一眼有用 */
+.opening-reveal-family{
+  position:relative;
+  font-size:9px;
+  line-height:1;
+  letter-spacing:.22em;
+  color:var(--muted);
+  writing-mode:vertical-rl;
+  text-orientation:upright;
+}
+
+/* 朱红小印：印面刻开局编号（d4 / i11…），右下角落款的位置感全靠它。
+   做成**方圆角 + 内白边 + 微倾**，比默认圆角方块更像盖上去的印。
+   印面用不透明朱红（不叠纸底透光）：第一版给了 88% 透明度，截图里泛粉、像被冲淡的色块，
+   而印泥本就该是实心的一块色。 */
+.opening-reveal-seal{
+  position:relative;
+  display:grid;
+  place-items:center;
+  min-width:25px;
+  height:25px;
+  padding:0 3px;
+  border-radius:5px 5px 5px 1px;
+  /* 印面：朱红掺一点更深的红 —— 直接 $--red 在浅色主题里偏亮（截图里像粉色块），
+     掺深后才是"印泥"该有的厚度，同时保证印字（近白）稳定 ≥4.5:1。 */
+  background:color-mix(in srgb,var(--red) 62%,#4a1410);
+  color:#fff4e2;
+  font-family:"Songti SC",STSong,serif;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.02em;
+  transform:rotate(-2.5deg);
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,#fff4e2 52%,transparent);
+  animation:opening-reveal-seal var(--reveal-ms,2600ms) cubic-bezier(.2,.9,.3,1.4) both;
+}
+
+/* ── 节奏总谱（**唯一**一组关键帧，百分比分配与总时长无关）─────────────────
+   0–8%   进场：纸片淡入并微微上浮
+   8–78%  停留：静态展示（读数时间都在这段）
+   78–100% 退场：淡出并略微下沉
+   全部用 opacity/transform，不触发布局，所以棋盘不会被推动。 */
+@keyframes opening-reveal-life{
+  0%{opacity:0;transform:translateX(-50%) translateY(7px) scale(.96)}
+  8%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+  78%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+  100%{opacity:0;transform:translateX(-50%) translateY(-5px) scale(.99)}
+}
+
+/* 笔锋扫过：0–45% 从左上方掠过（一次性，之后不动） */
+@keyframes opening-reveal-sheen{
+  0%{opacity:0}
+  18%{opacity:1}
+  45%{opacity:.55}
+  70%,100%{opacity:.35}
+}
+
+/* 题名：进场稍慢于纸片（像写完字才看清），带一点点从右向左的收笔位移 */
+@keyframes opening-reveal-name{
+  0%{opacity:0;transform:translateX(7px)}
+  14%{opacity:1;transform:translateX(0)}
+  100%{opacity:1;transform:translateX(0)}
+}
+
+/* 朱印：最后落下，带一点压印的过冲 */
+@keyframes opening-reveal-seal{
+  0%,20%{opacity:0;transform:scale(1.8) rotate(-14deg)}
+  34%{opacity:1;transform:scale(.93) rotate(-1deg)}
+  44%{transform:scale(1.05) rotate(-4deg)}
+  56%,100%{opacity:1;transform:scale(1) rotate(-2.5deg)}
+}
+
+/* 动效降级：不减信息、不位移，只把进场/退场的动作压成纯淡入淡出 */
+@media (prefers-reduced-motion:reduce){
+  .opening-reveal{animation:opening-reveal-fade var(--reveal-ms,2600ms) linear both}
+  .opening-reveal::before,
+  .opening-reveal-name,
+  .opening-reveal-seal{animation:none}
+  .opening-reveal-name{-webkit-text-fill-color:currentColor;background:none}
+  .opening-reveal-seal{transform:none}
+  @keyframes opening-reveal-fade{0%{opacity:0}8%,78%{opacity:1}100%{opacity:0}}
+}
+
+/* 矮横屏（横屏双栏）里棋盘下缘空间紧张：压扁，但保留毛笔字与印 */
+@media (max-height:420px) and (orientation:landscape){
+  .opening-reveal{padding:6px 10px 6px 13px;gap:8px;top:72%}
+  .opening-reveal-name{font-size:18px}
+  .opening-reveal-seal{min-width:21px;height:21px;font-size:10px}
+  .opening-reveal-family{letter-spacing:.16em}
+}

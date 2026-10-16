@@ -1,0 +1,106 @@
+/* Integrated overlay chrome: a compact title mark, restrained theme texture
+ * and a thin stacked edge for archives. Complete artwork belongs to the
+ * welcome/result moments. Decorative SVG has no persistent animation. */
+.overlay-brand-mark { display: block; width: 100%; height: 100%; object-fit: contain; }
+.overlay-pattern { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--green); opacity: .035; }
+.overlay-pattern-circuit, .overlay-pattern-stars { display: none; }
+html:is([data-theme="cyber"], [data-theme="pixel"]) .overlay-pattern-cloud,
+html:is([data-theme="dark"], [data-theme="aurora"], [data-theme="firefly"], [data-theme="deepsea"]) .overlay-pattern-cloud { display: none; }
+html:is([data-theme="cyber"], [data-theme="pixel"]) .overlay-pattern-circuit,
+html:is([data-theme="dark"], [data-theme="aurora"], [data-theme="firefly"], [data-theme="deepsea"]) .overlay-pattern-stars { display: block; }
+
+html[data-theme] .sheet-backdrop > .bottom-sheet {
+  position: relative;
+  border-color: var(--line);
+  border-color: color-mix(in srgb, var(--line) 75%, transparent);
+  background: var(--paper);
+  box-shadow: 0 26px 76px #00000028, 0 5px 18px #00000012,
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 85%, transparent);
+}
+.sheet-decoration, .compact-overlay-decoration, .welcome-decoration, .clock-overlay-decoration {
+  position: absolute; pointer-events: none; user-select: none;
+}
+.sheet-decoration {
+  inset: 0 0 auto; height: 112px; overflow: hidden; border-radius: inherit;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--green) 5%, transparent), transparent);
+}
+.sheet-backdrop .sheet-handle { position: relative; opacity: .65; }
+.sheet-backdrop .sheet-head {
+  position: relative;
+  grid-template-columns: 40px minmax(0, 1fr) 44px;
+  gap: 11px; min-height: 68px; padding: 4px 0 13px;
+  border-bottom-color: color-mix(in srgb, var(--line) 75%, transparent);
+}
+.sheet-backdrop .sheet-head h2 {
+  max-width: 100%; font-size: 21px; line-height: 1.4; letter-spacing: .025em;
+}
+.sheet-backdrop .sheet-emblem {
+  display: block; width: 40px; height: 40px;
+  border: 0; border-radius: 50%; background: transparent; box-shadow: none;
+}
+.sheet-backdrop .sheet-body { position: relative; }
+
+/* Gentle family differences stay within one consistent visual language. */
+html[data-theme] .sheet-backdrop > [data-overlay-appearance="gateway"] { border-radius: 32px 32px 22px 22px; }
+html[data-theme] .sheet-backdrop > [data-overlay-appearance="arena"] { border-radius: 30px; }
+html[data-theme] .sheet-backdrop > [data-overlay-appearance="archive"] {
+  border-radius: 28px 28px 16px 16px;
+  box-shadow: 0 -5px 0 -2px var(--surface), 0 -6px 0 -2px var(--line),
+    0 26px 76px #00000028, 0 5px 18px #00000012,
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 85%, transparent);
+}
+html[data-theme] .sheet-backdrop > [data-overlay-appearance="decision"] { border-radius: 34px 34px 24px 24px; }
+html[data-theme] .sheet-backdrop > [data-overlay-appearance="story"] { border-radius: 32px; }
+
+/* Workspaces retain their audited header height and available content area. */
+.sheet-backdrop [data-overlay-appearance="utility"] .sheet-head { min-height: 64px; }
+
+/* No extra title height in subordinate choices or clock settings. */
+html[data-theme] .ai-float-panel { border-radius: 26px; }
+.compact-overlay-decoration { inset: 0 0 auto; height: 90px; overflow: hidden; border-radius: inherit; }
+.ai-float-panel .ai-float-head { position: relative; min-height: 40px; }
+.ai-float-panel > :not(.compact-overlay-decoration) { position: relative; }
+
+html[data-theme] .first-run-dialog { border-radius: 36px 36px 24px 24px; }
+.welcome-decoration { inset: 0 0 auto; height: 208px; overflow: hidden; border-radius: inherit; background: radial-gradient(ellipse at 50% 0, color-mix(in srgb, var(--green) 8%, transparent), transparent 75%); }
+.welcome-decoration .overlay-pattern { opacity: .035; }
+.first-run-content, .first-run-actions { position: relative; }
+.first-run-art { width: 88px; height: 88px; margin: -4px auto 8px; }
+.about-hero > span { background: transparent; }
+.about-hero > span > img { display: block; width: 46px; height: 46px; }
+.first-run-dialog .first-run-reassurance { margin: 12px 0 0; padding: 12px; border-left: 2px solid var(--line); background: var(--surface); color: var(--muted); text-align: left; font-size: 11px; line-height: 1.65; }
+
+html[data-theme] .clock-setup-card { position: relative; border-radius: 26px; }
+.clock-overlay-decoration { inset: 0 0 auto; height: 48px; overflow: hidden; border-radius: inherit; }
+.clock-setup-card .clock-setup-head { background: var(--paper); }
+.clock-setup-card .clock-setup-head > b { position: relative; }
+.clock-setup-card .clock-setup-section { position: relative; }
+.clock-over-card { position: relative; max-width: calc(100% - 24px); max-height: calc(100% - 24px); overflow: auto; border: 1px solid var(--line); border-radius: 32px; background: var(--paper); }
+.clock-result-decoration { position: absolute; inset: 0 0 auto; height: 130px; overflow: hidden; border-radius: inherit; pointer-events: none; }
+.clock-result-art { position: relative; width: 72px; height: 72px; margin: -8px auto 2px; }
+.clock-over-card > :not(.clock-result-decoration) { position: relative; }
+
+/* The previously approved ending keeps its artwork, copy and effects. */
+.duel-end--won .duel-end-card { border-radius: 30px 30px 18px 18px; }
+.duel-end--lost .duel-end-card { border-radius: 26px; }
+.duel-end--draw .duel-end-card { border-radius: 32px 32px 20px 20px; }
+.duel-end-card > :is(.duel-end-flowclip, .duel-end-dust) { border-radius: inherit; }
+html[data-theme] .duel-confirm { border-radius: 30px; }
+.duel-confirm .duel-confirm-mark { border-radius: 50%; outline: 1px solid color-mix(in srgb, var(--green) 15%, transparent); outline-offset: 5px; }
+
+@media (max-width: 360px) {
+  .sheet-backdrop .sheet-head { grid-template-columns: 36px minmax(0, 1fr) 44px; gap: 9px; }
+  .sheet-backdrop .sheet-head h2 { font-size: 19px; }
+  .sheet-backdrop .sheet-emblem { width: 36px; height: 36px; border-radius: 12px; }
+  .first-run-art { width: 76px; height: 76px; }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .sheet-backdrop .sheet-head { min-height: 54px; padding-top: 0; padding-bottom: 8px; }
+  .sheet-backdrop [data-overlay-appearance="utility"] .sheet-head { min-height: 52px; }
+  .sheet-decoration { height: 85px; }
+  .first-run-art { width: 66px; height: 66px; }
+}
+/* Decorative fallbacks for WebViews that predate CSS inset support. */
+.legacy-webview .sheet-decoration, .legacy-webview .compact-overlay-decoration,
+.legacy-webview .welcome-decoration, .legacy-webview .clock-overlay-decoration,
+.legacy-webview .clock-result-decoration { top: 0; right: 0; left: 0; bottom: auto; }

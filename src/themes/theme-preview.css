@@ -1,0 +1,30 @@
+html[data-theme-preview] body { margin:0; }
+html[data-theme-preview="studio"] body { background:#17151b; color:#eee8df; }
+.theme-studio { height:100vh; height:100dvh; display:grid; grid-template-rows:auto minmax(0,1fr) auto; font:13px/1.5 system-ui,"Microsoft YaHei",sans-serif; }
+.theme-studio-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:16px 24px; border-bottom:1px solid #ffffff12; background:#211e26; }
+.theme-studio-title { display:grid; margin-right:auto; }
+.theme-studio-title b { font:600 19px/1.5 "Songti SC","STSong",serif; letter-spacing:3px; }
+.theme-studio-title span { color:#b4aab9; font-size:11px; }
+.theme-studio-tabs { display:flex; gap:4px; padding:4px; background:#141217; border-radius:10px; }
+.theme-studio button,.theme-studio select,.theme-studio a { min-height:40px; padding:8px 14px; border:1px solid #514757; border-radius:7px; background:#2a252f; color:#eee8df; font:inherit; cursor:pointer; text-decoration:none; }
+.theme-studio-tabs button { border-color:transparent; background:transparent; }
+.theme-studio button[aria-pressed="true"] { background:#dfbc7e; border-color:#dfbc7e; color:#302218; }
+.theme-studio-size { display:flex; align-items:center; gap:8px; color:#b4aab9; }
+.theme-studio :is(button,select,a):focus-visible { outline:2px solid #f2cd8d; outline-offset:3px; }
+.theme-studio-stage { min-width:0; min-height:0; overflow:hidden; display:grid; place-items:center; background:radial-gradient(ellipse at center,#332b36,#17151b 80%); }
+.theme-studio-frame { position:relative; overflow:hidden; border-radius:12px; background:#302632; box-shadow:0 0 0 1px #ffffff26,0 20px 70px #0008; }
+.theme-studio-loading { position:absolute; inset:0; display:grid; place-items:center; background:#302632; color:#dfbc7e; font-size:13px; }
+.theme-studio iframe { position:absolute; left:0; top:0; transform-origin:0 0; border:0; max-width:none; }
+.theme-studio-footer { display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px; padding:10px 24px; color:#b4aab9; font-size:11px; }
+html[data-theme-preview="scene"],html[data-theme-preview="scene"] body,html[data-theme-preview="scene"] #root { width:100%; height:100%; overflow:hidden; }
+.theme-preview-canvas { position:relative; isolation:isolate; width:100%; height:100%; background:var(--paper); }
+html[data-theme-preview="scene"] .theme-preview-canvas .theme-scene { left:0; top:0; width:100%; height:100%; transform:none; border-radius:0; }
+@media(max-width:700px) {
+  .theme-studio-toolbar { padding:12px; gap:8px; }
+  .theme-studio-title { width:100%; }
+  .theme-studio-title span { display:none; }
+  .theme-studio button,.theme-studio select,.theme-studio a { padding:8px 10px; min-height:44px; }
+  .theme-studio-size { font-size:0; }
+  .theme-studio select { max-width:190px; font-size:12px; }
+  .theme-studio-footer { padding:8px 12px; }
+}

@@ -41,7 +41,7 @@ async function runImport(image, restore) {
     Patched.prototype = OriginalWorker.prototype;
     window.Worker = Patched;
     localStorage.setItem("banbu-first-run-welcome-v1", "true");
-    localStorage.setItem("banbu-enhancement-settings-v1", JSON.stringify({ analysisAuto: true, analysisShowCandidates: true, analysisCandidateCount: 5, analysisTimeMs: 4000, devMoveOrderRestore: true }));
+    localStorage.setItem("banbu-enhancement-settings-v1", JSON.stringify({ analysisAuto: true, analysisShowCandidates: true, analysisCandidateCount: 5, analysisTimeMs: 4000 }));
   });
   await page.goto(`${url}?qa=1`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2200);
@@ -52,7 +52,6 @@ async function runImport(image, restore) {
   await page.waitForTimeout(600);
   await page.setInputFiles("input[type=file][accept*='heic']", image);
   await page.waitForSelector(".board-fs-actions", { timeout: 10000 });
-  if (restore) await page.locator(".board-fs-restore-order input").check({ force: true });
   await page.locator(".board-fs-actions button:has-text('识别')").click();
 
   const toastDeadline = Date.now() + 60000;
@@ -63,9 +62,25 @@ async function runImport(image, restore) {
     await page.waitForTimeout(800);
   }
   if (!/识谱完成/.test(toast)) { await page.context().close(); throw new Error(`识谱导入未完成：${toast.slice(0, 120) || "超时"}`); }
-  const restoredOk = /已按序号复原/.test(toast);
-  if (restore && !restoredOk) { await page.context().close(); throw new Error(`复原手序未生效（截图序号不全？）：${toast.slice(0, 140)}`); }
+  // 复原手序转正（09-28）：识别默认走快路径，要手序在核对屏点「复原手序-本地」（09-29 定名）。
+  let restoredOk = false;
+  if (restore) {
+    await page.locator("[data-local-restore]").click();
+    const restoreDeadline = Date.now() + 90000;
+    while (Date.now() < restoreDeadline) {
+      toast = await page.evaluate(() => [...document.querySelectorAll("[class*='toast']")].map((e) => e.textContent?.trim()).filter(Boolean).join(" | ") || "");
+      if (/复原手序-本地完成|本地没读出序号|序号不完整|复原手序-本地失败/.test(toast)) break;
+      await page.waitForTimeout(800);
+    }
+    restoredOk = /复原手序-本地完成/.test(toast);
+    if (!restoredOk) { await page.context().close(); throw new Error(`复原手序未生效（截图序号不全？）：${toast.slice(0, 140)}`); }
+  }
 
+  // 识谱「叠图核对」（用户 09-17）：识别完先停在核对屏，点「确认导入」才建谱；
+  // 不确认的话下面读到的是空盘（这一步漏了会让整个门禁变成自我比对）。
+  await page.locator(".image-verify-confirm").waitFor({ timeout: 15000 });
+  await page.locator(".image-verify-confirm").click();
+  await page.waitForTimeout(700);
   // 复原通道落在开局空面，须跳到终局才是完整棋局；静态通道 setup 摆子始终可见。
   await page.evaluate(() => { [...document.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === "到最后一手")?.click(); });
   await page.waitForTimeout(1500);

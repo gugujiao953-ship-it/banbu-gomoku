@@ -2,10 +2,10 @@
   display: grid;
   grid-template-areas: "title mode";
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 7px;
+  gap: 3px;
   min-width: 0;
-  margin: 0 0 9px;
-  padding: 9px;
+  margin: 0 0 4px;
+  padding: 3px 6px;
   border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
   border-radius: 17px;
   background: color-mix(in srgb, var(--paper) 94%, transparent);
@@ -15,13 +15,13 @@
 .unified-status .workspace-current.unified-status-title {
   grid-area: title;
   min-width: 0;
-  min-height: 42px;
+  min-height: 30px;
   padding: 0 2px;
   border: 0;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 20px;
+  grid-template-columns: 26px minmax(0, 1fr) 18px;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: transparent;
   color: inherit;
   text-align: left;
@@ -29,14 +29,16 @@
 }
 
 .unified-status-kind {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
   display: grid;
   place-items: center;
   background: var(--jade);
-  color: var(--green);
-  font: 700 14px serif;
+  /* 弱对比主题（baroque 3.62、kawaii 4.3）下基础强调色压不住 --jade，
+     和 design-tokens.css 里「选中项标签用强强调色」是同一条契约。 */
+  color: var(--green-2, var(--green));
+  font: 700 12px serif;
 }
 
 .unified-status-title > .unified-status-kind { grid-column: 1; }
@@ -54,10 +56,12 @@
   font: inherit;
   position: relative;
 }
+/* 用户 10-02：这两行**不是**要读的信息，是"这是哪一份谱"的标识；放不下就省略号，
+   换取状态栏的高度（原来两行 + 2 行截断把整块撑到 46~58px）。 */
 .unified-status-name,
-.unified-status-lines { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.unified-status-copy > .unified-status-name { width: 100%; margin: 0; font-size: 13px; font-weight: 700; line-height: 1.25; }
-.unified-status-lines { width: 100%; margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.3; }
+.unified-status-lines { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.unified-status-copy > .unified-status-name { width: 100%; margin: 0; font-size: 12.5px; font-weight: 700; line-height: 1.2; }
+.unified-status-lines { width: 100%; margin-top: 1px; color: var(--muted); font-size: 10.5px; line-height: 1.2; }
 /* Desktop keeps the two status lines flowing inline (one wrapped row). Phones
  * switch them to a right-side stack beside the title (see max-width:699px). */
 .unified-status-line + .unified-status-line::before { content: " · "; }
@@ -68,7 +72,7 @@
 /* 用户规格 09-10：模式切换（打谱/读谱/做题）已上移顶栏；状态栏右侧只放
  * 「退出」类按钮（如退出对弈），与可选择棋谱的那一行同一行、靠右。 */
 .unified-status-mode { grid-area: mode; min-width: 0; display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: 4px; }
-.unified-status-mode .exit-ai-game { width: 60px; min-height: 44px; flex: 0 0 60px; margin: 0; }
+.unified-status-mode .exit-ai-game { width: 56px; min-height: 34px; flex: 0 0 56px; margin: 0; }
 .unified-status-mode .exit-annotation-erase { min-height: 34px; padding: 0 10px; border: 1px solid #dcc49b; border-radius: 9px; background: #fdf4e2; color: #9b6c2d; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .unified-status.ai-thinking .unified-status-kind {
   background: #e8f3ff;
@@ -81,9 +85,14 @@ html[data-theme="dark"] .unified-status { background: #26312d; border-color: #3b
 html[data-theme="dark"] .unified-status.ai-thinking .unified-status-kind { background: #263d50; color: #8ec0ec; }
 
 @media (max-width: 412px) {
-  .unified-status { padding: 8px; gap: 6px; }
-  .unified-status .workspace-current.unified-status-title { grid-template-columns: 31px minmax(0, 1fr) 17px; gap: 6px; }
-  .unified-status-kind { width: 31px; height: 31px; }
+  .unified-status { padding: 3px 5px; gap: 3px; }
+  .unified-status .workspace-current.unified-status-title { grid-template-columns: 26px minmax(0, 1fr) 16px; gap: 5px; }
+  /* ⚠ 选择器必须带 `.unified-status-title >`（0,2,0）：library.css 的
+     `.workspace-current > span{width:34px}` 是 0,1,1，光写 `.unified-status-kind`（0,1,0）
+     会被它压回去 —— 实测 360×844 徽章仍是 34px，塞进 26px 的网格轨道里往右溢出 8px，
+     把棋谱名挤进图标 2px（qa/settings-page-regression.mjs「棋谱名向左侵入图标」就是这条）。
+     R125 想把色块从 34 收到 26，当时没生效，这里补上特异性。 */
+  .unified-status-title > .unified-status-kind { width: 26px; height: 26px; }
 }
 
 /* On phones the status card stays compact: the selector title occupies the
@@ -91,18 +100,19 @@ html[data-theme="dark"] .unified-status.ai-thinking .unified-status-kind { backg
  * selector subtitle. */
 @media (max-width: 699px) {
   .unified-status {
-    gap: 4px;
-    margin-bottom: 6px;
-    padding: 4px;
-    border-radius: 14px;
+    gap: 2px;
+    margin-bottom: 3px;
+    padding: 2px 5px;
+    border-radius: 12px;
   }
   .unified-status .workspace-current.unified-status-title {
-    min-height: 44px;
-    padding: 0 5px;
-    grid-template-columns: 31px minmax(0, 1fr) 17px;
-    gap: 7px;
+    min-height: 30px;
+    padding: 0 4px;
+    grid-template-columns: 26px minmax(0, 1fr) 16px;
+    gap: 6px;
   }
-  .unified-status-kind { width: 31px; height: 31px; border-radius: 9px; }
+  /* 同 412px 那条：特异性要压过 library.css 的 `.workspace-current > span{34px}`。 */
+  .unified-status-title > .unified-status-kind { width: 26px; height: 26px; border-radius: 8px; }
   /* Phones run out of width for one long status line: put the title on the
    * left and stack the two status groups to its right. Each status line is
    * roughly half the title height so the pair brackets the title text.
@@ -117,18 +127,20 @@ html[data-theme="dark"] .unified-status.ai-thinking .unified-status-kind { backg
   /* Grid items keep min-width:auto by default, which lets a nowrap title
    * inflate past its track; pin it to 0 so ellipsis can do its job. */
   .unified-status-title > .unified-status-copy > * { min-width: 0; }
-  .unified-status-copy > .unified-status-name { width: auto; font-size: 15px; }
+  .unified-status-copy > .unified-status-name { width: auto; font-size: 13px; }
   .unified-status-lines {
-    display: flex; flex-direction: column; align-items: stretch; gap: 1px;
-    width: auto; margin-top: 0; overflow: visible; white-space: normal;
+    display: flex; flex-direction: column; align-items: stretch; gap: 0;
+    width: auto; margin-top: 0; overflow: hidden;
   }
   .unified-status-line {
-    display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    font-size: 10px; line-height: 1.3;
+    /* 口径改过：09-26 曾要求这行"特大字下最多两行也别截"，10-02 用户反过来要求
+       「文字显示不够就变省略号，这里的文字意义没那么大」——换状态栏的高度。 */
+    max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    font-size: 10px; line-height: 1.25;
   }
   .unified-status-line + .unified-status-line::before { content: none; }
   .unified-status-mode .exit-ai-game {
-    min-height: 44px;
+    min-height: 34px;
     margin: 0;
   }
 }
@@ -143,10 +155,10 @@ html[data-theme="dark"] .unified-status.ai-thinking .unified-status-kind { backg
 
 /* Mobile chrome stays compact while the exit action remains tappable. */
 @media (max-width: 600px) {
-  .unified-status { gap: 2px; margin-bottom: 2px; padding: 2px; border-radius: 11px; box-shadow: 0 3px 10px #675d4a08; }
-  .unified-status .workspace-current.unified-status-title { min-height: 40px; }
+  .unified-status { gap: 2px; margin-bottom: 2px; padding: 2px 4px; border-radius: 11px; box-shadow: 0 3px 10px #675d4a08; }
+  .unified-status .workspace-current.unified-status-title { min-height: 30px; }
 }
 
 @media (max-width: 370px) {
-  .unified-status .workspace-current.unified-status-title { min-height: 38px; }
+  .unified-status .workspace-current.unified-status-title { min-height: 30px; }
 }

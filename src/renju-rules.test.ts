@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyBoard, evaluateRenjuMove, forbiddenPoints, winningLinesAt } from "./game";
+import { emptyBoard, evaluateRenjuMove, forbiddenPoints, forbiddenReason, winningLinesAt } from "./game";
 import type { Cell, Position } from "./types";
 
 type StoneSetup = {
@@ -433,6 +433,33 @@ describe("renju rule API stability", () => {
 
     const doubleFour = makeBoard({ black: [...positions(7, [5, 6, 8]), ...vertical(7, [5, 6, 8])] });
     expect(forbiddenPoints(doubleFour)).toContainEqual({ row: 7, col: 7, reason: "四四禁手" });
+  });
+
+  it("整盘扫描与逐点判定在随机局面上逐项一致（性能改写后的等价性）", () => {
+    // forbiddenPoints 现在只克隆一次盘面、复用同一块 scratch（原先每个空点都要走
+    // evaluateRenjuMove：拼 225 格缓存键 + 克隆整盘，15 路一次全盘 65–85ms）。
+    // 这条测试拿「逐点调用 forbiddenReason」当裁判，覆盖空盘/稀疏/中盘/稠密四档，
+    // 保证提速没有改变任何判定结果。
+    let seed = 20260916;
+    const rand = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+    const reference = (board: ReturnType<typeof emptyBoard>) => {
+      const points: Array<{ row: number; col: number; reason: string }> = [];
+      for (let row = 0; row < board.length; row += 1) for (let col = 0; col < board[row].length; col += 1) {
+        if (board[row][col] !== null) continue;
+        const reason = forbiddenReason(board, { row, col });
+        if (reason) points.push({ row, col, reason });
+      }
+      return points;
+    };
+    for (const density of [0, 0.06, 0.22, 0.55]) {
+      for (let round = 0; round < 12; round += 1) {
+        const board = emptyBoard(15);
+        for (let row = 0; row < 15; row += 1) for (let col = 0; col < 15; col += 1) {
+          if (rand() < density) board[row][col] = rand() < 0.5 ? "black" : "white";
+        }
+        expect(forbiddenPoints(board)).toEqual(reference(board));
+      }
+    }
   });
 
   it("reports exact winning stones and preserves black/white rule differences", () => {

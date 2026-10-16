@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 66 430 264" fill="none">
+  <!-- 车架层（2026-10-08 从 scene-pelican-ride.svg 里拆出来）。
+       为什么要拆：远侧（左）腿要画在**车架之后**才有前后关系，而远侧腿必须能跟着曲柄动，
+       所以它是一个独立的子图层；子图层永远在父元素的背景图之上，车架若留在背景里就压不住它。
+       拆出来以后绘制顺序是：场景背景（山脊/路面）→ 车轮 → 远侧曲柄 → 远侧腿 → 本层 → 近侧曲柄 → 近侧腿 → 上身 → 路面虚线。 -->
+  <defs>
+    <linearGradient id="pkFrame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b5578"/>
+      <stop offset="1" stop-color="#2c2740"/>
+    </linearGradient>
+  </defs>
+  <!-- 车架（侧视菱形车架） -->
+  <g stroke="url(#pkFrame)" stroke-linecap="round" fill="none">
+    <path d="M110 244 208 250" stroke-width="5"/>            <!-- 后下叉 -->
+    <path d="M110 244 190 180" stroke-width="4.5"/>          <!-- 后上叉 -->
+    <path d="M208 250 190 180" stroke-width="5"/>            <!-- 座管 -->
+    <path d="M190 180 296 176" stroke-width="5"/>            <!-- 上管 -->
+    <path d="M208 250 296 176" stroke-width="5"/>            <!-- 下管 -->
+    <path d="M296 176 312 244" stroke-width="4.5"/>          <!-- 前叉 -->
+    <path d="M296 176 304 150" stroke-width="5"/>            <!-- 立管 -->
+  </g>
+  <!-- 弯把 + 车铃灯（车灯在《黄昏骑行》里是落日的呼应） -->
+  <path d="M304 150c10-8 22-6 30 2 5 5 4 12-3 14" stroke="url(#pkFrame)" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+  <circle cx="322" cy="146" r="4.6" fill="#ffe6b0" opacity=".92"/>
+  <circle cx="322" cy="146" r="9" fill="#ffd08a" opacity=".22"/>
+  <!-- 车座（鹈鹕坐上去，大半被身体挡住） -->
+  <path d="M176 172c8-6 22-6 30 0-6 6-20 7-30 0Z" fill="#3a3350"/>
+  <!-- 链条：上段近水平、下段向后下方收（切于后飞轮与牙盘） -->
+  <path d="M112 237 202 236M112 251 202 262" stroke="#3a3350" stroke-width="1.7" opacity=".8"/>
+</svg>

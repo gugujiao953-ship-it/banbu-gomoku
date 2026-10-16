@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- 车轮（单独一层，靠 CSS 旋转）。方形视图、圆心居中、外径 48（缩放到场景里正好等于原半径）。
+       辐条疏密刻意不匀：转起来比均匀的更活。
+       ⚠ 2026-10-08 两稿：
+         一稿是浅色细线（#e2d6c6 / 0.9 宽 / 34% 透明），只有压在深色地面上才看得见，
+           压在亮天空上时胎内的线整片消失（用户：「轮胎里面的线也没了」）。
+         二稿加了胎内深色底盘，线是清楚了，但整只轮子变黑、像摩托车轮（用户：过头了）。
+       定稿＝**不动胎内（保持透明），只把线做成双层描边**：
+         每条辐条先铺一层深色垫线，再压一层浅色亮线。
+           亮天空上：深色垫线勾出轮廓 → 看得见；
+           深地面上：浅色亮线发亮 → 也看得见；
+           正压在山脊交界上：两层各占一半，仍然读得出来。
+         真机上轮径只有 43px，所以垫线要比亮线明显粗一档（2.4 vs 1.2），
+         否则细线会被抗锯齿吃掉。 -->
+  <!-- 轮胎 -->
+  <circle cx="50" cy="50" r="46" stroke="#241f30" stroke-width="5" fill="none"/>
+  <!-- 内圈：深色垫 + 亮线 -->
+  <circle cx="50" cy="50" r="43" stroke="#1d1826" stroke-width="2.6" fill="none" opacity=".45"/>
+  <circle cx="50" cy="50" r="43" stroke="#e6dbc8" stroke-width="1.2" fill="none" opacity=".8"/>
+  <!-- 辐条：深色垫线 -->
+  <g stroke="#1d1826" stroke-width="2.4" opacity=".45" stroke-linecap="round">
+    <path d="M50 8v84M12 33l76 34M9 62l82-24M27 13l46 74M73 13 27 87"/>
+  </g>
+  <!-- 辐条：浅色亮线 -->
+  <g stroke="#f0e6d4" stroke-width="1.2" opacity=".85" stroke-linecap="round">
+    <path d="M50 8v84M12 33l76 34M9 62l82-24M27 13l46 74M73 13 27 87"/>
+  </g>
+  <!-- 花鼓 -->
+  <circle cx="50" cy="50" r="5.2" fill="none" stroke="#1d1826" stroke-width="1.6" opacity=".4"/>
+  <circle cx="50" cy="50" r="4.4" fill="#2c2740"/>
+</svg>

@@ -1,6 +1,13 @@
 import { chromium } from "playwright";
 
-const baseURL = process.env.QA_BASE_URL || "http://127.0.0.1:5173/?qa=1";
+// 首运行欢迎层的 .first-run-backdrop 会拦住后面每一次点击；那个键 09-14 起按版本号存，
+// addInitScript 写的 "true" 只管更早的版本，真正关掉它的只有 URL 上的 ?qa=1。
+// run-qa 注入的地址自带 ?qa=1，手动导出 QA_BASE_URL 时常常没有——这里补上（与
+// scripts/verify-ai-rules.mjs、qa/settings-page-regression.mjs 同一套写法）。
+const rawBaseURL = process.env.QA_BASE_URL || "http://127.0.0.1:5173/";
+const qaURL = new URL(rawBaseURL);
+qaURL.searchParams.set("qa", "1");
+const baseURL = qaURL.href;
 const browser = await chromium.launch({ headless: true });
 const errors = [];
 
@@ -18,14 +25,26 @@ const trackErrors = (page) => {
 
 const openSettingsOpacity = async (page) => {
   await page.getByRole("button", { name: "设置", exact: true }).click();
-  const group = page.locator("details.settings-group").filter({ has: page.locator(".settings-section-title > b").filter({ hasText: /^外观与音效$/ }) });
+  const group = page.locator("details.settings-group").filter({ has: page.locator(".settings-section-title > b").filter({ hasText: /^棋盘显示$/ }) });
   if (await group.getAttribute("open") === null) await group.locator(":scope > summary.settings-section-toggle").click();
-  const boardSection = group.locator("details.appearance-center-subsection").filter({ hasText: "棋盘材质" }).first();
-  if (await boardSection.getAttribute("open") === null) await boardSection.locator(":scope > summary").click();
-  const stoneSection = group.locator("details.appearance-center-subsection").filter({ hasText: "棋子材质" }).first();
-  if (await stoneSection.getAttribute("open") === null) await stoneSection.locator(":scope > summary").click();
-  await page.getByRole("slider", { name: "棋子透明度" }).waitFor();
+  // ⚠ 10-08 起透明度两项搬到了「棋盘显示」区（用户：「把外观、棋盘里面的透明度设置放到
+  // 棋盘显示的设置里面」），不再在「外观与音效 → 棋子」下。这里连着上面那行一起改成新位置，
+  // 那三行老的子目录展开逻辑（棋盘/棋子）随之删掉 —— 它们锚定的 details 已经不存在了。
+  await group.getByRole("slider", { name: "棋子透明度" }).waitFor();
   return group;
+};
+
+const openAppearanceBoardPreview = async (page) => {
+  // 当前外观共用预览，棋盘/棋子/特效在其下通过 tab 切换。
+  const appearance = page.locator("details.settings-group").filter({ has: page.locator('summary b:text-is("外观与音效")') });
+  if (await appearance.count() !== 1) throw new Error("找不到「外观与音效」分区");
+  await appearance.evaluate((el) => { if (!el.open) el.querySelector("summary").click(); });
+  const sub = appearance.locator("details.appearance-center-subsection").filter({ has: page.locator('summary b:text-is("棋盘与棋子")') });
+  if (await sub.count() !== 1) throw new Error("找不到「棋盘与棋子」分区");
+  await sub.evaluate((el) => { if (!el.open) el.querySelector("summary").click(); });
+  await sub.getByRole("tab", { name: "棋盘", exact: true }).click();
+  await sub.locator(".material-live-preview").waitFor();
+  return sub;
 };
 
 try {
@@ -45,9 +64,12 @@ try {
     const group = await openSettingsOpacity(page);
     const settingBox = await group.locator(".stone-opacity-setting").boundingBox();
     if (!settingBox || settingBox.x < 0 || settingBox.x + settingBox.width > width + 1) throw new Error(`${width}px 下透明度设置溢出`);
-    // 材质预览已重构为 MaterialLivePreview；旧 .stone-opacity-preview 类只剩死 CSS，测试对齐现行类名
-    const previewBox = await group.locator(".stone-opacity-setting .material-live-preview").boundingBox();
-    if (!previewBox || previewBox.width < 250) throw new Error(`${width}px 下透明度预览过窄`);
+    // 滑杆旁边**不该再有棋盘预览**（那是这次改动要抓回来的东西）；预览改由「外观 → 棋盘」渲染。
+    if (await group.locator(".stone-opacity-setting .material-live-preview, .board-opacity-setting .material-live-preview").count() !== 0) {
+      throw new Error(`${width}px：「棋盘显示」的透明度设置里又长出棋盘预览了（应只在「外观 → 棋盘」）`);
+    }
+    const previewBox = await (await openAppearanceBoardPreview(page)).locator(".material-live-preview").first().boundingBox();
+    if (!previewBox || previewBox.width < 250) throw new Error(`${width}px 下材质预览过窄`);
     await context.close();
   }
 
@@ -66,19 +88,40 @@ try {
   await page.goto(baseURL, { waitUntil: "domcontentloaded" });
 
   const settingsGroup = await openSettingsOpacity(page);
-  const opacitySlider = page.getByRole("slider", { name: "棋子透明度" });
+  const opacitySlider = settingsGroup.getByRole("slider", { name: "棋子透明度" });
   await opacitySlider.fill("62");
   await settingsGroup.getByText("62%", { exact: true }).waitFor();
-  const previewOpacity = await settingsGroup.locator(".stone-opacity-setting .material-preview-stone.black").evaluate((element) => getComputedStyle(element).opacity);
-  if (previewOpacity !== "0.62") throw new Error(`预览透明度未即时更新：${previewOpacity}`);
+  // 透明度要真的作用到预览上 —— **跨两节**：滑杆在「棋盘显示」，预览块在「外观 → 棋盘」
+  // （用户 10-09 定的位置），两处读同一份 App 状态，所以这一条同时钉住"挪位置没挪断联动"。
+  // 元素由 src/appearance/preview.tsx 的 MaterialBoardCrop 出，预览是两层
+  // `.material-preview-crop`：第 1 层 part="board" 吃棋盘透明度、第 2 层 part="stones" 吃棋子透明度，
+  // 值挂在 crop 的内联 style 上。⚠ 两层都验：只查棋子层的话「两个滑杆接到同一层」抓不到。
+  const previewCrops = (await openAppearanceBoardPreview(page)).locator(".material-live-preview .material-preview-crop");
+  const cropCount = await previewCrops.count();
+  if (cropCount !== 2) throw new Error(`材质预览分层数异常：${cropCount}（应为棋盘/棋子两层 .material-preview-crop，一层都不许缺）`);
+  const stoneLayerOpacity = await previewCrops.nth(1).evaluate((element) => getComputedStyle(element).opacity);
+  if (stoneLayerOpacity !== "0.62") throw new Error(`预览棋子层透明度未即时更新：${stoneLayerOpacity}`);
+  const boardLayerOpacity = await previewCrops.nth(0).evaluate((element) => getComputedStyle(element).opacity);
+  // 棋盘透明度的默认值就是 1（src/board-opacity.ts DEFAULT_BOARD_OPACITY），滑棋子不该动它。
+  if (boardLayerOpacity !== "1") throw new Error(`棋子透明度串到了棋盘层：${boardLayerOpacity}`);
+  // 反向再钉一次：滑棋盘透明度只动棋盘层，棋子层留在 62%。
+  await settingsGroup.getByRole("slider", { name: "棋盘透明度" }).fill("45");
+  if (await previewCrops.nth(0).evaluate((element) => getComputedStyle(element).opacity) !== "0.45") throw new Error("棋盘透明度没作用到棋盘层");
+  if (await previewCrops.nth(1).evaluate((element) => getComputedStyle(element).opacity) !== "0.62") throw new Error("棋盘透明度串到了棋子层");
   await page.reload({ waitUntil: "domcontentloaded" });
   await openSettingsOpacity(page);
-  if (await page.getByRole("slider", { name: "棋子透明度" }).inputValue() !== "62") throw new Error("透明度刷新后未持久化");
-  await settingsGroup.getByRole("button", { name: "恢复默认" }).last().click();
-  if (await page.getByRole("slider", { name: "棋子透明度" }).inputValue() !== "100") throw new Error("透明度未恢复默认值");
+  if (await settingsGroup.getByRole("slider", { name: "棋子透明度" }).inputValue() !== "62") throw new Error("透明度刷新后未持久化");
+  // 当前精简滑杆没有独立的恢复按钮；从外观预览调回默认，验证双入口同步。
+  const appearanceGroup = await openAppearanceBoardPreview(page);
+  await appearanceGroup.getByRole("slider", { name: "棋子透明度" }).fill("100");
+  await appearanceGroup.getByRole("slider", { name: "棋盘透明度" }).fill("100");
+  if (await settingsGroup.getByRole("slider", { name: "棋子透明度" }).inputValue() !== "100"
+    || await settingsGroup.getByRole("slider", { name: "棋盘透明度" }).inputValue() !== "100") throw new Error("外观入口与棋盘显示透明度未同步");
   await page.getByRole("button", { name: "打谱", exact: true }).click();
 
-  await page.getByRole("button", { name: "AI", exact: true }).click();
+  await page.getByRole("button", { name: "对弈", exact: true }).click();
+  await page.waitForTimeout(700);
+  await page.locator('[data-duel-entry="ai"] .duel-entry-action').click();
   await page.getByRole("button", { name: "查看所有规则说明" }).click();
   await page.getByText("禁手怎么判断", { exact: true }).waitFor();
   const forbiddenDetails = page.locator("details.rule-detail-card").filter({ hasText: "禁手怎么判断" });
@@ -90,9 +133,11 @@ try {
   await page.keyboard.press("Escape");
 
   // 现行 AI 弹窗（2efc4e3 重构后）：规则双 cell + 浮层选规则；难度单 cell + 浮层选「自由」
-  await page.getByRole("button", { name: "AI", exact: true }).click();
+  await page.getByRole("button", { name: "对弈", exact: true }).click();
   await page.waitForTimeout(700);
-  await page.locator(".ai-game-setup .ai-setup-cells.two button").filter({ hasText: "无禁手" }).click();
+  await page.locator('[data-duel-entry="ai"] .duel-entry-action').click();
+  await page.waitForTimeout(700);
+  await page.locator('[data-ai-rule="no-forbidden"]').click();
   await page.waitForTimeout(400);
   await page.locator(".ai-float-list button").filter({ hasText: "无禁6不胜" }).first().click();
   await page.waitForTimeout(300);
@@ -119,14 +164,47 @@ try {
   await page.waitForTimeout(2500);
   if (await page.locator(".app-shell").getAttribute("data-ai-worker-state") !== "running") throw new Error("不限时思考 2.5s 后已不在 running（可能未真正启用不限时）");
   const stonesBeforeStop = await page.locator(".stone-piece").count();
-  const stopProbe = await page.evaluate(() => ({
-    indicator: Boolean(document.querySelector(".board-thinking-indicator")),
-    stones: document.querySelectorAll(".stone-piece").length,
-    state: document.querySelector(".app-shell")?.getAttribute("data-ai-worker-state"),
-    setupOpen: Boolean(document.querySelector(".ai-game-setup")),
-    toasts: [...document.querySelectorAll("[class*=toast]")].map((element) => element.textContent?.trim()).join("|").slice(0, 80),
-  }));
-  if (!stopProbe.indicator) throw new Error(`[${width}] 思考灯缺失：${JSON.stringify(stopProbe)}`);
+  const stopProbe = await page.evaluate(() => {
+    /**
+     * 「思考中」浮标必须**坐在坐标带里、不压棋盘交点**（用户 2026-10-13：右下角那样才对，
+     * 不占棋盘；右上角那档以前 top:12px + 30px 高，一定越过第一行线）。
+     * 量法：首/末网格线的位置 = viewBox 边距比例 × 渲染高度（比例由 App 写在
+     * `.board-scroller` 的 `--board-axis-band-frac` 上，浮标高度就是跟着它缩的）。
+     * 两档都量：当前这一档量真实元素，另一档注入一枚同 markup 的克隆量完就删。
+     * 正值 = 压进棋盘多少 px（允许 1.5px 的取整余量）。
+     */
+    const measure = (el, svg, below) => {
+      const vb = svg.viewBox.baseVal.width || 572;
+      const frac = Number(getComputedStyle(document.querySelector(".board-scroller")).getPropertyValue("--board-axis-band-frac")) || 34 / vb;
+      const r = svg.getBoundingClientRect();
+      const b = el.getBoundingClientRect();
+      return below ? Math.round((r.top + (1 - frac) * r.height - b.top) * 10) / 10 : Math.round((b.bottom - (r.top + frac * r.height)) * 10) / 10;
+    };
+    const svg = document.querySelector(".board-scroller svg");
+    const live = document.querySelector(".board-thinking-indicator");
+    const isBelow = Boolean(live?.classList.contains("below"));
+    const overlaps = { [isBelow ? "below" : "corner"]: live && svg ? measure(live, svg, isBelow) : null };
+    if (live && svg) {
+      const other = isBelow ? "corner" : "below";
+      const clone = live.cloneNode(true);
+      clone.className = `board-thinking-indicator ${other}`;
+      live.parentElement.appendChild(clone);
+      overlaps[other] = measure(clone, svg, other === "below");
+      clone.remove();
+    }
+    return {
+      indicator: Boolean(document.querySelector(".board-thinking-indicator")),
+      stones: document.querySelectorAll(".stone-piece").length,
+      state: document.querySelector(".app-shell")?.getAttribute("data-ai-worker-state"),
+      setupOpen: Boolean(document.querySelector(".ai-game-setup")),
+      toasts: [...document.querySelectorAll("[class*=toast]")].map((element) => element.textContent?.trim()).join("|").slice(0, 80),
+      overlaps,
+    };
+  });
+  if (!stopProbe.indicator) throw new Error(`思考灯缺失：${JSON.stringify(stopProbe)}`);
+  const crossed = Object.entries(stopProbe.overlaps ?? {}).filter(([, px]) => px === null || px > 1.5);
+  if (crossed.length) throw new Error(`思考浮标压进棋盘：${JSON.stringify(stopProbe.overlaps)}`);
+  console.log(`  ✓ 思考浮标坐在坐标带里（两档压进棋盘 ${JSON.stringify(stopProbe.overlaps)}，允许 ≤1.5px）`);
   await page.evaluate(() => document.querySelector(".board-thinking-indicator")?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
   await page.locator('.app-shell[data-ai-worker-state="idle"]').waitFor();
   await page.waitForFunction((count) => document.querySelectorAll(".stone-piece").length === count + 1, stonesBeforeStop, { timeout: 5000 });

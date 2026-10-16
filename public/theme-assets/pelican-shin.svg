@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-215 -132 430 264" fill="none">
+  <!-- 鹈鹕近侧小腿（原点＝膝，指向 +x，末端＝踝＝踏板中心）。脚掌**不**在这一节里
+   （独立成层 pelican-foot.svg），否则脚掌姿态会被小腿带着走，到某些相位脚会朝下吊着。 -->
+  <path d="M0 0 46 0" stroke="#e08030" stroke-width="10.5" stroke-linecap="round"/>
+</svg>

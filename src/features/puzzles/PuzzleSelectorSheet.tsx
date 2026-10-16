@@ -13,7 +13,10 @@ interface PuzzleSelectorSheetProps {
   folders?: string[];
   assignments?: Record<string, string>;
   onSelect: (collectionIndex: number, puzzleIndex: number) => void;
-  onNext: () => void;
+  /** 不传就不画「继续下一题」那颗（摆子界面「载入」只要挑题面，没有下一题可继续）。 */
+  onNext?: () => void;
+  /** 内嵌模式（摆子界面「载入局面」弹窗用）：不自己套 BottomSheet、不画底部那两个按钮。 */
+  embedded?: boolean;
   onClose: () => void;
 }
 
@@ -40,7 +43,7 @@ const folderAncestors = (folder: string) => {
   return ancestors;
 };
 
-export function PuzzleSelectorSheet({ collections, progress, currentCollectionIndex, currentPuzzleIndex, folders = [], assignments = {}, onSelect, onNext, onClose }: PuzzleSelectorSheetProps) {
+export function PuzzleSelectorSheet({ collections, progress, currentCollectionIndex, currentPuzzleIndex, folders = [], assignments = {}, onSelect, onNext, onClose, embedded }: PuzzleSelectorSheetProps) {
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLowerCase();
   const currentCollection = collections[currentCollectionIndex];
@@ -136,14 +139,13 @@ export function PuzzleSelectorSheet({ collections, progress, currentCollectionIn
   };
 
   const currentFolderLabel = folderPathLabel(currentFolderPath);
-  return <BottomSheet title="选择题目与题集" className="puzzle-selector-backdrop" manageHistory onClose={onClose}>
-    <div className="puzzle-selector-sheet">
+  const body = <div className="puzzle-selector-sheet">
       <button type="button" className="puzzle-selector-current" aria-label="定位到当前题库" onClick={locateCurrentCollection}><span className="puzzle-selector-current-index"><Folder aria-hidden="true"/></span><div><small>当前文件夹 · 点击定位</small><b title={currentCollection?.title || "尚未选择题库"}>{currentCollection?.title || "尚未选择题库"}</b><span title={currentFolderLabel}>{currentFolderLabel} · 第 {currentPuzzleIndex + 1} 题 · {progress[puzzleProgressKey(currentCollection?.id || "", currentPuzzle?.id || "")]?.solved ? "已完成" : "进行中"}</span></div><ChevronRight aria-hidden="true"/></button>
       {currentCollection && <div className="puzzle-selector-progress"><span><b title={`所在文件夹：${currentFolderLabel}`}>所在文件夹：{currentFolderLabel}</b><small>{currentCollection.title} · {solvedCount} / {currentCollection.puzzles.length} 已完成</small></span><progress max={currentCollection.puzzles.length || 1} value={solvedCount}/></div>}
       <label className="puzzle-selector-search"><Search size={16}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索文件夹、题库、题号或题面"/></label>
       <p className="puzzle-selector-hint">先打开文件夹，再打开题库，最后选择题目。题目很多时不会一次全部展开。</p>
       <div className="puzzle-selector-list" role="listbox" aria-label="题库文件夹与题目列表">{folderChildren(availableFolders, "").map(renderFolder)}{!visibleCollections.length && <div className="puzzle-selector-empty"><Search/><b>没有匹配的题库或题目</b><span>换一个文件夹、题库名、题号或题面关键词。</span></div>}</div>
-      <footer className="puzzle-selector-footer"><button type="button" className="secondary-button" onClick={onClose}>返回棋盘</button><button type="button" className="primary-button" disabled={!currentCollection?.puzzles.length} onClick={onNext}>继续下一题<ChevronRight size={17}/></button></footer>
-    </div>
-  </BottomSheet>;
+      {!embedded && <footer className="puzzle-selector-footer"><button type="button" className="secondary-button" onClick={onClose}>返回棋盘</button>{onNext && <button type="button" className="primary-button" disabled={!currentCollection?.puzzles.length} onClick={onNext}>继续下一题<ChevronRight size={17}/></button>}</footer>}
+    </div>;
+  return embedded ? body : <BottomSheet title="选择题目与题集" className="puzzle-selector-backdrop" manageHistory onClose={onClose}>{body}</BottomSheet>;
 }

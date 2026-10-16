@@ -106,7 +106,9 @@ const exportSgf = async (page) => {
   await page.waitForTimeout(500);
   await page.getByRole("button", { name: "整份棋谱" }).click();
   await page.waitForTimeout(300);
-  await page.getByRole("button", { name: /^SGF/ }).click();
+  // 只按格式网格里的那个按钮：导出弹窗顶部现在还有一张 SGF 主卡，
+  // 宽匹配 /^SGF/ 会同时命中它并触发 strict mode 冲突。
+  await page.locator(".export-format-grid").getByRole("button", { name: /^SGF/ }).click();
   await page.waitForTimeout(1500);
 };
 

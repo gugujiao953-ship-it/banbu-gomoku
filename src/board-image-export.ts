@@ -1,5 +1,6 @@
 import { boardAt, depthOf, pathToNode } from "./game";
 import type { BoardMark, GameDocument, Position, RecordNode } from "./types";
+import { formatRenLibWebLabel } from "./renlib-display";
 import { transformBoardPosition, type BoardRotation } from "./board-transform";
 import { recordRuleDisplayName } from "./features/rules/rule-guide-data";
 import { MOON_MARK_PATH, STAR_MARK_PATH, SUN_MARK_CORE_RADIUS, SUN_MARK_RAYS } from "./annotation-presets";
@@ -12,6 +13,10 @@ export interface BoardShareOptions {
   rotation: BoardRotation;
   mirrored: boolean;
   stoneOpacity?: number;
+  /** The document is a native LIB view, so board text is shown through the
+   * reference reader's label formatting (see `formatRenLibWebLabel`) exactly
+   * like the live board — otherwise the shared image would disagree with it. */
+  nativeLabels?: boolean;
 }
 
 export const BOARD_SHARE_WIDTH = 1200;
@@ -75,8 +80,8 @@ const annotationSvg = (mark: BoardMark, x: number, y: number) => {
   return `<g stroke="${color}" stroke-width="5" stroke-linecap="round"><line x1="${x - 25}" y1="${y - 25}" x2="${x + 25}" y2="${y + 25}"/><line x1="${x + 25}" y1="${y - 25}" x2="${x - 25}" y2="${y + 25}"/></g>${text}`;
 };
 
-const visibleVariationSvg = (node: RecordNode, x: number, y: number) => {
-  const rawText = (node.boardText || "").trim();
+const visibleVariationSvg = (node: RecordNode, x: number, y: number, playedPly?: number) => {
+  const rawText = (playedPly === undefined ? node.boardText || "" : formatRenLibWebLabel(node.boardText, playedPly)).trim();
   if (rawText) {
     const text = escapeXml(Array.from(rawText).slice(0, 4).join(""));
     const fontSize = Array.from(rawText).length <= 1 ? 34 : Array.from(rawText).length === 2 ? 28 : 22;
@@ -154,7 +159,7 @@ export const createBoardShareSvg = (document: GameDocument, currentId: string, o
     }),
     ...(current.children || []).slice(0, 512).map((id) => document.nodes[id]).filter((node): node is RecordNode => Boolean(node?.move || node?.anchor)).map((node) => {
        const point = visualXy(node.move || node.anchor!);
-      return `<g data-export-role="native-annotation">${visibleVariationSvg(node, point.x, point.y)}</g>`;
+      return `<g data-export-role="native-annotation">${visibleVariationSvg(node, point.x, point.y, options.nativeLabels ? moveCount : undefined)}</g>`;
     }),
   ].join("") : "";
 

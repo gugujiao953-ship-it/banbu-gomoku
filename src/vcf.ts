@@ -1,4 +1,4 @@
-import { BOARD_SIZE, evaluateRenjuMove, otherPlayer } from "./game";
+import { evaluateRenjuMove, otherPlayer } from "./game";
 import type { Cell, Player, Position, RuleSet } from "./types";
 
 const DIRECTIONS: Array<[number, number]> = [[1, 0], [0, 1], [1, 1], [1, -1]];
@@ -30,26 +30,31 @@ export interface VcfOptions {
 }
 
 const cloneBoard = (board: Cell[][]) => board.map((row) => [...row]);
+// 路数取自 board 本身（引擎已支持 22 路以内任意路数）；坐标越界判断统一走 inBoard。
+const inBoard = (board: Cell[][], row: number, col: number) =>
+  row >= 0 && row < board.length && col >= 0 && col < (board[row]?.length ?? 0);
+const centerPoint = (board: Cell[][]): Position => ({ row: Math.floor(board.length / 2), col: Math.floor((board[0]?.length ?? 1) / 2) });
+
 const emptyPoints = (board: Cell[][]) => {
   const result: Position[] = [];
-  for (let row = 0; row < BOARD_SIZE; row += 1) for (let col = 0; col < BOARD_SIZE; col += 1) if (!board[row][col]) result.push({ row, col });
+  for (let row = 0; row < board.length; row += 1) for (let col = 0; col < (board[row]?.length ?? 0); col += 1) if (!board[row][col]) result.push({ row, col });
   return result;
 };
 
 /** VCF moves must touch the existing tactical shape. Avoid repeatedly
- * traversing all 225 intersections at every recursive node. */
+ * traversing every intersection at each recursive node. */
 const tacticalPoints = (board: Cell[][]) => {
   const ids = new Set<string>();
   let hasStone = false;
-  for (let row = 0; row < BOARD_SIZE; row += 1) for (let col = 0; col < BOARD_SIZE; col += 1) {
+  for (let row = 0; row < board.length; row += 1) for (let col = 0; col < (board[row]?.length ?? 0); col += 1) {
     if (!board[row][col]) continue;
     hasStone = true;
     for (let dr = -2; dr <= 2; dr += 1) for (let dc = -2; dc <= 2; dc += 1) {
       const nextRow = row + dr, nextCol = col + dc;
-      if (nextRow >= 0 && nextRow < BOARD_SIZE && nextCol >= 0 && nextCol < BOARD_SIZE && board[nextRow][nextCol] === null) ids.add(`${nextRow},${nextCol}`);
+      if (inBoard(board, nextRow, nextCol) && board[nextRow][nextCol] === null) ids.add(`${nextRow},${nextCol}`);
     }
   }
-  if (!hasStone) return [{ row: 7, col: 7 }];
+  if (!hasStone) return [centerPoint(board)];
   return [...ids].map((id) => { const [row, col] = id.split(",").map(Number); return { row, col }; });
 };
 
@@ -124,7 +129,12 @@ export function searchVcf(board: Cell[][], attacker: Player, options: VcfOptions
       if (stopped) return null;
       if (wins.length) forcing.push({ move, wins });
     }
-    forcing.sort((a, b) => b.wins.length - a.wins.length || Math.abs(a.move.row - 7) + Math.abs(a.move.col - 7) - Math.abs(b.move.row - 7) - Math.abs(b.move.col - 7));
+    // 平手时靠近棋盘中心优先：中心取 board 自身的中点，不能再写死 15 路的 (7,7)——
+    // 本文件其余部分（inBoard / centerPoint）都已按 board.length 走，非 15 路棋盘上
+    // 这个硬编码会改变搜索顺序，配合节点/时间预算可能把胜局报成 not-found。
+    const center = centerPoint(state);
+    const centerDistance = (move: Position) => Math.abs(move.row - center.row) + Math.abs(move.col - center.col);
+    forcing.sort((a, b) => b.wins.length - a.wins.length || centerDistance(a.move) - centerDistance(b.move));
 
     for (const candidate of forcing) {
       if (!tick()) return null;

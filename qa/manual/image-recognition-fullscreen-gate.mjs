@@ -353,18 +353,68 @@ const runCase = async (testCase) => {
 
     // 顶栏改版（T40）：打谱页不再有「打开导入方式」按钮，导入走底部导航中央按钮。
     await page.locator(".bottom-nav .nav-center").click();
+    // 2026-10-06：seed 进去的局面会让文档变脏，于是这里弹的是「有未保存草稿」守卫而不是
+    // 导入方式面板——识别根本没启动，整条门禁 100 例全报「导入没有完成」。截图已经落盘，
+    // 草稿可以丢，所以选「放弃草稿并切换」；没有这个弹层时（未脏）什么都不做。
+    // ⚠ 未完全修好：加上这段后 3 例里只有 1 例跑通并计分（那例 18 检出 / 17 匹配），
+    // 其余仍停在弹层。这层弹层的语义（什么时候出现、sheet key 为何落到兜底标题「使用提示」）
+    // 属于并行会话正在重做的导入/功能区，接手的人从 `App.tsx` 的 sheetTitle 与
+    // 底部导航 z-index 两条线查起，别再把时间花在猜选择器上。
+    {
+      const discard = page.getByRole("button", { name: "放弃草稿并切换" });
+      // 必须等：这层弹层是点击之后才渲染的，用 count() 直接判断会时好时坏（实测 3 例只过 1 例）
+      await discard.waitFor({ timeout: 2500 }).catch(() => null);
+      if (await discard.count()) {
+        await discard.click();
+        await page.waitForTimeout(500);
+      }
+    }
     const importDialog = page.getByRole("dialog", { name: "选择导入方式" });
     await importDialog.getByRole("button", { name: "图片识谱" }).click();
-    const recognitionStarted = Date.now();
     await page.locator('input[type="file"][accept*="image/heic"]').setInputFiles(originalPath);
+    // 对齐屏（1.1.8 起图片导入先停在预览页）：**必须点「识别」，否则识别根本不会发生**。
+    // 本门禁此前漏了这一步，于是 readRenderedPieces 读到的是 seed 进去的那个局面本身，
+    // 再拿它跟同一份真值比对 —— 必然 100/100。证据就在旧 report.json 里：每一例
+    // recognitionMs ≈ 45027ms（正好是下面那个 45s 超时）且每一例都带
+    // errors:["图片识谱没有产生提示"]。那 100/100 不是识别成绩，是自我比对。
+    // 现在：点了识别、并且**必须等到导入完成**，等不到就抛错中断整轮，绝不允许
+    // 把 seed 的局面当成识别结果计分。
+    const recognitionStarted = Date.now();
+    const recognizeButton = page.getByRole("button", { name: "识别", exact: true });
+    if (await recognizeButton.count()) await recognizeButton.click();
     let toast = "";
     try {
-      await page.locator(".app-toast-message").waitFor({ timeout: 45_000 });
+      // 2026-10-06 修：单张图片识别现在不再产生 `.import-progress--complete`（进度卡只给
+      // 批量/多阶段导入用），识别完成直接出 toast + 「识别结果核对」屏。此前这里死等那个
+      // 类名，120s 超时后每例都报「导入没有完成」，等于这条带 2973 颗子真值的回归信号整条断掉。
+      // 等「核对屏出现」或「进度卡完成」两者之一，行为与旧版一致（都代表识别已结束）。
+      await Promise.race([
+        page.locator(".import-progress--complete").waitFor({ timeout: 120_000 }),
+        page.locator(".image-verify-confirm").waitFor({ timeout: 120_000 }),
+      ]);
+      // 识谱「叠图核对」（用户 09-17）：识别完先停在核对屏，点「确认导入」才建谱。
+      // 这一屏默认开着，所以任何走真实 UI 的识谱门禁都必须先确认，否则读到的是空盘。
+      {
+        const confirmVerify = page.locator(".image-verify-confirm");
+        try { await confirmVerify.waitFor({ timeout: 15_000 }); await confirmVerify.click(); } catch { /* 旧路径没有核对屏时保持原行为 */ }
+        await page.waitForTimeout(500);
+      }
+      await page.locator(".app-toast-message").waitFor({ timeout: 15_000 });
       toast = (await page.locator(".app-toast-message").textContent()) || "";
-    } catch {
-      errors.push("图片识谱没有产生提示");
+    } catch (error) {
+      // 失败原因不能只留一句「导入没有完成」——上一版就是因为它吞掉了现场，
+      // 这条门禁整条断掉时没人看得出是选择器过期还是识别真没跑。
+      const scene = await page.evaluate(() => ({
+        verify: document.querySelectorAll(".image-verify-confirm").length,
+        progress: [...document.querySelectorAll('[class*="import-progress"]')].map((e) => e.className).slice(0, 3),
+        dialogs: [...document.querySelectorAll('[role="dialog"]')].map((d) => (d.getAttribute("aria-label") || "?").trim()),
+        toast: document.querySelector(".app-toast-message")?.textContent?.slice(0, 60) ?? null,
+        buttons: [...document.querySelectorAll("button")].map((b) => (b.textContent || "").trim()).filter((t) => t && t.length < 12).slice(0, 18),
+      })).catch(() => null);
+      throw new Error(`用例 ${testCase.id}：导入没有完成（识别未发生或超时），拒绝把 seed 的局面当成识别结果计分；现场=${JSON.stringify(scene)}；原始错误=${String(error && error.message || error).slice(0, 120)}`);
     }
     result.recognitionMs = Date.now() - recognitionStarted;
+    result.toast = toast;
     await page.waitForTimeout(120);
     const recognizedPath = resolve(artifactDir, "recognized", `${testCase.id}.png`);
     await page.locator(".renju-board").screenshot({ path: recognizedPath });

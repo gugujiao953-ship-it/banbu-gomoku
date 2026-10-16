@@ -1,47 +1,65 @@
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { SoundSettings } from "./audio-settings";
 import type { SoundCue } from "./audio-engine";
 import { Accessibility, ArchiveRestore, BookOpen, Check, ChevronDown, ChevronRight, Compass, DatabaseBackup, Download, Eye, Gauge, GripVertical, Info, Mail, MonitorPlay, Palette, Play, RotateCw, Save, Settings, SlidersHorizontal, Upload, X } from "lucide-react";
 import type { BoardTheme, StoneTheme, ThemePreference } from "./app-shell-types";
 import type { LatestRelease } from "./update-check";
 import { fmtAnalysisMemory, getAnalysisMode, withAnalysisMode, type AnalysisCandidateMetric, type AnalysisMode, type EnhancementSettings } from "./enhancement-settings";
+import { nativeEngineInfo, nativeKataGoInfo } from "./features/ai/native-engine";
+import { KataTuning } from "./features/ai/KataTuning";
 import type { FontScale } from "./accessibility";
+import { DEFAULT_BOARD_MARGIN, boardMarginLabel, clampBoardMargin, minBoardMargin } from "./features/settings/board-margin";
+import { RETIRED_BOARD_THEMES, RETIRED_STONE_THEMES, materialBoards, materialStones } from "./appearance/render";
+import { engineThreadHint, engineThreadOptions } from "./features/settings/engine-threads";
+
+import { MAX_STONE_SCALE, MIN_STONE_SCALE, STONE_SCALE_STEP, clampStoneScale, stoneSizeLabel } from "./features/settings/stone-size";
+import { MAX_MOVE_NUMBER_SCALE, MIN_MOVE_NUMBER_SCALE, MOVE_NUMBER_SCALE_STEP } from "./features/settings/move-number-size";
 import type { PlaybackBranchPolicy, PlaybackSpeed } from "./features/research/record-playback";
 import { QUICK_DRAWER_ITEMS, QUICK_DRAWER_SECTIONS, isQuickDrawerItemVisible, loadQuickDrawerPrefs, moveQuickDrawerItem, moveQuickDrawerSection, orderQuickDrawerItems, orderQuickDrawerSections, saveQuickDrawerPrefs, toggleQuickDrawerItem, toggleQuickDrawerSection, quickDrawerSectionItemIds, type QuickDrawerPrefs, type QuickDrawerSectionId } from "./quick-drawer-customization";
 import { useOverlayHistory } from "./ui/overlays/useOverlayHistory";
+import { lockDocumentScroll } from "./ui/overlays/document-scroll-lock";
 import "./quick-drawer.css";
 import { APP_VERSION } from "./diagnostics";
+import { THEME_OPTIONS } from "./theme-options";
+/* 外观锁（用户 2026-10-10：快捷中心里那些外观"还可以自由切换，不受购买的约束"）。
+   这里只**读价格**（`soulTargetCost`）——判断"锁没锁"由 App 传进来的两个查询函数做，
+   因为"买了没有"是可变状态（要跟着商店快照走）。 */
+import { MIN_BOARD_OPACITY } from "./board-opacity";
+import { MIN_STONE_OPACITY } from "./stone-opacity";
 
-type AiEngineChoice = "light" | "strong" | "tuned";
+type AiEngineChoice = "light" | "strong" | "tuned" | "kata" | "ikatago";
 
-const THEME_OPTIONS = [
-  ["system", "跟随系统"], ["light", "浅色"], ["dark", "深色"], ["eye", "护眼"],
-  ["mono", "黑白极简"], ["rain", "雨幕"], ["bamboo", "水墨竹林"], ["snow", "雪落"],
-  ["porcelain", "青花瓷影"], ["plum", "梅枝映雪"], ["jiangnan", "夜雨江南"],
-  ["firefly", "萤火森林"], ["rice", "宣纸留白"], ["pixel", "像素街机"],
-  ["cyber", "霓虹赛博"], ["custom", "自定义背景"],
-  ["blackgold", "尊贵黑金"], ["pale", "苍白世界"], ["kawaii", "卡哇伊"],
-  ["aurora", "极光"], ["deepsea", "深海幽蓝"], ["baroque", "巴洛克"],
-] as const;
+/**
+ * 安卓原生引擎是否可用。用来决定「引擎线程数」这一行在**没打开网页版多线程实验
+ * 开关**时要不要露出来：原生是真线程、不需要跨源隔离，线程数对它是常态生效的
+ * （2026-09-15：之前原生被那个默认关的开关强制成单线程，实测白扔一半以上算力）。
+ */
+const nativeEngineReady = () => nativeEngineInfo()?.available === true;
+/** 旗舰档是否真正生效（选中 + 本机可用）：引擎控件二选一显示（见 KataTuning）。 */
+const kataEngineActive = (choice: AiEngineChoice) => choice === "kata" && nativeKataGoInfo()?.available === true;
 
-const BOARD_OPTIONS = [
-  ["wood", "原木棋盘"], ["jade", "玉石棋盘"], ["notebook", "练习本"],
-  ["emerald", "翡翠棋盘"], ["porcelain", "青花瓷棋盘"], ["whitejade", "白玉棋盘"],
-  ["walnut", "深胡桃木"], ["frosted", "磨砂玻璃"], ["circuit", "电路棋盘"],
-  ["minimal", "极简棋盘"],
-  ["blackgold", "尊贵黑金棋盘"], ["pale", "苍白世界棋盘"],
-  ["kawaii", "卡哇伊棋盘"], ["aurora", "极光棋盘"],
-] as const;
+/* 主题清单不在这里抄第二份：`src/theme-options.ts` 是唯一来源（设置页、门禁、
+   这里三处都读它）。以前这里另写了一份 22 项，加主题就得记得改两处。 */
 
-const STONE_OPTIONS = [
-  ["classic", "经典棋子"], ["jade", "玉石棋子"], ["yun", "云子棋子"],
-  ["ink", "墨蓝棋子"], ["mono", "黑白极简"], ["notebook", "勾叉棋子"],
-  ["porcelain", "青花瓷棋子"], ["snow", "雪晶棋子"], ["terminal", "终端字符"],
-  ["gold-diamond", "黑钻白金"],
-  ["gold", "鎏金棋子"], ["diamond", "钻石棋子"],
-  ["blackgold", "尊贵黑金棋子"], ["pale", "苍白世界棋子"],
-  ["kawaii", "卡哇伊棋子"], ["aurora", "极光棋子"],
-] as const;
+/* ⚠ 这两份以前是**硬编码的 14/16 个老名字**（只有老名字，实验室那 16 套一个都没有）。
+   设置页 2026-10-02 起已经改成"全部由材质数据生成"（含本体材质的 app-* 那批），
+   于是同一个 App 里两处清单对不上：快捷中心选不到彩铅/蓝调/古风/敦煌/水波…
+   而且这边写的是老名字（walk 老 CSS 路、**没有自带动效**），跟设置页的 app-* 是两个入口。
+   现在跟设置页同一份来源（材质数据）——一处真相、两边一致。
+   （用户 2026-10-02：「粗略的那个外观标记预览也没有，其他的你也检查看看有没有」）
+   ⚠ 已退役的三个设计（notebook/porcelain/frosted）在两边都按同样的规则挡掉。
+   ⚠ 老存档里的老名字仍然能渲染（老 CSS 路没删），只是列表里不再单列一个入口。 */
+const retiredApp = (retired: Record<string, string>) => new Set(Object.keys(retired).map((k) => `app-${k}`));
+const skipAppBoards = retiredApp(RETIRED_BOARD_THEMES);
+const skipAppStones = retiredApp(RETIRED_STONE_THEMES);
+
+const BOARD_OPTIONS: ReadonlyArray<readonly [BoardTheme, string]> = materialBoards()
+  .filter((m) => !skipAppBoards.has(m.src))
+  .map((m) => [m.src as BoardTheme, m.name] as const);
+
+const STONE_OPTIONS: ReadonlyArray<readonly [StoneTheme, string]> = materialStones()
+  .filter((m) => !skipAppStones.has(m.src))
+  .map((m) => [m.src as StoneTheme, m.name] as const);
 
 const PLAYBACK_SPEED_OPTIONS = [
   ["0.5", "0.5×"], ["1", "1×"], ["1.5", "1.5×"], ["2", "2×"],
@@ -56,6 +74,8 @@ interface QuickDrawerProps {
   suspended?: boolean;
   open: boolean;
   onClose: () => void;
+  /** 顶部提示（App 的 setToast）：旗舰引擎设置变更后的反馈用它。 */
+  onNotice?: (message: string) => void;
   title: string;
   subtitle: string;
   updateRelease: LatestRelease | null;
@@ -100,6 +120,26 @@ interface QuickDrawerProps {
   onGridLineWidthChange: (value: number) => void;
   coordinateFontSize: number;
   onCoordinateFontSizeChange: (value: number) => void;
+  boardMargin: number;
+  onBoardMarginChange: (value: number) => void;
+  stoneSize: number;
+  onStoneSizeChange: (value: number) => void;
+  /** 棋盘 / 棋子透明度（用户 2026-10-10 要求在快捷中心也放这两条滑条）。 */
+  boardOpacity: number;
+  onBoardOpacityChange: (value: number) => void;
+  stoneOpacity: number;
+  onStoneOpacityChange: (value: number) => void;
+  /**
+   * 外观锁：给某个选项返回"它锁着的价格"（`undefined` = 可用/免费）。
+   *
+   * 三个分开传而不是一个 `lockOf(kind, value)`：调用点就在三行 `<ChoiceRow>` 上，
+   * 各自一个函数读起来最直（也免了在每个 option 上再判一次 kind）。
+   */
+  themeLockCost: (value: ThemePreference) => number | undefined;
+  boardLockCost: (value: BoardTheme) => number | undefined;
+  stoneLockCost: (value: StoneTheme) => number | undefined;
+  /** 点到锁着的项时（App 负责弹"没买，要买吗，多少棋魂"）。 */
+  onLockedAppearancePick: (kind: "theme" | "board" | "stone", value: string, cost: number, label: string) => void;
   fontScale: FontScale;
   onFontScaleChange: (value: FontScale) => void;
   restoreLastPosition: boolean;
@@ -129,17 +169,56 @@ function ToggleRow({ title, text, checked, disabled = false, onChange }: {
   </label>;
 }
 
-function ChoiceRow<T extends string>({ title, text, value, options, onChange }: {
+/**
+ * 快捷中心的一行下拉。
+ *
+ * ## 未购买的外观要加锁（用户 2026-10-10）
+ *
+ * 「我发现快捷中心里面，那些外观其实还可以自由切换，不受这些购买的约束，
+ *  你修复一下，没买的选项，会有一把锁在右边，点击后提示没有购买是否购买，然后多少棋魂这样的」
+ *
+ * 做法：`<option>` 里带上锁与价格（`🔒 300`），选中它时**不改外观**、
+ * 而是弹一句"要买吗"（用 `window.confirm` + 棋魂余额与价格的说明）。
+ * 这样既不破坏原生下拉的手感（没有改成自绘列表），又把约束补上了。
+ *
+ * ⚠ 用 `confirm` 而不是自绘弹窗：快捷中心是一个**抽屉**，在里面再叠一层自定义弹窗
+ * 要处理层级、遮罩、返回键一堆事；而这里只需要"告诉 + 确认"两件事。
+ * 真正的购买入口在**设置 → 外观**（那里有完整的卡片与价格），
+ * 所以这里只要把人指过去就够（见 confirm 的文案）。
+ */
+function ChoiceRow<T extends string>({ title, text, value, options, onChange, lockOf, onLockedPick }: {
   title: string;
   text: string;
   value: T;
   options: ReadonlyArray<readonly [T, string]>;
   onChange: (value: T) => void;
+  /**
+   * 给某个选项返回"它锁着的价格"（`undefined` = 可用）。
+   * 不传就整行照旧（默认棋盘大小那类不需要锁）。
+   */
+  lockOf?: (optionValue: T) => number | undefined;
+  /** 点到锁着的项时（由调用方弹提示）。 */
+  onLockedPick?: (optionValue: T, cost: number, label: string) => void;
 }) {
   return <label className="quick-choice-row">
     <span><b>{title}</b><small>{text}</small></span>
-    <select className={title === "默认棋盘大小" ? "board-size-select" : undefined} aria-label={`选择${title}`} value={value} onChange={(event) => onChange(event.target.value as T)}>
-      {options.map(([optionValue, label]) => <option key={optionValue} value={optionValue}>{label}</option>)}
+    <select className={title === "默认棋盘大小" ? "board-size-select" : undefined} aria-label={`选择${title}`} value={value} onChange={(event) => {
+      const next = event.target.value as T;
+      const cost = lockOf?.(next);
+      // 锁着的项：**不改外观**，交给调用方提示购买（并且这里要把显示值退回去 ——
+      // 否则下拉会停在那个还没买的选项上，看着像已经切过去了）
+      if (cost !== undefined && cost > 0) {
+        onLockedPick?.(next, cost, options.find(([optionValue]) => optionValue === next)?.[1] ?? String(next));
+        return;
+      }
+      onChange(next);
+    }}>
+      {options.map(([optionValue, label]) => {
+        const cost = lockOf?.(optionValue);
+        const locked = cost !== undefined && cost > 0;
+        // `🔒` 加在名字前（原生 option 里没法放图标元素）
+        return <option key={optionValue} value={optionValue}>{locked ? `🔒 ${label} · ${cost} 棋魂` : label}</option>;
+      })}
     </select>
   </label>;
 }
@@ -152,20 +231,24 @@ export function QuickDrawer({
   soundSettings, onSoundSettingsChange, onPreviewSound,
   enhancementSettings, onEnhancementSettingsChange,
   thinkingIndicatorPosition, onThinkingIndicatorPositionChange,
-  aiEngineChoice, enginePackReady, onAiEngineChoiceChange,
+  aiEngineChoice, enginePackReady, onAiEngineChoiceChange, onNotice,
   showNumbers, onShowNumbersChange, showCoordinates, onShowCoordinatesChange,
   showForbidden, onShowForbiddenChange, showLastMove, onShowLastMoveChange,
   moveNumberScale, onMoveNumberScaleChange, gridLineWidth, onGridLineWidthChange,
   coordinateFontSize, onCoordinateFontSizeChange,
+  boardMargin, onBoardMarginChange,
+  stoneSize, onStoneSizeChange,
+  boardOpacity, onBoardOpacityChange, stoneOpacity, onStoneOpacityChange,
+  themeLockCost, boardLockCost, stoneLockCost, onLockedAppearancePick,
   fontScale, onFontScaleChange, restoreLastPosition, onRestoreLastPositionChange,
   onOpenImport, onOpenExport, onBackup, onRestoreBackup, onOpenHelp,
   onOpenTour, onOpenManual, onOpenFeedback, onOpenAbout,
 }: QuickDrawerProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
-  // 左滑关闭（用户 09-14）：面板从右侧滑出，横向左滑超过阈值即关闭。
-  // 手势只在「水平位移明显大于垂直」时接管，避免与面板内部纵向滚动打架。
-  const swipe = useRef<{ id: number; startX: number; startY: number; dx: number; active: boolean; decided: boolean; startedAt: number } | null>(null);
+  // 左滑关闭（用户 09-14）：面板从**左侧**滑入（`quick-drawer.css` 的 translateX(-104%)），
+  // 所以退出方向是往左推出去；手势只在「水平位移明显大于垂直」时接管，避免与面板内部纵向滚动打架。
+  const swipe = useRef<{ id: number; startX: number; startY: number; dx: number; lastX: number; lastT: number; velocity: number; active: boolean; decided: boolean } | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [swipeClosing, setSwipeClosing] = useState(false);
   const previousFocus = useRef<HTMLElement | null>(null);
@@ -239,16 +322,28 @@ export function QuickDrawer({
   // System back closes the drawer first instead of exiting the app.
   useOverlayHistory(open, onClose);
 
-  // 左滑关闭手势（用户 09-14）：拖动时面板实时跟手（位移上限为面板宽度），
-  // 松手按「位移过半 / 甩动速度足够」决定关闭，否则回弹。触屏与鼠标拖动通用。
-  const SWIPE_CLOSE_PX = 72;      // 至少滑这么远才可能触发关闭
-  const SWIPE_FLICK_VELOCITY = 0.5; // px/ms，快速甩动即便位移不足也关闭
+  /**
+   * 左滑关闭手势（用户 09-14 要，10-02 修「滑了好几下还是没滑好」）。三条根因一次修完：
+   *  ① **面板自己就是 `overflow:auto` 的滚动容器**，而它没写 `touch-action`：Android WebView
+   *    一旦把这一下判成滚动，第二帧就发 `pointercancel`，`endSwipe` 看到 `active=false`
+   *    直接把这次滑动**静默作废**——这就是"滑了没反应"。配套改 `quick-drawer.css`
+   *    给面板 `touch-action:pan-y`（纵向照常滚列表，横向归手势）。
+   *  ② 旧阈值是 `max(72, 面板宽 / 2)` ≈ 173~189px，而面板左缘贴屏幕左边：从 x=60 起滑，
+   *    手指最多滑到 0（dx = −60），**数学上永远达不到**，所以"明明滑到底了还没关"。
+   *    改成按**起滑点**算：需要滑 `min(72, max(36, startX × 0.6))`。
+   *  ③ 甩动速度旧算法从 `pointerdown` 起算，按下后停顿半秒再滑，速度被稀释到永远不达门槛；
+   *    改成看**最近一段**的位移/耗时。
+   * 另外拖动中不再有 160ms 缓动（那是"不跟手 → 用户重复滑"的成因），只有松手回弹/滑出才走过渡。
+   */
+  const SWIPE_CLOSE_PX = 72;      // 起滑点靠右时要求的位移
+  const SWIPE_MIN_PX = 36;        // 起滑点很靠左时的下限（再小就误触普通横划）
+  const SWIPE_FLICK_VELOCITY = 0.42; // px/ms，按最近一段算
   const panelWidth = () => panelRef.current?.offsetWidth ?? 300;
 
   const onSwipeStart = (event: React.PointerEvent<HTMLElement>) => {
     if (suspended || swipeClosing) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    swipe.current = { id: event.pointerId, startX: event.clientX, startY: event.clientY, dx: 0, active: false, decided: false, startedAt: performance.now() };
+    swipe.current = { id: event.pointerId, startX: event.clientX, startY: event.clientY, dx: 0, lastX: event.clientX, lastT: performance.now(), velocity: 0, active: false, decided: false };
   };
 
   const onSwipeMove = (event: React.PointerEvent<HTMLElement>) => {
@@ -256,12 +351,19 @@ export function QuickDrawer({
     if (!state || state.id !== event.pointerId) return;
     const dx = event.clientX - state.startX;
     const dy = event.clientY - state.startY;
+    const now = performance.now();
+    const segment = now - state.lastT;
+    if (segment > 0) state.velocity = Math.abs(event.clientX - state.lastX) / segment;
+    state.lastX = event.clientX; state.lastT = now;
     if (!state.decided) {
       // 先判定方向：水平意图（|dx| > |dy|）才接管，否则让给纵向滚动。
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
       state.decided = true;
       state.active = Math.abs(dx) > Math.abs(dy) && dx < 0; // 只认向左滑
-      if (state.active) event.currentTarget.setPointerCapture?.(event.pointerId);
+      // ⚠ 不要再调 setPointerCapture：实测它会在下一帧触发 `lostpointercapture`
+      //   （事件日志 t=186，就在判定成立之后），而那一发以前被绑成 endSwipe ——
+      //   此时 dx 还是 0，于是这次滑动被判"没滑够"并清空状态，后面滑出去的 50px 全部作废。
+      //   面板本身跟着手指平移，手指始终落在面板内，不需要捕获；离开面板的情况交给 onPointerLeave 收尾。
     }
     if (!state.active) return;
     // 只允许向左：右滑不跟手（面板本就在左侧，向右无意义）。
@@ -274,10 +376,8 @@ export function QuickDrawer({
     if (!state || state.id !== event.pointerId) return;
     swipe.current = null;
     if (!state.active) { setSwipeOffset(0); return; }
-    const elapsed = Math.max(1, performance.now() - state.startedAt);
-    const velocity = Math.abs(state.dx) / elapsed;
-    const passed = Math.abs(state.dx) >= Math.max(SWIPE_CLOSE_PX, panelWidth() / 2);
-    if (passed || velocity >= SWIPE_FLICK_VELOCITY) {
+    const need = Math.min(SWIPE_CLOSE_PX, Math.max(SWIPE_MIN_PX, state.startX * 0.6));
+    if (Math.abs(state.dx) >= need || state.velocity >= SWIPE_FLICK_VELOCITY) {
       // 顺势滑出到屏幕外，再真正关闭，避免松手后弹回造成割裂感。
       setSwipeClosing(true);
       setSwipeOffset(-panelWidth() - 24);
@@ -287,12 +387,11 @@ export function QuickDrawer({
     setSwipeOffset(0);
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open || suspended) return undefined;
     if (!previousFocus.current) previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const frame = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+    const unlockScroll = lockDocumentScroll();
+    const frame = window.requestAnimationFrame(() => closeButtonRef.current?.focus({ preventScroll: true }));
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
       if (event.key === "Tab") {
@@ -308,7 +407,7 @@ export function QuickDrawer({
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
+      unlockScroll();
       if (!drawerState.current.open) {
         previousFocus.current?.focus({ preventScroll: true });
         previousFocus.current = null;
@@ -324,7 +423,7 @@ export function QuickDrawer({
       className={`quick-drawer-panel${swipeClosing ? " swipe-closing" : ""}${swipeOffset !== 0 ? " swiping" : ""}`}
       style={swipeOffset !== 0 ? { transform: `translateX(${swipeOffset}px)`, animation: "none" } : undefined}
       onPointerDown={onSwipeStart} onPointerMove={onSwipeMove} onPointerUp={endSwipe}
-      onPointerCancel={endSwipe} onLostPointerCapture={endSwipe}
+      onPointerCancel={endSwipe} onPointerLeave={endSwipe}
       role="dialog" aria-modal="true" aria-label="快捷中心">
       <header className="quick-drawer-head">
         <span className="quick-drawer-logo"><img src="./icon.svg" alt=""/><small>v{APP_VERSION}</small></span>
@@ -388,13 +487,26 @@ export function QuickDrawer({
         <button type="button" className="quick-drawer-section-title quick-drawer-section-toggle" onClick={() => toggleSection("analysis")} aria-expanded={expandedSections.analysis}><span><Gauge size={16}/></span><div><b>分析</b><small>{getAnalysisMode(enhancementSettings) === "hint" ? "提示 · 点击即想即落" : getAnalysisMode(enhancementSettings) === "selfplay" ? "自对弈进行中" : enhancementSettings.analysisAuto ? `持续 · ${enhancementSettings.analysisCandidateCount} 个选点` : "持续 · 手动开启"}</small></div><ChevronRight className="quick-section-chevron"/></button>
         {expandedSections.analysis && <>
           {itemVisible("analysis.quickToggle") && <ToggleRow title="首行快捷滑动开关" text="首行功能区出现分析滑动开关（滑块即状态），点一下直接开关分析；位置可在功能区布局里调整" checked={enhancementSettings.analysisQuickToggle} onChange={(analysisQuickToggle) => onEnhancementSettingsChange({ ...enhancementSettings, analysisQuickToggle })}/>}
-          {itemVisible("analysis.engine") && <ChoiceRow title="分析引擎" text={enginePackReady ? "轻量 / 强力 128MB 标准 / 自调内存自定义" : "强力与自调引擎需先下载引擎包"} value={aiEngineChoice} options={[["light", "轻量引擎"], ["strong", enginePackReady ? "强力引擎" : "强力（需下载）"], ["tuned", enginePackReady ? "自调引擎" : "自调（需下载）"]] as const} onChange={onAiEngineChoiceChange}/>}
+          {itemVisible("analysis.engine") && <ChoiceRow title="分析引擎" text={kataEngineActive(aiEngineChoice) ? "katago（作者网）已就绪：分析更快更强、也更耗电；线程与缓存在下面调，所有页面生效" : aiEngineChoice === "kata" ? "已选 katago，网络包还在加载（手机上冷加载 10~30 秒）——这段时间分析与做题提示先用 rapfi 顶上，就绪后自动回到 katago" : aiEngineChoice === "ikatago" ? "已选云端 iKataGo：需要在下面填服务地址与账号，未连通时分析会用本地引擎顶上" : nativeEngineReady() ? "本机原生引擎已就绪（内存与线程数在下面调）" : enginePackReady ? "rapfi 已就绪（内存与线程数在下面调）" : "内置引擎（自带轻量网络）已可用，可下载冠军网络包提升棋力"} value={aiEngineChoice === "kata" ? "katago" : aiEngineChoice === "ikatago" ? "ikatago" : "rapfi"} options={([["rapfi", "rapfi"], ...(nativeKataGoInfo()?.available === true || aiEngineChoice === "kata" ? [["katago", "katago"]] : []), ["ikatago", "云端"]] as [string, string][]).map((pair) => [pair[0], pair[1]] as const)} onChange={(value) => onAiEngineChoiceChange(value === "katago" ? "kata" : value === "ikatago" ? "ikatago" : "strong")}/>}
           {itemVisible("analysis.mode") && <ChoiceRow title="分析模式" text={(() => { const mode = getAnalysisMode(enhancementSettings); return mode === "selfplay" ? "引擎双方按每步时限逐回合落子，直到五连或满盘" : mode === "hint" ? "点击分析后引擎直接落子；切换回持续分析可到快捷中心或分析面板" : "一直分析当前局面，越算越深；不会自动落子"; })()} value={getAnalysisMode(enhancementSettings)} options={[["continuous", "持续"], ["selfplay", "自对弈"], ["hint", "提示"]] as Array<readonly [AnalysisMode, string]>} onChange={(mode) => { onEnhancementSettingsChange(withAnalysisMode(enhancementSettings, mode)); }}/>}
           {itemVisible("analysis.candidates") && <ToggleRow title="棋盘显示实时选点" text="只显示在空位上，不会落子或写入棋谱" checked={enhancementSettings.analysisShowCandidates} onChange={(analysisShowCandidates) => onEnhancementSettingsChange({ ...enhancementSettings, analysisShowCandidates })}/>}
           {itemVisible("analysis.metric") && <ChoiceRow title="候选点显示内容" text="胜率、评估分、计算量或深度" value={enhancementSettings.analysisCandidateMetric} options={[["winRate", "胜率"], ["score", "评估分"], ["nodes", "计算量"], ["depth", "深度"]] as Array<readonly [AnalysisCandidateMetric, string]>} onChange={(analysisCandidateMetric) => onEnhancementSettingsChange({ ...enhancementSettings, analysisCandidateMetric })}/>}
           {itemVisible("analysis.count") && <label className="quick-think-slider"><span><b>候选点数量</b><small>默认只显示最佳点，最多显示 10 选</small></span><output>{enhancementSettings.analysisCandidateCount} 选</output><input aria-label="快捷中心候选点数量" type="range" min="1" max="10" step="1" value={enhancementSettings.analysisCandidateCount} onChange={(event) => onEnhancementSettingsChange({ ...enhancementSettings, analysisCandidateCount: Number(event.target.value) })}/></label>}
           {itemVisible("analysis.selfplayTime") && enhancementSettings.analysisSelfPlay && <label className="quick-think-slider"><span><b>自对弈每步时限</b><small>到点即落子；提前算出杀棋会立刻落下，五连或满盘自动结束</small></span><output>{(enhancementSettings.analysisSelfPlayTimeMs / 1000).toFixed(1)} 秒</output><input aria-label="自对弈每步时限" type="range" min="1000" max="10000" step="500" value={enhancementSettings.analysisSelfPlayTimeMs} onChange={(event) => onEnhancementSettingsChange({ ...enhancementSettings, analysisSelfPlayTimeMs: Number(event.target.value) })}/></label>}
-          {itemVisible("analysis.memory") && aiEngineChoice === "tuned" && <label className="quick-think-slider"><span><b>分析内存</b><small>滑杆或输入 256-2048 MB；越高长分析越深（实验），分配失败先降 256MB 重试再回落轻量</small></span><output>{fmtAnalysisMemory(enhancementSettings.analysisMaxMemoryMb)}</output><input aria-label="分析内存滑杆" type="range" min="256" max="2048" step="32" value={enhancementSettings.analysisMaxMemoryMb} onChange={(event) => { const v = Math.min(2048, Math.max(256, Number(event.target.value))); onEnhancementSettingsChange({ ...enhancementSettings, analysisMaxMemoryMb: v }); if (memoryNumberRef.current) memoryNumberRef.current.value = String(v); }}/><input ref={memoryNumberRef} aria-label="分析内存数值" type="number" min="256" max="2048" step="32" defaultValue={enhancementSettings.analysisMaxMemoryMb} onBlur={(event) => { const v = Math.min(2048, Math.max(256, Math.round(Number(event.target.value) || 256))); onEnhancementSettingsChange({ ...enhancementSettings, analysisMaxMemoryMb: v }); event.currentTarget.value = String(v); }} onKeyDown={(event) => { if (event.key === "Enter") { const target = event.currentTarget; const v = Math.min(2048, Math.max(256, Math.round(Number(target.value) || 256))); onEnhancementSettingsChange({ ...enhancementSettings, analysisMaxMemoryMb: v }); target.value = String(v); target.blur(); } }}/></label>}
+          {itemVisible("analysis.memory") && kataEngineActive(aiEngineChoice) && <KataTuning onNotice={onNotice}/>}
+          {itemVisible("analysis.memory") && !kataEngineActive(aiEngineChoice) && (
+            <div className="tuned-engine-block quick-tuned-block">
+              <div className="tuned-engine-head">
+                <span className="tuned-engine-label">分析内存</span>
+                <output className="tuned-engine-value">{fmtAnalysisMemory(enhancementSettings.analysisMaxMemoryMb)}</output>
+                {aiEngineChoice === "tuned" && itemVisible("analysis.multiThread") && <button type="button" className={`tuned-mini-toggle ${enhancementSettings.engineMultiThread ? "on" : ""}`} aria-pressed={enhancementSettings.engineMultiThread} title="多线程：开了才用多核（线程数在下方）。网页版多线程 wasm 需要跨源隔离；安卓原生引擎用真线程" onClick={() => onEnhancementSettingsChange({ ...enhancementSettings, engineMultiThread: !enhancementSettings.engineMultiThread })}>多线程<b>{enhancementSettings.engineMultiThread ? "开" : "关"}</b></button>}
+              </div>
+              <input aria-label="分析内存滑杆" type="range" min="256" max="2048" step="32" value={enhancementSettings.analysisMaxMemoryMb} onChange={(event) => { const v = Math.min(2048, Math.max(256, Number(event.target.value))); onEnhancementSettingsChange({ ...enhancementSettings, analysisMaxMemoryMb: v }); }}/>
+              {enhancementSettings.engineMultiThread && itemVisible("analysis.threads") && <label className="tuned-engine-threads"><span>线程数</span><select aria-label="引擎线程数" value={String(enhancementSettings.engineThreads)} onChange={(event) => onEnhancementSettingsChange({ ...enhancementSettings, engineThreads: Number(event.target.value) })}>{engineThreadOptions(undefined, nativeEngineInfo()?.bigCores).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
+            </div>
+          )}
+          {!kataEngineActive(aiEngineChoice) && aiEngineChoice !== "tuned" && itemVisible("analysis.multiThread") && <ToggleRow title="多线程引擎" text="开启后引擎使用多个核心并行搜索（更快也更热）。网页版的多线程 wasm 需要跨源隔离；安卓原生引擎用真线程" checked={enhancementSettings.engineMultiThread} onChange={(engineMultiThread) => onEnhancementSettingsChange({ ...enhancementSettings, engineMultiThread })}/>}
+          {!kataEngineActive(aiEngineChoice) && aiEngineChoice !== "tuned" && enhancementSettings.engineMultiThread && itemVisible("analysis.threads") && <ChoiceRow title="引擎线程数" text={engineThreadHint(nativeEngineReady(), undefined, nativeEngineInfo()?.bigCores)} value={String(enhancementSettings.engineThreads)} options={engineThreadOptions(undefined, nativeEngineInfo()?.bigCores)} onChange={(value) => onEnhancementSettingsChange({ ...enhancementSettings, engineThreads: Number(value) })}/>}
           {itemVisible("analysis.indicator") && <ChoiceRow title="思考显示位置" text="统一显示做题、打谱和人机对战的后台计算状态" value={thinkingIndicatorPosition} options={[["corner", "棋盘右上角"], ["below", "棋盘下方"]] as const} onChange={onThinkingIndicatorPositionChange}/>}
         </>}
       </section>}
@@ -403,9 +515,14 @@ export function QuickDrawer({
         <button type="button" className="quick-drawer-section-title quick-drawer-section-toggle" onClick={() => toggleSection("visual")} aria-expanded={expandedSections.visual}><span><Palette size={16}/></span><div><b>外观与声音</b><small>主题、棋盘、棋子与音效，改后立即生效</small></div><ChevronRight className="quick-section-chevron"/></button>
         {expandedSections.visual && <>
         <div className="quick-choice-list">{([
-          ["visual.theme", <ChoiceRow title="应用主题" text="页面颜色与氛围" value={themePreference} options={THEME_OPTIONS} onChange={onThemePreferenceChange}/>],
-          ["visual.board", <ChoiceRow title="棋盘" text="棋盘材质与网格" value={boardTheme} options={BOARD_OPTIONS} onChange={onBoardThemeChange}/>],
-          ["visual.stone", <ChoiceRow title="棋子" text="黑白棋子的视觉样式" value={stoneTheme} options={STONE_OPTIONS} onChange={onStoneThemeChange}/>],
+          /* ⚠ 这三行要**带锁**（用户 2026-10-10：「我发现快捷中心里面，那些外观其实还可以
+             自由切换，不受这些购买的约束，你修复一下」）。
+             `lockOf` 给出"这一项多少钱"（未上架/免费返回 undefined），
+             `onLockedPick` 负责提示购买 —— 用的是 `window.confirm`，
+             因为快捷中心已经是个抽屉，再叠一层自绘弹窗要处理层级/遮罩/返回键一堆事。 */
+          ["visual.theme", <ChoiceRow title="应用主题" text="页面颜色与氛围" value={themePreference} options={THEME_OPTIONS} onChange={onThemePreferenceChange} lockOf={themeLockCost} onLockedPick={(value, cost, label) => onLockedAppearancePick("theme", value, cost, label)}/>],
+          ["visual.board", <ChoiceRow title="棋盘" text="棋盘材质与网格" value={boardTheme} options={BOARD_OPTIONS} onChange={onBoardThemeChange} lockOf={boardLockCost} onLockedPick={(value, cost, label) => onLockedAppearancePick("board", value, cost, label)}/>],
+          ["visual.stone", <ChoiceRow title="棋子" text="黑白棋子的视觉样式" value={stoneTheme} options={STONE_OPTIONS} onChange={onStoneThemeChange} lockOf={stoneLockCost} onLockedPick={(value, cost, label) => onLockedAppearancePick("stone", value, cost, label)}/>],
           ["visual.boardSize", <ChoiceRow title="默认棋盘大小" text="新建棋谱时使用的路数（默认15路）" value={String(defaultBoardSize)} options={boardSizeOptions} onChange={(value) => onDefaultBoardSizeChange(Number(value))}/>],
           ["visual.sound", <>
             <ToggleRow title="声音与音效" text="关闭后不创建或唤醒音频上下文；与设置页同一开关" checked={soundSettings.enabled} onChange={(enabled) => onSoundSettingsChange({ ...soundSettings, enabled })}/>
@@ -419,12 +536,17 @@ export function QuickDrawer({
         <button type="button" className="quick-drawer-section-title quick-drawer-section-toggle" onClick={() => toggleSection("board")} aria-expanded={expandedSections.board}><span><Eye size={16}/></span><div><b>棋盘显示</b><small>手数、坐标、禁手辅助与绘制细节</small></div><ChevronRight className="quick-section-chevron"/></button>
         {expandedSections.board && <>
           {itemVisible("board.numbers") && <ToggleRow title="显示手数" text="在棋子上显示落子序号" checked={showNumbers} onChange={onShowNumbersChange}/>}
-          {itemVisible("board.coordinates") && <ToggleRow title="显示坐标" text="棋盘边缘显示 A–O / 1–15" checked={showCoordinates} onChange={onShowCoordinatesChange}/>}
+          {itemVisible("board.coordinates") && <ToggleRow title="显示坐标" text="棋盘边缘按当前路数显示列名与行号" checked={showCoordinates} onChange={onShowCoordinatesChange}/>}
           {itemVisible("board.forbidden") && <ToggleRow title="禁手辅助" text="提示黑方常见三三、四四与长连" checked={showForbidden} onChange={onShowForbiddenChange}/>}
           {itemVisible("board.lastMove") && <ToggleRow title="最后一手标记" text="最新一手显示红点；开启手数时红色高亮序号" checked={showLastMove} onChange={onShowLastMoveChange}/>}
-          {itemVisible("board.numberScale") && <label className="quick-think-slider"><span><b>棋子序号大小</b><small>缩放棋盘上的落子序号</small></span><output>{Math.round(moveNumberScale * 100)}%</output><input aria-label="快捷中心棋子序号大小" type="range" min="0.7" max="1.8" step="0.05" value={moveNumberScale} onChange={(event) => onMoveNumberScaleChange(Number(event.target.value))}/></label>}
+          {/* 透明度两条（用户 2026-10-10：「同时，在快捷中心那边，也加入棋盘和棋子的透明度调整的长条」） */}
+          {itemVisible("board.boardOpacity") && <label className="quick-think-slider"><span><b>棋盘透明度</b><small>让棋盘背景透出来；只影响盘面，不影响棋子</small></span><output>{Math.round(boardOpacity * 100)}%</output><input aria-label="快捷中心棋盘透明度" type="range" min={Math.round(MIN_BOARD_OPACITY * 100)} max="100" step="1" value={Math.round(boardOpacity * 100)} onChange={(event) => onBoardOpacityChange(Number(event.target.value) / 100)}/></label>}
+          {itemVisible("board.stoneOpacity") && <label className="quick-think-slider"><span><b>棋子透明度</b><small>只影响棋子</small></span><output>{Math.round(stoneOpacity * 100)}%</output><input aria-label="快捷中心棋子透明度" type="range" min={Math.round(MIN_STONE_OPACITY * 100)} max="100" step="1" value={Math.round(stoneOpacity * 100)} onChange={(event) => onStoneOpacityChange(Number(event.target.value) / 100)}/></label>}
+          {itemVisible("board.stoneSize") && <label className="quick-think-slider"><span><b>棋子大小</b><small>在当前自动大小上缩放，上限为相邻棋子相切</small></span><output>{stoneSizeLabel(stoneSize)}</output><input aria-label="快捷中心棋子大小" type="range" min={MIN_STONE_SCALE} max={MAX_STONE_SCALE} step={STONE_SCALE_STEP} value={clampStoneScale(stoneSize)} onChange={(event) => onStoneSizeChange(Number(event.target.value))}/></label>}
+          {itemVisible("board.numberScale") && <label className="quick-think-slider"><span><b>棋子序号大小</b><small>缩放棋盘上的落子序号</small></span><output>{Math.round(moveNumberScale * 100)}%</output><input aria-label="快捷中心棋子序号大小" type="range" min={MIN_MOVE_NUMBER_SCALE} max={MAX_MOVE_NUMBER_SCALE} step={MOVE_NUMBER_SCALE_STEP} value={moveNumberScale} onChange={(event) => onMoveNumberScaleChange(Number(event.target.value))}/></label>}
           {itemVisible("board.gridWidth") && <label className="quick-think-slider"><span><b>棋盘画线粗细</b><small>网格线宽度</small></span><output>{gridLineWidth.toFixed(2)}px</output><input aria-label="快捷中心棋盘画线粗细" type="range" min="0.6" max="3" step="0.05" value={gridLineWidth} onChange={(event) => onGridLineWidthChange(Number(event.target.value))}/></label>}
           {itemVisible("board.coordFont") && <label className="quick-think-slider"><span><b>坐标字体大小</b><small>棋盘边缘坐标字号</small></span><output>{coordinateFontSize.toFixed(1)}px</output><input aria-label="快捷中心坐标字体大小" type="range" min="6" max="14" step="0.5" value={coordinateFontSize} onChange={(event) => onCoordinateFontSizeChange(Number(event.target.value))}/></label>}
+          {itemVisible("board.margin") && <label className="quick-think-slider"><span><b>棋盘侧边</b><small>压缩四边坐标空间，棋盘随之变大</small></span><output>{boardMarginLabel(clampBoardMargin(boardMargin, coordinateFontSize), coordinateFontSize)}</output><input aria-label="快捷中心棋盘侧边" type="range" min={minBoardMargin(coordinateFontSize)} max={DEFAULT_BOARD_MARGIN} step="1" value={clampBoardMargin(boardMargin, coordinateFontSize)} onChange={(event) => onBoardMarginChange(Number(event.target.value))}/></label>}
         </>}</section>}
 
       {!customizing && sectionVisible("accessibility") && <section className={`quick-drawer-section quick-accessibility-card ${expandedSections.accessibility ? "expanded" : "collapsed"}`}>

@@ -61,6 +61,26 @@ describe("board share image", () => {
     expect(boardShareFilename(document, move.nodeId)).toBe("A-B-复盘--第1手.png");
   });
 
+  it("shows native LIB board text the same way the live board does", () => {
+    let document = createDocument("胜率谱");
+    const first = addMove(document, document.rootId, { row: 7, col: 7 });
+    document = first.document;
+    const second = addMove(document, first.nodeId, { row: 7, col: 8 });
+    document = second.document;
+    const label = addMove(document, second.nodeId, { row: 6, col: 7 });
+    document = label.document;
+    document.nodes[label.nodeId] = { ...document.nodes[label.nodeId], boardText: "L41 " };
+
+    // Two moves are on the board, so the reference reader shows 41 - 2 = L39.
+    const native = createBoardShareSvg(document, second.nodeId, { ...options, nativeLabels: true });
+    expect(native).toContain(">L39</text>");
+    expect(native).not.toContain(">L41</text>");
+
+    // Other formats keep the raw text.
+    const plain = createBoardShareSvg(document, second.nodeId, options);
+    expect(plain).toContain(">L41</text>");
+  });
+
   it("isolates stone opacity from move numbers and last-move markers", () => {
     let document = createDocument("透明度");
     const move = addMove(document, document.rootId, { row: 7, col: 7 });

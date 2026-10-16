@@ -3,11 +3,14 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../dist/", import.meta.url));
-// 网页资源预算 20MB —— **不含 engine-packs/**（用户 09-13 拍板）。
-// 引擎档位包是 40MB 的 NNUE 数据，随 APK 分发（Capacitor 原样拷进 assets，
-// 装完即用、免下载）。它不是「网页资源」，也已在 workbox 预缓存中排除，
-// 不影响加载性能，故不计入本预算。
-const limit = 20 * 1024 * 1024;
+// 网页资源预算 —— **不含 engine-packs/**。
+// 2026-10-04 定为 30MB（当时约 22.5MB）。
+// 2026-10-07 上调到 45MB：识谱增强包改为**内置**（用户明确要「不要下载」）——
+// public/ort/onnxruntime wasm 13.58MB + public/models/（cell-cls 1.9MB +
+// digit-head-iter8 5.3MB）≈ 20.8MB；同时把误打进包里的 public/.tmp-bench
+// 临时语料 4.4MB 移出（净增 ~16.4MB）。
+// engine-packs/（38.8MB 引擎档位包）仍不计入：随 APK 分发、workbox 已排除预缓存。
+const limit = 45 * 1024 * 1024;
 
 async function totalSize(directory, { skipEnginePacks = false } = {}) {
   let total = 0;
@@ -22,7 +25,7 @@ async function totalSize(directory, { skipEnginePacks = false } = {}) {
 const size = await totalSize(root, { skipEnginePacks: true });
 const enginePacks = await totalSize(join(root, "engine-packs")).catch(() => 0);
 console.log(
-  `dist 网页资源 ${(size / 1024 / 1024).toFixed(2)}MB（上限 20MB，不含引擎包）` +
+  `dist 网页资源 ${(size / 1024 / 1024).toFixed(2)}MB（上限 45MB，不含引擎包）` +
   (enginePacks ? `；engine-packs/ ${(enginePacks / 1024 / 1024).toFixed(2)}MB 随包分发不计入` : ""),
 );
-if (size > limit) throw new Error("网页资源超过 20MB 体积预算");
+if (size > limit) throw new Error("网页资源超过 45MB 体积预算");

@@ -69,6 +69,30 @@ export function resolvePuzzleRule(
   return { mode: preference, rule: puzzleRuleSet(preference), source: "preference", locked: false };
 }
 
+/**
+ * 每日一题的默认规则：**固定按有禁手**（用户 2026-10-12：「不用切换有无禁，默认就有禁吧，
+ * 但是不是全局生效，就这个生效」）。
+ *
+ * 为什么要单给它一条默认：内置的 17 个题集**没有一个声明规则**（`白先VCF_puzzle` /
+ * `白先胜100题_puzzle` 里那个 `"rule": 2` 是数字编码，`parsePuzzleRule` 刻意不猜），
+ * 于是解析一路落到"用户偏好"，而偏好的默认是**无禁手**——实测 6355 道内置题里
+ * **4191 道（66%）是黑先**，玩家执黑时禁手正是判据本身：默认模式下玩家能把三三/四四/
+ * 长连当成正常一手落下去，黑棋长连还会被算成赢。实测过：同一道黑先三三题，
+ * 默认模式下那一手**被接受**，改成有禁手才提示「三三禁手」。
+ *
+ * 边界（用户点名"不是全局生效"）：
+ *  · **不读也不写** `PUZZLE_RULE_PREFERENCE_KEY` —— 那个偏好是「打谱 → 做题」那套在用，
+ *    动了它会把自由五子棋类的题（黑棋长连本来算赢）一起判错；
+ *  · 题目 / 题集**显式声明的规则照旧优先**（显式元数据永远压过默认值）。
+ */
+export const DAILY_PUZZLE_RULE_MODE: PuzzleRuleMode = "forbidden";
+
+/** 每日一题专用的规则解析：默认有禁手，其余顺序与 `resolvePuzzleRule` 完全一致。 */
+export const resolveDailyPuzzleRule = (
+  puzzle: PuzzleRuleCarrier | undefined,
+  collection: PuzzleRuleCarrier | undefined,
+): ResolvedPuzzleRule => resolvePuzzleRule(puzzle, collection, DAILY_PUZZLE_RULE_MODE);
+
 export function puzzleMoveLegality(board: Cell[][], position: Position, player: Player, mode: PuzzleRuleMode): PuzzleMoveLegality {
   if (board[position.row]?.[position.col]) return { legal: false, reason: "该位置已有棋子" };
   if (mode !== "forbidden" || player !== "black") return { legal: true, reason: null };

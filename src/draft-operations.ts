@@ -1,5 +1,6 @@
 import type { GameDocument, GameMetadata, PartialRecordNode, RecordNode } from "./types";
 import { compactRegisterAlias } from "./compact-index";
+import { coordinateName } from "./game";
 import type { RecordBookmark } from "./features/record-tree/bookmarks";
 
 const PROJECTED_NODES_MARKER = "__isProjected";
@@ -91,7 +92,9 @@ export const overlayNode = (document: GameDocument, overlay: DraftOverlay, id: s
   const node = overlay.added.get(id) || document.nodes[id];
   if (!node) return undefined;
   const patch = overlay.patches.get(id);
-  // Compute effective children: base minus deleted plus draft-added
+  // Compute effective children: base minus deleted plus draft-added, in the
+  // order the user created them. `overlay.added` is a Map keyed by node id, so
+  // iteration order is insertion order — the newest draft child is last.
   const baseChildren = [...node.children].filter((childId) => !overlay.deleted.has(childId));
   const addedChildren = [...overlay.added.values()]
     .filter((child) => child.parentId === id && !overlay.deleted.has(child.id))
@@ -105,6 +108,18 @@ export const overlayNode = (document: GameDocument, overlay: DraftOverlay, id: s
   const preferredOverride = overlay.preferred.get(id);
   if (preferredOverride !== undefined && effectiveChildren.includes(preferredOverride)) {
     result.preferredChildId = preferredOverride;
+  } else if (addedChildren.length) {
+    // A freshly played move must become the main line, matching addMove in
+    // game.ts (which sets preferredChildId on the parent). Without this, the
+    // draft projection kept pointing at the old first child, so 下一手 skipped
+    // the move the user had just played and saving the record demoted it to a
+    // side variation. Only draft-added children do this; the stored document's
+    // own preferredChildId still wins when it is the current main line.
+    const storedPreferred = node.preferredChildId && effectiveChildren.includes(node.preferredChildId)
+      ? node.preferredChildId
+      : undefined;
+    const lastAdded = addedChildren[addedChildren.length - 1];
+    result.preferredChildId = storedPreferred && !addedChildren.includes(storedPreferred) ? storedPreferred : lastAdded;
   }
   return result;
 };
@@ -170,8 +185,57 @@ export const projectedDocument = (document: GameDocument, overlay: DraftOverlay)
   return { ...document, nodes };
 };
 
-/** Apply draft operations to a regular (non-compact) document. For compact
- * documents, use projectedDocument for reads and saveDraftForDocument for
+/**
+ * 批量替换注释/局面文字 → 一串草稿操作（audit 2026-09-17）。
+ *
+ * 批量替换以前直接 `saveToLibrary` 落库，绕过草稿系统，替换错了无法回退
+ * （「撤销」只认同一份棋谱自己的草稿）。改成产出 `update-node` 操作后，
+ * 用户可以在那份棋谱里正常撤销/放弃。文本替换本身与落库方式无关，所以放在这里好测。
+ */
+export const buildBatchReplaceOperations = (nodes: Record<string, RecordNode>, from: string, to: string): DraftOperation[] => {
+  if (!from) return [];
+  const operations: DraftOperation[] = [];
+  for (const [nodeId, node] of Object.entries(nodes)) {
+    const comment = node.comment?.includes(from) ? node.comment.split(from).join(to) : node.comment;
+    const boardText = node.boardText?.includes(from) ? node.boardText.split(from).join(to) : node.boardText;
+    if (comment === node.comment && boardText === node.boardText) continue;
+    operations.push({ type: "update-node", nodeId, patch: { comment, boardText } });
+  }
+  return operations;
+};
+
+/**
+ * 给每步草稿操作起一个人话名字（audit 2026-09-17）。
+ *
+ * 「撤销」原来只有两个按钮、没有历史面板，用户连自己刚才改了什么都要靠记忆。
+ * 有了名字才能列出「改注释 / 落子 H8 / 删除分支」这样的可读历史，进而跳着回退。
+ */
+export const draftOperationLabel = (operation: DraftOperation, boardSize = 15): string => {
+  switch (operation.type) {
+    case "add-move": {
+      const move = operation.node.move;
+      return move ? `落子 ${coordinateName(move, boardSize)}` : "落子";
+    }
+    case "add-subtree":
+      return `粘贴分支（${Object.keys(operation.nodes).length} 个局面）`;
+    case "delete-subtree":
+      return "删除分支";
+    case "update-node": {
+      const { comment, boardText, marks, evaluation, evaluationLevel } = operation.patch;
+      if (comment !== undefined) return comment ? "改注释" : "清空注释";
+      if (boardText !== undefined) return "改局面文字";
+      if (marks !== undefined) return "改棋盘标注";
+      if (evaluation !== undefined || evaluationLevel !== undefined) return "改评价";
+      return "修改局面";
+    }
+    case "set-mainline":
+      return "切换主分支";
+    default:
+      return "编辑";
+  }
+};
+
+/** Apply draft operations to a regular (non-compact) document. For compact * documents, use projectedDocument for reads and saveDraftForDocument for
  * persistence. Handles all four operation types. */
 export const applyDraftToDocument = (document: GameDocument, operations: DraftOperation[]): GameDocument => {
   let next = document;
@@ -186,6 +250,12 @@ export const applyDraftToDocument = (document: GameDocument, operations: DraftOp
           [operation.parentId]: {
             ...parent,
             children: [...parent.children, operation.node.id],
+            // Mirror addMove (game.ts): the move just played is the main line,
+            // unless the user had already pinned a different child as main line.
+            preferredChildId: parent.preferredChildId && parent.preferredChildId !== operation.node.id
+              && parent.children.includes(parent.preferredChildId)
+              ? parent.preferredChildId
+              : operation.node.id,
           },
           [operation.node.id]: operation.node,
         },

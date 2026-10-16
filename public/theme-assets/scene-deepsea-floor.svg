@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 420" fill="none">
+  <!-- 深海·海底（底部锚定）：礁石剪影 + 海草 + 沙脊。
+       构图压在最下方，上方留给光柱与气泡。 -->
+  <defs>
+    <linearGradient id="dsRock" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d2a33" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#06171e" stop-opacity=".98"/>
+    </linearGradient>
+    <linearGradient id="dsKelp" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1d4f4a" stop-opacity=".62"/>
+      <stop offset="1" stop-color="#0e2f30" stop-opacity=".8"/>
+    </linearGradient>
+  </defs>
+  <!-- 沙脊 -->
+  <path d="M0 340c74-22 138-6 206-20s146-24 224-6v106H0Z" fill="#0a2129" opacity=".9"/>
+  <!-- 礁石 -->
+  <path d="M0 420V300c34-6 58 10 84 30s52 26 84 18 58-30 92-24 52 26 84 30v66Z" fill="url(#dsRock)"/>
+  <path d="M296 420v-46c22-8 40 2 56 16s40 20 78 14v16Z" fill="#05141a" opacity=".85"/>
+  <!-- 海草（左右两丛，叶片弯向一侧） -->
+  <g stroke="url(#dsKelp)" fill="none" stroke-linecap="round">
+    <path d="M62 420c-10-42 6-72 2-108M84 420c8-46-8-74-2-112M104 420c-6-38 8-62 4-96" stroke-width="8"/>
+    <path d="M336 420c8-44-8-70-4-104M356 420c-10-40 6-66 2-100M376 420c6-34-6-56-2-86" stroke-width="7"/>
+  </g>
+  <!-- 散石 -->
+  <g fill="#05141a" opacity=".7">
+    <ellipse cx="182" cy="392" rx="20" ry="10"/>
+    <ellipse cx="252" cy="404" rx="14" ry="7"/>
+    <ellipse cx="140" cy="408" rx="10" ry="5"/>
+  </g>
+</svg>

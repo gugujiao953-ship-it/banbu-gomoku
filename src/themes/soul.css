@@ -1,0 +1,60 @@
+/* Neutral ink and feathered vapour; panel contrast stays independent of the mist. */
+:root[data-theme="soul"] {
+  color-scheme:dark;
+  --color-bg:#111111; --color-surface:#191919; --color-surface-raised:#252525;
+  --color-text:#ededed; --color-text-muted:#bdbdbd; --color-border:#555555;
+  --color-accent:#d4d4d4; --color-accent-strong:#f2f2f2; --color-accent-soft:#343434;
+  --color-success:#c7c7c7; --color-warning:#d0d0d0; --color-danger:#d99999;
+  --ink:var(--color-text); --muted:var(--color-text-muted); --paper:var(--color-surface);
+  --line:var(--color-border); --green:var(--color-accent); --green-2:var(--color-accent-strong);
+  --jade:var(--color-accent-soft); --gold:var(--color-warning); --red:var(--color-danger);
+  --on-accent:#191919;
+  --surface:#222222ed; --surface-2:#191919ed; --surface-3:#303030ed;
+  --surface-border:#565656; --surface-hover:#383838; --surface-shadow:#0008;
+}
+html[data-theme="soul"] body { background:#101010; }
+html[data-theme="soul"] .app-shell { background:#151515; }
+html[data-theme="soul"] .ts-far {
+  background-image:url("/theme-assets/scene-soul-ink.svg");
+  background-size:100% 100%; background-position:center; background-repeat:no-repeat;
+}
+html[data-theme="soul"] .ts-mid,html[data-theme="soul"] .ts-near {
+  --ts-grow:0px; --ts-top:0px;
+  left:-22%; right:-22%; top:16%; height:72%;
+  background:url("/theme-assets/soul-mist.svg") center/100% auto no-repeat;
+  animation:soul-vapour-far 38s ease-in-out -12s infinite alternate;
+  opacity:.78;
+}
+html[data-theme="soul"] .ts-near {
+  left:-28%; right:-28%; top:42%; height:58%; opacity:.82;
+  animation:soul-vapour-near 29s ease-in-out -7s infinite alternate;
+}
+html[data-theme="soul"] .ts-sway b {
+  border-radius:0;
+  background:url("/theme-assets/soul-mist.svg") center/100% auto no-repeat;
+  animation:soul-vapour-wisp calc(23s + var(--i) * 9s) ease-in-out calc(var(--i) * -13s) infinite alternate;
+}
+html[data-theme="soul"] .ts-sway b:nth-child(1) { left:-15%; top:25%; width:120%; height:36%; opacity:.35; }
+html[data-theme="soul"] .ts-sway b:nth-child(2) { left:-5%; top:61%; width:116%; height:30%; opacity:.48; }
+html[data-theme="soul"] .ts-sway b:nth-child(n+3),html[data-theme="soul"] .ts-parts { display:none; }
+html[data-theme="soul"] .dock-tabs.action-bottom-row { text-shadow:0 1px 3px #000,0 0 6px #000; }
+html[data-theme="soul"] .dock-tabs.action-bottom-row svg { filter:drop-shadow(0 1px 2px #000); }
+.theme-swatch.soul { border-color:#757575; background:radial-gradient(ellipse at 35% 68%,#c9c9c9a0,transparent 65%),linear-gradient(135deg,#111,#404040 60%,#161616); }
+@keyframes soul-vapour-far {
+  from { transform:translate3d(-5%,1%,0) scale(1.02); opacity:.62; }
+  to { transform:translate3d(6%,-3%,0) scale(1.08); opacity:.86; }
+}
+@keyframes soul-vapour-near {
+  from { transform:translate3d(7%,2%,0) scaleX(-1) scaleY(1.03); opacity:.6; }
+  to { transform:translate3d(-6%,-3%,0) scaleX(-1.09) scaleY(1.1); opacity:.88; }
+}
+@keyframes soul-vapour-wisp {
+  from { transform:translate3d(-4%,2%,0) rotate(-3deg) scaleY(.9); }
+  to { transform:translate3d(6%,-4%,0) rotate(2deg) scaleY(1.12); }
+}
+@media(orientation:landscape) {
+  html[data-theme="soul"] .ts-mid { top:-2%; height:102%; }
+  html[data-theme="soul"] .ts-near { top:26%; height:88%; }
+  html[data-theme="soul"] .ts-sway b:nth-child(1) { top:8%; height:54%; }
+  html[data-theme="soul"] .ts-sway b:nth-child(2) { top:49%; height:48%; }
+}

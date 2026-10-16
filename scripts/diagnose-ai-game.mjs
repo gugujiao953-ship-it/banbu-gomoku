@@ -38,12 +38,14 @@ await page.addInitScript(() => {
 });
 
 await page.goto(`${baseUrl}?qa=1`, { waitUntil: "domcontentloaded" });
-await page.locator("nav.bottom-nav button:has-text('AI')").click();
+await page.locator("nav.bottom-nav button:has-text('对弈')").click();
+await page.waitForTimeout(700);
+await page.locator('[data-duel-entry="ai"] .duel-entry-action').click();
 await page.waitForTimeout(700);
 
 // The setup sheet is embedded inline on the AI page. Configure it directly.
-await page.getByText("强力引擎").first().click();
-const downloadButton = page.getByText("立即下载强力引擎包");
+await page.getByText("rapfi", { exact: true }).first().click();
+const downloadButton = page.getByText(/立即下载 rapfi 引擎包/);
 if (await downloadButton.isVisible().catch(() => false)) {
   await downloadButton.click();
   await page.getByText("已生效").first().waitFor({ timeout: 120000 });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, ChevronRight, Database, Folder, Search } from "lucide-react";
 import { mainLineLength } from "../../formats";
 import type { LargeDocumentSummary } from "../../large-storage";
@@ -18,6 +18,11 @@ interface RecordSelectorSheetProps {
   onSelectLargeRecord: (record: LargeDocumentSummary) => void;
   nativeDatabase?: { title: string; hint?: string; onOpen: () => void };
   onClose: () => void;
+  /**
+   * 内嵌模式（摆子界面的「载入局面」弹窗要用它）：**不自己套 BottomSheet、不画「返回棋盘」**，
+   * 只交出里面那块树 + 搜索。这样同一个面板能被塞进别的浮层里，而本机其它入口的外观一字不变。
+   */
+  embedded?: boolean;
 }
 
 const matchesQuery = (metadata: GameDocument["metadata"], query: string) =>
@@ -40,7 +45,7 @@ const folderAncestors = (folder: string) => {
   return ancestors;
 };
 
-export function RecordSelectorSheet({ records, largeRecords, currentId, folders, assignments, onSelectRecord, onSelectLargeRecord, nativeDatabase, onClose }: RecordSelectorSheetProps) {
+export function RecordSelectorSheet({ records, largeRecords, currentId, folders, assignments, onSelectRecord, onSelectLargeRecord, nativeDatabase, onClose, embedded }: RecordSelectorSheetProps) {
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLowerCase();
   const visibleRecords = useMemo(() => normalizedQuery ? records.filter((record) => matchesQuery(record.metadata, normalizedQuery)) : records, [normalizedQuery, records]);
@@ -66,19 +71,28 @@ export function RecordSelectorSheet({ records, largeRecords, currentId, folders,
     const initialFolder = availableFolders.includes(currentFolder) && hasRecords(currentFolder)
       ? currentFolder
       : availableFolders.find(hasRecords);
-    if (!initialFolder) return new Set();
+    if (!initialFolder) return new Set(folderAncestors(currentFolder));
     const expanded = new Set<string>();
     let cursor = initialFolder;
     while (cursor) { expanded.add(cursor); cursor = folderParent(cursor); }
+    // 当前棋谱所在的文件夹一律展开。原来这一步挂在挂载期的 effect 里（每开一次面板多
+    // 一次 setState 重渲染），现在在初始值里一次算好。
+    for (const ancestor of folderAncestors(currentFolder)) expanded.add(ancestor);
     return expanded;
   });
-  useEffect(() => {
-    setExpandedFolders((current) => new Set([...current, ...folderAncestors(currentFolder)]));
-    const timer = window.setTimeout(() => currentRecordRef.current?.scrollIntoView?.({ block: "start", inline: "nearest" }), 0);
-    return () => window.clearTimeout(timer);
+  // 定位当前棋谱必须发生在**第一帧画出来之前**：用 useLayoutEffect，且不套 setTimeout。
+  // 原来是 useEffect + setTimeout(0)——面板的 sheet-up 入场动画还在起步（0ms），列表已经
+  // 在第 3ms 跳到当前棋谱（探针实测：16ms 挂载 scroll=0 → 19ms scroll=61），用户看到的就是
+  // 「闪两下」：一次滑入、一次内容跳位。
+  useLayoutEffect(() => {
+    currentRecordRef.current?.scrollIntoView?.({ block: "start", inline: "nearest" });
   }, [currentFolder, currentId, locateRequest]);
   const locateCurrentRecord = () => {
     setQuery("");
+    // 收起的文件夹要在**同一次事件**里展开：这样下面那次提交的 layout pass 已经能找到
+    // 当前棋谱那一行的 DOM，定位不会静默失效。（展开原先挂在挂载期的 effect 上，
+    // 每次开面板都要多一次 setState 重渲染；现在挪到这里，只在真正点「定位」时做。）
+    setExpandedFolders((current) => new Set([...current, ...folderAncestors(currentFolder)]));
     setLocateRequest((current) => current + 1);
   };
   const toggleFolder = (folder: string) => setExpandedFolders((current) => {
@@ -110,8 +124,7 @@ export function RecordSelectorSheet({ records, largeRecords, currentId, folders,
     </section>;
   };
 
-  return <BottomSheet title="选择棋谱" className="record-selector-backdrop" manageHistory onClose={onClose}>
-    <div className="record-selector-sheet">
+  const body = <div className="record-selector-sheet">
       <button type="button" className="record-selector-current" aria-label="定位到当前棋谱" onClick={locateCurrentRecord}>
         <span>{currentLargeRecord ? <Database aria-hidden="true"/> : mainLineLength(currentRecord || records[0])}</span>
         <div><small>当前文件夹 · 点击定位</small><b title={currentTitle}>{currentTitle}</b><em title={folderPathLabel(currentFolderPath)}>{folderPathLabel(currentFolderPath)} · 共 {records.length + largeRecords.length} 份</em></div>
@@ -122,7 +135,7 @@ export function RecordSelectorSheet({ records, largeRecords, currentId, folders,
         {folderChildren(availableFolders, "").map(renderFolder)}
         {!visibleRecords.length && !visibleLargeRecords.length && !nativeDatabase && <div className="record-selector-empty"><Search/><b>没有匹配棋谱</b><span>换一个棋谱名、棋手或赛事关键词。</span></div>}
       </div>
-      <button type="button" className="secondary-button record-selector-cancel" onClick={onClose}>返回棋盘</button>
-    </div>
-  </BottomSheet>;
+      {!embedded && <button type="button" className="secondary-button record-selector-cancel" onClick={onClose}>返回棋盘</button>}
+    </div>;
+  return embedded ? body : <BottomSheet title="选择棋谱" className="record-selector-backdrop" manageHistory onClose={onClose}>{body}</BottomSheet>;
 }

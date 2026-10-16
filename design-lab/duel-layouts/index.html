@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>对弈界面版式与动效 · 10 套方案</title>
+<style>
+:root{--bg:#12161a;--panel:#1a2027;--panel2:#212932;--line:#2d3742;--ink:#e9edf1;--muted:#94a2b0;--accent:#6fd1a8;--gold:#e0b062;--warn:#e88a7a}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+header.lab{padding:16px 20px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#12161aee;backdrop-filter:blur(10px);z-index:50}
+header.lab h1{margin:0 0 5px;font-size:16px;letter-spacing:.01em}
+header.lab p{margin:0;color:var(--muted);font-size:12px;max-width:900px}
+header.lab .legend{margin-top:9px;display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+header.lab .legend b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:18px;padding:18px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.card>header{padding:11px 13px 9px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:9px}
+.card>header .idx{flex:0 0 auto;width:26px;height:26px;border-radius:9px;background:var(--accent);color:#0d1512;display:grid;place-items:center;font-weight:800;font-size:12px}
+.card>header h2{margin:0;font-size:13px}
+.card>header p{margin:2px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
+.card .stage{position:relative;flex:1 1 auto;min-height:430px;display:flex;flex-direction:column}
+.card .note{padding:8px 13px;border-top:1px solid var(--line);color:var(--muted);font-size:11px;display:flex;gap:12px;flex-wrap:wrap}
+.card .note b{color:var(--ink);font-weight:700}
+.card .note .dot{color:var(--accent)}
+.tools{padding:7px 13px;border-top:1px solid var(--line);display:flex;gap:7px;flex-wrap:wrap;align-items:center;background:#171d23}
+.tools button{min-height:28px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--ink);font:inherit;font-size:11px;cursor:pointer}
+.tools button:hover{border-color:var(--accent);color:var(--accent)}
+.tools span{color:var(--muted);font-size:11px}
+/* 迷你棋盘（所有方案共用一块，尺寸由各方案自己定） */
+.mini{position:relative;display:grid;place-items:center}
+.mini canvas{display:block;border-radius:6px;background:#d9b073;box-shadow:0 6px 18px #0006}
+.mini .hint{position:absolute;bottom:6px;right:9px;font-size:10px;color:#00000066}
+/* 通用小件 */
+.chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:99px;font-size:10px;border:1px solid var(--line);color:var(--muted)}
+.chip.on{border-color:var(--accent);color:var(--accent)}
+.avat{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;flex:0 0 auto}
+</style>
+</head><body>
+<header class="lab">
+  <h1>对弈界面版式与动效 · 10 套方案</h1>
+  <p>每张卡都是**真界面**：点棋盘能落子、AI 会应手、能触发胜负与终局动画。左边这块是设计实验室，不是产品代码——你挑中哪套，我再把它做成真的对弈界面。</p>
+  <div class="legend">
+    <span><b>玩法</b>：点棋盘落子 · 每张卡下面有按钮可以「触发胜利 / 失败 / 和棋 / 重播动画」</span>
+    <span><b>看动效</b>：把鼠标移到棋盘上、落一手、或点「触发胜利」</span>
+  </div>
+</header>
+<div class="grid" id="grid"></div>
+<script>
+/* ────────────────────────────────────────────────────────────────────────────
+   共用的迷你棋局引擎：15×15、点击落子、白方（AI）随手应手、五连即胜。
+   每套方案只负责「怎么画、怎么动」，规则一律用这一份。
+   ──────────────────────────────────────────────────────────────────────────── */
+const SIZE = 15;
+const STAR = [[3,3],[3,7],[3,11],[7,3],[7,7],[7,11],[11,3],[11,7],[11,11]];
+
+class Game {
+  constructor(onChange) {
+    this.board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+    this.moves = [];
+    this.turn = "black";
+    this.outcome = null;
+    this.onChange = onChange;
+  }
+  reset() { this.board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null)); this.moves = []; this.turn = "black"; this.outcome = null; this.onChange(this); }
+  /** 预置几手，让每张卡一打开就有棋可看 */
+  seed(list) { for (const [r, c] of list) { if (this.board[r][c]) continue; this.board[r][c] = this.turn; this.moves.push({ row: r, col: c, player: this.turn }); this.turn = this.turn === "black" ? "white" : "black"; } this.onChange(this); }
+  play(row, col) {
+    if (this.outcome || this.board[row]?.[col] !== null) return false;
+    this.board[row][col] = this.turn;
+    this.moves.push({ row, col, player: this.turn });
+    const win = this.winLine(row, col, this.turn);
+    if (win) { this.outcome = { kind: this.turn === "black" ? "won" : "lost", line: win }; }
+    else if (this.moves.length >= SIZE * SIZE) this.outcome = { kind: "draw", line: [] };
+    else this.turn = this.turn === "black" ? "white" : "black";
+    this.onChange(this, { justMoved: { row, col, player: this.board[row][col] } });
+    return true;
+  }
+  winLine(row, col, player) {
+    for (const [dr, dc] of [[0,1],[1,0],[1,1],[1,-1]]) {
+      const line = [[row, col]];
+      for (const sign of [1, -1]) {
+        let r = row + dr * sign, c = col + dc * sign;
+        while (r >= 0 && r < SIZE && c >= 0 && c < SIZE && this.board[r][c] === player) { line.push([r, c]); r += dr * sign; c += dc * sign; }
+      }
+      if (line.length >= 5) return line;
+    }
+    return null;
+  }
+  /** AI 随手应手：贴着最后一手找一个空位（不追求棋力，只为让动效有东西可演） */
+  aiReply() {
+    if (this.outcome) return;
+    const last = this.moves[this.moves.length - 1];
+    if (!last) return;
+    const order = [];
+    for (let dr = -2; dr <= 2; dr += 1) for (let dc = -2; dc <= 2; dc += 1) order.push([dr, dc]);
+    order.sort((a, b) => (Math.abs(a[0]) + Math.abs(a[1])) - (Math.abs(b[0]) + Math.abs(b[1])));
+    for (const [dr, dc] of order) {
+      const r = last.row + dr, c = last.col + dc;
+      if (r >= 0 && r < SIZE && c >= 0 && c < SIZE && !this.board[r][c]) { this.play(r, c); return; }
+    }
+  }
+}
+
+/** 一块会自己重画的迷你棋盘：draw 由各方案提供（拿到 ctx 与几何信息）。 */
+function mountBoard(host, options, draw) {
+  const size = options.size || 300;
+  const canvas = document.createElement("canvas");
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = size * dpr; canvas.height = size * dpr;
+  canvas.style.width = `${size}px`; canvas.style.height = `${size}px`;
+  host.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  const geo = { size, pad: size * 0.055, cell: 0 };
+  geo.cell = (size - geo.pad * 2) / (SIZE - 1);
+  geo.xy = (row, col) => ({ x: geo.pad + col * geo.cell, y: geo.pad + row * geo.cell });
+  const render = (game, meta = {}) => { ctx.clearRect(0, 0, size, size); draw(ctx, geo, game, meta); };
+  const hit = (event) => {
+    const box = canvas.getBoundingClientRect();
+    const x = (event.clientX - box.left) * (size / box.width);
+    const y = (event.clientY - box.top) * (size / box.height);
+    const col = Math.round((x - geo.pad) / geo.cell), row = Math.round((y - geo.pad) / geo.cell);
+    if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return null;
+    const point = geo.xy(row, col);
+    if (Math.hypot(x - point.x, y - point.y) > geo.cell * 0.62) return null;
+    return { row, col };
+  };
+  return { canvas, ctx, geo, render, hit, size };
+}
+
+/** 标准木色棋盘底（绝大多数方案用它；个别方案自带别的底） */
+function drawBoardBase(ctx, geo, colors = {}) {
+  const { size, pad, cell } = geo;
+  const g = ctx.createLinearGradient(0, 0, size, size);
+  g.addColorStop(0, colors.from || "#e3bd83"); g.addColorStop(1, colors.to || "#cfa060");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+  ctx.strokeStyle = colors.line || "rgba(60,44,26,.55)"; ctx.lineWidth = Math.max(1, size / 340);
+  for (let i = 0; i < SIZE; i += 1) {
+    const p = pad + i * cell;
+    ctx.beginPath(); ctx.moveTo(pad, p); ctx.lineTo(size - pad, p); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p, pad); ctx.lineTo(p, size - pad); ctx.stroke();
+  }
+  ctx.fillStyle = colors.star || "rgba(50,36,20,.72)";
+  for (const [r, c] of STAR) { const p = geo.xy(r, c); ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1.6, cell * 0.12), 0, Math.PI * 2); ctx.fill(); }
+}
+function drawStone(ctx, geo, row, col, player, alpha = 1, scale = 1) {
+  const { x, y } = geo.xy(row, col);
+  const r = geo.cell * 0.44 * scale;
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.beginPath(); ctx.arc(x, y + r * 0.12, r, 0, Math.PI * 2); ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.fill();
+  const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.15, x, y, r);
+  if (player === "black") { g.addColorStop(0, "#5c5c5c"); g.addColorStop(.55, "#232323"); g.addColorStop(1, "#0d0d0d"); }
+  else { g.addColorStop(0, "#ffffff"); g.addColorStop(.6, "#f4f1e8"); g.addColorStop(1, "#d8d2c4"); }
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  ctx.restore();
+}
+/** 五连高亮：默认画一条金线 + 逐个放大脉冲 */
+function drawWinLine(ctx, geo, line, t, color = "#e8b44a") {
+  if (!line || line.length < 2) return;
+  const a = geo.xy(...line[0]), b = geo.xy(...line[line.length - 1]);
+  ctx.save();
+  ctx.lineCap = "round"; ctx.strokeStyle = color; ctx.globalAlpha = .35 + .35 * Math.sin(t / 260);
+  ctx.lineWidth = geo.cell * 0.72; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  ctx.globalAlpha = 1; ctx.lineWidth = Math.max(2, geo.cell * 0.13); ctx.strokeStyle = "#fff6"; ctx.stroke();
+  ctx.restore();
+  for (const [row, col] of line) {
+    const { x, y } = geo.xy(row, col);
+    const pulse = 1 + 0.09 * Math.sin(t / 200);
+    ctx.save(); ctx.globalAlpha = .5;
+    ctx.beginPath(); ctx.arc(x, y, geo.cell * 0.5 * pulse, 0, Math.PI * 2);
+    ctx.strokeStyle = color; ctx.lineWidth = Math.max(1.4, geo.cell * 0.09); ctx.stroke(); ctx.restore();
+  }
+}
+
+/** 每张卡：装配棋盘 + 交互 + 工具条（触发胜/负/和/重播） */
+function buildCard({ index, title, desc, note, size = 300, seed, draw, tools = true, stageClass = "" }) {
+  const card = document.createElement("article");
+  card.className = "card";
+  card.innerHTML = `<header><span class="idx">${index}</span><div><h2>${title}</h2><p>${desc}</p></div></header>
+    <div class="stage ${stageClass}"></div>
+    <div class="note">${note}</div>`;
+  const stage = card.querySelector(".stage");
+  let game = new Game((g, meta) => { board.render(g, meta); if (meta?.justMoved) hooks.onChange?.(g, meta); });
+  const host = document.createElement("div"); host.className = "mini"; stage.appendChild(host);
+  let anim = { t: 0, win: 0, lose: 0, outcomeAt: 0 };
+  const hooks = {};
+  const board = mountBoard(host, { size }, (ctx, geo, g, meta) => {
+    anim.t = performance.now();
+    draw(ctx, geo, g, meta, anim, hooks);
+  });
+  host.insertAdjacentHTML("beforeend", `<span class="hint">点这里落子</span>`);
+  board.canvas.addEventListener("click", (event) => {
+    const at = board.hit(event); if (!at) return;
+    if (!game.play(at.row, at.col)) return;
+    hooks.onMove?.(game, at);
+    if (!game.outcome) setTimeout(() => { game.aiReply(); }, 220);
+  });
+  game.seed(seed || [[7,7],[7,8],[8,7],[8,8],[6,6]]);
+  const loop = () => { board.render(game, {}); if (card.isConnected) requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+
+  if (tools) {
+    const bar = document.createElement("div"); bar.className = "tools";
+    bar.innerHTML = `<span>触发：</span>
+      <button data-act="win">胜利</button><button data-act="lose">失败</button>
+      <button data-act="draw">和棋</button><button data-act="reset">重开</button>`;
+    bar.addEventListener("click", (event) => {
+      const act = event.target?.dataset?.act; if (!act) return;
+      if (act === "reset") { game.reset(); game.seed(seed || [[7,7],[7,8],[8,7],[8,8],[6,6]]); anim = { t: 0, win: 0, lose: 0, outcomeAt: performance.now() }; hooks.onReset?.(); return; }
+      const line = [[7,7],[7,8],[7,9],[7,10],[7,11]];
+      game.board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+      game.moves = [];
+      for (const [r, c] of line) { game.board[r][c] = act === "lose" ? "white" : "black"; }
+      game.board[6][7] = act === "lose" ? "black" : "white";
+      game.moves = line.map(([r, c]) => ({ row: r, col: c, player: act === "lose" ? "white" : "black" }));
+      game.outcome = { kind: act === "win" ? "won" : act === "lose" ? "lost" : "draw", line: act === "draw" ? [] : line };
+      anim.outcomeAt = performance.now(); anim.win = 0; anim.lose = 0;
+      hooks.onOutcome?.(game, act);
+      board.render(game, {});
+    });
+    card.appendChild(bar);
+  }
+  return { card, game, board, hooks, anim };
+}
+
+/* ────────────────────────────── 10 套方案 ────────────────────────────── */
+const grid = document.getElementById("grid");
+
+/* 01 · 晨雾青瓷（安静克制：低饱和、细描边、棋子落下有涟漪） */
+{
+  const { card, hooks } = buildCard({
+    index: "01", size: 300,
+    title: "晨雾青瓷 · 涟漪",
+    desc: "低饱和青瓷底，棋子落下有一圈涟漪扩散；胜负只在五连上描一条细金线。适合长时间下棋不刺眼。",
+    note: `<span><b>动效</b><span class="dot"> ●</span> 落子涟漪 + 棋子淡入缩放</span><span><b>适合</b> 长局、夜间</span>`,
+    draw(ctx, geo, game, meta, anim, hk) {
+      drawBoardBase(ctx, geo, { from: "#dfe7e2", to: "#cbd8d1", line: "rgba(58,84,74,.42)", star: "rgba(46,72,62,.6)" });
+      for (let r = 0; r < SIZE; r += 1) for (let c = 0; c < SIZE; c += 1) {
+        const player = game.board[r][c]; if (!player) continue;
+        const age = Math.max(0, 1 - (anim.t - (anim[`m${r}-${c}`] || 0)) / 420);
+        drawStone(ctx, geo, r, c, player, 1, 1 - age * 0.12);
+      }
+      if (meta?.justMoved) {
+        const key = `m${meta.justMoved.row}-${meta.justMoved.col}`; anim[key] = anim.t;
+        const { x, y } = geo.xy(meta.justMoved.row, meta.justMoved.col);
+        const age = (anim.t - anim.t) / 700;
+        ctx.save(); ctx.globalAlpha = Math.max(0, 0.5 - age * 0.5);
+        ctx.beginPath(); ctx.arc(x, y, geo.cell * (0.5 + age * 1.4), 0, Math.PI * 2);
+        ctx.strokeStyle = "#4c7f6a"; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+      }
+      if (game.outcome?.line?.length) drawWinLine(ctx, geo, game.outcome.line, anim.t, "#c9a24a");
+    },
+  });
+  grid.appendChild(card);
+}
+
+/* 02 · 墨玉（深色：棋子有高光扫过，最后一手有十字准星） */
+{
+  const { card } = buildCard({
+    index: "02", size: 300,
+    title: "墨玉 · 高光扫过",
+    desc: "深色石底 + 高对比棋子；刚落下的那颗有一道光扫过，最后一手带十字准星。适合看直播式的对局。",
+    note: `<span><b>动效</b><span class="dot"> ●</span> 高光扫过 + 准星呼吸</span><span><b>适合</b> 深色主题、长时间盯屏</span>`,
+    draw(ctx, geo, game, meta, anim) {
+      drawBoardBase(ctx, geo, { from: "#2b3038", to: "#1e232a", line: "rgba(150,170,190,.28)", star: "rgba(180,200,215,.5)" });
+      for (let r = 0; r < SIZE; r += 1) for (let c = 0; c < SIZE; c += 1) if (game.board[r][c]) drawStone(ctx, geo, r, c, game.board[r][c]);
+      const last = game.moves[game.moves.length - 1];
+      if (last && !game.outcome) {
+        const { x, y } = geo.xy(last.row, last.col); const r = geo.cell * 0.44;
+        ctx.save(); ctx.globalAlpha = .55 + .25 * Math.sin(anim.t / 300);
+        ctx.strokeStyle = "#8fd8ff"; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(x, y, r * 1.28, 0, Math.PI * 2); ctx.stroke();
+        for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+          ctx.beginPath(); ctx.moveTo(x + dx * r * 1.5, y + dy * r * 1.5); ctx.lineTo(x + dx * r * 2.1, y + dy * r * 2.1); ctx.stroke();
+        }
+        ctx.restore();
+      }
+      if (game.outcome?.line?.length) drawWinLine(ctx, geo, game.outcome.line, anim.t, "#7fe0c0");
+    },
+  });
+  grid.appendChild(card);
+}
+
+/* 03 · 霓虹赛道（电竞：网格发光、落子有冲击波、胜负整屏描边闪） */
+{
+  const { card } = buildCard({
+    index: "03", size: 300,
+    title: "霓虹赛道 · 冲击波",
+    desc: "电竞风：发光网格、落子一圈冲击波扩散到整盘、五连时整块棋盘边缘亮起。看着最有「打起来了」的感觉。",
+    note: `<span><b>动效</b><span class="dot"> ●</span> 冲击波 + 边缘辉光 + 扫描线</span><span><b>适合</b> 快棋、直播感</span>`,
+    draw(ctx, geo, game, meta, anim) {
+      const { size, pad, cell } = geo;
+      ctx.fillStyle = "#0d1117"; ctx.fillRect(0, 0, size, size);
+      ctx.strokeStyle = "rgba(90,240,200,.22)"; ctx.lineWidth = 1;
+      for (let i = 0; i < SIZE; i += 1) {
+        const p = pad + i * cell;
+        ctx.beginPath(); ctx.moveTo(pad, p); ctx.lineTo(size - pad, p); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p, pad); ctx.lineTo(p, size - pad); ctx.stroke();
+      }
+      ctx.save(); ctx.globalAlpha = .18; ctx.fillStyle = "#5af0c8";
+      for (const [r, c] of STAR) { const p = geo.xy(r, c); ctx.beginPath(); ctx.arc(p.x, p.y, cell * 0.14, 0, Math.PI * 2); ctx.fill(); } ctx.restore();
+      const last = game.moves[game.moves.length - 1];
+      if (last) {
+        const { x, y } = geo.xy(last.row, last.col);
+        const age = ((anim.t - (anim.shock || (anim.shock = anim.t))) % 1200) / 1200;
+        ctx.save(); ctx.globalAlpha = .5 * (1 - age);
+        ctx.beginPath(); ctx.arc(x, y, cell * (0.5 + age * 6), 0, Math.PI * 2);
+        ctx.strokeStyle = "#5af0c8"; ctx.lineWidth = 2.4; ctx.stroke(); ctx.restore();
+      }
+      for (let r = 0; r < SIZE; r += 1) for (let c = 0; c < SIZE; c += 1) if (game.board[r][c]) {
+        const { x, y } = geo.xy(r, c);
+        ctx.save(); ctx.shadowColor = game.board[r][c] === "black" ? "#4ad0ff" : "#ff9ad0"; ctx.shadowBlur = cell * 0.5;
+        drawStone(ctx, geo, r, c, game.board[r][c]); ctx.restore();
+        if (game.board[r][c] === "white") { ctx.beginPath(); ctx.arc(x, y, cell * 0.44, 0, Math.PI * 2); ctx.strokeStyle = "#ffd9ec"; ctx.lineWidth = 1.2; ctx.stroke(); }
+      }
+      if (game.outcome?.line?.length) drawWinLine(ctx, geo, game.outcome.line, anim.t, "#ffe066");
+      if (game.outcome) {
+        ctx.save(); ctx.globalAlpha = .35 + .3 * Math.sin(anim.t / 200);
+        ctx.strokeStyle = game.outcome.kind === "won" ? "#5af0c8" : "#ff7a7a"; ctx.lineWidth = 6;
+        ctx.strokeRect(3, 3, size - 6, size - 6); ctx.restore();
+      }
+    },
+  });
+  grid.appendChild(card);
+}
+
+/* 04 · 手账纸页（纸质：格子纸 + 手绘感棋子 + 落子像盖章） */
+{
+  const { card } = buildCard({
+    index: "04", size: 300,
+    title: "手账纸页 · 盖章",
+    desc: "方格纸底、棋子像印章压下去（先大后小回落），最后一手有淡淡的墨迹晕开。安静但很有手感。",
+    note: `<span><b>动效</b><span class="dot"> ●</span> 盖章回弹 + 墨迹晕开</span><span><b>适合</b> 打谱式复盘、笔记风</span>`,
+    draw(ctx, geo, game, meta, anim) {
+      const { size, pad, cell } = geo;
+      ctx.fillStyle = "#fbf7ec"; ctx.fillRect(0, 0, size, size);
+      ctx.strokeStyle = "rgba(120,140,170,.30)"; ctx.lineWidth = 1;
+      for (let i = 0; i < SIZE; i += 1) {
+        const p = pad + i * cell;
+        ctx.beginPath(); ctx.moveTo(pad, p); ctx.lineTo(size - pad, p); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p, pad); ctx.lineTo(p, size - pad); ctx.stroke();
+      }
+      ctx.strokeStyle = "rgba(180,90,80,.55)"; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(pad, size / 2); ctx.lineTo(size - pad, size / 2); ctx.stroke();
+      const last = game.moves[game.moves.length - 1];
+      for (let r = 0; r < SIZE; r += 1) for (let c = 0; c < SIZE; c += 1) if (game.board[r][c]) drawStone(ctx, geo, r, c, game.board[r][c]);
+      if (last) {
+        const { x, y } = geo.xy(last.row, last.col);
+        const age = ((anim.t - (anim.ink || (anim.ink = anim.t))) % 900) / 900;
+        ctx.save(); ctx.globalAlpha = .28 * (1 - age); ctx.fillStyle = "#8a4a3c";
+        ctx.beginPath(); ctx.arc(x, y, cell * (0.5 + age * 0.9), 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+      if (game.outcome?.line?.length) drawWinLine(ctx, geo, game.outcome.line, anim.t, "#b8563f");
+    },
+  });
+  grid.appendChild(card);
+}
+
+/* 05 · 电影黑金（庄重：金线描边、胜负是整屏金幕收拢 + 印章落下） */
+{
+  const { card, hooks } = buildCard({
+    index: "05", size: 300,
+    title: "电影黑金 · 金幕印章",
+    desc: "黑金配色，棋盘只有极细金线；五连时金线沿五子描一遍、整屏金幕收拢，中间落一个「胜」字印。最有仪式感。",
+    note: `<span><b>动效</b><span class="dot"> ●</span> 金幕收拢 + 印章落下 + 描线</span><span><b>适合</b> 决胜局、赛事感</span>`,
+    draw(ctx, geo, game, meta, anim) {
+      const { size, pad, cell } = geo;
+      const g = ctx.createLinearGradient(0, 0, size, size);
+      g.addColorStop(0, "#14110c"); g.addColorStop(1, "#1d1810");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+      ctx.strokeStyle = "rgba(212,175,90,.34)"; ctx.lineWidth = 1;
+      for (let i = 0; i < SIZE; i += 1) {
+        const p = pad + i * cell;
+        ctx.beginPath(); ctx.moveTo(pad, p); ctx.lineTo(size - pad, p); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p, pad); ctx.lineTo(p, size - pad); ctx.stroke();
+      }
+      for (let r = 0; r < SIZE; r += 1) for (let c = 0; c < SIZE; c += 1) if (game.board[r][c]) drawStone(ctx, geo, r, c, game.board[r][c]);
+      if (game.outcome?.line?.length) {
+        const age = Math.min(1, (anim.t - (anim.outcomeAt || anim.t)) / 700);
+        const a = geo.xy(...game.outcome.line[0]), b = geo.xy(...game.outcome.line[game.outcome.line.length - 1]);
+        ctx.save(); ctx.lineCap = "round"; ctx.strokeStyle = "#e8c069"; ctx.lineWidth = cell * 0.2;
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(a.x + (b.x - a.x) * age, a.y + (b.y - a.y) * age); ctx.stroke(); ctx.restore();
+        if (age >= 1) {
+          ctx.save();
+          const curtain = Math.min(1, (anim.t - anim.outcomeAt - 500) / 600);
+          ctx.globalAlpha = .55 * curtain;
+          ctx.fillStyle = "#000"; ctx.fillRect(0, 0, size, size);
+          ctx.globalAlpha = curtain;
+          ctx.translate(size / 2, size / 2);
+          const seal = 0.7 + 0.3 * Math.min(1, (anim.t - anim.outcomeAt - 800) / 260);
+          ctx.scale(seal, seal); ctx.rotate(-0.06);
+          ctx.fillStyle = "#c0392b"; ctx.beginPath(); ctx.arc(0, 0, cell * 1.5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "#fff3d0"; ctx.font = `700 ${Math.round(cell * 1.5)}px serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(game.outcome.kind === "won" ? "胜" : game.outcome.kind === "lost" ? "负" : "和", 0, 2);
+          ctx.restore();
+        }
+      }
+    },
+  });
+  grid.appendChild(card);
+}
+
+/* 06 · 玻璃拟态（现代：磨砂卡片浮起、落子有光斑、胜负卡片从棋盘中心放大） */
+{
+  const { card } = buildCard({
+    index: "06", size: 300,
+    title: "玻璃拟态 · 浮起卡片",
+    desc: "棋盘压在一层磨砂玻璃下、信息卡片浮在上面；落子有一片光斑滑过，胜负时结果卡片从棋盘中心弹出来。",
+    note: `<span><b>动效</b><span class="dot"> ●</span> 光斑滑过 + 卡片弹出</span><span><b>适合</b> 现代风、平板</span>`,
+    draw(ctx, geo, game, meta, anim) {
+      const { size, pad, cell } = geo;
+      const g = ctx.createLinearGradient(0, 0, size, size);
+      g.addColorStop(0, "#eef3f8"); g.addColorStop(1, "#cfd9e6");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+      ctx.strokeStyle = "rgba(70,90,120,.30)";
+      for (let i = 0; i < SIZE; i += 1) {
+        const p = pad + i * cell;
+        ctx.beginPath(); ctx.moveTo(pad, p); ctx.lineTo(size - pad, p); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p, pad); ctx.lineTo(p, size - pad); ctx.stroke();
+      }
+      const sheen = ((anim.t / 2600) % 1) * size * 2 - size * 0.5;
+      const sg = ctx.createLinearGradient(sheen - size * .3, 0, sheen + size * .3, size);
+      sg.addColorStop(0, "rgba(255,255,255,0)"); sg.addColorStop(.5, "rgba(255,255,255,.5)"); sg.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = sg; ctx.fillRect(0, 0, size, size);
+      for (let r = 0; r < SIZE; r += 1) for (let c = 0; c < SIZE; c += 1) if (game.board[r][c]) drawStone(ctx, geo, r, c, game.board[r][c]);
+      if (game.outcome) {
+        const pop = Math.min(1, (anim.t - (anim.outcomeAt || anim.t)) / 380);
+        const ease = 1 - Math.pow(1 - pop, 3);
+        ctx.save(); ctx.translate(size / 2, size / 2); ctx.scale(0.6 + ease * 0.4, 0.6 + ease * 0.4); ctx.globalAlpha = ease;
+        const w = size * 0.62, h = size * 0.26;
+        ctx.fillStyle = "rgba(255,255,255,.72)"; ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, 14); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#26313d"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.font = `800 ${Math.round(cell * 0.85)}px -apple-system,"Segoe UI",sans-serif`;
+        ctx.fillText(game.outcome.kind === "won" ? "你赢了" : game.outcome.kind === "lost" ? "你输了" : "和棋", 0, -cell * 0.18);
+        ctx.font = `500 ${Math.round(cell * 0.42)}px -apple-system,"Segoe UI",sans-serif`; ctx.fillStyle = "#5a6a7a";
+        ctx.fillText(game.outcome.kind === "won" ? "五连达成 · 12 手" : game.outcome.kind === "lost" ? "AI 五连 · 12 手" : "棋盘下满", 0, cell * 0.42);
+        ctx.restore();
+      }
+    },
+  });
+  grid.appendChild(card);
+}
+
+/* 07 · 极简网格（无底纹：只有点和线，落子是一个点扩散；胜负用整屏灰度） */
+{
+  const { card } = buildCard({
+    index: "07", size: 300,
+    title: "极简网格 · 点扩散",
+    desc: "没有棋盘底纹，只有交点；棋子是最小的实心点，落子时那个点扩散一圈；胜负时整屏转为灰度、只有五连保持彩色。",
+    note: `<span><b>动效</b><span class="dot"> ●</span> 点扩散 + 胜负灰度对比</span><span><b>适合</b> 极简偏好、专注</span>`,
+    draw(ctx, geo, game, meta, anim) {
+      const { size, pad, cell } = geo;
+      ctx.fillStyle = "#f7f7f5"; ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = "rgba(60,60,60,.42)";
+      for (let r = 0; r < SIZE; r += 1) for (let c = 0; c < SIZE; c += 1) {
+        const p = geo.xy(r, c); ctx.beginPath(); ctx.arc(p.x, p.y, 1.1, 0, Math.PI * 2); ctx.fill();
+      }
+      const dim = game.outcome ? 0.25 : 1;
+      for (let r = 0; r < SIZE; r += 1) for (let c = 0; c < SIZE; c += 1) if (game.board[r][c]) {
+        const onWin = game.outcome?.line?.some(([wr, wc]) => wr === r && wc === c);
+        drawStone(ctx, geo, r, c, game.board[r][c], onWin || !game.outcome ? 1 : dim, 0.86);
+      }
+      const last = game.moves[game.moves.length - 1];
+      if (last && !game.outcome) {
+        const { x, y } = geo.xy(last.row, last.col);
+        const age = ((anim.t - (anim.dot || (anim.dot = anim.t))) % 800) / 800;
+        ctx.save(); ctx.globalAlpha = .35 * (1 - age); ctx.fillStyle = "#333";
+        ctx.beginPath(); ctx.arc(x, y, cell * (0.25 + age * 0.75), 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+      if (game.outcome?.line?.length) drawWinLine(ctx, geo, game.outcome.line, anim.t, "#e08b3a");
+    },
+  });
+  grid.appendChild(card);
+}
+
+/* 08 · 木质经典（拟物：木纹 + 棋子立体投影 + 落子「啪」的下压感） */
+{
+  const { card } = buildCard({
+    index: "08", size: 300,
+    title: "木质经典 · 下压感",
+    desc: "最接近真木盘：木纹底、棋子有立体投影，落子时棋子先压扁再回弹（像真棋子拍在盘上）。",
+    note: `<span><b>动效</b><span class="dot"> ●</span> 压扁回弹 + 投影</span><span><b>适合</b> 传统手感、线下感</span>`,
+    draw(ctx, geo, game, meta, anim) {
+      const { size, pad, cell } = geo;
+      const g = ctx.createLinearGradient(0, 0, size, size);
+      g.addColorStop(0, "#e6c187"); g.addColorStop(.5, "#d8ad6d"); g.addColorStop(1, "#c99a56");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+      ctx.save(); ctx.globalAlpha = .10; ctx.strokeStyle = "#7a5326"; ctx.lineWidth = 1;
+      for (let i = 0; i < 26; i += 1) {
+        ctx.beginPath(); ctx.moveTo(0, i * size / 26); ctx.bezierCurveTo(size * .3, i * size / 26 + 5, size * .7, i * size / 26 - 5, size, i * size / 26); ctx.stroke();
+      }
+      ctx.restore();
+      ctx.strokeStyle = "rgba(72,48,22,.6)";
+      for (let i = 0; i < SIZE; i += 1) {
+        const p = pad + i * cell;
+        ctx.beginPath(); ctx.moveTo(pad, p); ctx.lineTo(size - pad, p); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p, pad); ctx.lineTo(p, size - pad); ctx.stroke();
+      }
+      for (const [r, c] of STAR) { const p = geo.xy(r, c); ctx.beginPath(); ctx.arc(p.x, p.y, cell * 0.11, 0, Math.PI * 2); ctx.fillStyle = "rgba(60,40,18,.7)"; ctx.fill(); }
+      const last = game.moves[game.moves.length - 1];
+      for (let r = 0; r < SIZE; r += 1) for (let c = 0; c < SIZE; c += 1) if (game.board[r][c]) {
+        const isLast = last && last.row === r && last.col === c;
+        const squash = isLast ? Math.max(0, 1 - (anim.t - (anim.press || (anim.press = anim.t))) / 260) : 0;
+        const { x, y } = geo.xy(r, c); const rad = cell * 0.44;
+        ctx.save();
+        ctx.beginPath(); ctx.ellipse(x, y + rad * 0.2, rad * (1 + squash * 0.14), rad * (1 - squash * 0.24), 0, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(0,0,0,.26)"; ctx.filter = "blur(2px)"; ctx.fill(); ctx.filter = "none";
+        ctx.restore();
+        drawStone(ctx, geo, r, c, game.board[r][c], 1, 1 + squash * 0.06);
+      }
+      if (game.outcome?.line?.length) drawWinLine(ctx, geo, game.outcome.line, anim.t, "#8a3b2a");
+    },
+  });
+  grid.appendChild(card);
+}
+
+/* 09 · 指挥中心（数据感：把「引擎在算什么」画在棋盘周围，落子带轨迹线） */
+{
+  const { card } = buildCard({
+    index: "09", size: 300,
+    title: "指挥中心 · 引擎可视化",
+    desc: "给喜欢看引擎的人：棋盘外圈是一圈刻度环，显示思考深度与用时；落子连出一条轨迹线。过程信息全在，但不给推荐点与胜率。",
+    note: `<span><b>动效</b><span class="dot"> ●</span> 刻度环随思考推进 + 落子轨迹</span><span><b>适合</b> 想看得见引擎在忙</span>`,
+    draw(ctx, geo, game, meta, anim) {
+      const { size, pad, cell } = geo;
+      const g = ctx.createRadialGradient(size / 2, size / 2, size * 0.1, size / 2, size / 2, size * 0.75);
+      g.addColorStop(0, "#16202b"); g.addColorStop(1, "#0c1218");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+      ctx.strokeStyle = "rgba(110,200,255,.22)";
+      for (let i = 0; i < SIZE; i += 1) {
+        const p = pad + i * cell;
+        ctx.beginPath(); ctx.moveTo(pad, p); ctx.lineTo(size - pad, p); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p, pad); ctx.lineTo(p, size - pad); ctx.stroke();
+      }
+      // 外圈刻度：深度 0-20 层
+      ctx.save(); ctx.translate(size / 2, size / 2);
+      for (let i = 0; i < 40; i += 1) {
+        const angle = (i / 40) * Math.PI * 2 - Math.PI / 2;
+        const active = i < 26;
+        ctx.strokeStyle = active ? "rgba(110,200,255,.75)" : "rgba(110,200,255,.18)";
+        ctx.lineWidth = active ? 2.4 : 1.2;
+        const r1 = size * 0.47, r2 = size * (active ? 0.5 : 0.485);
+        ctx.beginPath(); ctx.moveTo(Math.cos(angle) * r1, Math.sin(angle) * r1); ctx.lineTo(Math.cos(angle) * r2, Math.sin(angle) * r2); ctx.stroke();
+      }
+      ctx.restore();
+      for (let r = 0; r < SIZE; r += 1) for (let c = 0; c < SIZE; c += 1) if (game.board[r][c]) {
+        ctx.save(); ctx.shadowColor = game.board[r][c] === "black" ? "#6ec8ff" : "#ffd9a0"; ctx.shadowBlur = cell * 0.35;
+        drawStone(ctx, geo, r, c, game.board[r][c]); ctx.restore();
+      }
+      // 落子轨迹：最近 6 手连成一条渐隐线
+      const tail = game.moves.slice(-6);
+      ctx.save(); ctx.lineWidth = 1.6;
+      for (let i = 1; i < tail.length; i += 1) {
+        const a = geo.xy(tail[i - 1].row, tail[i - 1].col), b = geo.xy(tail[i].row, tail[i].col);
+        ctx.globalAlpha = 0.12 + 0.5 * (i / tail.length);
+        ctx.strokeStyle = "#6ec8ff"; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      }
+      ctx.restore();
+      ctx.fillStyle = "rgba(180,225,255,.85)"; ctx.font = `600 ${Math.round(cell * 0.42)}px ui-monospace,monospace`;
+      ctx.fillText("DEPTH 13 · 48.2k nodes", pad * 0.7, size - pad * 0.35);
+      if (game.outcome?.line?.length) drawWinLine(ctx, geo, game.outcome.line, anim.t, "#6ec8ff");
+    },
+  });
+  grid.appendChild(card);
+}
+
+/* 10 · 竹影清风（东方：宣纸 + 竹叶 + 落子如落墨，胜负盖一枚闲章） */
+{
+  const { card } = buildCard({
+    index: "10", size: 300,
+    title: "竹影清风 · 落墨闲章",
+    desc: "宣纸底、淡竹叶印在角落；棋子像墨点落在纸上（边缘微微洇开），五连时题一行小字、盖一枚闲章。",
+    note: `<span><b>动效</b><span class="dot"> ●</span> 落墨洇开 + 闲章 + 题字</span><span><b>适合</b> 国风、慢棋</span>`,
+    draw(ctx, geo, game, meta, anim) {
+      const { size, pad, cell } = geo;
+      ctx.fillStyle = "#f6f2e6"; ctx.fillRect(0, 0, size, size);
+      ctx.save(); ctx.globalAlpha = .16; ctx.fillStyle = "#5f7a52";
+      for (let i = 0; i < 7; i += 1) {
+        ctx.beginPath();
+        ctx.ellipse(size * (0.78 + 0.03 * Math.sin(i)), size * (0.12 + i * 0.055), cell * 0.5, cell * 0.14, -0.7 + i * 0.1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      ctx.strokeStyle = "rgba(60,52,40,.45)";
+      for (let i = 0; i < SIZE; i += 1) {
+        const p = pad + i * cell;
+        ctx.beginPath(); ctx.moveTo(pad, p); ctx.lineTo(size - pad, p); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p, pad); ctx.lineTo(p, size - pad); ctx.stroke();
+      }
+      const last = game.moves[game.moves.length - 1];
+      for (let r = 0; r < SIZE; r += 1) for (let c = 0; c < SIZE; c += 1) if (game.board[r][c]) {
+        const isLast = last && last.row === r && last.col === c;
+        const spread = isLast ? Math.max(0, 1 - (anim.t - (anim.ink || (anim.ink = anim.t))) / 520) : 0;
+        if (spread > 0) {
+          const { x, y } = geo.xy(r, c);
+          ctx.save(); ctx.globalAlpha = .22 * spread; ctx.fillStyle = game.board[r][c] === "black" ? "#2c2a24" : "#8a8478";
+          ctx.beginPath(); ctx.arc(x, y, cell * (0.5 + spread * 0.4), 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        }
+        drawStone(ctx, geo, r, c, game.board[r][c]);
+      }
+      if (game.outcome?.line?.length) {
+        drawWinLine(ctx, geo, game.outcome.line, anim.t, "#a8442f");
+        const age = Math.min(1, (anim.t - (anim.outcomeAt || anim.t)) / 500);
+        ctx.save(); ctx.globalAlpha = age;
+        ctx.fillStyle = "#3a352c"; ctx.font = `500 ${Math.round(cell * 0.46)}px serif`;
+        ctx.fillText(game.outcome.kind === "won" ? "连珠成五，胜负已分" : game.outcome.kind === "lost" ? "技高一筹，此局惜败" : "平分秋色", pad * 0.9, size - pad * 0.6);
+        ctx.translate(size - pad * 1.6, size - pad * 1.5); ctx.rotate(-0.08);
+        ctx.fillStyle = "#b03a2e"; ctx.globalAlpha = age * .9;
+        ctx.beginPath(); ctx.roundRect(-cell * 0.7, -cell * 0.7, cell * 1.4, cell * 1.4, 4); ctx.fill();
+        ctx.fillStyle = "#fff5e6"; ctx.font = `700 ${Math.round(cell * 0.62)}px serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(game.outcome.kind === "won" ? "胜" : game.outcome.kind === "lost" ? "负" : "和", 0, 1);
+        ctx.restore();
+      }
+    },
+  });
+  grid.appendChild(card);
+}
+
+/* 收尾：把「10 套」这件事说清楚，并给一句怎么挑 */
+{
+  const foot = document.createElement("article");
+  foot.className = "card";
+  foot.innerHTML = `<header><span class="idx">✓</span><div><h2>怎么挑</h2>
+    <p>上面 10 套都能真下：点棋盘落子、AI 会应手、按钮能触发胜负。挑的时候建议同时看三件事——<b>长时间盯着累不累</b>（01/02/07 最轻）、<b>胜负那一下够不够痛快</b>（03/05/10 最强）、<b>跟现有主题合不合</b>（04/08/10 偏暖，02/03/09 偏冷，06 中性）。</p></div></header>
+    <div class="note" style="border-top:0">
+      <span><b>选法</b>：告诉我编号（可以「03 的棋盘 + 05 的胜负」这样混搭），我把它做成真的对弈界面，并把动效接进现有的落子/终局流程。</span>
+      <span><b>说明</b>：这是设计实验室页面（<code>design-lab/duel-layouts/</code>），不是产品代码，不影响应用本体。</span>
+    </div>`;
+  grid.appendChild(foot);
+}
+</script>
+</body></html>

@@ -79,7 +79,9 @@ const readGame = () => page.evaluate(() => {
 const waitMoves = async (n, budgetMs) => { const t0 = Date.now(); while (Date.now() - t0 < budgetMs) { const g = await readGame(); if (g.moves.length >= n) return g; await page.waitForTimeout(400); } return readGame(); };
 
 // S1 人机弹窗：五手两打 + 开局库开关
-await page.evaluate(() => { [...document.querySelectorAll("nav.bottom-nav button")].find((b) => (b.textContent || "").includes("AI"))?.click(); });
+await page.evaluate(() => { [...document.querySelectorAll("nav.bottom-nav button")].find((b) => (b.textContent || "").includes("对弈"))?.click(); });
+await page.waitForTimeout(700);
+await page.locator('[data-duel-entry="ai"] .duel-entry-action').click();
 await page.waitForTimeout(900);
 const bookToggle = await page.evaluate(() => { const b = document.querySelector(".ai-setup-book-toggle"); return b ? b.getAttribute("aria-pressed") === "true" : false; });
 check("S1a 人机弹窗开局库开关开启", bookToggle);

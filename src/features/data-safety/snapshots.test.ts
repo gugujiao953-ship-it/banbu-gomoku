@@ -23,6 +23,34 @@ describe("snapshot repository", () => {
     expect(applied).toBe("原状态");
     expect(repo.list(original.id).some((item) => item.trigger === "restore-protection")).toBe(true);
   });
+
+  // 版本历史接线（audit 2026-09-17）：App 在每次保存**前**留档，所以列表里存的是
+  // "上一版"。这里固定住这条契约：留档保存的是当时那份内容，恢复能整份拿回来。
+  it("留档保存的是保存前的内容，且能整份恢复", async () => {
+    const repo = new SnapshotRepository();
+    const before = createDocument("改之前的名字");
+    const snap = repo.create(before, "manual", "保存前自动留档", { now: "2026-09-17T00:00:00.000Z" })!;
+    expect(snap.summary).toBe("保存前自动留档");
+    expect(repo.list(before.id)).toHaveLength(1);
+
+    const after = { ...before, metadata: { ...before.metadata, title: "改之后的名字" }, updatedAt: "2026-09-17T00:05:00.000Z" };
+    let restored: string | null = null;
+    await repo.restore(snap.id, after, async (doc) => { restored = doc.metadata.title; });
+    expect(restored).toBe("改之前的名字");
+    // 恢复前的那一版被自动保护，所以用户还能再走回去。
+    expect(repo.list(before.id).some((item) => item.trigger === "restore-protection" && item.pinned)).toBe(true);
+  });
+
+  it("钉住的版本不会被条数上限清掉", () => {
+    const repo = new SnapshotRepository({ ...DEFAULT_SNAPSHOT_POLICY, maxPerObject: 2 });
+    const doc = createDocument("钉住");
+    const pinned = repo.create(doc, "manual", "要保留的版本", { pinned: true, now: "2026-09-17T00:00:00.000Z" })!;
+    for (let index = 1; index <= 4; index += 1) {
+      repo.create({ ...doc, updatedAt: `2026-09-17T00:0${index}:00.000Z` }, "manual", `第 ${index} 版`, { now: `2026-09-17T00:1${index}:00.000Z` });
+    }
+    const kept = repo.list(doc.id);
+    expect(kept.some((item) => item.id === pinned.id)).toBe(true);
+  });
 });
 
 class MemoryStorage implements Storage {

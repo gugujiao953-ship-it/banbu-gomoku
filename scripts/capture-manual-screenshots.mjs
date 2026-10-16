@@ -126,7 +126,7 @@ await step("puzzle", async () => { await reset(); await mode("做题"); await pa
 // 11 错题本：现行入口在棋谱库「题库」分区顶部的错题本按钮（旧 dock-tabs 路径已退役）
 await step("wrongbook", async () => { await reset(); await nav("棋谱库"); await page.waitForTimeout(700); await page.locator(".library-segment button:has-text('题库')").first().click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(500); await page.getByText("错题本", { exact: false }).first().click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(700); await clip("s11f7", ".bottom-sheet"); await dismiss(); });
 // 13 AI 规则 sheet（无守卫，干净 AI sheet）
-await step("ai-sheet", async () => { await reset(); await dismissDraftGuard(); await nav("AI"); await page.waitForTimeout(800); await clip("s13f1", ".bottom-sheet"); await dismiss(); });
+await step("ai-sheet", async () => { await reset(); await dismissDraftGuard(); await nav("对弈"); await page.waitForTimeout(500); await page.locator('[data-duel-entry="ai"] .duel-entry-action').click(); await page.waitForTimeout(800); await clip("s13f1", ".bottom-sheet"); await dismiss(); });
 // 14 分析：功能区 analysis 按钮图标；点开后 .ai-analysis-panel 实时面板（T14/T15 改版入口）
 await step("think-icon", async () => { await reset(); await clip("s14icon", '[data-action-id="analysis"]', 8); });
 await step("think", async () => { await seedEditable(); await dismiss(); await page.locator('[data-action-id="analysis"]').first().click({ timeout: 5000 }).catch(() => {}); await page.waitForTimeout(2600); await clip("s14f1", ".ai-analysis-panel"); await dismiss(); });
@@ -170,8 +170,14 @@ await step("settings", async () => {
   await clip("s16f1", ".theme-preference");
   await clipInner("s16f2", "棋盘", ".visual-theme-settings");
   await clipInner("s16f3", "棋子", ".visual-theme-settings");
-  // 组合透明度预览=棋子小节内的材质组合预览行（与棋盘同名控件用作用域区分，杜绝重复）
-  await clipInner("s16f4", "棋子", ".stone-opacity-setting");
+  // 组合透明度预览：2026-10-08 起透明度两项搬到了「棋盘显示」区（原来在「棋子」小节里）。
+  // 直接点开「棋盘显示」分类再取 .stone-opacity-setting，不写死小节名，免得下次再挪时静默截错。
+  await page.evaluate(() => {
+    const target = [...document.querySelectorAll("details.settings-group")].find((g) => (g.querySelector(".settings-section-title > b")?.textContent || "").trim() === "棋盘显示");
+    if (target && !target.open) (target.querySelector(":scope > summary.settings-section-toggle") || target.querySelector("summary"))?.click();
+  });
+  await page.waitForTimeout(500);
+  await clip("s16f4", ".stone-opacity-setting");
   // 从目标控件向上找最近的 details 祖先后展开（组容器类名/summary 层级都不确定）
   await page.evaluate(() => { const el = document.querySelector(".font-scale-options"); const d = el?.closest("details"); if (d && !d.open) (d.querySelector(":scope > summary") || d.querySelector("summary"))?.click(); });
   await page.waitForTimeout(500);

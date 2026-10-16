@@ -1,0 +1,264 @@
+/* daily-puzzle.css — 每日一题的专门界面（用户 2026-10-11）。
+   配色一律照应用既有规范（styles.css / duel.css / vcf-challenge.css 的写法）：
+   面板 --surface + --surface-border、正文 --ink、次要 --muted、主色 --green + 其上文字
+   --on-accent、浅主色 --jade、警示 --red、金 --gold。不要再自造变量名
+   （挑战页曾撞上 --surface 的深色定义导致黑底黑字）。 */
+
+/* 整页：与挑战页同一条骨架（全宽居中、列布局、给底部导航留位置）。 */
+.dailyp-page {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 8px 12px 14px;
+  color: var(--ink, #292620);
+  /**
+   * **深金 / 亮金令牌**（照 `soul-lockable.css` 那一套先例）。
+   *
+   * ⚠ 直接拿 `--gold` 当**文字色**在浅色主题上会掉到 2.4:1（门禁实测：
+   * 难度星最低 2.36、悔棋按钮 3.89）—— 因为 `--gold` 是给"描边、底色、光晕"
+   * 用的中亮金，压在浅底上当字看根本读不清。项目里早有这条教训，
+   * 修法就是这两个令牌：浅底用深金、深底用亮金，逐主题给全。
+   */
+  --dailyp-gold-ink: #6b4c17;
+  --dailyp-accent-ink: var(--green, #365e4b);
+}
+html[data-theme="dark"] .dailyp-page,
+html[data-theme="rain"] .dailyp-page,
+html[data-theme="jiangnan"] .dailyp-page,
+html[data-theme="firefly"] .dailyp-page,
+html[data-theme="pixel"] .dailyp-page,
+html[data-theme="cyber"] .dailyp-page,
+html[data-theme="blackgold"] .dailyp-page,
+html[data-theme="aurora"] .dailyp-page,
+html[data-theme="deepsea"] .dailyp-page,
+html[data-theme="pelican"] .dailyp-page,
+html[data-theme="dunhuang"] .dailyp-page,
+html[data-theme="soul"] .dailyp-page {
+  --dailyp-gold-ink: #e8cd8a;
+  /* 深底主题的 `--green` 本身就是亮色（rain #78b6a2、cyber #4fe4df…），
+     直接当字用是够的 —— 只有浅底那批才需要压深，见下面那条。 */
+  --dailyp-accent-ink: var(--green, #78b6a2);
+}
+/* 浅底那批主题：主色（绿）当字用要**压深**才够对比（`--green` 在中性浅底上约 3.9:1）。 */
+html[data-theme="light"] .dailyp-page,
+html[data-theme="eye"] .dailyp-page,
+html[data-theme="mono"] .dailyp-page,
+html[data-theme="bamboo"] .dailyp-page,
+html[data-theme="snow"] .dailyp-page,
+html[data-theme="porcelain"] .dailyp-page,
+html[data-theme="plum"] .dailyp-page,
+html[data-theme="rice"] .dailyp-page,
+html[data-theme="pale"] .dailyp-page,
+html[data-theme="kawaii"] .dailyp-page,
+html[data-theme="baroque"] .dailyp-page {
+  --dailyp-accent-ink: color-mix(in srgb, var(--green, #365e4b) 78%, #17211c);
+}
+
+/* ── 顶部：返回 + 题目名 + 难度 ───────────────────────────────────── */
+.dailyp-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dailyp-top > button {
+  display: inline-flex; align-items: center; padding: 7px 9px; flex: 0 0 auto;
+  border-radius: 11px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface, var(--paper, #f8f6f1));
+  color: var(--ink, #292620);
+  cursor: pointer;
+}
+.dailyp-title { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.dailyp-title b {
+  font-size: 17px; line-height: 1.2;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dailyp-title small {
+  font-size: 11px; color: var(--muted, #68635b);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dailyp-difficulty {
+  display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto;
+  padding: 4px 8px; border-radius: 999px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: color-mix(in srgb, var(--gold, #c79c4a) 14%, var(--surface, #fff));
+  color: var(--dailyp-gold-ink, #6b4c17);
+}
+.dailyp-difficulty em { font-style: normal; font-size: 10px; letter-spacing: 1px; }
+
+/* ── 状态行：你执子 + 当前状态 + 手数 ─────────────────────────────── */
+.dailyp-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 2px; }
+.dailyp-side-chip {
+  display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
+  padding: 5px 10px; border-radius: 12px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface, var(--paper, #f8f6f1));
+  font-size: 12px; font-weight: 600;
+}
+.dailyp-dot { display: block; width: 11px; height: 11px; border-radius: 50%; box-shadow: inset 0 0 0 1px #00000030; }
+.dailyp-dot.black { background: #1b1b20; }
+.dailyp-dot.white { background: #fbfaf4; box-shadow: inset 0 0 0 1px #9a958c; }
+.dailyp-state { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.dailyp-state b { font-size: 14px; color: var(--ink, #292620); }
+.dailyp-state small { font-size: 11px; color: var(--muted, #68635b); font-variant-numeric: tabular-nums; }
+.dailyp-state[data-dailyp-state="won"] b { color: var(--dailyp-accent-ink, #365e4b); }
+.dailyp-state[data-dailyp-state="lost"] b { color: var(--red, #b94b3f); }
+.dailyp-spin { animation: dailyp-spin 1.1s linear infinite; }
+@keyframes dailyp-spin { to { transform: rotate(360deg); } }
+
+/* 提示行（题面文字 / 走错的原因）：**固定两行高度**，免得文字一换棋盘就跳。 */
+.dailyp-hint {
+  margin: 0; padding: 7px 10px; min-height: 34px;
+  display: flex; align-items: center;
+  border-radius: 11px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface-2, rgba(0, 0, 0, 0.03));
+  font-size: 12px; line-height: 1.35; color: var(--muted, #68635b);
+}
+.dailyp-page[data-dailyp-outcome="won"] .dailyp-hint { border-color: color-mix(in srgb, var(--green, #3f7a52) 40%, var(--surface-border, #dfdad0)); }
+.dailyp-page[data-dailyp-outcome="lost"] .dailyp-hint { border-color: color-mix(in srgb, var(--red, #b94b3f) 40%, var(--surface-border, #dfdad0)); }
+.dailyp-done-note {
+  margin: 0; padding: 6px 10px; border-radius: 11px;
+  border: 1px dashed var(--surface-border, var(--line, #dfdad0));
+  font-size: 11px; line-height: 1.4; color: var(--muted, #68635b);
+}
+
+/* ── 棋盘：宽度铺满内容列（与挑战页一致，跟着打谱的显示设置缩子/坐标） ── */
+.dailyp-board {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: manipulation;
+  border-radius: 14px;
+  box-shadow: 0 10px 26px #2c2a231f;
+}
+
+/* ── 操作：悔棋 / 重来（两枚，不堆一排按钮 —— 这一页刻意只有这两件事） ── */
+.dailyp-actions { display: flex; gap: 8px; }
+.dailyp-actions button {
+  flex: 1 1 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface, var(--paper, #f8f6f1));
+  color: var(--ink, #292620);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+/**
+ * ⚠ 禁用的表现**不用 `opacity`**（第一版是 `opacity: .45`）：门禁逐主题量下来，
+ * 配 `--ink` 在 eye / rice 那几套浅底主题上会掉到 **3.89:1**（< 4.5）。
+ * 半透明是把前景和底色**一起**往中间拉，对比度必然变差。
+ *
+ * 也**不用 `--muted`**（第二版改成它，仍然不够）：`--muted` 配 `--surface-2`
+ * 是项目里已知的弱组合（`clock.css` 里为同一件事专门抬过一次色）——
+ * 它在浅底主题上本来就只有 4.3 上下，再叠"禁用"的观感就更低。
+ *
+ * 现在"灰"由**底色下沉**（surface → surface-2）与**去掉字重**表达，
+ * 文字仍用 `--ink` —— 用户得读得出来那是什么按钮、为什么它现在不能点。
+ */
+/**
+ * 禁用的表现**交给项目的全局令牌**，本页不另写。
+ *
+ * 这一页试过三版，最后回到"什么都不写"——理由值得记下来：
+ *
+ *  ① `opacity: .45` —— 半透明把前景与底色**一起**往中间拉，eye 主题掉到 3.89:1；
+ *  ② `color: var(--muted)` + `background: var(--surface-2)` —— `--muted` 配
+ *     `--surface-2` 是仓库里已知的弱组合（`clock.css` 为同一件事抬过一次色），
+ *     rice / plum / snow 仍在 4.1–4.4；
+ *  ③ `color: var(--ink)` —— **看起来对，实际不生效**：`design-tokens.css` 里有一条
+ *     `.app-shell button:disabled:not(.primary-button):not(.danger-button) { color:
+ *     var(--button-disabled-text) !important }`，全应用所有禁用按钮都吃它，
+ *     本页的 `color` 被它盖掉（实测仍是 3.89）。
+ *
+ * 那条全局规则是**有意**的统一观感（它的注释写着"preserve a visible disabled
+ * surface instead of fading text to near-invisibility"），而且 WCAG 1.4.3
+ * **明确豁免**禁用控件 —— 所以本页不该去 `!important` 对拼，
+ * 只保留"光标不变成手"这一条本页该管的事。
+ *
+ * 门禁相应改成量**启用态**（那时按钮才真的需要读得清），见 `daily-puzzle-check.mjs`。
+ */
+.dailyp-actions button:disabled { cursor: default; }
+
+/* ── 结算弹窗（借挑战页那套"印 × 光"的观感，去掉色流波浪） ─────────── */
+.dailyp-endbackdrop {
+  position: fixed; inset: 0; z-index: 55;
+  display: grid; place-items: center; padding: 16px;
+  background: #18171352;
+}
+.dailyp-end { position: relative; display: grid; place-items: center; }
+.dailyp-end-card {
+  position: relative;
+  width: min(330px, 94%);
+  padding: 18px 18px 14px;
+  border: 1px solid var(--line, #dfdad0);
+  border-radius: 22px;
+  background: var(--surface, var(--paper, #f8f6f1));
+  box-shadow: 0 24px 56px #2c2a2340, inset 0 1px 0 #ffffff5c;
+  text-align: center;
+  animation: dailyp-end-rise .42s cubic-bezier(.2, .82, .24, 1) backwards;
+}
+.dailyp-end--lost .dailyp-end-card { animation-name: dailyp-end-sink; }
+.dailyp-end--won .dailyp-end-card { box-shadow: 0 24px 56px #2c2a2340, 0 0 44px color-mix(in srgb, var(--gold, #c9a34e) 20%, transparent), inset 0 1px 0 #ffffff5c; }
+@keyframes dailyp-end-rise { from { opacity: 0; transform: translateY(18px) scale(.95); } }
+@keyframes dailyp-end-sink { from { opacity: 0; transform: translateY(10px) scale(.97) rotate(-.5deg); } }
+
+.dailyp-end-stamp {
+  position: relative;
+  display: inline-grid; place-items: center;
+  width: 62px; height: 62px; margin: 0 auto 8px;
+  border-radius: 50%;
+  border: 2px solid var(--end-seal, var(--red, #b94b3f));
+  color: var(--end-seal, var(--red, #b94b3f));
+  font-size: 26px; font-weight: 700; line-height: 1;
+  background: color-mix(in srgb, var(--end-seal, var(--red, #b94b3f)) 10%, transparent);
+  animation: dailyp-end-stamp .55s .2s cubic-bezier(.18, .9, .28, 1.35) backwards;
+}
+.dailyp-end--won .dailyp-end-stamp { --end-seal: var(--green, #3f7a52); }
+@keyframes dailyp-end-stamp { 0% { opacity: 0; transform: scale(2.4) rotate(-9deg); } 60% { opacity: 1; transform: scale(.94) rotate(1.4deg); } 100% { opacity: 1; transform: scale(1) rotate(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .dailyp-end-card, .dailyp-end-stamp { animation: none; }
+  .dailyp-spin { animation: none; }
+}
+
+.dailyp-end-title { display: block; font-size: 17px; color: var(--ink, #292620); }
+.dailyp-end-sub { display: block; margin: 5px 0 12px; font-size: 12px; line-height: 1.45; color: var(--muted, #68635b); }
+.dailyp-end-stats {
+  display: flex; justify-content: center; gap: 8px; margin-bottom: 12px;
+}
+.dailyp-end-stats > span {
+  flex: 1 1 0; display: flex; flex-direction: column; gap: 2px;
+  padding: 7px 6px; border-radius: 11px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface-2, rgba(0, 0, 0, 0.03));
+}
+.dailyp-end-stats small { font-size: 10px; color: var(--muted, #68635b); }
+.dailyp-end-stats b { font-size: 13px; color: var(--ink, #292620); font-variant-numeric: tabular-nums; }
+.dailyp-end-actions { display: flex; gap: 8px; }
+.dailyp-end-actions--last { margin-top: 8px; }
+.dailyp-end-actions button {
+  flex: 1 1 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  min-height: 40px; padding: 9px 10px;
+  border-radius: 11px;
+  border: 1px solid var(--surface-border, var(--line, #dfdad0));
+  background: var(--surface, var(--paper, #f8f6f1));
+  color: var(--ink, #292620);
+  font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.dailyp-end-actions button.primary {
+  border-color: transparent;
+  background: var(--green, #3f7a52);
+  color: var(--on-accent, #f7f6f1);
+}
+
+/* 底部说明：只在小屏显示（大屏上棋盘已经够大，说明反而占地方）。 */
+.dailyp-foot { font-size: 10.5px; line-height: 1.4; color: var(--muted, #68635b); text-align: center; }
+@media (min-height: 900px) { .dailyp-foot { display: none; } }
+
+/* 窄横屏：把棋盘压到不与操作区抢高度（与挑战页同一条思路）。 */
+@media (orientation: landscape) and (max-height: 520px) {
+  .dailyp-board { max-height: 60vh; width: auto; margin: 0 auto; }
+  .dailyp-foot { display: none; }
+}

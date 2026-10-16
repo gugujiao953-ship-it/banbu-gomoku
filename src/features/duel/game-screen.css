@@ -1,0 +1,482 @@
+/* 专门的对弈界面（用户 09-28）。颜色全部走语义 token，深浅两套主题都由门禁核对对比度。 */
+/* 底栏（68px + 安全区）由外壳 .app-shell 的 padding-bottom 统一预留，这里**不再重复预留**：
+   旧版两处各留一次，392×848 实测在按钮下面留下约 114px 空白（用户 10-01「棋盘似乎有点小了」）。
+   min-height 让整屏铺满可视区，配合下面的 auto 外边距：棋盘拿到剩余高度的居中份额、
+   操作条钉在底栏正上方。78 = 外壳为底栏预留的那一段（**顶栏这一屏已经不占了**，见下一条）。 */
+
+/* **进了对弈界面就把全局顶栏收掉**（用户 2026-10-14：「人机对战上面部分的状态栏都可以优化一下，
+   感觉占的空间有点大，没考虑过空间这一块」）。那一条 68px 是打谱用的：品牌字 + 快捷中心 +
+   导入/导出/保存三颗——在下一盘棋的中间既没有意义（保存与导入属于棋谱库），还和这一屏自己那行
+   「人机对局 · 第几手 + 战绩/成就/完成」重复当了两次标题栏。收掉之后 68px 全部还给棋盘。
+   ⚠ 状态栏安全区原本由顶栏的 padding-top 吃，现在改由这一屏自己吃（见下面 `var(--safe-area-top, env(safe-area-inset-top))`）。 */
+body:has([data-duel-screen]) .topbar{display:none}
+body:has([data-duel-screen]) .app-main{min-height:calc(100dvh - 78px - var(--safe-area-bottom, env(safe-area-inset-bottom)))}
+.duel-screen{position:relative;display:flex;flex-direction:column;gap:6px;min-height:calc(100dvh - 78px - var(--safe-area-bottom, env(safe-area-inset-bottom)));padding:calc(12px + var(--safe-area-top, env(safe-area-inset-top))) 12px calc(12px + var(--safe-area-bottom, env(safe-area-inset-bottom)))}
+.duel-screen-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.duel-screen-title{min-width:0}
+.duel-screen-title b{display:block;font-size:13px;color:var(--ink)}
+.duel-screen-title small{display:block;margin-top:2px;color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.duel-screen-head-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.duel-screen-close{width:36px;height:36px;flex:0 0 auto;border:1px solid var(--line);border-radius:10px;background:var(--surface,var(--paper));color:var(--muted);display:grid;place-items:center}
+
+/* 本局设置 chips（用户 09-28：「难度，引擎，时间什么的都没显示」）：
+   规则 / 难度 / 引擎 / 时间四件事常驻一行，落子期间不用去找。窄屏两列折行。 */
+.duel-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 6px;margin:0}
+.duel-meta-item{display:flex;align-items:baseline;gap:5px;min-width:0;padding:3px 7px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2,var(--paper))}
+.duel-meta-item dt{flex:0 0 auto;color:var(--muted);font-size:10px}
+.duel-meta-item dd{margin:0;min-width:0;color:var(--ink);font-size:10px;font-weight:700;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;white-space:normal}
+@media(min-width:520px){.duel-meta{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* 双方信息格：两格对称，轮到谁高亮谁（参考五林 playerNode / aiNode + aiThinking 的分工，
+   但不搬他们的等级分、头像与称号） */
+.duel-sides{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.duel-side{display:flex;align-items:center;gap:7px;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:12px;background:var(--surface,var(--paper))}
+.duel-side.active{border-color:var(--green);background:var(--jade);box-shadow:inset 0 0 0 1px var(--green)}
+.duel-side-stone{width:18px;height:18px;flex:0 0 auto;border-radius:50%;background:#9a948a}
+.duel-side-stone.black{background:#27251f}
+.duel-side-stone.white{background:#faf7ed;border:1px solid #91897e}
+.duel-side-copy{flex:1 1 auto;min-width:0}
+.duel-side-copy b,.duel-side-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.duel-side-copy b{font-size:12px;color:var(--ink)}
+.duel-side-copy small{margin-top:2px;font-size:10px;color:var(--muted)}
+.duel-side-time{flex:0 0 auto;font-size:13px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.duel-side-thinking{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--green)}
+.duel-side-thinking i{width:8px;height:8px;border-radius:50%;background:var(--green);animation:duel-thinking-pulse 1.1s ease-in-out infinite}
+@keyframes duel-thinking-pulse{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+@media(prefers-reduced-motion:reduce){.duel-side-thinking i{animation:none;opacity:.9}}
+
+/* 棋盘：手机竖屏它本来就是「按宽」撑满的（内容列 360），所以左右各再吃回 8px
+   （392 屏 → 384，+7%），并用 auto 外边距把整屏剩下的均分给「棋盘上方 / 棋盘下方 /
+   按钮上方」三处——棋盘居中、按钮贴着底栏，不再出现底部一大块空白。 */
+/* position:relative 是给开局名浮字（.opening-reveal）当定位锚的：浮字要贴在棋盘中心下方，
+   又不能进文档流（下方新增正常流元素会让 margin-block:auto 重算、棋盘上下跳，R110）。
+   flex 布局本身不受影响，棋盘仍是这个槽里唯一的正常流子元素。 */
+/* align-self:center：`.duel-screen` 是纵向 flex，交叉轴＝横向。棋盘被**竖向预算**封顶时
+   （矮竖屏 360×640 实测棋盘 278 / 可用宽 360），块级默认贴左 ⇒ 用户看到「棋盘贴着左边、
+   右边空一条，约三行坐标宽」（群友 2026-10-14 报；报告人自己是 390×844，高 >820 不吃这条上限，
+   所以复现不出来）。宽度没被封顶时 margin box 正好等于 100%（`width:100%+16` 配 `margin-inline:-8`），
+   居中与贴左是同一个位置 ⇒ 这一条只在"收宽"的那几档起作用，不改满屏时的 8px 出血。 */
+.duel-board{position:relative;display:flex;justify-content:center;align-self:center;min-height:0;width:calc(100% + 16px);margin-inline:-8px;margin-block:auto}
+/* 引擎过程读数不再单独占一行（读数的去向见 GameScreen.tsx 里 engineText 的注释）：
+   它以前是「AI 思考时才有、还会换行」的条，正是棋盘上下跳的主源。这里不再留 .duel-engine 规则。 */
+
+/* 最近几手：对弈界面不放打谱那条手数滑轨，用一小串代替。
+   min-height 是**常驻占位**——容器一直在，第 1 手出现时就不会把棋盘顶一下。 */
+.duel-recent{display:flex;align-items:center;gap:5px;min-height:24px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+.duel-recent::-webkit-scrollbar{display:none}
+.duel-recent-item{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;padding:3px 8px;border:1px solid var(--line);border-radius:9px;background:var(--surface,var(--paper));color:var(--ink);font-size:10px;font-variant-numeric:tabular-nums}
+.duel-recent-item i{width:9px;height:9px;border-radius:50%;background:#9a948a}
+.duel-recent-item.black i{background:#27251f}
+.duel-recent-item.white i{background:#faf7ed;border:1px solid #91897e}
+
+/* 底部这一行：左边「最近几手」串 + 右边道具三颗卡（人机对弈接了 VCF 那三张卡，用户 2026-10-13）。
+   卡片本体由 `vcf-item-bar.css` 管（组件自带，两页同一份），这里只管**摆哪儿**。
+   为什么不同行放两处：单独给道具一行 52px，实测 360×640 会把操作条顶出屏幕。 */
+.duel-footrow{display:flex;align-items:flex-end;gap:6px;min-height:24px}
+.duel-footrow .duel-recent{flex:1 1 auto;min-width:0}
+
+/* 窄而矮的竖屏（360×640 / 412×732 这一档）：棋盘原来只按宽度撑（`width:calc(100% + 16px)`），
+   于是整列高度超出一屏 —— **实测在道具栏之前就超**：360×640 溢出 116px、412×732 溢出 76px，
+   操作条压在底部导航下面（导航 68px 是可见的）。和 VCF 页同一解法：按剩余高度给棋盘设上限，
+   让棋盘shrinking 付账，整页回到一屏。常数 = 头部 68 + 导航 68 + 其余各行与间距 288 + 14 富余 ≈ 438（424 那版实测仍差 14px 文档高）。 */
+@media (orientation: portrait) and (max-height: 820px) {
+  /* 2026-10-14 改判：这一档原来按剩余高度给棋盘设上限（`100dvh − 370`），代价是**棋盘右边空一条**
+     ——320×568 实测棋盘只有 198 / 可用宽 320（空 112px ≈ 五到七行坐标）。用户口径明确：
+     「重点不在靠左，而在于棋盘右边空缺，这个棋盘还是填满宽度才是关键的」。
+     ⇒ 对局中不再按高度收宽，棋盘吃满可用宽度；多出来的高度（实测 320×568 约 103px、
+     360×640 约 88px、412×732 约 46px）由页面滚动承担，主操作条用下面的 sticky 钉住不被滚走。
+     ⚠ **摆子阶段仍保留高度上限**（R202 那一屏是刻意做成一屏的：进度行在上、三颗按钮沉底），
+     所以这条只对 `:not([data-duel-setup-phase])` 生效。 */
+  .duel-screen:not([data-duel-setup-phase]) .duel-board{width:calc(100% + 16px);margin-inline:-8px}
+  .duel-board{width:min(calc(100% + 16px),calc(100dvh - 370px));margin-inline:-8px}
+  /* **摆子阶段**留的高度又不一样：双方信息格与最近几手不渲染，规则/时间两枚芯片收进进度行。
+     底部坞是**两排**（上排回看 ‹ ›＋保存/局面/载入 34px，下排主操作三颗 44px，共 84px）。
+     362 = 整局那一档 370 − 不渲染的「双方信息格 48 + 最近几手 24 + 两处间距 12」＋底部坞比
+     整局那排多出来的 40。数字不靠推：门禁 H 段逐档量溢出与间隙，实测棋盘
+     360×640 → 278px、412×732 → 370px、320×568 → 206px、392×852 → 384px（宽度封顶），四档溢出全 0。
+     为什么不用 370：那 84px 这时根本不存在，照抄等于把棋盘白白压小一圈。 */
+  .duel-screen[data-duel-setup-phase] .duel-board{width:min(calc(100% + 16px),calc(100dvh - 362px));margin-inline:-8px}
+}
+
+/* margin-top:auto = 操作条贴住底栏上方（用户 10-01 两个方案里的「把下面的按钮放到更下面去」） */
+/* position:sticky：棋盘吃满宽度之后整屏比视口高（320×568 实测约 103px），不钉住的话
+   「悔棋 / 认输 / 更多」要先把棋盘滚走才点得到。bottom 里那 68px 是底部导航的高度
+   （`styles.css` 的 `.bottom-nav{height:calc(68px + var(--safe-area-bottom, env(safe-area-inset-bottom)))}`，fixed），
+   再加 4px 缝。底色带一点不透明 + 模糊，滚过时棋盘不会从按钮缝里穿出来。 */
+.duel-actions{display:grid;grid-template-columns:34px 34px repeat(4,minmax(0,1fr));gap:5px;margin-top:auto;position:sticky;bottom:calc(72px + var(--safe-area-bottom, env(safe-area-inset-bottom)));z-index:6;padding-block:4px;background:color-mix(in srgb,var(--paper) 94%,transparent);backdrop-filter:blur(8px)}
+/* 摆子阶段的底部坞（用户 2026-10-14：按钮要在棋盘下面）。两排：
+   上排 = 回看 ‹ › + 游标位置 + 低频三颗（保存 / 局面 / 导入），34px；
+   下排 = 主操作三颗（撤销摆子 / 清空 / 开始对局），44px，与整局那排同一套按钮外观。
+   `margin-top:auto` 挂在这个容器上（不是某一排按钮上），所以整块沉底、下面不留空。 */
+.duel-setup-dock{display:flex;flex-direction:column;gap:6px;margin-top:auto}
+.duel-setup-nav{display:flex;align-items:center;gap:5px}
+.duel-setup-nav button{min-width:34px;min-height:34px;padding:0 8px;border:1px solid var(--line);border-radius:10px;background:var(--surface,var(--paper));color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.duel-setup-nav button:disabled{opacity:.4}
+.duel-setup-nav .duel-setup-cursor{flex:1 1 auto;min-width:0;text-align:center;color:var(--muted);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.duel-setup-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.duel-setup-row button{min-width:0;min-height:44px;padding:4px 2px;border:1px solid var(--line);border-radius:11px;background:var(--surface,var(--paper));color:var(--ink);display:flex;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:700}
+.duel-setup-row button:disabled{opacity:.4}
+.duel-setup-row button.accent{border-color:var(--green);background:var(--green);color:var(--on-accent)}
+/* 摆子进度行（棋盘**上面**那一行；用户 2026-10-14：「上面显示你摆了多少子，下一步该谁走」）。
+   刻意做成一行高：原来那条 74px（窄屏换行 101px）的横幅把棋盘整个往下推，底下还留一堆空白。 */
+.duel-setup-info{display:flex;align-items:baseline;gap:8px;margin:0 4px;padding:7px 10px;border:1px solid var(--surface-border,var(--line));border-radius:12px;background:var(--surface-2,var(--surface))}
+.duel-setup-info b{font-size:12px;color:var(--ink)}
+.duel-setup-info span{padding:2px 7px;border-radius:20px;background:var(--jade);color:var(--green);font-size:10px;font-weight:700}
+.duel-setup-info small{margin-left:auto;color:var(--muted);font-size:10px}
+/* 局面库浮层：一行一条，名字在左、三个动作在右（改名就地变成输入框）。 */
+.duel-setups-list{display:flex;flex-direction:column;gap:7px;margin-top:8px}
+/* 「载入局面」弹窗：顶上两栏切来源（棋谱库 / 题库），栏里直接是那两个现成选择器的内容
+   （`embedded`）。用户 2026-10-14：「不应该是展开往下，而是出现弹窗界面，里面是我们的棋谱与题库」
+   ⇒ 不再有"先选来源再进去找"那一层菜单。 */
+.duel-load-sheet{display:flex;flex-direction:column;gap:8px}
+.duel-load-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:4px;border-radius:13px;background:var(--surface-2,var(--jade))}
+.duel-load-tabs button{min-height:38px;border:0;border-radius:10px;background:transparent;color:var(--muted);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:5px}
+.duel-load-tabs button b{font-size:10px;padding:1px 6px;border-radius:20px;background:#0000000f}
+.duel-load-tabs button.selected{background:var(--surface,var(--paper));color:var(--green);box-shadow:0 2px 8px #536d5c14}
+.duel-load-sheet .record-selector-sheet,.duel-load-sheet .puzzle-selector-sheet{padding:0}
+.duel-load-sheet .record-selector-list,.duel-load-sheet .puzzle-selector-list{max-height:min(46dvh,420px);overflow:auto}
+/* 内嵌时藏掉那两行"定位到当前棋谱 / 所在文件夹与做题进度"：这个弹窗是**挑一份来当开局**，
+   当前对局那份本来就不在库里（定位点了也没东西可跳），做题进度更与载入无关。
+   它们合计 ~100px，留着会把顶上那两栏推出可视区（实测弹窗 696px 高、栏被滚走）。 */
+.duel-load-sheet .record-selector-current,.duel-load-sheet .puzzle-selector-current,.duel-load-sheet .puzzle-selector-progress{display:none}
+.duel-setups-list article{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--surface-border,var(--line));border-radius:14px;background:var(--surface)}
+.duel-setups-copy{flex:1 1 auto;min-width:0}
+.duel-setups-copy b,.duel-setups-copy small{display:block}
+.duel-setups-copy b{font-size:12px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.duel-setups-copy small{margin-top:3px;font-size:10px;color:var(--muted)}
+.duel-setup-name-input{width:100%;height:34px;padding:0 8px;border:1px solid var(--green);border-radius:9px;background:var(--paper);color:var(--ink);font-size:12px}
+.duel-setups-actions{display:flex;gap:5px;flex:0 0 auto}
+.duel-setups-actions button{min-height:34px;padding:0 9px;border:1px solid var(--surface-border,var(--line));border-radius:9px;background:var(--paper);color:var(--ink);font-size:11px;font-weight:700}
+.duel-setups-actions button.accent{border-color:var(--green);background:var(--green);color:var(--on-accent)}
+.duel-actions button{min-width:0;min-height:44px;padding:4px 2px;border:1px solid var(--line);border-radius:11px;background:var(--surface,var(--paper));color:var(--ink);display:flex;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:700}
+.duel-actions button svg{width:14px;height:14px;flex:0 0 auto}
+.duel-actions button:disabled{opacity:.4}
+
+.duel-confirm{position:absolute;left:12px;right:12px;top:50%;transform:translateY(-50%);z-index:5;display:flex;flex-direction:column;gap:8px;padding:16px;border:1px solid var(--green);border-radius:16px;background:var(--surface,var(--paper));box-shadow:0 14px 34px #2c2a233a;text-align:center}
+.duel-confirm b{font-size:15px;color:var(--ink)}
+.duel-confirm small{margin:0;color:var(--muted);font-size:11px;line-height:1.6}
+
+/* ══ 终局弹窗 · 印 × 流 × 光 ═══════════════════════════════════════════
+   定稿来自 design-lab/duel-endings-v2（用户 09-29 定版）：结构用「印」，底色用
+   「色流」，进场用「光环」，胜 / 负 / 和 各自成形；负局不做淌墨。
+
+   搬进软件时**没有照搬设计稿里写死的颜色**（宣纸 #fbf8f0、朱红 #cf4534、青灰 #63707d…）：
+   那套只在外观沙盒里成立，20 套主题下有 18 套不对味，也过不了对比度门禁。映射规则：
+     · 卡面 → `--color-surface-raised`：**卡面跟随主题**，深色主题自动变暗色玻璃，
+       不会在夜里顶着一张发光的白纸（原来那行 `html[data-theme="dark"] .duel-result`
+       硬写 #26312d 因此删掉了）；
+     · 印 / 色流 / 光环 → 从语义 token 派生：胜 `--red`、金 `--gold`、负 = `--muted`
+       转冷、青玉 = `color-mix(--green, #6f8f9e)`。混向一个固定色相是仓库既有做法
+       （见 design-tokens.css 的 --bookmark-jade），20 套主题下"胜=红印、负=冷灰、
+       和=金玉对半"的关系不变，具体色值随主题走。
+
+   动效两道闸：全局「动效」开关（App 把状态挂在 `html[data-motion]`，见 App.tsx:2740）
+   与系统 prefers-reduced-motion —— 命中任一就 animation:none，只留静态版式。
+   ⚠ 每个元素的**基态必须是"看得见"的**（不透明度 1、无位移），动画只描述"从哪进来"。
+     不然闸一关，靠动画才显形的元素会直接消失（逐字题诗最容易被这么坑到：
+     设计稿里它的基态是 opacity:0，搬进来必须改成 1）。 */
+.duel-result{position:absolute;left:12px;right:12px;top:50%;transform:translateY(-50%);z-index:5;
+  display:block;padding:0;border:0;background:none;box-shadow:none;text-align:center;
+  --end-seal:var(--red);                                       /* 印章主色（胜 / 和的左半） */
+  --end-celadon:color-mix(in srgb,var(--green) 62%,#6f8f9e);   /* 青玉（和局右半） */
+  --end-cold:color-mix(in srgb,var(--muted) 76%,var(--ink));   /* 负局的冷灰 */
+}
+.duel-end{position:relative;display:grid;place-items:center}
+.duel-end--lost{--end-seal:var(--end-cold)}
+/* 卡片：上边留出空间给「压出卡沿」的印章（margin-top ≈ 印章一半高）
+   ⚠ 卡面用 `--surface` —— 它才是被 20 套主题逐个重定义的那个
+   （styles.css:366-375，dark 是 #26312d）。别用 `--color-surface-raised`：它只在
+   design-tokens.css 的 :root 里定义过、主题块不覆盖它，会把回退链短路成一张固定的白纸，
+   深色主题下就是"按钮全变暗、只有卡片还亮着"（本轮实测踩到）。 */
+.duel-end-card{position:relative;width:min(344px,94%);margin-top:34px;padding:15px 18px 14px;
+  border:1px solid var(--line);border-radius:22px;
+  background:var(--surface,var(--paper));
+  box-shadow:0 24px 56px #2c2a2340, inset 0 1px 0 #ffffff5c;
+  animation:duel-end-rise .5s cubic-bezier(.2,.82,.24,1) backwards}
+.duel-end--lost .duel-end-card{animation-name:duel-end-sink}
+@keyframes duel-end-rise{from{opacity:0;transform:translateY(20px) scale(.95)}}
+@keyframes duel-end-sink{from{opacity:0;transform:translateY(12px) scale(.96) rotate(-.6deg)}}
+.duel-end-card>*{position:relative;z-index:1}   /* 内容永远压在色流之上 */
+
+/* ── 色流：卡内那道会动的底色（胜金涌 / 负墨压 / 和双色），波浪边持续起伏 ──
+   2026-10-07 性能修复（与 VCF 挑战同款）：原胜/负用 `clip-path: path()` 逐帧形变、
+   和局用 `background-position` 扫动——两者都**每帧重绘整块半透明渐变**、无法 GPU 合成。
+   实测（390 宽视口、CPU 4× 降速、4 秒采样）：负 Paint 235ms/482 次、胜 386ms/384 次、
+   和 288ms/480 次且光栅 2607ms——`duel-result` 弹窗在棋盘上方，这份开销直接表现为卡顿。
+   改法：形状固定，胜/负用 transform:translateY 缓慢起伏（零重绘、且不像 scaleY 那样拉伸渐变），
+   和局把渐变移到 ::before（宽 165%）用 translateX 扫动——几何与原来的
+   background-size:165% + background-position 0%→100% 完全等价（位移 =65%/165%=39.394%，
+   实测 ::before 564.3px 宽、位移 0→222.3px = 卡宽的 65%）。 */
+.duel-end-flowclip{position:absolute;inset:0;overflow:hidden;border-radius:22px;pointer-events:none;z-index:0}
+.duel-end-flow{position:absolute;left:0;right:0;height:120%}
+.duel-end--won .duel-end-flow{bottom:-2px;
+  background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--gold) 34%,transparent) 45%,color-mix(in srgb,var(--gold) 56%,transparent));
+  clip-path:path("M0,120 C60,86 120,132 190,104 C250,80 300,116 344,92 L344,400 L0,400 Z");
+  will-change:transform;
+  animation:duel-end-riseflow 1.5s .35s cubic-bezier(.25,.8,.3,1) backwards,
+            duel-end-sway 6s 1.9s ease-in-out infinite alternate}
+.duel-end--lost .duel-end-flow{top:-2px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--end-cold) 52%,transparent),transparent 62%);
+  clip-path:path("M0,0 L344,0 L344,120 C292,146 242,104 182,132 C122,160 62,120 0,142 Z");
+  will-change:transform;
+  animation:duel-end-fallflow 1.5s .35s cubic-bezier(.25,.8,.3,1) backwards,
+            duel-end-sway-down 6.4s 1.9s ease-in-out infinite alternate}
+.duel-end--draw .duel-end-flow{inset:0;height:100%;background:none;
+  animation:duel-end-fade 1s .3s ease-out backwards}
+.duel-end--draw .duel-end-flow::before{content:"";position:absolute;left:0;top:0;bottom:0;width:165%;
+  background:linear-gradient(104deg,
+    color-mix(in srgb,var(--gold) 40%,transparent) 0 32%,
+    color-mix(in srgb,var(--gold) 18%,transparent) 45% 55%,
+    color-mix(in srgb,var(--end-celadon) 40%,transparent) 68% 100%);
+  will-change:transform;
+  animation:duel-end-sweep 7.5s ease-in-out infinite alternate}
+.duel-end--draw .duel-end-flow::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;
+  background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--gold) 72%,transparent),transparent);
+  animation:duel-end-seam 3.4s ease-in-out infinite}
+@keyframes duel-end-riseflow{from{transform:translateY(60%) scaleY(.5);opacity:.2}}
+@keyframes duel-end-fallflow{from{transform:translateY(-60%) scaleY(.5);opacity:.2}}
+@keyframes duel-end-fade{from{opacity:0;transform:translateY(8px)}}
+/* 起摆的两条（delay ≥ 入场结束的 1.85s：同一元素两个动画都动 transform，后声明的会接管）。
+   ⚠ 用 translateY 而不是 scaleY：scaleY 会连渐变一起**拉伸**——像素级对比里看到整片金底
+   都在变色（平均差 31.6/255），而旧波浪只让浪沿这条细带走动（平均差 1.8/255）。
+   translateY 只平移（渐变整体平移 10px → 局部 alpha 变化 ≈1.7%，与旧波浪同量级），
+   且平移不改变栅格尺度、同样零重绘。
+   方向都朝「有溢出余量」的一侧：胜局色流锚底、向下沉（底部本就多出 2px，沉 10px 仍盖满，
+   不会露缝）；负局色流锚顶、向上退（下沿离可视底还有 64px）。 */
+@keyframes duel-end-sway{from{transform:translateY(0)}to{transform:translateY(10px)}}
+@keyframes duel-end-sway-down{from{transform:translateY(0)}to{transform:translateY(-10px)}}
+@keyframes duel-end-sweep{from{transform:translateX(0)}to{transform:translateX(-39.394%)}}
+@keyframes duel-end-seam{0%,100%{opacity:.35;transform:translateY(-7%) scaleY(.94)}50%{opacity:.85;transform:translateY(7%) scaleY(1.06)}}
+
+/* 光环（进场）+ 胜局金粉 ────────────────────────────────────────────
+   容器做成 448×448（=128×3.5，刚好装下最大 3.4× 的环）并加 `contain:paint`：
+   环每放大一档都要重新栅格化包含它的图层，对局页胜局实测（CPU 4× 降速、6 秒）
+   Paint 711ms/294 次、光栅 229ms/740 次；加 paint 隔离后两者都归零。
+   容器必须放大到装得下最大环：`contain:paint` 把后代裁在容器盒内，沿用原来的 128px
+   小盒会把放大的环整个裁掉（实测三个环全消失）。 */
+.duel-end-halo{position:absolute;left:50%;top:46%;width:448px;height:448px;margin:-224px 0 0 -224px;border-radius:50%;pointer-events:none;contain:paint}
+.duel-end-halo i{position:absolute;left:50%;top:50%;width:128px;height:128px;margin:-64px 0 0 -64px;border-radius:50%;border:2px solid transparent;opacity:0}
+.duel-end--won .duel-end-halo i{border-color:color-mix(in srgb,var(--gold) 62%,transparent);animation:duel-end-ring 2s ease-out infinite}
+.duel-end--won .duel-end-halo i:nth-child(2){animation-delay:.66s}
+.duel-end--won .duel-end-halo i:nth-child(3){animation-delay:1.32s}
+.duel-end--lost .duel-end-halo i{border-color:color-mix(in srgb,var(--end-cold) 55%,transparent);animation:duel-end-ringin 1.3s ease-in forwards}
+.duel-end--lost .duel-end-halo i:nth-child(2){animation-delay:.18s}
+.duel-end--lost .duel-end-halo i:nth-child(3){animation-delay:.36s}
+.duel-end--draw .duel-end-halo i{border-color:color-mix(in srgb,var(--gold) 48%,transparent);animation:duel-end-breathe 2.9s ease-in-out infinite}
+.duel-end--draw .duel-end-halo i:nth-child(2){animation-delay:.96s}
+.duel-end--draw .duel-end-halo i:nth-child(3){animation-delay:1.92s}
+@keyframes duel-end-ring{0%{transform:scale(.42);opacity:.95}100%{transform:scale(3.4);opacity:0}}
+@keyframes duel-end-ringin{0%{transform:scale(3.2);opacity:.7}100%{transform:scale(.5);opacity:0}}
+@keyframes duel-end-breathe{0%,100%{transform:scale(1.1);opacity:.18}50%{transform:scale(1.9);opacity:.5}}
+/* 负局「四周收暗」的暗角层（原 `.duel-end-vignette`，inset:-26px 的径向暗渐变）2026-10-07 删除。
+   用户实测反馈：「失败的灰色部分往外溢出，搞得屏幕灰灰的」。几何上它比卡片大一圈
+   （实测溢出左 37 / 右 37 / 上 60 / 下 26 px），而它在 DOM 里位于卡片**之前**、
+   被卡片完全遮住——也就是它唯一的可见效果就是这圈溢出；渐变又在 82% 处就到最暗、
+   随后被元素边界切断，于是浅色页面上直接读成「一块硬边灰」。这个「四周收暗」的意图
+   只在深色背景里成立，对局页背面是浅色棋盘，收暗就是脏屏。卡片本身已有
+   `box-shadow:0 24px 56px #2c2a2340` 做与背景的分离，不需要它。 */
+.duel-end-dust{position:absolute;inset:0;overflow:hidden;border-radius:22px;pointer-events:none;z-index:0}
+.duel-end-dust i{position:absolute;bottom:6%;width:4px;height:4px;border-radius:50%;
+  background:var(--gold);opacity:0;animation:duel-end-rise2 2.4s ease-out infinite}
+.duel-end-dust i:nth-child(1){left:12%;animation-delay:.5s}
+.duel-end-dust i:nth-child(2){left:28%;width:3px;height:3px;animation-delay:1.1s}
+.duel-end-dust i:nth-child(3){left:45%;animation-delay:1.7s}
+.duel-end-dust i:nth-child(4){left:63%;width:5px;height:5px;animation-delay:.85s}
+.duel-end-dust i:nth-child(5){left:79%;animation-delay:1.45s}
+.duel-end-dust i:nth-child(6){left:91%;width:3px;height:3px;animation-delay:2.05s}
+@keyframes duel-end-rise2{0%{opacity:0;transform:translateY(0) scale(.6)}18%{opacity:.85}100%{opacity:0;transform:translateY(-200px) scale(1.15)}}
+
+/* ── 印（压出卡沿）+ 逐字题诗 + 墨线 + 数据格 ──────────────────────── */
+.duel-end-stampwrap{display:flex;justify-content:center;margin:-40px 0 10px}
+/* 印面：**以近黑为锚**，只借用主题的色相，保证 20 套主题下印面都够深、近白印字都读得清。
+   ⚠ 两条弯路都试过、都栽了（记住别再走）：
+     ① 直接用 `--end-seal` 本色 → 它有 88%+ 的份量来自 `--muted`/`--ink`，暗色主题里是**浅色**，
+        配 `#fff4e2` 的印字只有 1.3:1，等于印章上一片空白；
+     ② 只往近黑拉 38%（`--end-seal` 占 62%）→ 暗色主题下印面仍停在 rgb(136,128,119)，
+        对比度 3.3~3.6:1，仍不达 4.5。
+     现在让近黑占大头（约 56%~70%）：印面 ≈ rgb(96,44,40)（浅色）/ rgb(104,101,98)（深色），
+     实测浅/深/黑金/雨夜/可爱五套主题下印字对比度 5.4~9.7:1。 */
+.duel-end-stamp{position:relative;width:66px;height:66px;display:grid;place-items:center;border-radius:16px;
+  color:#fff4e2;font:800 30px/1 "Songti SC",STSong,serif;
+  background:linear-gradient(158deg,color-mix(in srgb,var(--end-seal) 44%,#1a1310),color-mix(in srgb,var(--end-seal) 30%,#0d0908));
+  box-shadow:0 14px 30px #0000004d, inset 0 0 0 3px #ffffff2e;
+  animation:duel-end-stamp .6s .26s cubic-bezier(.18,.9,.28,1.35) backwards}
+.duel-end--draw .duel-end-stamp{background:linear-gradient(112deg,
+  color-mix(in srgb,var(--end-seal) 44%,#1a1310) 0 49.6%,
+  color-mix(in srgb,var(--gold) 40%,#1a1310) 50.4% 100%)}
+@keyframes duel-end-stamp{0%{opacity:0;transform:scale(2.6) rotate(-10deg)}60%{opacity:1;transform:scale(.93) rotate(1.5deg)}80%{transform:scale(1.05) rotate(-2deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+.duel-end-stamp i{position:absolute;inset:-6px;border-radius:21px;border:2px solid currentColor;opacity:0}
+.duel-end--won .duel-end-stamp i{border-color:color-mix(in srgb,var(--end-seal) 45%,transparent);animation:duel-end-splash .8s .44s ease-out forwards}
+.duel-end--lost .duel-end-stamp i{border-color:color-mix(in srgb,var(--end-cold) 45%,transparent);animation:duel-end-splashin .7s .3s ease-out forwards}
+.duel-end--draw .duel-end-stamp i{border-color:color-mix(in srgb,var(--gold) 45%,transparent);animation:duel-end-splash .9s .4s ease-out forwards}
+@keyframes duel-end-splash{0%{transform:scale(.72);opacity:.85}100%{transform:scale(2.05);opacity:0}}
+@keyframes duel-end-splashin{0%{transform:scale(2.1);opacity:.7}100%{transform:scale(.9);opacity:0}}
+.duel-end-poem{display:block;font:700 18.5px/1.55 "Songti SC",STSong,serif;color:var(--ink);letter-spacing:.06em}
+.duel-end-poem i{display:inline-block;font-style:normal;
+  animation:duel-end-char .44s cubic-bezier(.2,.8,.3,1) backwards;animation-delay:calc(300ms + var(--i) * 52ms)}
+@keyframes duel-end-char{from{opacity:0;transform:translateY(8px) scale(.88);filter:blur(3px)}}
+/* ⚠ 基态必须是 scaleX(1)（看得见），把 scaleX(0) 放进 keyframes 的 from ——
+   反面教材就是这里：原先基态写 scaleX(0) + forwards，动效一关，墨线永远停在 0 宽，
+   整条线消失。fill 用 both，才能让延迟那 0.8s 也保持"从 0 长出来"。 */
+.duel-end-stroke{display:block;height:3px;margin:9px auto 6px;width:min(76%,200px);border-radius:3px;opacity:.55;
+  background:linear-gradient(90deg,transparent,var(--ink) 8%,var(--ink) 92%,transparent);
+  transform:scaleX(1);transform-origin:center;
+  animation:duel-end-stroke .66s .8s cubic-bezier(.3,.8,.3,1) both}
+@keyframes duel-end-stroke{from{transform:scaleX(0)}}
+.duel-end-sub{display:block;font-size:11px;color:var(--muted);animation:duel-end-fade .5s .92s ease-out backwards}
+.duel-end-stats{display:flex;gap:6px;margin:11px 0 12px}
+.duel-end-stats>div{flex:1 1 0;min-width:0;display:flex;align-items:baseline;justify-content:center;gap:3px;
+  padding:8px 6px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2,var(--paper));
+  font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;
+  animation:duel-end-fade .45s ease-out backwards}
+.duel-end-stats>div:nth-child(1){animation-delay:.98s}
+.duel-end-stats>div:nth-child(2){animation-delay:1.06s}
+.duel-end-stats>div:nth-child(3){animation-delay:1.14s}
+.duel-end-stats b{font-size:12px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.duel-end--lost .duel-end-card{box-shadow:0 20px 46px #2c2a2340, inset 0 1px 0 #ffffff4a}
+.duel-end--won .duel-end-card{box-shadow:0 24px 56px #2c2a2340, 0 0 46px color-mix(in srgb,var(--gold) 22%,transparent), inset 0 1px 0 #ffffff5c}
+.duel-result-actions{animation:duel-end-fade .45s 1.2s ease-out backwards}
+.duel-result-hint{animation:duel-end-fade .45s 1.28s ease-out backwards}
+
+/* 旧 WebView（Chromium 83 一带）不支持 clip-path:path()：波浪边会退化成直边。
+   这里显式给一个不含 path() 的平替，至少保住"色带压上来"的层次。 */
+@supports not (clip-path:path("M0 0")){
+  .duel-end-flow{clip-path:none!important;height:72%!important}
+  .duel-end--lost .duel-end-flow{top:0;bottom:auto}
+}
+/* 两道闸：全局「动效」开关 + 系统减少动态。命中任一 → 全部动画停掉，只留静态版式。
+   ⚠ 必须带上 `*::before/*::after`：和局的扫动色带（`.duel-end-flow::before`）与中线
+   （`::after`）的动画挂在伪元素上，父元素的 `animation:none` 管不到它们——只写 `.duel-end *`
+   的话，闸一关这两条照跑（`::after` 中线此前就这样漏了一道）。 */
+html[data-motion="off"] .duel-end,html[data-motion="off"] .duel-end *,
+html[data-motion="off"] .duel-end *::before,html[data-motion="off"] .duel-end *::after,
+html[data-motion="off"] .duel-result-actions,html[data-motion="off"] .duel-result-hint{animation:none!important}
+@media(prefers-reduced-motion:reduce){
+  .duel-end,.duel-end *,.duel-end *::before,.duel-end *::after,
+  .duel-result-actions,.duel-result-hint{animation:none!important}
+}
+.duel-confirm-actions,.duel-result-actions{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.duel-confirm-actions button,.duel-result-actions button{min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:11px;background:var(--surface,var(--paper));color:var(--ink);display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700}
+.duel-confirm-actions button svg,.duel-result-actions button svg{width:14px;height:14px}
+.duel-confirm-actions .danger{color:#a7443a;border-color:#ebcac5;background:#fff6f4}
+.duel-result-actions .primary,.duel-result-actions button:not([disabled]){border-color:var(--green)}
+.duel-result-actions button[disabled]{opacity:.6}
+.duel-result-hint{color:var(--muted);font-size:10px;line-height:1.6}
+/* 终局弹窗的深色覆盖已删：卡面改走 --color-surface-raised，跟着主题走，
+   不必再为 dark 写死 #26312d（那行连同 .duel-result 一起撤了）。 */
+html[data-theme="dark"] .duel-confirm{background:#26312d}
+html[data-theme="dark"] .duel-confirm-actions .danger{background:#3a2a28;border-color:#6d4340;color:#f0b5ad}
+
+/* toast 默认停在底栏上方 84px。对弈界面的操作条现在也贴着底栏，两者会叠上
+   （392×848 实测「无禁手开局已开始」正好压在悔棋/认输上）→ 手机档把它抬到操作条之上。
+   只管 <700px：更宽的视口里操作条离底栏还有一行距离，84px 本来就不冲突。 */
+@media(max-width:699px){
+  body:has([data-duel-screen]) .toast{bottom:calc(142px + var(--safe-area-bottom, env(safe-area-inset-bottom)))}
+}
+/* 横屏同理要抬：那一档底栏变成右缘竖条，toast 默认的 bottom:84px 正好压在
+   「悔棋 / 认输 / 重开」那一排上（1180×820 截图实测）。操作条上沿距视口底约 92px，抬到它上面。 */
+@media(orientation:landscape){
+  body:has([data-duel-screen]) .toast{bottom:calc(104px + var(--safe-area-bottom, env(safe-area-inset-bottom)))}
+}
+
+/* ── 竖屏平板 / 竖着的宽窗口（≥700 且高≥宽）────────────────────────────
+   旧版是「≥760 一律两栏」，于是 820×1180 的平板竖屏被拆成 260 左栏 + 棋盘，
+   棋盘只剩 454px，而它下面空着 620px（实测）。竖屏改成**单栏 + 放宽外壳**：
+   棋盘按可用宽度长到 ~750，仍然一屏放得下。
+   外壳只在「对弈界面正在屏幕上」时放宽（body:has(...)），打谱页 520/760 的
+   手机壳口径一个字都不动。 */
+@media(min-width:700px){
+  /* 幽灵滚动条根因：`.app-main{min-height:calc(100dvh - 146px)}` 是按「没有外壳边距」
+     算的，而 ≥700 这一档 .app-shell 还有 18px 上下外边距 → 整页凭空多 36px
+     （820×1180 实测 document.scrollHeight=1216）。对弈界面自带 min-height，这里清零。 */
+  body:has([data-duel-screen]) .app-main{min-height:0}
+}
+@media(min-width:700px) and (orientation:portrait){
+  /* 外壳收到「棋盘实际用得上的宽度」：竖屏里棋盘按宽撑满，所以外壳 = 棋盘 + 左右内边距；
+     再宽就只是把空白摊到棋盘两侧（1280×720 实测富余 720px，按钮被拉成 1148px 宽）。 */
+  body:has([data-duel-screen]) .app-shell,body:has([data-duel-screen]) .bottom-nav{max-width:min(1180px,calc(100% - 24px),max(520px,calc(100dvh - 330px)))}
+  /* 外壳在 ≥700 有 18px 上下外边距，min-height 要把它算进去（78 + 36；顶栏这一屏不占） */
+  .duel-screen{min-height:calc(100dvh - 114px - var(--safe-area-bottom, env(safe-area-inset-bottom)));padding-inline:16px}
+  /* 手机那套负边距在这里不要了；按高度设上限，免得 700×1000 这种小竖窗要滚动 */
+  .duel-board{width:min(100%,calc(100dvh - 362px));margin-inline:auto}
+}
+
+/* ── 横屏（≥760 且宽>高）：两栏 ───────────────────────────────────────
+   两条硬约束（900×500 实测踩到）：
+    · 操作条必须**单独占一行**——放进左侧窄栏会折成两行、把「重开」挤到看不见；
+    · 棋盘要按**可用高度**缩，否则它按宽度撑满后会把操作条顶到固定底栏下面，点不到。
+   左栏 260→230：里面只有标题、四枚设置、两格双方信息与最近几手，230 够。
+
+   ⚠ 10-02 用户指出「横屏默认双栏了，但对弈界面没适配」，量出来是两处：
+    ① 棋盘按 `100dvh − 260` 取，1180×820 只有 560（同视口的打谱页是 644）；
+    ② 矮横屏（高 ≤600）另有一条 `min(46dvh,320px)`，844×390 只剩 **179px**，
+       而两栏还留着 → 棋盘右侧空 238px 纯浪费。
+   现在两档共用一个口径：**竖向只扣 180**（顶栏 + 操作条一行 + 内边距），
+   外壳按「棋盘 + 左栏 230 + 间距 14 + 内边距 32 + 右缘竖条 56」收，即 `100dvh + 152`。
+   实测改后：1440×900 → 720、1180×820 → 640、1024×768 → 588、900×500 → 320、844×390 → 210，
+   且 844×390 不再多滚。 */
+@media(min-width:760px) and (orientation:landscape){
+  /* 外壳铺满视口（R120 那版收宽 + 横屏 `margin:0` 靠左 = 剩余全落在右侧，
+     1180×820 实测右侧空 208px、1280×800 空 328px —— 用户 10-02「右侧还是一片空空」）。
+     宽度改由**左栏吸收**（见下面 grid-template-columns 的 1fr），整块再居中，
+     所以剩余只会变成左右对称的纸面边距，不会再出现一条单边空白。 */
+  body:has([data-duel-screen]) .app-shell{max-width:none;margin:0}
+  body:has([data-duel-screen]) .bottom-nav{max-width:none}
+  /* 棋盘跨 1~4 行、左栏四项各自占一行：不写行高的话，棋盘比左栏内容高出的那部分
+     会被**平摊到每一行之间**，左栏就出现一条一条的空档（1180×820 实测 meta 与 sides 之间空 ~150px）。
+     把余量全部给最后一行，并让「最近几手」贴到该行底部 = 与棋盘底边对齐。 */
+  .duel-screen{display:grid;grid-template-columns:minmax(230px,1fr) minmax(0,calc(100dvh - 112px));grid-template-rows:auto auto auto minmax(0,1fr) auto;grid-template-areas:"head board" "meta board" "sides board" "recent board" "actions actions";column-gap:14px;row-gap:8px;align-items:start;min-height:calc(100dvh - 114px - var(--safe-area-bottom, env(safe-area-inset-bottom)));max-width:calc(460px + 14px + 100dvh - 112px);margin-inline:auto;padding-inline:16px}
+  .duel-screen-head{grid-area:head}
+  .duel-meta{grid-area:meta;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .duel-sides{grid-area:sides;grid-template-columns:1fr}
+  .duel-board{grid-area:board;align-self:start;width:min(100%,calc(100dvh - 112px));margin-inline:auto}
+  .duel-recent{grid-area:recent;align-self:end}
+  .duel-actions{grid-area:actions;grid-template-columns:repeat(2,44px) repeat(3,minmax(0,1fr))}
+  .duel-screen .ai-opening-banner,.duel-screen .duel-setup-info{grid-column:1/-1}
+}
+
+/* 横屏矮屏（手机横过来，高 ≤600）：两栏照留，只是不再要求整屏铺满（min-height 归零），
+   放不下时允许整页滚——比「操作条压到固定底栏下面点不到」好。
+   棋盘口径与上面那档**共用**（不再单独压成 46dvh，那正是 179px 的来源）。
+   只有窄到进不了两栏的横屏（宽 <760）才放开外壳宽度、退回单栏摆法。 */
+@media(orientation:landscape) and (max-height:600px){
+  .duel-screen{min-height:0;padding-bottom:calc(12px + var(--safe-area-bottom, env(safe-area-inset-bottom)))}
+  .duel-actions{margin-top:8px}
+  .duel-actions button{min-height:40px}
+}
+@media(orientation:landscape) and (max-height:600px) and (max-width:759px){
+  body:has([data-duel-screen]) .app-shell,body:has([data-duel-screen]) .bottom-nav{max-width:none}
+  .duel-board{width:min(100%,calc(100dvh - 180px));margin-block:0}
+}
+
+/* 弹层按钮别贴在一起（用户 10-01「保存、创建副本、取消这种按钮有点紧凑」）：
+   认输/重开的确认框与终局面板原来是 40px 高、6px 间隙——同一屏里操作条已经是 44px，
+   这两组比操作条还矮，看着就像没对齐。 */
+.duel-confirm-actions,.duel-result-actions{gap:8px}
+.duel-confirm-actions button,.duel-result-actions button{min-height:44px}
+
+/* ── 手机横屏 = 单栏 + 一个大棋盘（用户 10-07：「手机的对弈里面，AI 对战和那个啥 VCF 挑战，
+   横屏适配就不要像平板和电脑那样双栏了，大小不够，横屏时就一个大棋盘肯定是要展现的」）──────
+   上面 `@media(min-width:760px) and (orientation:landscape)` 那条两栏规则对**手机横屏**
+   同样生效（844×390 也 ≥760 宽），于是 390 高的屏被劈成两栏、棋盘只剩 210px。
+   这里按「高 ≤600 = 手机横屏」把它退回单栏：棋盘按可用高度定尺寸并居中，
+   「最近几手」在矮屏让位给棋盘（它只是参考信息，终局面板里还有）。
+   平板/电脑横屏（高 >600）不受影响，仍走两栏。
+   棋盘是正方形（宽=高），所以宽度上限直接由可用高度反推：
+     `100dvh − 顶栏 − 头部一行 + meta 一行 + 双方一行 + 操作条 + 行距与内边距 ≈ 210`
+   —— 顶栏实高用 `--landscape-chrome`（随四级折叠变化，折叠后棋盘还能再大 26px）。 */
+@media (orientation: landscape) and (max-height: 600px) {
+  body:has([data-duel-screen]) .app-shell,
+  body:has([data-duel-screen]) .bottom-nav { max-width: none }
+  /* ⚠ 只藏「顶栏 + 单栏」是不够的：390 高的屏里那些行合计约 210px，棋盘只剩 112px
+     （实测注入结构量到 112×112）—— 那不叫「一个大棋盘」。真正的大头是应用自己那条
+     68px 顶栏：对弈界面自带返回键与对局信息，它在横屏里纯属重复（生成器页早就用
+     `.topbar.generator-topbar{display:none}` 这么干了）。藏掉它 + 把 meta/双方/最近几手
+     三行让给棋盘，棋盘能回到 ~260（390 − 头部 40 − 操作条 44 − 间距/内边距 ~46）。 */
+  body:has([data-duel-screen]) .topbar { display: none }
+  .duel-screen { display: flex; flex-direction: column; gap: 5px; min-height: 0; padding: 6px 12px 8px }
+  .duel-screen-head, .duel-actions { width: 100%; min-width: 0 }
+  .duel-meta, .duel-sides, .duel-recent { display: none }
+  .duel-board { width: min(100%, calc(100dvh - 130px)); margin-inline: auto }
+  .duel-actions { margin-top: 0; grid-template-columns: repeat(2, 44px) repeat(4, minmax(0, 1fr)) }
+}

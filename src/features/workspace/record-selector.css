@@ -1,7 +1,7 @@
 .record-selector-backdrop .bottom-sheet { overflow: hidden; }
 .record-selector-sheet { min-height: 0; display: flex; flex: 1; flex-direction: column; gap: 10px; }
 .record-selector-current { width: 100%; min-height: 64px; padding: 9px 10px; border: 1px solid var(--line); border-color: color-mix(in srgb, var(--green) 30%, var(--line)); border-radius: 15px; display: flex; align-items: center; gap: 10px; background: var(--jade); background: color-mix(in srgb, var(--jade) 70%, var(--paper)); box-shadow: 0 3px 12px rgba(28, 63, 46, .1); color: inherit; text-align: left; cursor: pointer; font: inherit; -webkit-tap-highlight-color: rgba(54, 94, 75, .14); }
-.record-selector-current > span { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 12px; display: grid; place-items: center; background: var(--green); color: #fff; font-size: 11px; font-weight:700; }
+.record-selector-current > span { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 12px; display: grid; place-items: center; background: var(--green); color: var(--on-accent); font-size: 11px; font-weight:700; }
 .record-selector-current > span svg { width: 18px; }
 .record-selector-current > div { min-width: 0; flex: 1; }
 .record-selector-current > svg { width: 17px; flex: 0 0 17px; color: var(--green); }

@@ -1,0 +1,164 @@
+/* 功能区按钮透明度 —— **最后加载的覆盖层**（用户 2026-10-09 新增）。
+   ⚠ 为什么单独一个文件、且必须在 main.tsx 里**最后** import：
+     这条规则要和既有规则"同强度、更靠后"才能赢。抢它的那条是
+     `src/features/workspace/action-layout.css` 里的
+       `.action-layout-workspace .moves-row > button.workspace-action, … { background: var(--surface) !important; }`
+     —— 用的是 **background 简写 + !important**。简写会把 background-color 一并重置，
+     所以只写 `background-color: … !important` 是赢不了的（实测：变量链全对、值也算出来了，
+     但底色仍是非透明的 rgb(248,250,248)）。两条路：要么也用简写 + !important 并靠后加载，
+     要么提高特异性。这里两者都用，避免以后 import 顺序一变又悄悄失效。
+
+   覆盖范围＝**所有实底按钮/卡片**：常驻操作区、手数行、四个面板（分析/标注/编辑/更多）、
+   上下文操作条、底部导航、设置页卡片。首行功能区（.dock-tabs.action-bottom-row）是图案不是
+   实底按钮，用户明说"这个可以不管"，故排除。
+   做法＝只淡"底子"（底色带 alpha），文字与图标保持清晰。
+
+   ══════════════════════════════════════════════════════════════════════════
+   ⚠⚠ 2026-10-09 真机复盘（Redmi K20 Pro / WebView 83）：这个文件**必须只用老写法**。
+   用户反馈「感觉都是只修复了一点的样子」，真机 CDP 逐条量下来，根因有三条，都在本文件：
+     ① 选择器里出现 `:is()` / `:where()` / 复合 `:not(.a.b)` ⇒ 老内核**整条规则作废**
+        （CSS 规范：选择器列表中任一选择器非法，整条 style rule 被丢弃 —— 不是只丢那一个）。
+        实测：`:is(.a,.b)` 与 `:not(.command-save.pending)` 在 83 上直接抛
+        `Failed to execute 'querySelectorAll'`。链式 `:not(.a):not(.b)` 才安全。
+     ② `--action-surface: color-mix(…)` 这类**变量里存着 color-mix** 的写法最阴：
+        自定义属性本身能解析（存的就是那段文本），但 `background: var(--action-surface) !important`
+        在"替换之后"才发现值非法 ⇒ 该属性按 unset 处理，而 !important 又挡住其它规则 ⇒
+        **元素底色变成透明**（实测：手数行那排按钮全是 rgba(0,0,0,0)，比"样式没跟上"更难查）。
+     ③ `background: color-mix(…) !important` 直接写在声明里反而是"良性"的：解析期即丢弃，
+        不会挡住别的规则 —— 但这说明"新老两套规则成对维护"的做法迟早漏一个。
+
+   ⇒ 定案（本次改动）：**所有透明度合成一律在 JS 里算成 rgba()**（见 src/action-opacity.ts 的
+     withAlpha 与 App.tsx 的 effect，写进 `--action-surface` / `--action-border` /
+     `--paper-with-alpha` / `--line-with-alpha`），本文件只引用这些变量，且**只用老写法选择器**。
+     rgba() 是所有内核都能解析的写法，于是新老内核共用同一条规则 ——
+     不再需要"现代一条 + legacy 兜底一条"的成对维护（那正是①②的来源）。
+   ⚠ 后续改本文件请守两条：① 不要出现 `:is(`/`:where(`/`:has(`/`color-mix(`；
+     ② `:not()` 里不要写复合项（`.a.b`）或空格。`src/legacy-assets.test.ts` 已加断言守住。 */
+
+html:root {
+  /* JS 在"透明度或主题变化"时用 withAlpha() 写入实际 rgba（见 App.tsx 的 effect）。
+     这里给的是 **JS 还没跑到时的兜底**：不透明主题色，观感等于"未调节"。
+     注意变量定义在 :root 上、JS 也用 root.style.setProperty 写同一个元素 ——
+     内联样式优先级更高，所以 JS 的值一定生效（若定义在 .app-shell 上就会被它盖住）。 */
+  --action-surface: var(--surface, var(--paper));
+  --action-border: var(--surface-border, var(--line));
+}
+
+/* ① 面板里的实底按钮/卡片（分析 / 标注 / 编辑 / 更多 四个面板 + 上下文操作条 + 各种卡片与浮层）。
+   ⚠ 选择器**逐条展开**，不用 `:is()`（见文件头①）。新增控件往后面按同样写法追加。 */
+html:root .app-shell .dock-panel > button:not(.accent):not(.selected),
+html:root .app-shell .dock-panel .mark-studio-box,
+html:root .app-shell .dock-panel .mark-studio-preview,
+html:root .app-shell .dock-panel .mark-studio-grid,
+html:root .app-shell .dock-panel .erase-stone-button,
+html:root .app-shell .dock-panel .board-shift-button,
+html:root .app-shell .dock-panel .dock-board-size,
+html:root .app-shell .dock-panel .annotation-style-grid > button,
+html:root .app-shell .dock-panel .mark-preset-grid > button,
+html:root .app-shell .dock-panel .annotation-color-grid > button,
+html:root .app-shell .context-dock,
+html:root .app-shell .context-dock button,
+html:root .app-shell .context-dock .rule-toggle,
+html:root .app-shell .context-dock .stone-color-switch,
+html:root .app-shell .dock-panel,
+html:root .app-shell .settings-group,
+html:root .app-shell .settings-link,
+html:root .app-shell .bottom-sheet,
+html:root .app-shell .timeline-card,
+html:root .app-shell .comment-card,
+html:root .app-shell .record-list article,
+html:root .app-shell .branch-switcher,
+html:root .app-shell .export-format-section,
+html:root .app-shell .ai-free-controls,
+html:root .app-shell .about-card,
+html:root .app-shell .import-choice,
+html:root .app-shell .save-info-disclosure,
+html:root .app-shell .position-match-list > button,
+html:root .app-shell .puzzle-collection-list > button,
+html:root .app-shell .inline-record-list > button,
+html:root .app-shell .inline-collection-list > section,
+html:root .app-shell .collection-accordion-head,
+html:root .app-shell .inline-puzzle-list > button,
+html:root .app-shell .picker-record-list > button,
+html:root .app-shell .puzzle-grid-list > button,
+html:root .app-shell .folder-library-list > section,
+html:root .app-shell .library-folder-row,
+html:root .app-shell .record-selector-current,
+html:root .app-shell .puzzle-selector-current,
+html:root .app-shell .visual-option-grid > button,
+html:root .app-shell .theme-preference > button {
+  background: var(--action-surface) !important;
+  border-color: var(--action-border) !important;
+}
+
+/* ② 常驻操作区（注释 / 保存 / 新建 / 删除 / 规则 / 黑白）+ 手数行（起点/上一手/下一手/…）。
+   ⚠ 手数行排除 accent 的理由见 ③。这里给**整排**上底子，随后**再补回语义态**（见 ②b）——
+   为什么不像以前那样用一长串 `:not()` 精确排除：那些 :not() 只能用简单项，
+   想排除 compound 态（如"待存的保存键"）必然要写 `:not(.command-save.pending)`，
+   而那个写法在老内核直接作废（文件头①）。"先铺底、后盖语义色"同样正确，
+   而且两种内核走的是同一条路径，不会再出现"新内核对、老内核漏"的分叉。 */
+html:root .app-shell .record-command-bar > button,
+html:root .app-shell .record-command-bar .rule-toggle,
+html:root .app-shell .record-command-bar .stone-color-switch,
+html:root .app-shell .moves-row > button.workspace-action:not(.accent) {
+  background: var(--action-surface) !important;
+  border-color: var(--action-border) !important;
+}
+
+/* ②b 语义态回盖（必须排在②之后：同为 !important，靠特异性/顺序取胜）：
+   保存待存＝强调绿；注释激活/有内容＝蓝；标注激活＝jade；workspace-action 激活态＝jade。
+   这些是"语义色，不是装饰底"，不参与透明度调节（与③的 accent 同一原则）。 */
+html:root .app-shell .record-command-bar > button.command-save.pending {
+  background: var(--green) !important;
+  border-color: var(--green) !important;
+}
+html:root .app-shell .record-command-bar > button.command-comment.active,
+html:root .app-shell .record-command-bar > button.command-comment.has-comment {
+  background: #dcebfb !important;
+  border-color: #6f9fd8 !important;
+}
+html:root .app-shell .record-command-bar > button.command-annotation.active,
+html:root .app-shell .moves-row > button.workspace-action.active,
+html:root .app-shell .record-command-bar > button.workspace-action.active {
+  background: var(--jade) !important;
+  border-color: var(--green) !important;
+}
+
+/* ③ 手数行的 accent（「下一手」，绿底强调键）：底色与图标色按语义给，不参与背景透明度调节。
+   ⚠ 2026-10-09 三改（用户：「我的下一步这个按钮，现在是一直常亮了，和其他的比起来又是鹤立鸡群，
+     你改的正常一点」）：上一版无条件写 `background: var(--green) !important`，把**禁用态**也刷成
+     亮绿 ⇒ 不能点的时候照样鲜绿、比同排按钮抢眼（源码里 accent 本来靠 `:disabled{opacity:.4}`
+     暗下去，而 opacity 与 !important 底色叠加后仍然扎眼）。
+   现在：可用＝实底强调绿；**禁用＝退回和同排按钮完全同一套**（底子＝--action-surface、
+   文字/图标＝--muted），既不亮也不消失。 */
+html:root .app-shell .moves-row button.accent {
+  background: var(--green) !important;
+  border-color: var(--green) !important;
+  color: var(--on-accent, #fff) !important;
+}
+html:root .app-shell .moves-row button.accent svg { color: var(--on-accent, #fff) !important; }
+html:root .app-shell .moves-row button.accent:disabled {
+  background: var(--action-surface) !important;
+  border-color: var(--action-border) !important;
+  color: var(--muted) !important;
+}
+html:root .app-shell .moves-row button.accent:disabled svg { color: var(--muted) !important; }
+
+/* ④ 外观页里的材质/主题选择卡片：底色写死 #fff（library.css），不走主题变量。
+   实测（K20 / deepsea）：卡片是刺眼的纯白 rgb(255,255,255)，文字却是主题的浅色 ink。
+   这里归到主题 surface 并跟随透明度；**选中态保留强调色**（否则看不出选了哪个）。 */
+html:root .app-shell .visual-option-grid > button.selected,
+html:root .app-shell .theme-preference > button.selected {
+  background: var(--jade) !important;
+  border-color: var(--green) !important;
+  color: var(--green) !important;
+}
+
+/* ⑤ 顶栏 / 底栏（金刚页）：底色跟着透明度走，**只淡底色不淡内容**。
+   两条都是 JS 算好的 rgba（老内核能解析）；`--paper-with-alpha` 缺失时退回不透明主题色。 */
+html:root .app-shell .topbar,
+html:root .app-shell .bottom-nav {
+  background: var(--paper-with-alpha, var(--paper)) !important;
+  border-color: var(--line-with-alpha, var(--line)) !important;
+}
+html:root .app-shell .bottom-nav { border-top-color: var(--line-with-alpha, var(--line)) !important; }

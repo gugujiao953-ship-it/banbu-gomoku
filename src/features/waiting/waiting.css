@@ -1,0 +1,99 @@
+/* 等待动效「VCF 演算」+ 等待弹窗的样式。纯 CSS 驱动，不跑 JS。
+   ⚠ 这块用「实物的颜色」（木盘 + 黑白子），不跟主题变量走：棋子是实物，
+     换个主题不该把黑子变成浅紫色。要跟主题走就改下面 .wait-vcf 上那几个变量。
+   ⚠ 落子数据与逐手关键帧都是**生成出来的**（见 qa/gen-wait-vcf.test.ts），别手改。 */
+
+.wait-vcf{
+  --w-board:#c9a877;        /* 木盘 */
+  --w-board-edge:#a8863f;
+  --w-line:#6b5636;         /* 盘上格线 */
+  --w-black:#2b2833;        /* 黑子 */
+  --w-black-edge:#151319;
+  --w-white:#f7f3e9;        /* 白子 */
+  --w-white-edge:#9a917f;
+  --wait-step:1.45s;        /* 每手节拍（周期 = 手数 × 它，见组件里算的 --wait-cycle） */
+  display:block;width:170px;height:170px;margin:0 auto;
+}
+/* 木盘**不画外框**：只铺底色，格线一直延伸出画面 ⇒ 看着像真实棋盘的一个局部特写（用户 10-08） */
+.wait-vcf__wood{fill:var(--w-board)}
+.wait-vcf__grid path{stroke:var(--w-line);stroke-width:.55;opacity:.42;fill:none}
+.wait-vcf__stars circle{fill:var(--w-line);opacity:.55}
+.wait-vcf__stone,.wait-vcf__move{stroke-width:.45;transform-box:fill-box;transform-origin:center}
+.wait-vcf__stone.is-black,.wait-vcf__move.is-black{fill:var(--w-black);stroke:var(--w-black-edge)}
+.wait-vcf__stone.is-white,.wait-vcf__move.is-white{fill:var(--w-white);stroke:var(--w-white-edge)}
+/* 解的子：每手一段自己的关键帧，靠 --kf 指过去（animation-name 可以用 var 代换） */
+.wait-vcf__move{
+  animation-name:var(--kf);
+  animation-duration:var(--wait-cycle);
+  animation-timing-function:linear;
+  animation-iteration-count:infinite;
+}
+
+/* ── 等待弹窗 ── */
+.wait-overlay{
+  position:fixed;inset:0;z-index:70;
+  background:#18171373;backdrop-filter:blur(3px);
+  display:grid;place-items:center;padding:20px;
+  animation:wait-overlay-in .18s ease-out}
+.wait-card{
+  width:min(86vw,300px);padding:20px 18px 16px;text-align:center;
+  background:var(--surface,#fff);color:var(--ink,#292620);
+  border:1px solid var(--surface-border,var(--line,#ded8cc));border-radius:22px;
+  box-shadow:0 20px 50px #00000038}
+.wait-card b{display:block;margin-top:13px;font:700 14px/1.3 serif;letter-spacing:.03em}
+.wait-card small{display:block;margin-top:5px;color:var(--muted);font-size:11px;line-height:1.5}
+.wait-stop{
+  margin-top:15px;min-height:40px;padding:0 20px;border-radius:12px;
+  border:1px solid var(--surface-border,var(--line));background:transparent;
+  color:var(--ink);font-size:12px;font-weight:700}
+.wait-stop:active{background:var(--surface-hover,var(--surface-3,#f0eee8))}
+@keyframes wait-overlay-in{from{opacity:0}to{opacity:1}}
+
+/* @wait-kf-start */
+/* 逐手关键帧（由 qa/gen-wait-vcf.test.ts 生成，别手改）：第 i 手在 (i/5)*80% 落下，
+   92% 前都亮着，然后解的子一起退场——题面布子不动，所以每轮都是"同一道题重新演一遍"；
+   全程不超过四子，盘面上不会出现五连，也不会出现"五连之后还落子"。 */
+@keyframes wait-vcf-0{
+  0%,0%{opacity:0;transform:scale(.46)}
+  4%{opacity:1;transform:scale(1.18)}
+  8%{transform:scale(1)}
+  92%{opacity:1;transform:scale(1)}
+  97%,100%{opacity:0;transform:scale(.9)}
+}
+@keyframes wait-vcf-1{
+  0%,16%{opacity:0;transform:scale(.46)}
+  20%{opacity:1;transform:scale(1.18)}
+  24%{transform:scale(1)}
+  92%{opacity:1;transform:scale(1)}
+  97%,100%{opacity:0;transform:scale(.9)}
+}
+@keyframes wait-vcf-2{
+  0%,32%{opacity:0;transform:scale(.46)}
+  36%{opacity:1;transform:scale(1.18)}
+  40%{transform:scale(1)}
+  92%{opacity:1;transform:scale(1)}
+  97%,100%{opacity:0;transform:scale(.9)}
+}
+@keyframes wait-vcf-3{
+  0%,48%{opacity:0;transform:scale(.46)}
+  52%{opacity:1;transform:scale(1.18)}
+  56%{transform:scale(1)}
+  92%{opacity:1;transform:scale(1)}
+  97%,100%{opacity:0;transform:scale(.9)}
+}
+@keyframes wait-vcf-4{
+  0%,64%{opacity:0;transform:scale(.46)}
+  68%{opacity:1;transform:scale(1.18)}
+  72%{transform:scale(1)}
+  92%{opacity:1;transform:scale(1)}
+  97%,100%{opacity:0;transform:scale(.9)}
+}
+/* @wait-kf-end */
+/* ── 关动效时的兜底 ──
+   ⚠ 必须写：全局 `:root[data-motion="off"] *` 把动画时长归零，本动效会停在最后一个关键帧
+   （opacity:0）⇒ 棋盘会只剩余下题面、解全没了。这里改成静态亮着的一盘（＝解出来的局面）。 */
+@media (prefers-reduced-motion: reduce){
+  .wait-vcf__move{animation:none;opacity:1;transform:none}
+  .wait-overlay{animation:none}
+}
+:root[data-motion="off"] .wait-vcf__move{animation:none!important;opacity:1;transform:none}

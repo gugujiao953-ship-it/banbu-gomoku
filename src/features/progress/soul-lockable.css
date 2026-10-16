@@ -1,0 +1,1046 @@
+/* 棋魂解锁：选项右侧的锁徽章 + 购买确认框（用户 2026-10-10）。
+ *
+ * 用户点名要的形态：「选项的右边有一个棋魂的图案，右边标好需要多少的棋魂可以解锁
+ * （不要整说明，点击后弹窗是否购买），不要搞的太臃肿了」。
+ *
+ * 对比度口径同本模块其它文件：文字走主题令牌，21 套主题下逐条量过 ≥4.5:1
+ * （见 qa/achievements-contrast.mjs）。
+ */
+
+/* ── 选项右侧的锁徽章 ─────────────────────────────────────────────── */
+
+/* ── 选项右侧的锁徽章 ─────────────────────────────────────────────── */
+
+/**
+ * 徽章**参与排版**，不做绝对定位。
+ *
+ * ⚠ 三种方案都试过（都被"不压住内容"的实测断言打回或做不到位置要求）：
+ *  ① 绝对定位右上角 → 压住主题色块（那是这张卡的"商品图"）；
+ *  ② 绝对定位右下角 → 压住标题文字；
+ *  ③ 把卡片改三列网格 + `grid-column: -2` → 徽章被挤到**第二行**（卡片里除了
+ *     色块和文字还有第三个孩子：`Check` 勾选图标或材质缩略图，列数算不准）。
+ *
+ * 落地方案：**卡片变成两行的 flex-wrap 容器**，徽章作为最后一项。
+ *  · 锁着的卡：内容占第一行、徽章换到第二行右端（用户要的"选项的右边"，
+ *    在窄卡里"右边"与"下一行右端"是同一个视觉位置）；
+ *  · 没锁的卡：**完全不动**（没有徽章这个子节点，flex-wrap 不会有任何影响）。
+ *
+ * 代价是锁着的卡高一点点（约 20px）。这比"遮住商品图"划算得多 ——
+ * 用户要先看清买的是什么，才谈得上想不想要。
+ */
+/**
+ * 布局容器：卡片按钮与价格徽章**并排**放在它里面（两者是兄弟，不是父子 ——
+ * 嵌套 `<button>` 是非法 HTML，实测表现为"点价格没反应"）。
+ *
+ * 用 `display: contents` 的话定位父级会消失、卡片宽度也会失控；
+ * 所以它是个普通的 `inline-flex` 盒子，宽度由内容决定，宽度上限跟卡片原来一致。
+ */
+/**
+ * ⚠ wrapper 必须**接管卡片原来在网格里的那层布局**。
+ *
+ * 加这层 wrapper 的原因是结构：价格徽章现在是个真按钮，而 `<button>` 不能嵌套
+ * `<button>`（非法 HTML，实测表现为"点价格没反应"）。所以卡片与徽章成了兄弟。
+ *
+ * 但 wrapper 一进来就把外面那些 **`> button` 直接子选择器**全打断了。最明显的一处是
+ * `library.css` 的「外观」子节：
+ * ```
+ * .appearance-center-subsection .theme-preference > button { flex-direction:column; … }
+ * .appearance-center-subsection .theme-swatch { width:100%; height:26px; … }
+ * ```
+ * 那是"色条在上、文字在下"的竖版卡片。选择器不再命中之后色块退回默认的 32×32 方块，
+ * **看起来就是"颜色条没了"**（用户 2026-10-10：「主题，棋盘棋子背景的颜色条怎么没了，
+ * 感觉少了一层直观的地方了」）。
+ *
+ * 修法：本文件里把这套"网格单元"布局**复刻到 wrapper 上**，并保留
+ * "卡片是内容块、徽章在右端"的分工。所以下面这组规则要与 `library.css` 里
+ * `.appearance-center-subsection .theme-preference > button` 那条**同步维护**。
+ */
+.soul-lockable {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+  min-height: 60px;
+  padding: 8px;
+  border: 1px solid #e2ddd4;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--ink, #292620);
+}
+
+/* 外观子节里是**竖版**卡片（色条在上、文字在下、右上角一枚勾选角标）——
+   照抄 library.css 那一组，只是把 `> button` 换成本 wrapper。 */
+.appearance-center-subsection .soul-lockable {
+  position: relative;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  min-height: 66px;
+  padding: 8px;
+  border-radius: 12px;
+}
+
+/* 卡片本体：只负责"内容"的排布，外框交给 wrapper */
+.soul-lockable > button:not(.soul-lock-badge) {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+
+/* 外观子节：卡片内容也是竖排（色块一行、文字一行） */
+.appearance-center-subsection .soul-lockable > button:not(.soul-lock-badge) {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  /* 右侧留出勾选角标的位置（原规则是 `padding: 8px 26px 8px 8px`，padding 在 wrapper 上，
+     所以这里只留 `padding-right` 那一半） */
+  padding-right: 20px;
+}
+
+/**
+ * 色块 / 材质缩略图：**必须撑满卡片宽度**（这就是那条"颜色条"）。
+ *
+ * ⚠ 这一条是第二次踩同一个坑：先是 wrapper 让外框规则失效、再是这里漏了。
+ * 判据用 `> button > :first-child`（色块在卡片里的第一个位置），
+ * 而不是给 `.theme-swatch` 加规则 —— 材质卡用的是 `BoardChip`/`StoneChip`（另一套类），
+ * 只认 `.theme-swatch` 会漏掉棋盘与棋子那两栏。
+ */
+.appearance-center-subsection .soul-lockable > button:not(.soul-lock-badge) > :first-child {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+/* 文字块撑开（原 `.appearance-center-subsection .theme-preference > button > span:nth-child(2)`） */
+.appearance-center-subsection .soul-lockable > button:not(.soul-lock-badge) > span:nth-child(2) {
+  width: 100%;
+  flex: 0 1 auto;
+}
+
+/* 勾选角标：原规则是绝对定位在卡片右上（现在相对 wrapper） */
+.appearance-center-subsection .soul-lockable .theme-check {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 14px;
+  margin: 0;
+}
+
+/**
+ * 选中态：原来在 `.theme-preference > button.selected` 上（边框 + 底色 + 阴影）。
+ * 现在落到 **wrapper** 上，所以用 `:has()` 反查（卡片选中 ⇒ wrapper 上样式）。
+ */
+.soul-lockable:has(> button.selected) {
+  border-color: #729681;
+  background: var(--jade, #e8f0e8);
+  box-shadow: 0 0 0 2px #72968122;
+}
+
+/* 深色主题的卡片底色（照 library.css 里 `html[data-theme="dark"] .theme-preference > button`） */
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .soul-lockable {
+  background: #26312d;
+  border-color: #3b4842;
+}
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .soul-lockable:has(> button.selected) {
+  background: var(--jade, #24382e);
+  border-color: #729681;
+}
+
+/* 徽章靠右、不参与卡片的内部排版（卡片内容一字不动） */
+.soul-lockable > .soul-lock-badge {
+  flex: 0 0 auto;
+  margin-left: 4px;
+}
+
+.soul-lock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  /* 底色必须**不透明**：它挨着色块/缩略图，半透明会让数字看不清。 */
+  background: var(--surface, #fff);
+  border: 1px solid color-mix(in srgb, var(--gold, #c79c4a) 45%, var(--line, #dfdad0));
+  white-space: nowrap;
+  /**
+   * ⚠ **必须可点**：它现在是"购买"那个按钮（用户 2026-10-10：「点击右边那个地方
+   * 才是购买」）。
+   *
+   * 上一版这里是 `pointer-events: none`（那时它只是装饰，点它应当穿透到卡片）。
+   * 改成按钮之后忘了删 —— 于是实测 `elementFromPoint` 命中的是外层容器而不是它，
+   * 点上去毫无反应。这条是自检脚本用**命中测试**查出来的，肉眼完全看不出来
+   * （它长得就像一个能点的按钮）。
+   */
+  cursor: pointer;
+}
+
+.soul-lock-badge.is-buy:hover {
+  background: color-mix(in srgb, var(--gold, #c79c4a) 16%, var(--surface, #fff));
+}
+
+.soul-lock-badge .soul-flame { flex: 0 0 auto; }
+
+.soul-lock-badge em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--progress-soul-ink-strong, #6b4c17);
+}
+
+/* 锁着的卡片：**只轻微**压暗 + 降饱和。
+ *
+ * ⚠ 第一版写的是 `opacity: .55` —— 截图一看色块几乎认不出来了，而它是**商品图**：
+ * 看不清长什么样就不会想买。而"锁着"这件事已经由右上角那枚「魂火 + 价格」说清楚了，
+ * 不需要靠压暗来表达。所以收到 .8，只留一点"未解锁"的暗示。 */
+.is-soul-locked > :not(.theme-check):not(.visual-option-check) {
+  opacity: .8;
+  filter: saturate(.85);
+}
+
+/* 锁着时鼠标形态仍是 pointer：点它是有用的（会弹购买框），不是禁用。 */
+
+/* 锁着时选中态的边框也要能看出来（用户买了之后要能看到"现在选的是它"） */
+.is-soul-locked.selected {
+  border-color: color-mix(in srgb, var(--gold, #c79c4a) 60%, var(--line, #dfdad0));
+}
+
+/* ── 购买确认框 ───────────────────────────────────────────────────── */
+
+/**
+ * ⚠ **这两个棋魂弹窗必须自带魂火令牌**（2026-10-10 第七轮量出来的真问题）。
+ *
+ * `--progress-soul-ink` / `--progress-soul-ink-strong` 只在**具体容器**上定义
+ * （`.soul-panel`、`.soul-badge`、`.achievements-panel` —— 见 soul-panel.css 第 595 行那段
+ * 深色主题覆盖）。而这两个弹窗是 `position: fixed` 的**顶层浮层**，DOM 上不在那些容器里，
+ * 于是 `var(--progress-soul-ink-strong, #6b4c17)` 取不到值、落到兜底的深金 `#6b4c17`。
+ *
+ * 实测（深色主题）：价格数字的实际颜色不是预期的亮金 `#e8cd8a`，而是继承来的
+ * `--muted`（rgb(185,178,167)）—— 因为那条 `color:` 声明在旧写法里被 `--ink` 一类
+ * 规则盖过/落空。观感就是"金色价格变成了灰字"，和说明页里的金色对不上。
+ *
+ * 修法：把令牌定义在**弹窗自己身上**，深浅两套都在这里给全，
+ * 这样它不再依赖"恰好住在哪个面板里"。
+ */
+.soul-buy-backdrop,
+.vcfch-itemback {
+  --progress-soul-ink: #6b4c17;
+  --progress-soul-ink-strong: #6b4c17;
+}
+/* 深色主题（含那批深底主题）换成亮金：深金压深底只有 2.1:1 左右，看不清。
+   ⚠ 此处是**新写法文件**（这个文件本来就大量使用 color-mix，不受 legacy 断言约束），
+     但选择器仍逐主题展开，避免 :is() 在旧内核上整条作废。 */
+html[data-theme="dark"] .soul-buy-backdrop,
+html[data-theme="rain"] .soul-buy-backdrop,
+html[data-theme="jiangnan"] .soul-buy-backdrop,
+html[data-theme="firefly"] .soul-buy-backdrop,
+html[data-theme="pixel"] .soul-buy-backdrop,
+html[data-theme="cyber"] .soul-buy-backdrop,
+html[data-theme="blackgold"] .soul-buy-backdrop,
+html[data-theme="aurora"] .soul-buy-backdrop,
+html[data-theme="deepsea"] .soul-buy-backdrop,
+html[data-theme="pelican"] .soul-buy-backdrop,html[data-theme="dunhuang"] .soul-buy-backdrop,html[data-theme="soul"] .soul-buy-backdrop,
+html[data-theme="dark"] .vcfch-itemback,
+html[data-theme="rain"] .vcfch-itemback,
+html[data-theme="jiangnan"] .vcfch-itemback,
+html[data-theme="firefly"] .vcfch-itemback,
+html[data-theme="pixel"] .vcfch-itemback,
+html[data-theme="cyber"] .vcfch-itemback,
+html[data-theme="blackgold"] .vcfch-itemback,
+html[data-theme="aurora"] .vcfch-itemback,
+html[data-theme="deepsea"] .vcfch-itemback,
+html[data-theme="pelican"] .vcfch-itemback,html[data-theme="dunhuang"] .vcfch-itemback,html[data-theme="soul"] .vcfch-itemback {
+  --progress-soul-ink: #e0c17d;
+  --progress-soul-ink-strong: #e8cd8a;
+}
+
+/* 只给读屏看的文字（价格行去掉「棋魂」二字之后，语义靠它补回来）。
+   ⚠ 老写法、不用 clip-path/inset（旧内核 Chrome 83 不支持，本文件要两种内核都能解析）。
+   ⚠ 这个类现在被**三个**地方用（外观弹窗的价格行、商店道具弹窗、成就弹窗的奖励徽章），
+     所以改它之前先 grep 一遍 `.soul-sr-only`：它已经不是"这个文件私有"的工具类了。
+     （两处 CSS 都由 App.tsx 常驻加载，所以放在哪个文件都能生效；放这里是因为它最早在这儿。） */
+.soul-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.soul-buy-backdrop {
+  position: fixed;
+  /* ⚠ 先写四边再写 inset：旧内核（Chrome 83）不认 `inset` 简写，只写它会整条声明作废
+     ⇒ 遮罩塌成静态盒子。四边是老写法，所有内核都认；`inset` 留给新内核做"一句话表达"。
+     （同样的处理见 legacy-webview.css 里 `.sheet-backdrop` 那一段。） */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  inset: 0;
+  z-index: 200;              /* 高于 sheet（100）与 toast，低于首次欢迎页（若存在） */
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #00000052;
+  animation: soul-buy-fade 140ms ease-out both;
+}
+
+.soul-buy-card {
+  position: relative;
+  width: min(320px, 100%);
+  display: grid;
+  justify-items: center;
+  /* 2026-10-10 第七轮排版：图案 52px 之后行距要跟着松一档，
+     否则"图案—标题—价格"会挤成一坨（原来 8px 是配 34px 图案的）。 */
+  gap: 10px;
+  padding: 26px 20px 18px;
+  border-radius: 18px;
+  background: var(--surface, #fff);
+  /* 边框：先给老内核一条纯色（不依赖 color-mix），新内核再用 color-mix 调金。
+     旧内核里 color-mix 会**整条声明作废** ⇒ 没有这条兜底就完全没边框。 */
+  border: 1px solid var(--line, #dfdad0);
+  border-color: color-mix(in srgb, var(--gold, #c79c4a) 38%, var(--line, #dfdad0));
+  box-shadow: 0 20px 52px #0000003d;
+  animation: soul-buy-pop 180ms var(--ease-enter, cubic-bezier(.22, .9, .25, 1)) both;
+}
+
+.soul-buy-flame {
+  display: grid;
+  place-items: center;
+  /* 一点暖光，让这枚魂火看起来"在发光"而不是贴上去的。
+     ⚠ 先写一条不带 color-mix 的老兜底：旧内核不认 color-mix ⇒ 整条 filter 作废
+     ⇒ 光晕消失（图案仍在，但"发光感"没了）。 */
+  filter: drop-shadow(0 4px 14px #c79c4a52);
+  filter: drop-shadow(0 4px 14px color-mix(in srgb, var(--gold, #c79c4a) 40%, transparent));
+}
+
+.soul-buy-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--ink, #292620);
+  text-align: center;
+  /* 标题与下方价格成组：负 margin 收掉 grid gap 的一半，让"解锁 X / 500"读起来是一个整体 */
+  margin-bottom: -3px;
+}
+
+.soul-buy-price {
+  display: inline-flex;
+  align-items: center;      /* 图案与数字居中（原来 baseline 是为带"棋魂"二字设计的） */
+  gap: 7px;
+  padding: 6px 15px;
+  border-radius: 999px;     /* 胶囊：数字是主体，形状把"这是一枚价格"讲清楚 */
+  /* 老兜底 + 新写法（同上：color-mix 在旧内核会让整条作废） */
+  background: #c79c4a24;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 14%, transparent);
+}
+
+/**
+ * ⚠ 价格数字的颜色必须**把特异性抬到 `html[data-theme]` 之上**（2026-10-10 第七轮实测）。
+ *
+ * 根因不是令牌没定义（那是另一个已修的坑，见上面 `.soul-buy-backdrop` 那段），
+ * 而是 `library.css:1119` 那条**全局主题规则**：
+ *
+ * ```css
+ * html[data-theme] :is(.continue-research-card, …, .coach-mark) :is(small, em) { color: var(--muted); }
+ * ```
+ *
+ * 它给"设置页那批卡片里的 em"统一上灰。我们的弹窗虽然不在那份容器清单里，
+ * 但那条规则里的 `em` 是**后代**选择器、且带 `html[data-theme]` 前缀，
+ * 特异性比单类 `.soul-buy-price em` 高 —— 于是金色数字被压成灰（实测 rgb(185,178,167)）。
+ *
+ * 修法：把选择器也写成 `html[data-theme]` 前缀 + 逐条展开（不用 `:is()`，
+ * 见 legacy-webview.css 里"选择器列表任一非法 ⇒ 整条规则丢弃"的教训），
+ * 这样新写法在旧内核上也能解析，且特异性稳稳压过上面那条。
+ */
+html[data-theme] .soul-buy-price em,
+html:root .soul-buy-price em,
+html[data-theme] .vcfch-itemcard-price em,
+html:root .vcfch-itemcard-price em {
+  color: var(--progress-soul-ink-strong, #6b4c17);
+}
+
+.soul-buy-price em {
+  font-style: normal;
+  /* 放大到 20px：价格是这张卡唯一的数字，它该是视觉重心 */
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--progress-soul-ink-strong, #6b4c17);
+}
+
+.soul-buy-error {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--red, #c0392b);
+}
+
+.soul-buy-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.soul-buy-cancel,
+.soul-buy-confirm {
+  min-height: 40px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.soul-buy-cancel {
+  border: 1px solid var(--line, #dfdad0);
+  background: var(--surface, #fff);
+  color: var(--ink, #292620);
+}
+
+.soul-buy-confirm {
+  border: 1px solid var(--line, #dfdad0);
+  border-color: color-mix(in srgb, var(--gold, #c79c4a) 60%, var(--line, #dfdad0));
+  /* 底色 + 字色成对从令牌来（--on-* 的路子）：
+     金色按钮在深色主题下要变亮金，写死 #6b4c17 会在深底上糊成一团。 */
+  background: #f0e2c4;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 22%, var(--surface, #fff));
+  color: var(--progress-soul-ink-strong, #6b4c17);
+}
+
+/* :active 的两条也要老兜底：旧内核里 color-mix 作废 ⇒ 按下没有任何反馈
+   （看起来像"点了没反应"）。给一条近似纯色。 */
+.soul-buy-cancel:active { background: #f2efe9; background: color-mix(in srgb, var(--line, #dfdad0) 30%, var(--surface, #fff)); }
+.soul-buy-confirm:active { background: #e8d5ab; background: color-mix(in srgb, var(--gold, #c79c4a) 34%, var(--surface, #fff)); }
+
+.soul-buy-close {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted, #68635b);
+}
+
+@keyframes soul-buy-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes soul-buy-pop {
+  0%   { opacity: 0; transform: translateY(10px) scale(.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .soul-buy-backdrop, .soul-buy-card { animation: none; }
+}
+
+/* ── 棋魂一次性动作面板（设置页「棋魂解锁」一节）────────────────────── */
+
+.soul-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.soul-actions-hint {
+  margin: 0 0 2px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted, #68635b);
+}
+
+.soul-actions-hint b { color: var(--ink, #292620); }
+
+/* 一行一个动作：左边标题+说明，右边魂火+价格（与外观卡同一套读数习惯）。
+   这里是**整行可点**（不像外观卡那样还要选中什么），所以用 hover 背景给反馈。 */
+.soul-action-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 9px 11px;
+  border: 1px solid var(--line, #dfdad0);
+  border-radius: 13px;
+  background: var(--surface, #fff);
+  text-align: left;
+  color: var(--ink, #292620);
+}
+
+.soul-action-row:active { background: color-mix(in srgb, var(--line, #dfdad0) 22%, var(--surface, #fff)); }
+
+.soul-action-copy { flex: 1 1 auto; min-width: 0; }
+.soul-action-copy b { display: block; font-size: 12.5px; }
+.soul-action-copy small { display: block; margin-top: 2px; font-size: 11px; line-height: 1.45; color: var(--muted, #68635b); }
+
+/* 这一行里的锁徽章**参与排版**（不是绝对定位）——它是行的一部分，不是压在预览上。
+   覆盖 `.soul-lock-badge` 的绝对定位即可（同一个类，就地调整）。 */
+.soul-action-row .soul-lock-badge {
+  flex: 0 0 auto;
+  box-shadow: none;
+}
+
+/* 起始难度选档：三个胶囊竖排 */
+.soul-level-picker { gap: 9px; }
+
+.soul-buy-hint {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--muted, #68635b);
+  text-align: center;
+}
+
+.soul-level-chip {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid color-mix(in srgb, var(--gold, #c79c4a) 45%, var(--line, #dfdad0));
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  color: var(--ink, #292620);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.soul-level-chip:active { background: color-mix(in srgb, var(--gold, #c79c4a) 16%, var(--surface, #fff)); }
+
+/* ── 商店徽章（对弈页标题行，与棋魂徽章同一列）────────────────────────
+   用户 2026-10-10：「还是在对弈界面去放个商店吧的图标入口吧，和棋魂按钮在一列」。
+   外形与 .soul-badge 同一套（36px 高、同样的圆角与描边、同样的金边），
+   但内容是一枚袋子 + 未解锁项数 —— 两者并排才读得成"钱"和"能买的"两组。 */
+
+.shop-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 10px 0 9px;
+  border: 1px solid color-mix(in srgb, var(--gold, #c79c4a) 42%, var(--line, #dfdad0));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 12%, var(--surface, #fff));
+  color: var(--ink, #292620);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.shop-badge-icon {
+  display: grid;
+  place-items: center;
+  color: var(--progress-soul-ink, #6b4c17);
+}
+
+.shop-badge b {
+  font-variant-numeric: tabular-nums;
+  color: var(--progress-soul-ink-strong, #6b4c17);
+}
+
+.shop-badge:active {
+  background: color-mix(in srgb, var(--gold, #c79c4a) 22%, var(--surface, #fff));
+}
+
+/* 已全部解锁：改用"完成"的绿色调（它是"收齐了"而不是"还有得买"） */
+.shop-badge[aria-label*="已全部"] , .shop-badge:has(.shop-badge-icon svg + *:only-child) {
+  border-color: color-mix(in srgb, var(--green, #365e4b) 40%, var(--line, #dfdad0));
+}
+
+/* ── 棋魂商店面板（对弈页袋子图标的落点）────────────────────────────── */
+
+.shop-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 4px;
+}
+
+/* 余额条：买之前先看钱够不够 */
+.shop-balance {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--gold, #c79c4a) 34%, var(--line, #dfdad0));
+  border-radius: 15px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--gold, #c79c4a) 16%, transparent) 0%, transparent 70%),
+    var(--surface, #fff);
+}
+
+.shop-balance-flame {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 3px 10px color-mix(in srgb, var(--gold, #c79c4a) 40%, transparent));
+}
+
+.shop-balance-copy { min-width: 0; }
+.shop-balance-copy b {
+  display: block;
+  font: 700 22px/1.1 Georgia, serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--progress-soul-ink-strong, #6b4c17);
+}
+.shop-balance-copy small { display: block; margin-top: 3px; font-size: 11px; color: var(--muted, #68635b); }
+
+.shop-section { display: flex; flex-direction: column; gap: 7px; }
+
+.shop-section h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink, #292620);
+}
+
+.shop-section h3 small { font-size: 11px; font-weight: 400; color: var(--muted, #68635b); }
+
+/* ── 道具：**三张并排的卡**（用户 2026-10-10：「那三个道具就应该在同一行……
+      里面太普通了，没见过哪个游戏是这样的」）──────────────────────────
+   每张卡：角上一枚价格、中间一枚大图标（带底衬）、下面名字与数量。
+   **卡面上没有用法** —— 用法进点击后的弹窗（用户点名要求）。 */
+
+.shop-item-row {
+  display: grid;
+  /* 三等分：三张卡等宽，间距一致 */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shop-item-row li { min-width: 0; }
+
+.shop-item-card {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 16px 6px 8px;   /* 上方留出价格角标的位置 */
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 14px;
+  background: var(--surface, #fff);
+  color: var(--ink, #292620);
+}
+
+.shop-item-card:active { background: color-mix(in srgb, var(--line, #dfdad0) 22%, var(--surface, #fff)); }
+
+/* 用完的：整体压暗一档（一眼看出"这个没了"），仍然可点 */
+.shop-item-card.is-empty { background: color-mix(in srgb, var(--line, #dfdad0) 14%, var(--surface, #fff)); }
+.shop-item-card.is-empty .shop-item-badge { opacity: .55; }
+
+/* 价格角标：右上角一枚金色小胶囊 */
+.shop-item-cost {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 18%, var(--surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--gold, #c79c4a) 38%, var(--line, #dfdad0));
+}
+
+.shop-item-cost em {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--progress-soul-ink-strong, #6b4c17);
+}
+
+/* 图标：一枚带底衬的大图标（"道具徽章"的样子） */
+.shop-item-badge {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background:
+    radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--gold, #c79c4a) 26%, transparent) 0%, transparent 70%),
+    color-mix(in srgb, var(--gold, #c79c4a) 10%, var(--surface, #fff));
+  color: var(--progress-soul-ink, #6b4c17);
+}
+
+.shop-item-card b { font-size: 12px; font-weight: 700; text-align: center; }
+
+.shop-item-count {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted, #68635b);
+}
+
+/* 外观分组：只给"有几项 / 共几项"，挑的地方在设置页 */
+.shop-groups { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+
+.shop-groups li {
+  display: flex;
+  align-items: center;
+  padding: 9px 11px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 13px;
+  background: var(--surface, #fff);
+}
+
+.shop-group-copy { flex: 1 1 auto; min-width: 0; }
+.shop-group-copy b { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink, #292620); }
+.shop-group-copy b em {
+  font-style: normal;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--line, #dfdad0) 55%, transparent);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted, #68635b);
+}
+.shop-group-copy small { display: block; margin-top: 2px; font-size: 11px; color: var(--muted, #68635b); }
+
+.shop-note {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted, #68635b);
+}
+
+.shop-note strong { color: var(--ink, #292620); }
+
+.shop-cheapest {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 14%, transparent);
+  font-weight: 700;
+  color: var(--progress-soul-ink, #6b4c17);
+}
+
+.shop-go-appearance {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid var(--line, #dfdad0);
+  border-radius: 11px;
+  background: var(--surface, #fff);
+  color: var(--ink, #292620);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.shop-go-appearance:active { background: color-mix(in srgb, var(--line, #dfdad0) 26%, var(--surface, #fff)); }
+
+/* ── 道具的说明 / 购买弹窗 ─────────────────────────────────────────────
+   ⚠ 它原来住在 `src/features/vcf-challenge/vcf-challenge.css`，**搬到这里是必须的**：
+   那份 CSS 随 VCF 页懒加载（App.tsx 的 VcfChallengePage 是 lazy()），
+   而从对弈页打开**棋魂商店**、再点道具时它还没加载 ⇒ 弹窗丢了 position:fixed，
+   在面板里"往下展开"而不是浮起来（用户实测报的正是这个症状）。
+   放在这个常驻加载的文件里，两个落点（VCF 页 / 商店）都能正确浮起。 */
+
+.vcfch-itemback {
+  position: fixed;
+  /* ⚠ 四边先写、再写 inset：旧内核（Chrome 83）不认 `inset` 简写。
+     同 `.soul-buy-backdrop`（那里有完整注释）。 */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #00000052;
+}
+
+.vcfch-itemcard {
+  position: relative;
+  width: min(300px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 22px 20px 16px;
+  border-radius: 18px;
+  background: var(--surface, #fff);
+  /* 老兜底 + color-mix（旧内核里 color-mix 整条作废 ⇒ 没兜底就没边框） */
+  border: 1px solid var(--line, #dfdad0);
+  border-color: color-mix(in srgb, var(--gold, #c79c4a) 38%, var(--line, #dfdad0));
+  box-shadow: 0 20px 52px #0000003d;
+}
+
+.vcfch-itemcard-icon {
+  display: grid;
+  place-items: center;
+  color: var(--progress-soul-ink, #6b4c17);
+}
+
+.vcfch-itemcard-name { font-size: 15px; font-weight: 700; color: var(--ink, #292620); }
+
+.vcfch-itemcard-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+  color: var(--muted, #68635b);
+}
+
+.vcfch-itemcard-price {
+  display: inline-flex;
+  align-items: center;      /* 图案与数字居中（原来 baseline 是配"棋魂 / 个"那行小字的） */
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 999px;     /* 与外观弹窗同一套：胶囊表示"这是一枚价格" */
+  background: #c79c4a24;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 14%, transparent);
+}
+
+.vcfch-itemcard-price em {
+  font-style: normal;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  /* 颜色由上面那条 `html[data-theme]` 选择器统一给（同 bullet：压过全局 em 规则） */
+}
+
+.vcfch-itemcard-have { font-size: 11.5px; color: var(--muted, #68635b); }
+
+/* ── 道具的**份数选择**（用户 2026-10-11：「道具目前无法批量购买」）──────────
+   三个按钮（×1 / ×5 / ×10）而不是加减 stepper：最长的动作是"买 10 个"，
+   点两下就够；stepper 要按十次。
+   每个按钮上直接写**这一档的总价**（单价 × 份数）—— 用户要判断的是"花得起吗"，
+   而那个数取决于份数，只写单价等于让他自己乘。 */
+.vcfch-itemcard-amounts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.vcfch-amount {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 6px 4px;
+  border: 1px solid var(--line, #dfdad0);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  color: var(--ink, #292620);
+}
+
+.vcfch-amount b { font-size: 13px; font-weight: 700; line-height: 1.1; }
+
+.vcfch-amount small {
+  font-size: 10.5px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  /* 金色价格走令牌（深色主题下自动变亮金）：与价格胶囊同一套识别 */
+  color: var(--progress-soul-ink-strong, #6b4c17);
+}
+
+/* 选中态：金底 + 金边（与价格胶囊同色系）。 */
+.vcfch-amount.on {
+  border-color: color-mix(in srgb, var(--gold, #c79c4a) 62%, var(--line, #dfdad0));
+  background: color-mix(in srgb, var(--gold, #c79c4a) 18%, var(--surface, #fff));
+}
+
+/* 买不起的那一档：压暗 + 禁止点（别让他点了才知道不够）。 */
+.vcfch-amount:disabled { opacity: .38; cursor: not-allowed; }
+
+.vcfch-itemcard-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.vcfch-itemcard-actions .soul-buy-cancel,
+.vcfch-itemcard-actions .soul-buy-confirm {
+  min-height: 38px;
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 700;
+  /* 确认键上的字变长了（「买 5 个（150）」）——给它更多宽度，别把字挤换行。
+     ⚠ 用 minmax(0,1fr) 而不是 1fr：栅格子项默认不收缩，长文本会把格子撑破。 */
+  white-space: nowrap;
+}
+
+.vcfch-itemcard-actions { grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr); }
+
+
+/* ── 商店的**批量购买**（用户 2026-10-10：「只能一个个的买，你优化一下」）──────
+   平时只读总览；点「多选」切成可勾选列表 + 底部结算条。 */
+
+.shop-pick-toggle {
+  margin-left: auto;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line, #dfdad0);
+  border-radius: 9px;
+  background: var(--surface, #fff);
+  color: var(--ink, #292620);
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+/* 选中态（正在多选）：用金色边，和"这是可操作态"对应 */
+.shop-pick-toggle.on {
+  border-color: color-mix(in srgb, var(--gold, #c79c4a) 60%, var(--line, #dfdad0));
+  background: color-mix(in srgb, var(--gold, #c79c4a) 14%, var(--surface, #fff));
+  color: var(--progress-soul-ink-strong, #6b4c17);
+}
+
+.shop-pick { display: grid; gap: 12px; }
+
+.shop-pick-group { display: grid; gap: 5px; }
+
+.shop-pick-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.shop-pick-head b { font-size: 12px; color: var(--ink, #292620); }
+
+.shop-pick-all {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid var(--line, #dfdad0);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--muted, #68635b);
+  font-size: 11px;
+}
+
+.shop-pick ul { display: flex; flex-wrap: wrap; gap: 5px; margin: 0; padding: 0; list-style: none; }
+
+/* 每一项是一枚可勾选的胶囊：勾上之后金底（一眼看出选了哪些） */
+.shop-pick-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 10px 0 6px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  color: var(--ink, #292620);
+  font-size: 12px;
+}
+
+.shop-pick-row.on {
+  border-color: color-mix(in srgb, var(--gold, #c79c4a) 60%, var(--line, #dfdad0));
+  background: color-mix(in srgb, var(--gold, #c79c4a) 18%, var(--surface, #fff));
+}
+
+.shop-pick-check {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--line, #dfdad0);
+  border-radius: 5px;
+  background: var(--surface, #fff);
+  color: var(--progress-soul-ink-strong, #6b4c17);
+}
+
+.shop-pick-row.on .shop-pick-check {
+  border-color: color-mix(in srgb, var(--gold, #c79c4a) 70%, var(--line, #dfdad0));
+}
+
+.shop-pick-name { white-space: nowrap; }
+
+.shop-pick-row em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted, #68635b);
+}
+
+/* 结算条：吸在面板底部（面板本身可滚，这条要一直看得见） */
+.shop-pick-foot {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--gold, #c79c4a) 34%, var(--line, #dfdad0));
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 8%, var(--surface, #fff));
+}
+
+.shop-pick-sum { flex: 1 1 auto; min-width: 0; font-size: 12px; color: var(--ink, #292620); }
+.shop-pick-sum b { font-variant-numeric: tabular-nums; }
+.shop-pick-sum small { display: block; margin-top: 1px; font-size: 11px; color: var(--muted, #68635b); }
+
+.shop-pick-buy {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--gold, #c79c4a) 60%, var(--line, #dfdad0));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 24%, var(--surface, #fff));
+  color: var(--progress-soul-ink-strong, #6b4c17);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.shop-pick-buy:disabled { opacity: .45; }
+
+.shop-pick-notice {
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--green, #365e4b) 12%, var(--surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--green, #365e4b) 35%, var(--line, #dfdad0));
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--ink, #292620);
+}
+
+.shop-pick-notice.bad {
+  background: color-mix(in srgb, var(--red, #c0392b) 10%, var(--surface, #fff));
+  border-color: color-mix(in srgb, var(--red, #c0392b) 35%, var(--line, #dfdad0));
+}

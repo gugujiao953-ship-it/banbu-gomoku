@@ -1,3 +1,4 @@
+import { openTreeInspector } from "./tree-controls.mjs";
 import { chromium } from "playwright";
 
 const baseURL = process.env.QA_BASE_URL || "http://127.0.0.1:5173/";
@@ -28,7 +29,7 @@ const seed = ({ activeDocument, spareDocument }) => {
   localStorage.setItem("renju-note-active-v1", JSON.stringify(activeDocument));
   localStorage.setItem("renju-note-library-v1", JSON.stringify([activeDocument, spareDocument]));
   localStorage.setItem("renju-note-branch-bookmarks-v1", JSON.stringify({ [activeDocument.id]: [{ id: "legacy", name: "旧书签标题", nodeId: "a", createdAt: "2026-08-29T08:00:00.000Z" }] }));
-  localStorage.setItem("banbu-enhancement-settings-v1", JSON.stringify({ tabletSplit: false, gestureZoom: false, gestureSwipe: false, recentImports: false, aiBoardHints: false, coachMarks: false }));
+  localStorage.setItem("banbu-enhancement-settings-v1", JSON.stringify({ gestureZoom: false, gestureSwipe: false, recentImports: false, aiBoardHints: false, coachMarks: false }));
 };
 
 try {
@@ -40,21 +41,58 @@ try {
   page.setDefaultTimeout(12_000);
   await page.addInitScript(seed, { activeDocument: active, spareDocument: spare });
   await page.goto(qaURL.href, { waitUntil: "domcontentloaded" });
-  await page.getByLabel("当前工作状态").waitFor().catch(async (error) => {
+  await page.getByLabel("当前工作状态").first().waitFor().catch(async (error) => {
     const diagnostics = await page.evaluate(() => ({ url: location.href, body: document.body.innerText, html: document.body.innerHTML.slice(0, 1000) }));
     throw new Error(`${error.message}\n${JSON.stringify({ diagnostics, errors })}`);
   });
   assert(await page.getByRole("dialog", { name: "分支树" }).count() === 0, "棋谱树首次进入不应默认展开");
-  assert((await page.getByLabel("当前工作状态").textContent())?.includes("第 3 手"), "顶部状态区没有显示当前手数");
-  assert((await page.getByLabel("当前工作状态").textContent())?.includes("白方落子"), "顶部状态区没有显示下一方");
+  assert((await page.getByLabel("当前工作状态").first().textContent())?.includes("第 3 手"), "顶部状态区没有显示当前手数");
+  assert((await page.getByLabel("当前工作状态").first().textContent())?.includes("白方落子"), "顶部状态区没有显示下一方");
 
   if (!await page.getByRole("button", { name: "打开分支树" }).isVisible()) await page.getByRole("button", { name: "行棋" }).click();
   await page.getByRole("button", { name: "打开分支树" }).click();
   const dialog = page.getByRole("dialog", { name: "分支树" });
+  await dialog.getByRole("tab", { name: /图谱/ }).click();
   await dialog.waitFor();
+  await openTreeInspector(dialog);
+
+  /**
+   * 打开图谱时画面默认对准「当前手」（用户 09-20），所以别的节点可能在可视区外、
+   * 点不到。这里先拖动画布把目标节点带进视野——顺便也是在测拖动本身。
+   */
+  const panToNode = async (labelPrefix) => {
+    const delta = await dialog.evaluate((element, prefix) => {
+      const viewport = element.querySelector(".tree-viewport")?.getBoundingClientRect();
+      const node = [...element.querySelectorAll(".tree-node")].find((item) => (item.getAttribute("aria-label") || "").startsWith(prefix));
+      if (!viewport || !node) return null;
+      const box = node.getBoundingClientRect();
+      return {
+        dx: (box.left + box.right) / 2 - (viewport.left + viewport.right) / 2,
+        dy: (box.top + box.bottom) / 2 - (viewport.top + viewport.bottom) / 2,
+        cx: viewport.left + viewport.width / 2,
+        cy: viewport.top + viewport.height / 2,
+      };
+    }, labelPrefix);
+    if (!delta) throw new Error(`panToNode：找不到 ${labelPrefix}`);
+    await page.mouse.move(delta.cx, delta.cy);
+    await page.mouse.down();
+    await page.mouse.move(delta.cx - delta.dx, delta.cy - delta.dy, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForTimeout(150);
+  };
+
+  await panToNode("应对分支");
   await dialog.getByRole("button", { name: /^应对分支/ }).click();
   await dialog.getByLabel("节点操作 应对分支").waitFor();
   await dialog.getByRole("button", { name: "复制分支" }).click();
+  // target(G9) 默认是收着的（用户 09-22：默认只有当前路径 + 主分支，次分支一个都不露），
+  // 先在 root 上「展开下一层」把它露出来再粘贴。
+  await panToNode("起始局面");
+  await dialog.getByRole("button", { name: /^起始局面/ }).click();
+  await dialog.getByLabel(/^节点操作 起始局面/).waitFor();
+  await dialog.getByRole("button", { name: "展开下一层" }).click();
+  await page.waitForTimeout(140);
+  await panToNode("G9");
   await dialog.getByRole("button", { name: /^G9/ }).click();
   await dialog.getByLabel("节点操作 G9").waitFor();
   await dialog.getByRole("button", { name: "粘贴到这里" }).click();
@@ -81,9 +119,16 @@ try {
   if (!await page.getByRole("button", { name: "打开分支树" }).isVisible()) await page.getByRole("button", { name: "行棋" }).click();
   await page.getByRole("button", { name: "打开分支树" }).click();
   const reopened = page.getByRole("dialog", { name: "分支树" });
-  await reopened.getByRole("button", { name: /^应对分支/ }).click();
+  await reopened.getByRole("tab", { name: /图谱/ }).click();
+  await openTreeInspector(reopened);
+  // 默认视野会同时画出「当前路径 + 一条最长分支」，所以上面粘贴出来的副本（同样带 boardText
+  // 「应对分支」）和原节点会同时出现。副本此刻是当前局面，无障碍名多出「，当前局面，已选中」，
+  // 于是按精确名定位原节点，不要再退回前缀匹配。
+  await panToNode("应对分支");
+  await reopened.locator('.tree-node[aria-label="应对分支"]').click();
   await reopened.getByLabel("节点操作 应对分支").waitFor();
   await reopened.getByRole("button", { name: "复制分支" }).click();
+  await panToNode("H8");
   await reopened.getByRole("button", { name: /^H8/ }).click();
   await reopened.getByLabel("节点操作 H8").waitFor();
   await reopened.getByRole("button", { name: "粘贴到这里" }).click();
@@ -110,6 +155,7 @@ try {
     if (!await visualPage.getByRole("button", { name: "打开分支树" }).isVisible()) await visualPage.getByRole("button", { name: "行棋" }).click();
     await visualPage.getByRole("button", { name: "打开分支树" }).click();
     await visualPage.getByRole("dialog", { name: "分支树" }).waitFor();
+    await openTreeInspector(visualPage.getByRole("dialog", { name: "分支树" }));
     await visualPage.waitForTimeout(item.reducedMotion ? 40 : 320);
     const metrics = await visualPage.evaluate(() => {
       const status = document.querySelector(".unified-status")?.getBoundingClientRect();

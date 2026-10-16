@@ -8,7 +8,7 @@ import { TOUR_STEPS, type TourStep } from "./tour-steps";
 // 降透明度），文案永远完整；tab 切换靠点击真实底部导航，零 App 内部耦合。
 interface Hole { x: number; y: number; w: number; h: number; }
 
-export function AppTour({ steps = TOUR_STEPS, onNavigate, onFinish, onStepChange }: { steps?: TourStep[]; onNavigate: (tab: "record" | "library" | "settings") => void; onFinish: (completed: boolean) => void; onStepChange?: (step: TourStep) => void }) {
+export function AppTour({ steps = TOUR_STEPS, onNavigate, onFinish, onStepChange }: { steps?: TourStep[]; onNavigate: (tab: "record" | "library" | "duel" | "settings") => void; onFinish: (completed: boolean) => void; onStepChange?: (step: TourStep) => void }) {
   const [index, setIndex] = useState(0);
   const [holes, setHoles] = useState<(Hole | null)[]>([]);
   const [cardPos, setCardPos] = useState<{ top: number; left: number } | null>(null);

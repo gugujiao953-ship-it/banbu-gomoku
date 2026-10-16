@@ -1,0 +1,13 @@
+import { chromium } from "playwright";
+const base = process.env.QA_BASE_URL || "http://localhost:5173/";
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({ serviceWorkers: "block" });
+const page = await context.newPage();
+const q = new URLSearchParams({ cv: "/qa/tmp-cv-paper10.json", image: "/qa/fixtures/recognition/paper10.jpg", threads: "4" });
+await page.goto(new URL(`qa/ort-cell-harness.html?${q}`, base).toString(), { waitUntil: "domcontentloaded" });
+await page.waitForFunction(() => globalThis.__cellResult && globalThis.__cellResult.ok === true, null, { timeout: 300000 });
+const r = await page.evaluate(() => globalThis.__cellResult);
+const inner = (r.missedDetail || []).filter((d) => !/A\d+|[A-O]15/.test(d.coord));
+console.log("边缘外的差集（候选真漏子）：", JSON.stringify(inner, null, 1));
+console.log("全部差集坐标：", JSON.stringify((r.missedDetail || []).map((d) => d.coord)));
+await browser.close();

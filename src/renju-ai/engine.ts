@@ -5,21 +5,26 @@ export type SearchRule = "renju" | "standard" | "freestyle";
 export interface SearchOptions { maxDepth?: number; timeBudgetMs?: number; candidateLimit?: number; renjuRules?: boolean; rule?: SearchRule; }
 export interface SearchResult { move: Move | null; score: number; depth: number; nodes: number; elapsedMs: number; illegalRejected: number; reason: string; }
 
-const SIZE = 15;
+// 这是 WASM 引擎加载失败时的兜底搜索（puzzle-ai.worker）。它原本把 15 路写死，
+// 现在路数一律从盘面推导，才能跟上引擎主链路支持的多路数（见
+// features/ai/board-size-support.ts）。默认值只用于空盘构造与旧调用点。
+const DEFAULT_SIZE = 15;
 const DIRECTIONS: ReadonlyArray<readonly [number, number]> = [[1, 0], [0, 1], [1, 1], [1, -1]];
 const other = (player: Player): Player => player === 1 ? 2 : 1;
-const inside = (row: number, col: number) => row >= 0 && row < SIZE && col >= 0 && col < SIZE;
-const keyOf = (row: number, col: number) => row * SIZE + col;
+const sizeOf = (board: Cell[][]): number => board.length;
+const widthOf = (board: Cell[][], row: number): number => board[row]?.length ?? 0;
+const inside = (board: Cell[][], row: number, col: number) => row >= 0 && row < sizeOf(board) && col >= 0 && col < widthOf(board, row);
+const keyOf = (row: number, col: number, size: number) => row * size + col;
 
 export const cloneBoard = (board: Cell[][]): Cell[][] => board.map((row) => [...row] as Cell[]);
-export const emptyBoard = (): Cell[][] => Array.from({ length: SIZE }, () => Array<Cell>(SIZE).fill(0));
+export const emptyBoard = (size = DEFAULT_SIZE): Cell[][] => Array.from({ length: size }, () => Array<Cell>(size).fill(0));
 
 const lineInfo = (board: Cell[][], row: number, col: number, player: Player, dr: number, dc: number) => {
   let count = 1, open = 0;
   for (const sign of [-1, 1]) {
     let step = 1;
-    while (inside(row + dr * step * sign, col + dc * step * sign) && board[row + dr * step * sign][col + dc * step * sign] === player) { count += 1; step += 1; }
-    if (inside(row + dr * step * sign, col + dc * step * sign) && board[row + dr * step * sign][col + dc * step * sign] === 0) open += 1;
+    while (inside(board, row + dr * step * sign, col + dc * step * sign) && board[row + dr * step * sign][col + dc * step * sign] === player) { count += 1; step += 1; }
+    if (inside(board, row + dr * step * sign, col + dc * step * sign) && board[row + dr * step * sign][col + dc * step * sign] === 0) open += 1;
   }
   return { count, open };
 };
@@ -30,7 +35,7 @@ export const winAt = (board: Cell[][], move: Move, player: Player, rule: SearchR
   DIRECTIONS.some(([dr, dc]) => winningCount(lineInfo(board, move.row, move.col, player, dr, dc).count, player, rule));
 const winningPoints = (board: Cell[][], player: Player, rule: SearchRule) => {
   const result: Move[] = [];
-  for (let row = 0; row < SIZE; row += 1) for (let col = 0; col < SIZE; col += 1) if (board[row][col] === 0) {
+  for (let row = 0; row < sizeOf(board); row += 1) for (let col = 0; col < widthOf(board, row); col += 1) if (board[row][col] === 0) {
     board[row][col] = player;
     if (winAt(board, { row, col }, player, rule)) result.push({ row, col });
     board[row][col] = 0;
@@ -42,7 +47,7 @@ const winningPoints = (board: Cell[][], player: Player, rule: SearchRule) => {
  * search gate on the same implementation prevents AI-only interpretations of
  * same-axis double fours, true/false threes, and exact-five priority. */
 export const isLegalMove = (board: Cell[][], move: Move, player: Player, ruleOrRenju: SearchRule | boolean = "renju"): boolean => {
-  if (!inside(move.row, move.col) || board[move.row][move.col] !== 0) return false;
+  if (!inside(board, move.row, move.col) || board[move.row][move.col] !== 0) return false;
   const rule = ruleFromLegacy(ruleOrRenju);
   if (rule !== "renju" || player === 2) return true;
   const canonicalBoard: GameCell[][] = board.map((row) => row.map((cell) => cell === 1 ? "black" : cell === 2 ? "white" : null));
@@ -51,16 +56,18 @@ export const isLegalMove = (board: Cell[][], move: Move, player: Player, ruleOrR
 
 const candidateMoves = (board: Cell[][], player: Player, limit: number, rule: SearchRule): Move[] => {
   const occupied: Move[] = [];
-  for (let row = 0; row < SIZE; row += 1) for (let col = 0; col < SIZE; col += 1) if (board[row][col]) occupied.push({ row, col });
-  if (!occupied.length) return [{ row: 7, col: 7 }];
+  const size = sizeOf(board);
+  const mid = (size - 1) / 2;
+  for (let row = 0; row < size; row += 1) for (let col = 0; col < widthOf(board, row); col += 1) if (board[row][col]) occupied.push({ row, col });
+  if (!occupied.length) return [{ row: Math.floor(size / 2), col: Math.floor(widthOf(board, 0) / 2) }];
   const candidates = new Map<number, { move: Move; score: number }>();
-  for (const stone of occupied) for (let row = Math.max(0, stone.row - 2); row <= Math.min(SIZE - 1, stone.row + 2); row += 1) for (let col = Math.max(0, stone.col - 2); col <= Math.min(SIZE - 1, stone.col + 2); col += 1) if (board[row][col] === 0 && isLegalMove(board, { row, col }, player, rule)) {
+  for (const stone of occupied) for (let row = Math.max(0, stone.row - 2); row <= Math.min(size - 1, stone.row + 2); row += 1) for (let col = Math.max(0, stone.col - 2); col <= Math.min(widthOf(board, row) - 1, stone.col + 2); col += 1) if (board[row][col] === 0 && isLegalMove(board, { row, col }, player, rule)) {
     board[row][col] = player;
     const own = DIRECTIONS.reduce((sum, [dr, dc]) => { const x = lineInfo(board, row, col, player, dr, dc); return sum + x.count * x.count * 10 + x.open * 3; }, 0);
     board[row][col] = other(player);
     const block = DIRECTIONS.reduce((sum, [dr, dc]) => { const x = lineInfo(board, row, col, other(player), dr, dc); return sum + x.count * x.count * 8 + x.open * 2; }, 0);
     board[row][col] = 0;
-    candidates.set(keyOf(row, col), { move: { row, col }, score: own + block * 1.15 - (Math.abs(row - 7) + Math.abs(col - 7)) * 0.15 });
+    candidates.set(keyOf(row, col, size), { move: { row, col }, score: own + block * 1.15 - (Math.abs(row - mid) + Math.abs(col - mid)) * 0.15 });
   }
   return [...candidates.values()].sort((a, b) => b.score - a.score).slice(0, limit).map((entry) => entry.move);
 };
@@ -73,15 +80,30 @@ const sameMove = (a: Move, b: Move) => a.row === b.row && a.col === b.col;
 const patternScore = (count: number, open: number, side: Player, rule: SearchRule) => winningCount(count, side, rule) ? 1_000_000 : count > 5 ? 18_000 : count === 4 && open === 2 ? 80_000 : count === 4 ? 12_000 : count === 3 && open === 2 ? 4_000 : count === 3 ? 600 : count === 2 && open === 2 ? 120 : count * 8;
 const evaluate = (board: Cell[][], player: Player, rule: SearchRule) => {
   let score = 0;
-  for (let row = 0; row < SIZE; row += 1) for (let col = 0; col < SIZE; col += 1) if (board[row][col] === player || board[row][col] === other(player)) {
+  for (let row = 0; row < sizeOf(board); row += 1) for (let col = 0; col < widthOf(board, row); col += 1) if (board[row][col] === player || board[row][col] === other(player)) {
     const side = board[row][col] as Player;
     for (const [dr, dc] of DIRECTIONS) { const info = lineInfo(board, row, col, side, dr, dc); score += side === player ? patternScore(info.count, info.open, side, rule) : -patternScore(info.count, info.open, side, rule) * 1.08; }
   }
   return score;
 };
 
-const zobrist = Array.from({ length: SIZE * SIZE }, (_, index) => [BigInt((index + 1) * 2654435761 >>> 0), BigInt((index + 1) * 1597334677 >>> 0)] as const);
-const hashBoard = (board: Cell[][], side: Player) => { let hash = BigInt(side); for (let row = 0; row < SIZE; row += 1) for (let col = 0; col < SIZE; col += 1) { const cell = board[row][col]; if (cell) hash ^= zobrist[keyOf(row, col)][cell - 1]; } return hash.toString(); };
+// Zobrist 表按路数缓存，公式与原来 15 路时逐位相同（index = row * size + col），
+// 所以置换表命中行为在 15 路下没有任何变化。
+const zobristCache = new Map<number, ReadonlyArray<readonly [bigint, bigint]>>();
+const zobristFor = (size: number) => {
+  const cached = zobristCache.get(size);
+  if (cached) return cached;
+  const table = Array.from({ length: size * size }, (_, index) => [BigInt((index + 1) * 2654435761 >>> 0), BigInt((index + 1) * 1597334677 >>> 0)] as const);
+  zobristCache.set(size, table);
+  return table;
+};
+const hashBoard = (board: Cell[][], side: Player) => {
+  const size = sizeOf(board);
+  const zobrist = zobristFor(size);
+  let hash = BigInt(side);
+  for (let row = 0; row < size; row += 1) for (let col = 0; col < widthOf(board, row); col += 1) { const cell = board[row][col]; if (cell) hash ^= zobrist[keyOf(row, col, size)][cell - 1]; }
+  return hash.toString();
+};
 type Bound = "exact" | "lower" | "upper";
 interface TTEntry { depth: number; score: number; bound: Bound; best?: Move; generation: number; }
 

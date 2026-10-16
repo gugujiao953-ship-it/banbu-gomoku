@@ -1,0 +1,248 @@
+.puzzle-generator-page{max-width:1080px;margin:0 auto;color:var(--ink);padding-bottom:24px}
+.generator-header{display:flex;gap:12px;align-items:center;margin:4px 0 18px}
+.generator-header h1{font-size:22px;line-height:1.35;margin:0}.generator-header p{font-size:12px;color:var(--muted);margin:4px 0 0}
+.generator-back{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;width:44px;height:44px;display:grid;place-items:center;flex-shrink:0}
+.generator-engine{margin-left:auto;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12px;color:var(--muted)}
+.generator-layout{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:16px;align-items:start}
+.generator-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.generator-card-heading{display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:14px}.generator-card-heading b{font-size:15px;flex-shrink:0}.generator-card-heading small{color:var(--muted);font-size:11px;line-height:1.6;text-align:right}
+.generator-settings fieldset{border:0;margin:0;padding:0;min-width:0}.generator-kinds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin-bottom:8px}.generator-kinds button{min-height:40px;padding:6px 4px;font-size:12px}.generator-pane-description{font-size:11px;line-height:1.45;color:var(--muted);margin:0 0 10px}
+.puzzle-generator-page button,.puzzle-generator-page select,.puzzle-generator-page input{font:inherit;box-sizing:border-box}
+.puzzle-generator-page button{min-height:44px;cursor:pointer;font-size:13px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px}
+.puzzle-generator-page button:disabled{opacity:.5;cursor:default}.puzzle-generator-page button[aria-pressed=true]{background:var(--jade);color:var(--ink);border-color:var(--jade)}
+.puzzle-generator-page button:focus-visible,.puzzle-generator-page input:focus-visible,.puzzle-generator-page select:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.generator-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.generator-fields label,.generator-specific>label,.generator-result-select{display:flex;flex-direction:column;gap:6px;font-size:12px;min-width:0}.generator-specific{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.generator-specific .generator-check,.generator-specific .generator-mask-field{grid-column:1/-1}.generator-mask-field small,.generator-warning{color:var(--muted);font-size:11px;line-height:1.5}.generator-warning{color:var(--gold)}
+.generator-setting-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:10px 0}.generator-setting-tabs button{min-height:36px;padding:5px 4px;font-size:12px}.generator-setting-tabs button[aria-selected=true]{background:var(--jade);border-color:var(--green)}.generator-setting-pane{display:grid;gap:10px}.generator-custom-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2)}.generator-custom-summary span{display:grid;gap:2px}.generator-custom-summary small{font-size:11px;color:var(--muted)}.generator-custom-summary button{min-height:36px;padding:5px 9px;font-size:12px}.generator-step-controls{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-top:8px}.generator-step-controls button{min-height:40px;padding:6px 8px;font-size:12px}.generator-step-controls button:last-child{justify-content:flex-end}.generator-step-controls small{text-align:center;color:var(--muted);font-size:11px}.generator-canvas-modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(24,19,14,.5)}.generator-canvas-modal-card{width:min(100%,420px);max-height:calc(100dvh - 32px);overflow:auto;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.26);display:grid;gap:12px}.generator-canvas-modal-head{display:flex;align-items:center;justify-content:space-between}.generator-canvas-modal-head button{min-height:36px;width:36px;padding:0}.generator-canvas-modal-card .shape-canvas{width:min(100%,336px);margin-inline:auto}
+.generator-custom-shape{grid-column:1/-1;display:grid;gap:10px}.generator-field-label{display:block;font-size:12px;color:var(--ink);margin-bottom:6px}.shape-canvas-editor{display:grid;gap:8px}.shape-canvas-toolbar{display:flex;gap:6px;flex-wrap:wrap}.shape-canvas-toolbar button{min-height:38px;padding:6px 9px;font-size:12px}.shape-canvas-toolbar button.is-active{background:var(--jade);border-color:var(--green);color:var(--ink)}.shape-canvas{display:block;width:min(100%,336px);height:auto;aspect-ratio:1;border:1px solid var(--line);border-radius:10px;touch-action:none;cursor:crosshair;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}.shape-canvas-caption{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;line-height:1.4}.shape-canvas-caption span:last-child{font-variant-numeric:tabular-nums}
+.puzzle-generator-page select,.puzzle-generator-page input:not([type=checkbox]):not([type=range]){min-width:0;min-height:44px;width:100%;border:1px solid var(--line);border-radius:9px;background:var(--surface-2);color:var(--ink);padding:9px;font-size:14px}
+.generator-depths{display:flex;gap:5px;margin:10px 0 14px}.generator-depths button{flex:1;min-width:0;padding:6px 4px;font-size:12px}
+.generator-specific{margin:12px 0}.generator-help{font-size:12px;line-height:1.7;color:var(--muted);margin:9px 0}.generator-fields .generator-help{grid-column:1/-1;margin:0}
+.puzzle-generator-page .generator-check{display:flex;flex-direction:row;gap:9px;align-items:center;min-height:48px;font-size:13px;line-height:1.5;margin:8px 0;cursor:pointer}.generator-check input{accent-color:var(--green);width:18px;height:18px;flex-shrink:0}.generator-check small{display:block;font-size:11px;color:var(--muted)}
+/* 「寻找更多阻碍点」与「扩展棋盘」共享一行（用户 2026-10-07：两个勾选框别各占一行，省纵向空间）。 */
+.generator-settings .generator-check-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;min-width:0}
+.generator-settings .generator-check-row>.generator-check{flex:1 1 auto;min-width:0}
+.generator-fixed-quality{display:flex;flex:1 1 260px;min-width:0;flex-direction:column;gap:3px;padding:7px 10px;border:1px solid color-mix(in srgb,var(--green) 26%,transparent);border-radius:10px;background:color-mix(in srgb,var(--green) 7%,transparent);font-size:12px;line-height:1.35}
+.generator-fixed-quality b{color:var(--green)}
+.generator-fixed-quality small{color:var(--muted);font-size:11px;line-height:1.45}
+.generator-advanced{border-top:1px solid var(--line);margin:10px 0 14px}.generator-advanced summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-size:12px;color:var(--muted)}
+.puzzle-generator-page .generator-primary{background:var(--green);color:var(--on-accent);border-color:var(--green);font-weight:600}.generator-settings>.generator-primary{width:100%;min-height:48px}.puzzle-generator-page .generator-stop{background:var(--surface-2);color:var(--ink);border-color:var(--gold)}
+.generator-status{font-size:12px;line-height:1.7;color:var(--muted);margin-top:10px;min-height:20px;overflow-wrap:anywhere}.generator-save-error{border:1px solid #be5749;border-radius:9px;padding:10px;font-size:12px;line-height:1.7;margin-top:8px}.generator-save-error button{margin:8px 4px 0 0}
+.generator-result-select{margin-bottom:12px}.generator-puzzle-meta{display:flex;gap:5px;flex-wrap:wrap;font-size:11px;margin-bottom:12px}.generator-puzzle-meta span{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:4px 6px;display:inline-flex;align-items:center;gap:3px}.generator-verified{color:var(--green)}
+.generator-save-button{min-height:38px!important;padding:6px 9px!important;font-size:12px!important;white-space:nowrap}.generator-save-button:not(:disabled){background:var(--jade)!important;border-color:var(--green)!important}
+.generator-board-scroll{overflow:auto;border-radius:12px;max-width:100%;overscroll-behavior:contain}.generator-board{display:block;width:100%;height:auto;user-select:none}.generator-board-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0}.generator-board-footer small{font-size:11px;color:var(--muted)}.generator-board-footer button{font-size:11px;min-height:44px}
+.generator-board-options{display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:12px;margin:5px 0 12px}.generator-board-options label{display:flex;gap:5px;align-items:center;min-height:44px;cursor:pointer}.generator-board-options input{accent-color:var(--green)}.generator-board-options small{color:var(--muted)}
+.generator-play-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin:10px 0}.generator-play-controls label{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:4px}.generator-play-controls button{align-self:end}
+.generator-result-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 44px 44px 44px;gap:7px}.generator-result-actions button{min-width:0}.generator-replay{margin-top:12px;padding:10px;background:var(--surface-2);border-radius:10px}.generator-replay-buttons{display:flex;gap:6px;align-items:center}.generator-replay-buttons small{margin-left:auto;color:var(--muted);font-size:12px}.generator-replay input{width:100%;accent-color:var(--green);min-height:30px}.generator-replay p{font-size:12px;line-height:1.7;margin:4px 0}
+.generator-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:250px;color:var(--muted);text-align:center}.generator-empty p{font-size:14px;margin:16px 0 6px}.generator-empty small{font-size:12px;line-height:1.7}
+@media(max-width:760px){
+  .generator-layout{grid-template-columns:minmax(0,1fr);gap:10px}
+  .generator-header{margin:0 0 10px}
+  .generator-header h1{font-size:20px}
+  .generator-header p{margin-top:2px}
+  .generator-card{padding:12px;border-radius:12px}
+  .generator-card-heading{margin-bottom:10px}
+  .generator-card-heading small{font-size:11px}
+  .generator-kinds{gap:3px;margin-bottom:9px}
+  .generator-fields,.generator-specific{gap:8px}
+  .generator-depths{gap:3px;margin:8px 0 10px}
+  .generator-depths button{min-height:40px;padding:5px 3px}
+  .puzzle-generator-page .generator-check{min-height:40px;margin:4px 0;gap:8px}
+  .generator-advanced{margin:7px 0 10px}
+  .generator-advanced summary{min-height:38px}
+  .generator-settings>.generator-primary{min-height:44px}
+  .generator-status{margin-top:7px}
+  .generator-settings{order:0}.generator-results{order:1}
+  .puzzle-generator-page{padding:0 10px 12px}
+  .generator-results:has(.generator-empty){display:none}
+  .generator-settings.is-open{position:fixed;z-index:60;top:8px;right:8px;bottom:auto;left:8px;height:max-content;max-height:calc(100dvh - 24px - 68px - var(--safe-area-bottom, env(safe-area-inset-bottom)));overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-shadow:0 18px 60px rgba(0,0,0,.28)}
+}
+@media(max-width:520px){
+  .generator-specific{grid-template-columns:minmax(0,1fr)}
+  .generator-card-heading{align-items:center}
+  .generator-card-heading small{text-align:left}
+  .generator-header p{display:none}
+  .generator-board{width:min(100%,230px);margin-inline:auto}
+  .generator-result-select{margin-bottom:8px}
+  .generator-puzzle-meta{margin-bottom:8px}
+  .generator-board-options{gap:6px;margin:4px 0 6px}
+  .generator-board-options label{min-height:34px}
+  .generator-results>.generator-help{margin:4px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .generator-result-actions{grid-template-columns:repeat(3,minmax(0,1fr)) 42px 42px 42px;gap:5px}
+  .generator-result-actions button{padding-left:5px;padding-right:5px}
+  .generator-pane-description{margin-bottom:7px}
+  .shape-canvas{width:min(100%,248px);margin-inline:auto}
+  .generator-settings .generator-kinds button{min-height:36px}
+  .generator-settings .generator-setting-tabs button{min-height:32px}
+  .generator-settings .generator-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .generator-settings .generator-depths button{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){.puzzle-generator-page *{scroll-behavior:auto}}
+.puzzle-generator-page .generator-primary{background:var(--jade);color:var(--ink);border-color:var(--green)}
+.puzzle-generator-page .generator-primary svg{color:var(--green)}
+.generator-settings-summary{display:block;text-align:left!important;margin-top:6px}
+.generator-visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+/* Compact workbench: related controls stay in one scan line on phones. */
+.generator-settings{display:flex;flex-direction:column;gap:8px}
+.generator-settings .generator-card-heading{margin-bottom:2px}
+.generator-settings>div[hidden],.generator-settings section[hidden]{display:none!important}
+.generator-settings fieldset{display:grid;gap:6px}
+.generator-settings .generator-help{margin:2px 0;font-size:11px;line-height:1.4}
+.generator-settings .generator-pane-description{display:none}
+.generator-settings .generator-kinds{margin:0}
+.generator-settings .generator-setting-tabs{margin:2px 0 0}
+.generator-settings .generator-setting-pane{gap:6px}
+.generator-settings .generator-settings-block{gap:5px;margin-top:3px;padding-top:7px;border-top:1px solid var(--line)}
+.generator-settings .generator-type-block{border-top:0;margin-top:0;padding-top:0}
+.generator-settings .generator-settings-block-title{font-size:12px;color:var(--muted);line-height:1.3}
+.generator-settings .generator-pane-description{display:block;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.generator-settings .generator-specific{margin:0}
+.generator-settings .generator-mode-panel{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0;grid-auto-flow:row dense}
+.generator-settings .generator-mode-panel>.generator-help{grid-column:1/-1}
+/* 一行三个之后每格只剩约 100px：摘要条自带编辑按钮，单独占一行并按宽度截断。 */
+.generator-settings .generator-mode-panel>.generator-custom-summary{grid-column:1/-1;min-width:0;gap:6px;padding:7px 8px}
+.generator-settings .generator-mode-panel>.generator-custom-summary>span{min-width:0}
+.generator-settings .generator-mode-panel>.generator-custom-summary b,
+.generator-settings .generator-mode-panel>.generator-custom-summary small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.generator-settings .generator-mode-panel>.generator-custom-summary button{width:34px;min-width:34px;padding:0;flex-shrink:0}
+.generator-settings .generator-mode-panel>.generator-check{grid-column:span 1;min-width:0}
+.generator-settings .generator-mode-panel>.generator-check>span{min-width:0}
+.generator-settings .generator-board-block .generator-stepper>small{display:none}
+.generator-settings .generator-fields{gap:6px}
+.generator-settings .generator-fields label{gap:3px}
+/* 一行三格后控件只有约 100px：字号和内边距同步降档，否则「有禁手」「15 秒」会被挤到换行。 */
+.generator-settings .generator-fields label,.generator-settings .generator-specific>label{font-size:11px;line-height:1.25}
+.generator-settings select,
+.generator-settings input:not([type=checkbox]):not([type=range]){min-height:40px;padding:6px;font-size:13px}
+.generator-settings .generator-depths{margin:2px 0 4px;gap:3px}
+.generator-settings .generator-depths button{min-height:34px;padding:4px 2px}
+.generator-settings .generator-check{min-height:36px!important;margin:0!important}
+.generator-settings>.generator-primary{display:flex;width:100%;max-width:none;height:44px;min-height:44px;flex:0 0 44px}
+.generator-stepper{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 8px;font-size:12px}
+.generator-stepper>div{display:grid;grid-template-columns:36px 76px 36px;align-items:center;gap:4px}
+.generator-stepper button{width:36px;min-height:36px;height:36px;padding:0;font-size:20px;line-height:1}
+.generator-stepper output{display:grid;place-items:center;min-height:36px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);font-variant-numeric:tabular-nums}
+.generator-stepper>span{font-size:12px}.generator-stepper>small{grid-column:1/-1;color:var(--muted);font-size:10px}
+.generator-result-actions{grid-template-columns:repeat(3,minmax(0,1fr)) 42px 42px 42px}
+.generator-result-actions .generator-primary{min-width:0}
+@media(max-width:520px){
+  /* All setting sections share one compact rhythm on phone screens. */
+  .generator-settings .generator-depths{display:none}
+  .generator-settings-block[aria-label="基础参数"] .generator-check small,
+  .generator-mode-panel[data-generator-pane="shape"] .generator-check small{display:none}
+  .generator-settings .generator-fields label{gap:2px;line-height:1.25}
+  .generator-settings select,
+  .generator-settings input:not([type=checkbox]):not([type=range]){min-height:38px;padding:7px;font-size:13px}
+  .generator-settings .generator-depths button{min-height:30px}
+  .generator-settings .generator-check{min-height:32px!important;line-height:1.3}
+  .generator-settings .generator-check small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .generator-settings .generator-board-block:has(.generator-stepper)>.generator-check-row small{display:none}
+  .generator-settings .generator-mode-panel>.generator-help{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
+  .generator-settings .generator-mode-panel[data-generator-pane="shape"]>.generator-custom-summary{min-height:48px}
+  .generator-settings .generator-board-block:has(.generator-stepper){grid-template-columns:minmax(0,1fr) minmax(160px,auto);align-items:center}
+  .generator-settings .generator-board-block:has(.generator-stepper)>.generator-check-row{grid-column:1;min-width:0}
+  .generator-settings .generator-board-block:has(.generator-stepper)>.generator-stepper{grid-column:2;min-width:160px}
+}
+/* 保存入库与历史生成两个弹窗：与自定义轮廓画布同一套浮层，但要盖住底部导航（z=30）。 */
+.generator-modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(24,19,14,.5)}
+.generator-modal-card{width:min(100%,420px);max-height:calc(100dvh - 32px);overflow:auto;overscroll-behavior:contain;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.26);display:grid;gap:10px}
+.generator-modal-head{display:flex;align-items:center;justify-content:space-between}.generator-modal-head b{font-size:15px}.generator-modal-head button{min-height:36px;width:36px;padding:0}
+.generator-modal-note{font-size:11px;line-height:1.6;color:var(--muted);margin:0}
+.generator-modal-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:8px}
+.generator-heading-actions{display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap}
+.generator-history-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.generator-history-list li{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface-2)}
+.generator-history-list b{display:block;font-size:12px}.generator-history-list small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.generator-history-list button{min-height:36px;padding:6px 10px;font-size:12px;flex-shrink:0}
+.generator-history-page{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px}.generator-history-page button{min-height:38px;font-size:12px}.generator-history-page small{text-align:center;color:var(--muted);font-size:11px}
+.generator-history-page button:last-child{justify-content:flex-end}
+
+/* ══ 一体化工作区（用户 10-07）════════════════════════════════════════════════
+   用户原话：「大刀阔斧的改一下里面的布局，最好搞成一体化的，设置与上面的棋盘是一个区域…
+   参考我们对弈打谱界面，那里虽然功能按钮很多，但是很整齐，也一屏可见的」。
+   骨架照打谱页：顶条（标题 + 参数摘要 + 设置/保存/历史）→ 设置抽屉（同一区域内展开，
+   不再是一张独立卡片）→ 棋盘区（吃满剩余高度，正方形边长 = min(区宽, 区高)）→
+   功能行（横向 rail，放不下整行可滑）→ 做题行（坐标/落子/上下一手）。
+   ⚠ 页面高度锁死（生成器里顶栏被 .generator-topbar 隐藏，只剩底部金刚页 78px）：
+     一屏可见的硬前提就是「页面自己不滚动、让棋盘去适配」，所以这里给的是定高 + 棋盘区 flex 收缩。
+   ⚠ 折叠态（用户在生成器外先按了折叠）：金刚页也收走了，底部预算要跟着去掉那 78px。 ────── */
+.puzzle-generator-page.generator-workspace{
+  display:flex;flex-direction:column;gap:8px;
+  height:calc(100dvh - 78px - var(--safe-area-bottom, env(safe-area-inset-bottom)));
+  min-height:0;overflow:hidden;
+  padding:8px 10px 10px;box-sizing:border-box;
+}
+/* ⚠ 这里跟的是**第三档**（收金刚页），不是收状态栏：高度预算里那 78px 是底栏占位，
+   只有底栏真收起（.chrome-nav-off）才该去掉；第二档只收状态栏，底栏还在。 */
+.app-shell.chrome-nav-off .puzzle-generator-page.generator-workspace{height:calc(100dvh - var(--safe-area-bottom, env(safe-area-inset-bottom)))}
+@media (orientation:landscape){.puzzle-generator-page.generator-workspace{height:100dvh}}
+@media (min-width:700px) and (orientation:portrait){
+  .puzzle-generator-page.generator-workspace{height:calc(100dvh - 36px - 78px - var(--safe-area-bottom, env(safe-area-inset-bottom)))}
+}
+
+/* 顶条：返回 + 标题/参数摘要 + 设置·保存·历史（原来散在三处，现在一行收齐） */
+.generator-bar{flex:0 0 auto;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px}
+.generator-bar-copy{min-width:0;display:flex;flex-direction:column;gap:2px}
+.generator-bar-copy b{font:700 17px serif;letter-spacing:.02em}
+.generator-bar-copy small{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.generator-bar-actions{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
+.generator-bar-button{min-height:36px;padding:0 10px;display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer}
+.generator-bar-button:disabled{opacity:.45}
+.generator-bar-button.on{background:var(--jade);border-color:var(--green);color:var(--green-2,var(--green))}
+
+/* 设置抽屉：和棋盘同处一块区域，展开时自己滚（最多 46dvh），不把棋盘挤到零高 */
+.generator-dock{flex:0 0 auto;min-height:0;max-height:46dvh;overflow:auto;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.puzzle-generator-page.generator-workspace .generator-settings.is-open{position:static;height:auto;max-height:46dvh;box-shadow:none;z-index:auto;left:auto;right:auto;top:auto;bottom:auto}
+
+/* 棋盘区：头部一行（选题 + 元信息 + 进度），下面全部给棋盘 */
+.generator-stage{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:6px}
+.generator-stage-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.generator-stage-head .generator-result-select{margin:0;flex:0 1 auto;min-width:0;flex-direction:row;align-items:center;gap:6px;font-size:11px;color:var(--muted);white-space:nowrap}
+/* ⚠ 「题目」两个字必须 nowrap：头部是 flex 行，「题目」被压成竖排两行（题/目）过。 */
+/* 选题下拉在头部要**横排紧凑**：老样式是「题目」二字 + 下拉上下叠一列（合计 67px），
+   矮横屏里这一行就吃掉 110px、棋盘只剩 93px。改成横排 + 36px 高，头部回到 ~40px。 */
+.generator-stage-head .generator-result-select select{height:36px;font-size:12px;padding:0 8px;border-radius:10px;margin:0}
+.generator-stage-head .generator-puzzle-meta span{padding:3px 6px}
+.generator-stage-head .generator-puzzle-meta{margin:0}
+.generator-inline-status{font-size:11px;color:var(--green);font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* ⚠ 这一列必须显式写 `minmax(0,1fr)`：默认的隐式单列是 `auto`，会按内容（棋盘由高度反推出的宽）
+   把列撑得比容器还宽 —— `width:100%` 的格子跟着变宽、棋盘比屏幕还大（竖屏实测 420 > 390 被切边，
+   矮横屏只剩 93）。显式列 + `justify-items:stretch` 之后宽度永远由容器说了算。 */
+.generator-stage-board{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);align-items:center;justify-items:stretch}
+.generator-stage-board .generator-board-wrap{height:100%;min-height:0;width:100%;display:flex;flex-direction:column;gap:4px}
+/* 棋盘尺寸由**容器**定（和打谱页同一招）：高度吃满 → aspect-ratio 反推出宽 → 宽度不够时
+   max-width:100% 夹住退回按宽算（`.generator-board` 自身 width:100% 会跟着缩）。 */
+.generator-stage-board .generator-board-scroll{flex:1 1 auto;min-height:0;height:100%;aspect-ratio:1/1;width:auto;max-width:100%;margin-inline:auto;display:grid;place-items:center;overflow:auto;border-radius:12px;overscroll-behavior:contain}
+.generator-stage-board .generator-board-footer{flex:0 0 auto;width:100%}
+
+/* 功能行 / 做题行：打谱页那套横向 rail —— 按钮永远一行，放不下整行可滑，不占第二屏 */
+.generator-rail{flex:0 0 auto;display:flex;align-items:center;gap:6px;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:none}
+.generator-rail::-webkit-scrollbar{display:none}
+.generator-rail>*{flex:0 0 auto}
+.generator-rail-button{min-height:44px;min-width:56px;padding:0 11px;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer}
+.generator-rail-button:disabled{opacity:.4}
+.generator-rail-button.on{background:var(--jade);border-color:var(--green);color:var(--green-2,var(--green))}
+.generator-rail .generator-primary{min-height:44px;padding:0 14px;white-space:nowrap}
+/* 旧的「坐标输入框 + 落子键」两条样式已删（用户 10-07：改成点盘即落，不再需要那两个框）。 */
+.generator-rail-note{font-size:11px;color:var(--muted);white-space:nowrap;padding:0 4px}
+.generator-rail-play,.generator-rail-replay{background:color-mix(in srgb,var(--jade) 50%,transparent);border-radius:12px;padding-inline:4px}
+.generator-rail-replay input[type="range"]{width:min(220px,38vw);accent-color:var(--green);min-height:36px}
+.generator-save-error{flex:0 0 auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--red,#b94b3f)}
+
+/* 矮横屏（844×390 这类）：控件压一档，把高度留给棋盘 */
+@media (max-height:520px){
+  .puzzle-generator-page.generator-workspace{gap:6px;padding:6px 8px 8px}
+  .generator-rail-button{min-height:40px;min-width:48px;padding:0 9px}
+  .generator-rail .generator-primary{min-height:40px}
+  .generator-dock{max-height:40dvh}
+  .generator-bar-button{min-height:32px}
+}
+
+.generator-dock[hidden]{display:none}
+
+/* 窄屏顶条：三个按钮只留图标 —— 文字版会把「棋题生成器」标题挤成两行（实测 390 宽）；
+   标题一律不换行。 */
+.generator-bar-copy b{white-space:nowrap}
+@media (max-width:520px){
+  .generator-bar-button{padding:0 9px}
+  .generator-bar-button>span{display:none}
+}

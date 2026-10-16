@@ -22,7 +22,11 @@
    「分析」按钮是打开分析面板的入口，不是这个开关）。 */
 .action-layout-workspace .analysis-toggle > .action-label,
 .layout-preview .analysis-toggle > .action-label { display: none; }
-.action-layout-workspace .analysis-toggle { min-height: var(--action-height); }
+/* 44px 是这块的热区下限（`qa/analysis-head-two-rows.mjs` 逐颗钉着），不能跟着档位掉：
+   R125 把功能栏默认档降成 compact 后 `--action-height` 变 40px，这个开关跟着缩到 40，
+   既低于下限、又比同一行那 5 枚 44px 的下拉低 4px，于是分析头第一行从「同一基线」
+   变成两截。行高本来就由 44px 的下拉撑住，所以抬回来不多占一行的高度。 */
+.action-layout-workspace .analysis-toggle { min-height: max(44px, var(--action-height)); }
 /* 开关只有滑块、没有文字后不该再占宽：宽度收成「滑块 + 内边距」，避免父级
    grid/flex 把它撑成空白大块（实测未收前宽 119px、滑块仅 52px）。 */
 .action-layout-workspace .analysis-toggle,
@@ -37,13 +41,13 @@
 .action-layout-workspace[data-icons-only="true"] .action-label, .layout-preview[data-icons-only="true"] .action-label { display: none; }
 .action-layout-workspace[data-icons-only="true"] .action-bottom-row { grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); }
 .action-layout-workspace .workspace-action:disabled { opacity: .4; }
-.action-layout-workspace .workspace-action.active { background: var(--jade); color: var(--green); outline: 1px solid var(--green); outline-offset: -2px; }
+.action-layout-workspace .workspace-action.active { background: var(--jade); color: var(--green-2, var(--green)); outline: 1px solid var(--green); outline-offset: -2px; }
 .action-layout-workspace .action-tool-panel { position: relative; padding: 2px 0 0; }
 .action-panel-close { display: none; }
 /* 紧凑态禁手规则：按钮本身就是状态（有禁/无禁），点一下直接切换。 */
 .action-layout-workspace .workspace-action.rule-compact { flex-direction: row; gap: 4px; padding: 0 6px; font-size: calc(11px * var(--ui-font-scale, 1)); font-weight: 700; }
 .action-layout-workspace .workspace-action.rule-compact svg { width: 14px; height: 14px; }
-.action-layout-workspace .workspace-action.rule-compact.renju { color: var(--green); background: var(--jade); border-color: color-mix(in srgb, var(--green) 42%, var(--line)); }
+.action-layout-workspace .workspace-action.rule-compact.renju { color: var(--green-2, var(--green)); background: var(--jade); border-color: color-mix(in srgb, var(--green) 42%, var(--line)); }
 .action-layout-workspace .workspace-action.rule-compact:disabled { opacity: .45; }
 /* 紧凑态落子颜色：一颗当前色棋子 + 一把锁。点棋子换色并锁定，点锁切换锁定。 */
 .stone-color-compact { display: flex; align-items: stretch; height: var(--action-height); min-height: var(--action-height); border: 1px solid var(--line, #ded8cc); border-radius: 8px; background: var(--surface-2, #f1f4f2); overflow: hidden; }
@@ -132,8 +136,8 @@ html[data-theme="dark"] .action-layout-workspace :is(.action-top-row, .moves-row
 }
 .action-layout-workspace .moves-row { gap: 4px; }
 .action-layout-workspace .moves-row button { min-height: var(--action-height); }
-.action-layout-workspace[data-action-size="compact"] .moves-row button { height: 40px; }
-.action-layout-workspace[data-action-size="large"] .moves-row button { height: 52px; }
+.action-layout-workspace[data-action-size="compact"] .moves-row button { min-height: 40px; height: auto; }
+.action-layout-workspace[data-action-size="large"] .moves-row button { min-height: 52px; height: auto; }
 .action-layout-sheet { z-index: 300; }
 .action-layout-sheet.sheet-backdrop > .bottom-sheet { display: flex; flex-direction: column; width: 600px; max-width: 100%; max-height: calc(100vh - 16px); padding: 0; overflow: hidden; border-radius: 8px 8px 0 0; background: var(--paper); animation: none; }
 .action-layout-sheet.sheet-backdrop { animation: none; }
@@ -146,6 +150,23 @@ html[data-theme="dark"] .action-layout-workspace :is(.action-top-row, .moves-row
 .layout-presets > span { flex: 0 0 auto; color: var(--muted, #68736c); font-size: calc(11px * var(--ui-font-scale, 1)); }
 .layout-presets button { flex: 1 1 0; min-width: 0; min-height: 42px; padding: 3px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border: 1px solid var(--line, #c7cec9); border-radius: 8px; background: var(--paper); font-size: calc(12px * var(--ui-font-scale, 1)); font-weight: 700; }
 .layout-presets button small { font-weight: 400; color: var(--muted, #68736c); font-size: calc(10px * var(--ui-font-scale, 1)); }
+/* 「我的布局」槽位（用户 09-17）：保存 / 一键切回 / 删除。只用语义 token，7 主题通用。 */
+.layout-saved { padding: 8px 16px 0; flex-shrink: 0; }
+.layout-saved-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.layout-saved-head > span { display: flex; flex-direction: column; color: var(--muted, #68736c); font-size: calc(11px * var(--ui-font-scale, 1)); font-weight: 700; }
+.layout-saved-head > span small { font-weight: 400; font-size: calc(10px * var(--ui-font-scale, 1)); }
+.layout-saved-add { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0 10px; border: 1px solid var(--line, #c7cec9); border-radius: 8px; background: var(--paper); color: var(--ink); font-size: calc(12px * var(--ui-font-scale, 1)); font-weight: 700; }
+.layout-saved-add svg { width: 15px; height: 15px; }
+.layout-saved-add:disabled { opacity: .5; }
+.layout-saved-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; padding: 0; list-style: none; }
+.layout-saved-list > li { display: flex; align-items: stretch; gap: 4px; flex: 1 1 46%; min-width: 0; }
+.layout-saved-apply { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; min-height: 44px; padding: 4px 8px; border: 1px solid var(--line, #c7cec9); border-radius: 8px; background: var(--paper); text-align: left; }
+.layout-saved-apply b, .layout-saved-apply small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layout-saved-apply b { color: var(--ink); font-size: calc(12px * var(--ui-font-scale, 1)); font-weight: 700; }
+.layout-saved-apply small { color: var(--muted, #68736c); font-size: calc(10px * var(--ui-font-scale, 1)); }
+.layout-saved-remove { flex: 0 0 auto; width: 36px; display: grid; place-items: center; border: 1px solid var(--line, #c7cec9); border-radius: 8px; background: var(--paper); color: var(--muted, #68736c); }
+.layout-saved-remove svg { width: 15px; height: 15px; }
+.layout-saved-remove:active, .layout-saved-apply:active { background: color-mix(in srgb, var(--jade) 26%, var(--paper)); }
 .layout-options { padding: 8px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: calc(12px * var(--ui-font-scale, 1)); flex-shrink: 0; }
 .layout-options label { display: flex; align-items: center; gap: 6px; }
 .layout-options select { min-height: 40px; max-width: 160px; background: var(--paper); border: 1px solid var(--line, #c7cec9); border-radius: 6px; font-size: calc(12px * var(--ui-font-scale, 1)); }
@@ -188,7 +209,7 @@ html[data-theme="dark"] .action-layout-workspace :is(.action-top-row, .moves-row
 .action-layout-sheet button:disabled { opacity: .4; }
 .layout-notice { min-height: 28px; padding: 4px 16px; font-size: calc(11px * var(--ui-font-scale, 1)); flex-shrink: 0; }
 .layout-notice[role="alert"] { color: #b34540; }
-.layout-footer { display: flex; align-items: stretch; gap: 6px; padding: 4px 16px max(12px, env(safe-area-inset-bottom)); flex-shrink: 0; }
+.layout-footer { display: flex; align-items: stretch; gap: 6px; padding: 4px 16px max(12px, var(--safe-area-bottom, env(safe-area-inset-bottom))); flex-shrink: 0; }
 .layout-footer button { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 44px; width: auto; flex: 0 0 auto; padding: 4px 8px; border: 1px solid var(--line, #c7cec9); background: var(--paper); border-radius: 6px; font-size: calc(12px * var(--ui-font-scale, 1)); }
 .layout-footer button:first-child { margin-right: auto; flex: 1; }
 .layout-footer button.primary-button { width: auto; color: var(--paper); background: var(--green); }
@@ -203,33 +224,79 @@ html[data-theme="dark"] .action-layout-workspace :is(.action-top-row, .moves-row
 @media (min-width: 520px) { .layout-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .action-layout-workspace > .action-bottom-row { padding: 4px; border-bottom: 1px solid var(--line); }
 .action-layout-workspace .context-dock.action-subpanels { margin: 6px 4px 0; padding: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
+/* 去子（用户 09-17 改版）：状态栏那条「去子中 · 退出」已删——按钮本身就是状态：
+   开启时底色换成斜纹图案 + 玉青描边、图标变对勾，再点一次结束。
+   ⚠ 特异性必须 ≥ (0,6,1)：design-tokens.css 有一条
+   `.app-shell .dock-panel button:not(.accent):not(.selected):not(.mark-studio-commit)`
+   （0,5,1）会给面板按钮刷 --surface 底，写低了就只有 box-shadow 生效、底色纹丝不动
+   （09-17 实测：描边变了、图案没变，一眼看去像「只有描边」。别去掉这里的 :not 级联。 */
+.app-shell .action-layout-workspace .dock-panel button.erase-stone-button.active[aria-pressed="true"] {
+  /* 条纹要**淡**：浓一点就会把绿字压到 4.5:1 以下（rain/jiangnan 实测 4.21–4.24）。
+     用低比例掺进 --paper，浅色主题下更亮、深色主题下更暗，两个方向都拉开对比。 */
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--green) 12%, var(--paper)) 0 5px, color-mix(in srgb, var(--jade) 26%, var(--paper)) 5px 10px);
+  /* 往 --ink 掺一点：baroque 这类主题的绿与底纹太接近，纯绿只有 4.35:1（全主题扫描抓到）。 */
+  color: color-mix(in srgb, var(--green) 76%, var(--ink));
+  box-shadow: inset 0 0 0 2px var(--green);
+}
+.app-shell .action-layout-workspace .dock-panel button.erase-stone-button.active[aria-pressed="true"] svg { color: var(--green); }
+
+/* 整体位移（用户 09-17）：编辑面板里的「位移」按钮 + 十字方向盘。
+   底色/描边同样要压过 design-tokens 那条面板按钮规则（见上）。 */
+.app-shell .action-layout-workspace .dock-panel button.board-shift-button.active[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--jade) 40%, var(--paper));
+  color: var(--green);
+  box-shadow: inset 0 0 0 2px var(--green);
+}
+/* ⚠ 位移按钮必须浮在弹层遮罩之上（.mark-studio-backdrop 是 z-index:44、弹层 45）：
+   否则遮罩盖住按钮，用户「再点一次关闭」点不动，只能去点别处——09-17 实测就是这么卡住的。 */
+.app-shell .action-layout-workspace .dock-panel button.board-shift-button { position: relative; z-index: 46; }
+.board-shift-popover { display: flex; flex-direction: column; gap: 10px; max-height: calc(100dvh - 24px); overflow: auto; }
+.board-shift-pad { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 6px; width: min(240px, 62vw); margin: 0 auto; }
+.board-shift-pad button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 52px; padding: 4px 2px; border: 1px solid var(--line, #c7cec9); border-radius: 10px; background: var(--surface, var(--paper)); color: var(--ink); font-size: calc(11px * var(--ui-font-scale, 1)); }
+.board-shift-pad button svg { width: 17px; height: 17px; }
+.board-shift-pad button:active { background: color-mix(in srgb, var(--jade) 30%, var(--surface, var(--paper))); }
+.board-shift-up { grid-column: 2; grid-row: 1; }
+.board-shift-left { grid-column: 1; grid-row: 2; }
+.board-shift-right { grid-column: 3; grid-row: 2; }
+.board-shift-down { grid-column: 2; grid-row: 3; }
 .action-layout-workspace > .comment-review { margin-top: 8px; }
 @media (min-width: 700px), (orientation: landscape) and (min-width: 640px) {
   .app-shell.split-layout-enabled .action-layout-page > .record-rail { grid-column: 2; grid-row: 2; align-self: start; min-width: 0; }
+  /* ── 走棋行的宽度上限：**已撤回**（用户 10-07 二次反馈：「横屏模式下走棋那一行咋比其他的都
+     窄一点呢，左右两边早早就收束了，导致要左右滑动才能看到所有按钮」）─────────────────
+     曾经按「缩到棋盘宽」给它加过 `max-width`（844×390 实测 356 → 282，目的是"把空间留给右边
+     功能区"）。但走棋行是住在**右栏里**的，右栏宽度由上面两行（功能行/状态行）决定，把它收窄
+     并没有把宽度让给谁 —— 空出来的地方就是空的；反而 7 个按钮（各 48px 起）挤不进 282px，
+     整行变成横滑。所以撤回上限，让它和同栏那两行同宽。
+     教训：右栏里的行要收一起收（改列宽），单独收一行只会得到一条对不齐的窄行。
+     ⚠ 用户 10-07 进一步说明：那条收窄本来是**针对平板/电脑**的，手机版不受它影响 ——
+     「手机版和平板和电脑是两套配置」。所以上限**只在平板/电脑横屏（高 >600）**保留：
+     手机横屏（844×390 那种）走棋行与功能区三行等宽、不许横滑；平板/电脑横屏仍旧收窄到
+     「约等于棋盘」。`min-height:601px` 就是那条分界线（全项目「手机横屏 vs 平板横屏」
+     都按 600 分档，见 styles.css、vcf-challenge.css、game-screen.css）。 */
+  @media (orientation: landscape) and (min-height: 601px) {
+    .app-shell.split-layout-enabled .moves-row { max-width: calc(100dvh - var(--landscape-chrome, 68px) - 104px); margin-inline: auto; }
+    .app-shell.split-layout-enabled.chrome-collapsed .moves-row { max-width: calc(100dvh - var(--landscape-chrome, 42px) - 54px); }
+  }
 }
 @media (orientation: landscape) and (max-height: 600px) {
-  /* Constrain the container, not the SVG's inline zoom dimensions. The 220px
-   * budget covers topbar + status card + action rows so the whole square
-   * board stays inside the viewport without scrolling. */
-  .app-shell .record-page.action-layout-page > .board-scroller { max-width: max(150px, calc(100vh - 220px)); max-height: none; margin-inline: auto; align-self: start; display: block; }
+  /* Constrain the container, not the SVG's inline zoom dimensions.
+   * 这条现在只服务「关掉双栏」那档逃生口：双栏的横屏尺寸由本文件末尾那条链推导
+   * （主区 = 100dvh − 顶栏，棋盘行吃剩余高度），不再用 `100dvh − 常数`。
+   * 地板 200 是历史值：844×390 实测棋盘 150 → 230。 */
+  .app-shell .record-page.action-layout-page > .board-scroller { max-width: max(200px, calc(100vh - 150px)); max-height: none; margin-inline: auto; align-self: start; display: block; }
   .app-shell .record-page.action-layout-page > .board-scroller .renju-board { flex-shrink: 0; }
 }
 @supports (height: 100dvh) {
   @media (orientation: landscape) and (max-height: 600px) {
-    .app-shell .record-page.action-layout-page > .board-scroller { max-width: max(150px, calc(100dvh - 220px)); }
+    .app-shell .record-page.action-layout-page > .board-scroller { max-width: max(200px, calc(100dvh - 150px)); }
   }
 }
 @media (orientation: landscape) and (min-width: 640px) and (max-height: 600px) {
+  /* 矮横屏只留这几条：行距/头部压扁/右列内边距。列内可滚与撑满行高都在末尾那一节。 */
   .app-shell.split-layout-enabled .record-page.action-layout-page { gap: 6px 14px; padding-top: 4px; }
   .app-shell.split-layout-enabled .action-layout-page .unified-status { grid-template-areas: "title mode"; padding: 4px; margin-bottom: 0; }
-  .app-shell.split-layout-enabled .record-page.action-layout-page > .board-scroller { max-width: max(140px, calc(100vh - 240px)); }
-  .app-shell.split-layout-enabled .action-layout-page > .record-rail { max-height: calc(100vh - 230px); overflow-y: auto; overscroll-behavior: contain; padding: 0 2px 8px; }
-}
-@supports (height: 100dvh) {
-  @media (orientation: landscape) and (min-width: 640px) and (max-height: 600px) {
-    .app-shell.split-layout-enabled .record-page.action-layout-page > .board-scroller { max-width: max(140px, calc(100dvh - 240px)); }
-    .app-shell.split-layout-enabled .action-layout-page > .record-rail { max-height: calc(100dvh - 230px); }
-  }
+  .app-shell.split-layout-enabled .action-layout-page > .record-rail { padding: 0 2px 8px; }
 }
 @media (max-height: 500px) { .action-layout-sheet .sheet-handle { display: none; } .action-layout-sheet .sheet-head { padding-block: 5px; } .layout-options { padding-block: 2px; } .layout-notice:not([role="alert"]) { display: none; } .layout-footer { padding-bottom: 4px; } }
 
@@ -237,7 +304,58 @@ html[data-theme="dark"] .action-layout-workspace :is(.action-top-row, .moves-row
 .action-tool-panel .dock-panel { padding-top: 2px; }
 .action-tool-panel .dock-panel-analysis { display: block; min-height: 0; padding: 0; }
 .ai-analysis-panel { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 2px 2px 0; }
-.ai-analysis-head { display: flex; align-items: flex-end; gap: 2px; min-height: 44px; flex-wrap: wrap; }
+/* 分析面板头部：两行（用户 09-16：「分析功能的选项要补齐……实在不行就两行，和那个
+   可调节的内存搁一块」）。第一行仍是原来那 6 个控件（实测 360px 屏占 334 / 可用 344px，
+   没有余量），第二行放引擎设置：多线程开关、DotProd、线程数、自调档的内存滑杆。
+   第二行改为**换行 + 可伸缩**（2026-09-16 修「滑杆超出屏幕外」）：原先写的是
+   「横向滚动而不是换行」，配合 `> * { flex: 0 0 auto }` 把每个控件钉成定宽——手机上
+   内存那一格连同滑杆被整个推出可视区，用户看到的是一截被切掉的蓝色滑块，而且没有
+   任何提示可以横向滚动。现在：控件默认仍不收缩（保持紧凑格外观），但内存格允许
+   伸缩并把滑杆的固定 72px 改成吃掉剩余宽度，放不下时整行换行、面板自然变高。 */
+.ai-analysis-head { display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-height: 44px; }
+.ai-analysis-row { display: flex; align-items: flex-end; gap: 2px; min-width: 0; flex-wrap: wrap; row-gap: 4px; }
+.ai-analysis-row--engine { padding-bottom: 1px; }
+.ai-analysis-row--engine > * { flex: 0 0 auto; }
+/* 360px（最常见的安卓竖屏宽度）实测：第一行 6 枚控件本身 339px + 5 枚 .panel-select
+   各自的 margin-left 6px + 行内 gap 2px ≈ 379px，而可用只有 344px —— 最后一枚「N 位」
+   掉到第二行，分析头从设计的两行变成三行，白吃掉约 48px 棋盘高度（用户 10-01 就为
+   「棋盘小了」点名过一次）。小屏上只收紧**间距**：去掉左边距、横向内边距 8→6、gap 2→1，
+   文字一个都不截断（实测留下约 20px 余量，字号放大一档也不会掉行）。 */
+@media (max-width: 380px) {
+  .ai-analysis-row--main { gap: 1px; }
+  .ai-analysis-row--main .panel-select { margin-left: 0; }
+  .ai-analysis-row--main .panel-select-trigger { padding-left: 6px; padding-right: 6px; }
+}
+/* 多线程开关（自调档，用户 09-16）：与 DotProd 同款紧凑格。关掉时线程数选择器不出现，
+   整行只剩内存滑杆，正好填满一行。
+   文案改**上下两行**（用户 09-16：「开关的文本是在下面的」）：标签一行、开/关一行。
+   并排写「多线程 开」时会为了不让文字换行而一路撑宽，窄屏上把后面的内存格挤出去。 */
+.ai-analysis-mt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: none; color: inherit; white-space: nowrap; }
+/* 开关的「开」态用语义色（--green/--jade），与同一面板里 .dock-panel button.selected、
+   .layout-options input 等完全一致。原先这里写的是 var(--accent, #3b82f6)——而 --accent
+   在全项目**从未定义过**，所以永远落到蓝色兜底值：既跟主题不搭（暗色主题下是一块突兀的
+   亮蓝），也跟旁边 DotProd 的绿色开关不一致（用户 09-16 反馈「打开后没有适配主题」）。 */
+.ai-analysis-mt.on { border-color: var(--green); background: var(--jade); color: var(--green); }
+.ai-analysis-mt > small { font-size: calc(11px * var(--ui-font-scale, 1)); color: var(--muted); line-height: 1.1; }
+.ai-analysis-mt > b { font-size: calc(13px * var(--ui-font-scale, 1)); line-height: 1.1; }
+/* NEON DotProd 开关（用户 09-16 要求进分析栏）：只在安卓原生就绪时出现，
+   本机 CPU 没有该能力时禁用并显示「不支持」。文案同样上下两行。 */
+.ai-analysis-mt, .ai-analysis-dotprod { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: none; color: inherit; white-space: nowrap; }
+.ai-analysis-mt.on { border-color: var(--green); background: var(--jade); color: var(--green); }
+.ai-analysis-dotprod.on { border-color: var(--green); background: var(--jade); color: var(--green); }
+.ai-analysis-dotprod:disabled { opacity: .5; }
+.ai-analysis-dotprod > small { font-size: calc(11px * var(--ui-font-scale, 1)); color: var(--muted); line-height: 1.1; }
+.ai-analysis-dotprod > b { font-size: calc(13px * var(--ui-font-scale, 1)); line-height: 1.1; }
+/* 内存滑杆压成一格：高度与其他 PanelSelect 的 44px 热区一致，标签+当前值+滑杆并排。
+   这个格子是整行里唯一允许伸缩的（flex: 1 1 130px，最小 130px），滑杆吃掉剩余宽度——
+   原先滑杆写死 72px + 整行不收缩，窄屏上它会被挤出屏幕外。 */
+.ai-analysis-memory { display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; white-space: nowrap; flex: 1 1 130px; min-width: 130px; }
+.ai-analysis-memory > span { font-size: calc(11px * var(--ui-font-scale, 1)); color: var(--muted); }
+.ai-analysis-memory > output { font-size: calc(12px * var(--ui-font-scale, 1)); font-variant-numeric: tabular-nums; min-width: 46px; text-align: right; }
+/* accent-color 必须显式给：项目里其它滑杆（树缩放、棋子透明度、音量、摆棋时限…）都写了
+   accent-color: var(--green)，唯独引擎这两处漏了，于是落到浏览器默认蓝——与同面板的绿色
+   开关同框时非常突兀，且不随主题变化（用户 09-16 反馈「打开后没有适配主题」）。 */
+.ai-analysis-memory input[type="range"] { flex: 1 1 auto; width: auto; min-width: 56px; margin: 0; accent-color: var(--green); }
 /* 头部所有 panel-select 归零 margin（styles.css 只归零了 first-child），否则
    6px 默认左边距会把「小数」那一项挤到第二行（用户 09-11 要求一行放下）。 */
 .ai-analysis-head .panel-select { margin-left: 0; }
@@ -249,7 +367,12 @@ html[data-theme="dark"] .action-layout-workspace :is(.action-top-row, .moves-row
 .ai-engine-badge.full, .ai-engine-badge.strong { color: #2e6e9c; background: #e5f1fb; border-color: #bcd8ee; }
 .ai-engine-badge.light { color: var(--green); background: var(--jade); border-color: color-mix(in srgb, var(--green) 22%, transparent); }
 .ai-engine-badge.experiment { color: #7c4de0; background: #f1ebfd; border-color: #d5c6f5; }
-.ai-analysis-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; }
+/* KataGo 旗舰档：与强力（蓝）/原生（默认）区分开，暖金表示「更强也更耗电」。
+ * 全部走语义 token（gold/paper/ink/line），22 套主题自动适配——原先写死的浅金
+ * 在深色主题下会发白（2026-09-26 用户反馈「没适配主题颜色」）。 */
+.ai-engine-badge.kata { color: color-mix(in srgb, var(--gold, #c79c4a) 78%, var(--ink)); background: color-mix(in srgb, var(--gold, #c79c4a) 20%, var(--paper)); border-color: color-mix(in srgb, var(--gold, #c79c4a) 42%, var(--line)); }
+/* 5 格：深度 · 速度 · 评估分 · 黑方胜率 · 节点（用户 09-15 要求把速度放在深度右边） */
+.ai-analysis-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
 .ai-analysis-stats span { min-width: 0; padding: 5px 2px; border-radius: 6px; background: color-mix(in srgb, var(--jade) 60%, var(--paper)); text-align: center; }
 .ai-analysis-stats small, .ai-analysis-stats b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ai-analysis-stats small { color: var(--muted); font-size: calc(11px * var(--ui-font-scale, 1)); }
@@ -257,6 +380,9 @@ html[data-theme="dark"] .action-layout-workspace :is(.action-top-row, .moves-row
 /* 统计行语义色（用户 09-10）：深度/计算量是中性工程指标用灰；评估分正绿负红；
    黑方胜率与棋盘候选点同语义——高=深蓝、中=绿、低=红。 */
 .ai-analysis-stats .stat-depth b, .ai-analysis-stats .stat-nodes b { color: var(--muted); }
+/* 旗舰（KataGo）专属两项：和棋率与 PV 长度都是中性工程指标，用灰（与深度/访问同族），
+   避免和胜率抢视觉重心。 */
+.ai-analysis-stats .stat-drawrate b, .ai-analysis-stats .stat-pvlen b { color: var(--muted); }
 .ai-analysis-stats .stat-score b.pos { color: #2f7d32; }
 .ai-analysis-stats .stat-score b.neg { color: #c0392b; }
 .ai-analysis-stats .stat-winrate b.high { color: #1e5fd6; font-weight: 800; }
@@ -274,6 +400,22 @@ html[data-theme="dark"] .ai-analysis-stats .stat-winrate b.low { color: #f0857c;
 .ai-analysis-candidates em { margin-top: 2px; color: var(--green); font-style: normal; }
 html[data-theme="dark"] .ai-engine-badge.full, html[data-theme="dark"] .ai-engine-badge.strong { color: #9ed0f4; background: #253d50; }
 html[data-theme="dark"] .ai-engine-badge.experiment { color: #c4b0f6; background: #332a52; }
+html[data-theme="dark"] .ai-engine-badge.kata { color: color-mix(in srgb, var(--gold, #d4ac63) 85%, #fff); background: color-mix(in srgb, var(--gold, #d4ac63) 22%, var(--paper)); }
+
+
+/* 引擎切换/冷启动的加载进度条（kata：准备→起进程→加载网络→标定）。
+ * 「充能」动效：填充条带流动高光 + 轻微脉动；未就绪时再加一道来回扫光，
+ * 让人一眼看出「正在加载、还没完」而不是卡住了（用户 09-26 要求）。 */
+.engine-load{box-sizing:border-box;height:31px;margin:6px 2px 2px;contain:layout paint;opacity:1;visibility:visible;transition:opacity .12s linear}
+.engine-load.inactive{opacity:0;visibility:hidden;pointer-events:none}
+.engine-load-track{position:relative;height:8px;border-radius:99px;background:color-mix(in srgb, var(--line) 55%, transparent);overflow:hidden}
+.engine-load-track>span{position:relative;display:block;height:100%;min-width:6px;border-radius:99px;
+  background:linear-gradient(90deg,
+    color-mix(in srgb, var(--gold) 78%, var(--green)),
+    var(--gold) 45%,
+    color-mix(in srgb, var(--gold) 70%, #fff));
+  transition:width .24s linear;}
+.engine-load>small{display:block;margin-top:3px;color:var(--muted);font-size:11px}
 .analysis-toggle { position: relative; display: inline-flex; flex-shrink: 0; align-items: center; gap: 8px; min-height: 44px; padding: 4px; color: var(--muted); font-size: calc(13px * var(--ui-font-scale, 1)); cursor: pointer; }
 .analysis-toggle input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
 .analysis-toggle:focus-within { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 6px; }
@@ -284,7 +426,466 @@ html[data-theme="dark"] .ai-engine-badge.experiment { color: #c4b0f6; background
 .analysis-toggle.on i::after { transform: translateX(22px); }
 @media (max-width: 380px) { .ai-analysis-candidates { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 600px) and (orientation: portrait) {
-  .record-page:has(.dock-panel-analysis) .board-scroller { display: flex; justify-content: center; }
-  .record-page:has(.dock-panel-analysis) .board-scroller .renju-board { width: calc(100% - 32px) !important; min-width: calc(100% - 32px) !important; margin-inline: auto; }
+  /* 2026-09-16 这里曾把棋盘收窄 32px「让候选点放得下」，还加了 !important（顺带吃掉用户
+     自己的捏合缩放，所以要配一条 :not(.is-zoomed)）。用户 10-06 明确要求**别连带缩棋盘**：
+     一开分析棋盘就小一圈，比候选点排版更难受。整对规则一起删掉，棋盘保持原宽。 */
   .record-page:has(.dock-panel-analysis) .ai-analysis-panel { gap: 3px; padding-bottom: 3px; }
+}
+
+/* ===== 功能区「按钮宽度溢出后＝横向滚动」（用户 09-17 规格；09-26 改裸箭头 + 默认关闭）====
+   只有设置里选了「横向滚动」时，这三行才套上这一层（默认「自动换行」，DOM 里根本没有它，
+   由下方 `:not(:has(.action-railbar))` 的几条规则负责让三行换行）。
+   两端是**裸箭头**：没有底色方框、没有描边、没有底色渐变——用户 09-26：「左右两边的按钮
+   应该像首行功能栏一样，没有固定的框框包裹，而是直接就是图案」。这一侧还有得滑＝实心绿箭头，
+   没有可滑内容＝安静的浅灰箭头（仍在，看得出来这个模式开着）。
+   颜色全部走语义 token（--green/--muted/--surface），20 套主题下都分辨得出。 */
+.action-railbar {
+  /* 栏宽与贴边量同宽（都是 12px）：栏正好落在页面原有的内边距里，按钮一格都不会被吃掉。 */
+  --rail-w: 12px;
+  /* 贴屏幕边：负外边距让两条栏顶到屏幕边缘，量值取 .record-page 的页内边距（12px）。
+     必须是常量——用 JS 量出来的偏移会与布局互相反馈（见 ActionRailBar 注释）。 */
+  --rail-bleed: 12px;
+  position: relative;
+  display: block;
+  min-width: 0;
+  margin-inline: calc(-1 * var(--rail-bleed, 0px));
+  padding-inline: var(--rail-bleed, 0px);
+}
+.action-railbar > .action-rail-track { display: block; min-width: 0; }
+/* 两条栏**绝对定位覆盖**在行的两端：一旦让它们占布局空间，栏一亮一灭就改变行宽，
+   溢出判定随之翻转 → 「显示栏 → 行变窄 → 又溢出/又不溢出」自激（React 报
+   Maximum update depth，实测 moves 行在 330/366 之间弹）。所以栏永远是浮层。 */
+.action-rail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: var(--rail-w);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: default;
+  touch-action: none;
+}
+.action-rail--left { left: 0; }
+.action-rail--right { right: 0; }
+.action-rail svg { width: 12px; height: 12px; pointer-events: none; }
+
+/* ⚠ 两种状态的底色都要写在带 `.app-shell …[data-rail-dir]` 的选择器里：
+   全局有一条 `.app-shell button:disabled:not(.primary-button):not(.danger-button)`
+   （特异性 0,4,1）会给禁用按钮刷 `--button-disabled-bg`——那正是用户看到的「固定的框框」。
+   这里用 0,5,0 压过它，**两种状态都显式 background: transparent**（裸图案，没有底色）。
+   颜色走实色/实混合色：门禁能用计算样式直接算出箭头与底色的真实对比度，不用猜透明层叠。 */
+.app-shell .action-railbar > .action-rail[data-rail-dir]:disabled {
+  background: transparent;
+  color: color-mix(in srgb, var(--muted) 42%, var(--surface, var(--paper)));
+  box-shadow: none;
+  opacity: 1;
+}
+/* 亮态：这一侧还有按钮可滑（data-rail-active 由 ActionRailBar 按 atStart/atEnd 给）。 */
+.app-shell .action-railbar > .action-rail[data-rail-dir][data-rail-active="true"] {
+  background: transparent;
+  color: var(--green);
+  box-shadow: none;
+  cursor: pointer;
+}
+.app-shell .action-railbar > .action-rail[data-rail-dir][data-rail-active="true"]:active { opacity: .62; }
+/* 行本体（原有元素）是真正滚动的那一层。⚠ 滚动必须**无条件**开：非滚动容器会把
+   溢出「吃掉」（scrollWidth 恒等于 clientWidth），而 data-overflow 正是由两者之差算出来的
+   ——把 overflow-x 也挂在标志位上，同样构成双稳态（这次踩的第二个坑）。
+   只有「让出两侧栏位」的 padding 可以按标志位加，因为它只让溢出变大，是单调的。 */
+.action-railbar .rail-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+  /* 行内边距**无条件**让出两侧栏位：栏常显，所以这个值不能挂在 data-overflow 上
+     （标志位与布局互相影响就是前面说的双稳态）。栏宽 = 贴边量，按钮一格都不会被吃。 */
+  padding-inline: var(--rail-w);
+}
+.action-railbar .rail-scroll::-webkit-scrollbar { display: none; }
+/* 行本身可拖滑（鼠标/触控笔）：拖动中给抓手光标并禁止选中文字。 */
+.action-railbar[data-overflow="true"] .rail-scroll { cursor: grab; }
+.action-railbar[data-dragging="true"] .rail-scroll { cursor: grabbing; user-select: none; }
+/* ⚠ 这里**不要**放「由 data-overflow 控制、又影响溢出量」的规则（例如
+   `> * { flex-shrink: 0 }`）：会自动成双稳态——不收缩→溢出→置位→不许收缩→仍溢出，
+   再叠上任何一次外部重渲染就来回翻，React 直接报 Maximum update depth（踩过）。
+   防挤压一律用与标志位无关的 min-width（见下方区域规则）。 */
+/* 首行原本是「按列宽自动换行」的 grid：按钮一多就长成两三行，把下面的棋盘挤掉，
+   用户说的「被挤到另一侧/看不见」正是这里。边界栏启用时改成分栏 + 单行 + 不换行，
+   放不下就横向滑动（列宽下限仍是既有的 56px 契约）。 */
+.action-railbar[data-rail-zone="bottom"] > .action-rail-track > .rail-scroll {
+  grid-auto-flow: column;
+  grid-template-columns: none;
+  grid-auto-columns: minmax(56px, 1fr);
+  grid-auto-rows: 1fr;
+}
+.action-railbar[data-rail-zone="bottom"] > .action-rail-track > .rail-scroll > * { min-width: 56px; }
+/* 走棋/常驻行本来就单行；给按钮一个最小宽度，太窄时改为溢出滑动而不是无限压扁。 */
+.action-railbar[data-rail-zone="moves"] > .action-rail-track > .rail-scroll > * { min-width: 48px; }
+/* 首行原有的内边距/分隔线本来挂在直接子元素上，包一层后按区域补回来。
+   ⚠ 只能写 padding-block：写 `padding: 4px` 会把上面那条 `padding-inline: var(--rail-bleed)`
+   一起覆盖掉，于是首行两条栏被推到屏幕内 8px 处、根本不贴边（09-17 实测的漏网 bug，
+   旧门禁只对走棋行断言了贴边，所以没抓到）。 */
+.action-layout-workspace > .action-railbar[data-rail-zone="bottom"] { padding-block: 4px; border-bottom: 1px solid var(--line); }
+/* 常驻行：状态条里只包命令栏，黑白切换仍钉在右侧不随滑动跑掉。 */
+.workspace-status > .action-railbar { flex: 1 1 auto; min-width: 0; }
+/* The status row is inset 4px from sibling rows at tablet/desktop widths.
+   Compensate by 4px to align the rails, while leaving edge clearance to the measured bleed.
+   Mobile uses different status-row spacing, so it keeps the base bleed. */
+@media (min-width: 700px) {
+  .workspace-status > .action-railbar { margin-inline: calc(-4px - var(--rail-bleed, 0px)); }
+}
+.workspace-status > .action-railbar > .action-rail-track > .record-command-bar { width: 100%; }
+
+/* ---- 「按钮宽度溢出后＝自动换行」（默认，用户 09-26）----------------------------------
+   判定方式用 :has 看 DOM 里有没有滑动栏那层，而不是再加一个 data 属性跟 App 的状态同步——
+   模式切换时 DOM 结构本身就是依据，少一处可能不同步的地方。
+   首行本来就是「按列宽自动换行」的网格（.action-bottom-row 那条 auto-fit），不用管；
+   常驻/走棋两行原来是「单行 + 无限压扁」，这里改成放不下就换行，这才是「换行」的含义。
+   min-width 给的是与滑动模式同一套下限（走棋 48px、常驻 36px），避免换行前先被压成一条线。 */
+.action-layout-workspace:not(:has(.action-railbar)) .moves-row { flex-wrap: wrap; }
+.action-layout-workspace:not(:has(.action-railbar)) .moves-row > * { min-width: 48px; }
+.action-layout-workspace:not(:has(.action-railbar)) .action-top-row { flex-wrap: wrap; }
+
+/* ---- 分析面板三个页签（用户 09-19，对标智子）：计算 / 复盘 / 胜率 ---- */
+.ai-panel-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 2px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--muted) 14%, var(--paper)); }
+.ai-panel-tabs button { min-height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: calc(12px * var(--ui-font-scale, 1)); font-weight: 700; cursor: pointer; }
+/* ⚠ 页签**不能加 background/color 过渡**：全主题门禁切主题后只等 60ms 就采样，过渡中的
+   中间值会被量成「对比度 1.15」这类假故障（09-19 实测踩到）。 */
+.ai-panel-tabs button.selected { background: var(--jade); color: var(--green-2, var(--green)); }
+.ai-panel-tabs button:hover, .ai-panel-tabs button:focus-visible { color: var(--ink); }
+.ai-panel-tabs button.selected { box-shadow: 0 1px 3px #0000001f; }
+.ai-winrate-panel { margin-top: 0; }
+/* 胜率图上的透明热区点：fill:none 不接收指针事件，fill:transparent 才可点。 */
+.ai-review-dot-hit { fill: transparent; cursor: pointer; }
+.ai-review-dot-hit:hover { stroke: var(--ink); stroke-width: .6px; }
+/* 胜率图游标（智子 VictoryCursorContainer 同款）：竖线=棋盘当前局面，可点可拖。
+   svg 必须 touch-action:none，否则触摸拖动会被面板滚动抢走。 */
+.ai-review-curve svg { touch-action: none; }
+.ai-review-cursor { stroke: var(--ink); stroke-width: 1; vector-effect: non-scaling-stroke; opacity: .75; }
+.ai-review-cursor-dot { fill: var(--green-2, var(--green)); stroke: var(--paper); stroke-width: .6px; vector-effect: non-scaling-stroke; }
+
+/* ---- 分析结果沉淀：「上次分析」缓存行（用户 09-17 第一梯队②） ---- */
+.ai-analysis-cached { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; padding: 6px 9px; border: 1px dashed color-mix(in srgb, var(--muted) 45%, transparent); border-radius: 9px; }
+.ai-analysis-cached small { color: var(--muted); font-size: calc(11px * var(--ui-font-scale, 1)); }
+.ai-analysis-cached button { flex: none; min-height: 26px; padding: 3px 10px; border: 1px solid var(--green-2, var(--green)); border-radius: 8px; background: transparent; color: var(--green-2, var(--green)); font-size: calc(12px * var(--ui-font-scale, 1)); cursor: pointer; }
+.ai-analysis-cached button:hover, .ai-analysis-cached button:focus-visible { background: var(--jade); }
+
+/* ---- 整局复盘（用户 09-17 第一梯队①）：曲线 + 分档 + 讲解 ---- */
+.ai-review-panel { margin-top: 10px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--jade) 32%, var(--paper)); }
+.ai-review-head { display: flex; align-items: center; gap: 8px; }
+.ai-review-head b { font-size: calc(12px * var(--ui-font-scale, 1)); color: var(--ink); }
+.ai-review-head .ai-review-progress { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(11px * var(--ui-font-scale, 1)); color: var(--muted); }
+.ai-review-head button { flex: none; min-height: 28px; padding: 3px 12px; border: 1px solid var(--green-2, var(--green)); border-radius: 9px; background: transparent; color: var(--green-2, var(--green)); font-size: calc(12px * var(--ui-font-scale, 1)); font-weight: 700; cursor: pointer; }
+.ai-review-head button:hover, .ai-review-head button:focus-visible { background: var(--jade); }
+.ai-review-bar { margin-top: 7px; height: 4px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 30%, transparent); overflow: hidden; }
+.ai-review-bar i { display: block; height: 100%; border-radius: 999px; background: var(--green-2, var(--green)); transition: width .25s ease; }
+.ai-review-note { margin: 6px 0 0; font-size: calc(11px * var(--ui-font-scale, 1)); line-height: 1.5; color: var(--muted); }
+.ai-review-curve { margin-top: 8px; }
+/* 左侧刻度轴 + 绘图区（用户 09-19：最左边要有 100/75/50/25/0 的竖轴）。 */
+.ai-curve-body { display: flex; align-items: stretch; gap: 5px; }
+.ai-curve-axis { display: flex; flex-direction: column; justify-content: space-between; flex: 0 0 auto; padding: 1px 0; font-size: calc(9px * var(--ui-font-scale, 1)); line-height: 1; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.ai-curve-plot { position: relative; flex: 1 1 auto; min-width: 0; border-left: 1px solid var(--line); }
+/* 高度从 74px 提到 150px（用户 09-19：图要更高一点）。 */
+.ai-review-curve svg { display: block; width: 100%; height: 150px; border-radius: 8px; background: color-mix(in srgb, var(--paper) 72%, var(--jade)); }
+/* 游标处浮出的胜率读数：压在曲线之上，不吃指针事件（否则拖不动）。 */
+.ai-curve-readout { position: absolute; top: 3px; padding: 1px 6px; border-radius: 7px; border: 1px solid var(--surface-border, var(--line)); background: var(--surface); color: var(--ink); font-size: calc(10px * var(--ui-font-scale, 1)); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
+.ai-review-curve > small.ai-curve-cursor-line { color: var(--ink); }
+/* 讲解词默认收起（用户 09-19：文字最多两行） */
+.ai-review-text-details { margin-top: 7px; }
+.ai-review-text-details > summary { cursor: pointer; font-size: calc(11px * var(--ui-font-scale, 1)); color: var(--green-2, var(--green)); font-weight: 700; }
+.ai-review-text-details[open] > summary { margin-bottom: 5px; }
+/* 曲线横跨黑白优势两半：中线用固定半透明白，任何主题下都可见。 */
+.ai-review-curve .ai-review-curve-mid { stroke: #ffffffb0; stroke-width: .6; }
+.ai-review-curve .ai-review-curve-line { fill: none; stroke: var(--green-2, var(--green)); stroke-width: 1.6; vector-effect: non-scaling-stroke; }
+.ai-review-dot { cursor: pointer; }
+.ai-review-dot.mistake { fill: var(--gold); }
+.ai-review-dot.blunder { fill: var(--red); }
+.ai-review-dot:hover { stroke: var(--ink); stroke-width: .8px; }
+.ai-review-curve > small { display: block; margin-top: 3px; font-size: calc(10px * var(--ui-font-scale, 1)); color: var(--muted); }
+.ai-review-summary { margin-top: 8px; }
+.ai-review-grades { display: flex; flex-wrap: wrap; gap: 5px; }
+/* 分档 chip 的「档位色」是语义色：它随主题翻面（暗色主题的 --red 是浅红、--gold 是浅金），
+   而压在色块上的文字若跟着 --ink 翻，就会出现「浅字压浅底」1.9–2.2:1（09-19 全主题实测）。
+   因此 inaccuracy/mistake/blunder 用**固定配色对**（与结果横幅同一套思路），best 是中性底才用主题色。 */
+.ai-review-grade { padding: 2px 8px; border-radius: 999px; font-size: calc(11px * var(--ui-font-scale, 1)); font-weight: 700; background: color-mix(in srgb, var(--muted) 16%, transparent); color: var(--ink); }
+.ai-review-grade.inaccuracy { background: #f2e3b8; color: #3a2f14; }
+.ai-review-grade.mistake { background: #e8b96a; color: #33240a; }
+.ai-review-grade.blunder { background: #b94b3f; color: #ffffff; }
+.ai-review-worst { margin: 7px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.ai-review-worst button { width: 100%; min-height: 30px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-size: calc(11px * var(--ui-font-scale, 1)); text-align: left; cursor: pointer; }
+.ai-review-worst button:hover, .ai-review-worst button:focus-visible { border-color: var(--green-2, var(--green)); background: var(--jade); }
+.ai-review-text { margin: 7px 0 0; padding: 7px 9px; border-radius: 8px; background: color-mix(in srgb, var(--paper) 78%, var(--jade)); color: var(--ink); font-family: inherit; font-size: calc(11px * var(--ui-font-scale, 1)); line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+.ai-review-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+.ai-review-copy { min-height: 27px; padding: 3px 12px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink); font-size: calc(11px * var(--ui-font-scale, 1)); cursor: pointer; }
+.ai-review-copy:hover, .ai-review-copy:focus-visible { border-color: var(--green-2, var(--green)); background: var(--jade); }
+
+/* ---- iKataGo 云引擎设置（用户填服务器地址自连）---- */
+.ikatago-tuning{display:flex;flex-direction:column;gap:6px;padding:6px 2px}
+.ikatago-row{display:flex;gap:8px}
+.ikatago-row .ikatago-field{flex:1;min-width:0}
+.ikatago-field{display:flex;flex-direction:column;gap:2px}
+.ikatago-field>span{color:var(--muted);font-size:11px}
+/* 原先写的是 `background:var(--panel,#fff)`，而 **`--panel` 这个变量全仓从未定义**（和改造表
+   R94 抓到的 `--border`、theme-adaptation 注释里那条 `--color-surface-raised` 是同一类 bug：
+   兜底值永远生效）。于是云端引擎（iKataGo）配置面板的输入框在 6 套深色主题里都是白底，
+   而文字 `color:inherit` 继承的是深色主题的浅色字 → 白底白字，四个字段基本读不了。
+   改用应用里真在用的表面色变量。 */
+.ikatago-field input,.ikatago-field select{width:100%;box-sizing:border-box;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface,var(--paper));color:var(--ink);font-size:12px}
+.ikatago-actions{display:flex;gap:6px}
+.ikatago-save,.ikatago-reset{padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:transparent;color:inherit;font-size:12px;cursor:pointer}
+.ikatago-save:not(:disabled){border-color:var(--gold);color:var(--gold);font-weight:700}
+.ikatago-save:disabled{opacity:.55;cursor:default}
+.ikatago-note{margin:0;color:var(--muted);font-size:11px;line-height:1.45}
+.ikatago-note.warn{color:#c0392b}
+html[data-theme="dark"] .ikatago-note.warn{color:#f0857c}
+
+/* iKataGo 的「保存 / 清空」原来连 min-height 都没写（只有 padding 4px 10px → 实际约 28px 高），
+   是全应用最矮的一组按钮；间隙也从 6px 提到 8px（用户 10-01「按钮有点紧凑」）。 */
+.ikatago-actions{gap:8px}
+.ikatago-save,.ikatago-reset{min-height:40px}
+
+/* ── 横屏双栏：右列必须钉在顶部并按视口高内部滚动（用户 10-01 第二轮）────────────
+   不这么做的话，右列会跟着变高的棋盘一起拉长，而 `.workspace-status{margin-top:auto}`
+   把走棋区推到列的最底下 —— 实测 1180×820 把棋盘放到 738 时走棋区掉到 top=805（视口外），
+   正好复刻用户抱怨的「功能栏打开后里面的按钮不知道在哪」。
+   写在 styles.css 里不生效：组件 CSS 在 styles.css 之后加载，同特异度它赢（本轮踩过）。 */
+@media (orientation:landscape) and (min-width:640px) {
+  /* 这一组原本的「右列钉顶 + max-height:100dvh − 184 内滚」已被末尾那条链取代
+     （行高确定 → 右栏撑满行、列内滚，见本文件末尾）。这里只留两条还成立的： */
+  .app-shell.split-layout-enabled .record-page.action-layout-page > .record-rail .workspace-status{ margin-top:0 }
+  /* 功能区那列离右缘竖条留 18px 缝（用户 10-01 第二轮：「功能区所有按钮太靠近右边了，
+     向左边稍微过去一点」——实测列右缘离竖条只有 4px）。
+     写在 styles.css 的 `.record-page{padding-inline-end:18px}` 不生效：那边同特异度但更早，
+     被这里上面的 `padding-top:4px` 那组 shorthand 压住，实测 computed 只有 4px。 */
+  .app-shell.split-layout-enabled .record-page.action-layout-page{ padding-inline-end:18px }
+}
+
+/* ── 横屏顶部折叠（用户 10-04）──────────────────────────────────────────────
+   折叠只改两件事：顶栏收成一行、状态栏整条隐藏。省出来的高度由下面那条链
+   自动落进棋盘那一行，所以这里不再为折叠另写一套棋盘预算。
+   ⚠ 本文件在 styles.css 之后加载，同特异度这里赢（:655 注释记过这个坑）。 */
+.chrome-collapse-toggle{display:none}
+@media (orientation:landscape){
+  .app-shell.landscape-viewport .chrome-collapse-toggle{
+    display:flex;align-items:center;gap:4px;flex:0 0 auto;height:30px;min-height:30px;padding:0 9px;
+    border:1px solid var(--line,#c7cec9);border-radius:9px;background:var(--surface,var(--paper));
+    color:var(--ink);font-size:11px;font-weight:700;
+  }
+  /* 顶栏实高写成一个变量，`.app-main` 扣的就是它。`.topbar` 平时是固定 height:68px，
+     所以折叠必须同时改 height（只写 min-height 无效）。 */
+  .app-shell.split-layout-enabled{--landscape-chrome:68px}
+  /* 顶级折叠按钮第一档就是「压缩顶部」：横屏下顶栏实高随之变 42px（`.app-main` 扣的就是它）。 */
+  .app-shell.split-layout-enabled.chrome-compact{--landscape-chrome:42px}
+  .app-shell.chrome-compact .topbar{height:var(--landscape-chrome,42px);min-height:var(--landscape-chrome,42px);padding:3px 10px;gap:6px}
+}
+
+/* ── 竖屏也折叠（用户 10-07）──────────────────────────────────────────────
+   上面那套原来只在横屏生效（处于 `@media (orientation: landscape)` + `.landscape-viewport`）。
+   用户要在竖屏也能收起「顶部状态栏及以上」，所以这里放开到两种朝向。
+   ⚠ **折叠按钮不许跳位**（用户点名：「点击后一会左边一会右边」）：
+     上面那版把左组的 `.brand` 也 `display:none` 了 → 左组被抽空 → 按钮被 flex 挤到最左边。
+     这版改成给 brand 用 `visibility:hidden` **留占位**（看不见但仍占宽度），
+     按钮就停在「快捷中心右边、打谱左边」那个大致位置上（用户要求"大致位置不变"）。
+   ⚠ 本文件在 styles.css 之后加载，同特异度这里赢（见上方 :655 的注释）。 */
+.app-shell .chrome-collapse-toggle{
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  height:30px;min-height:30px;padding:0 9px;border:1px solid var(--line);border-radius:9px;
+  background:var(--surface,var(--paper));color:var(--muted);cursor:pointer;
+}
+.app-shell .chrome-collapse-toggle:active{background:var(--jade,var(--paper))}
+/* ⚠ 只改**上下**内边距（`padding-block`），**不要**碰左右内边距与 gap：
+   本文件上方还有 `.topbar.record-topbar{padding-inline:6px;gap:4px}`（≤360px 档）
+   之类的规则，写死 `padding:3px 16px;gap:0` 会让窄屏两态左右内边距不一致
+   （实测 320 位移 6px、360 位移 4px）。左右交给原规则，两态就对齐。
+   ⚠ 旧的 34px 兜底那条已删：紧凑条的实际高度统一由 :734 那条 42px 定，留着只会误导。 */
+/* ⚠ 第一档「压缩顶部」不是「清空顶栏」，而是「压成一条紧凑工具条」（用户 10-07 二次定稿：
+   「折叠后这个按钮不再变到左边，而是左边依旧是有快捷中心，不过这个变成了一个文字按钮，
+   然后右边中心是压缩为图案按钮的三个版面按钮，最右边的是导出和保存，一样也是压缩变小了。
+   如果这些按钮的大小其实不用压缩就有这么小，那就不用压缩了」）────────────────────
+   这一段只管**顶栏本身**（第一档就生效，.chrome-compact）；状态栏与金刚页各有更深的档，
+   分别在 .chrome-collapsed（第二档）与 .chrome-nav-off（第三档）里 —— 三级叠加。
+   旧口径把 brand / 模式切换 / 右侧组全部 display:none、只留折叠按钮落在最左；
+   现在四组都留着，各自压缩：左「快捷中心」由图标改成文字按钮、中间三个模式键只留图标
+   （图标本来就 15px，不用再缩）、右侧导出/保存只缩按钮盒子（图标 20px 不动）。
+   高度 68 → 42px：一条 32px 净高的控件加 3px 上下内边距。
+   ⚠ 别再加高：模式切换胶囊自身 2px 内边距 + 32px 按钮 = 36px，正好是内容区高度（42−6）。
+   ⚠ 非打谱页（棋谱库/设置/对弈）没有「文字按钮」可言：只收掉标题块，圆形图标按钮留着
+   ——它是打开快捷中心的入口，收掉就点不开了。 */
+.app-shell.chrome-compact .topbar{height:var(--landscape-chrome,42px);min-height:var(--landscape-chrome,42px);padding-block:3px}
+.app-shell.chrome-compact .topbar .brand>div{display:none}
+.app-shell.chrome-compact .topbar.record-topbar .brand-mark{display:none}
+.app-shell.chrome-compact .topbar .brand-hint{
+  min-height:32px;padding:0 10px;border-radius:10px;display:flex;align-items:center;
+  background:color-mix(in srgb,var(--line) 45%,var(--paper));color:var(--ink);
+  font-size:12px;font-weight:700;letter-spacing:.02em;
+}
+/* ⚠ 刘海机专属坑：styles.css 那条 `--topbar-usable = max(22px, 68px − 安全区)` 会把
+   模式键压到 15px 高、图标 9.9px（它是给「展开态 68px 顶栏被安全区吃掉一半」兜底的）。
+   紧凑条是恒定 42px、压根不吃 safe-area-top，所以这里把那条链整组解掉，
+   否则有刘海的机型上紧凑条会塌成一条挤在顶上的小图标。 */
+.app-shell.chrome-compact .topbar .topbar-mode-toggle{max-height:none;padding:2px;gap:2px;border-radius:10px}
+.app-shell.chrome-compact .topbar .topbar-mode-toggle button{min-height:32px;padding:0 9px}
+.app-shell.chrome-compact .topbar .topbar-mode-toggle button>svg{width:15px;height:15px}
+.app-shell.chrome-compact .topbar .topbar-mode-toggle button>span{display:none}
+.app-shell.chrome-compact .topbar .icon-button{width:32px;height:32px}
+.app-shell.chrome-compact .topbar .chrome-collapse-toggle{height:32px;min-height:32px}
+.app-shell.chrome-collapsed .record-page>.unified-status,
+.app-shell.chrome-collapsed .record-page.action-layout-page>.unified-status{display:none}
+/* ── 第三档：连金刚页（底栏导航）一起收走（用户 10-07：「干脆将最下面的金刚页也可以折叠吧，
+   折叠后下面直接空出去；然后如果是横屏、双栏什么的，那侧边的也会被折叠」）──────────────
+   ⚠ 四级口径（用户 10-07 晚些时候拍的四档）：①未折叠 ②压缩顶部(.chrome-compact)
+   ③再收状态栏(.chrome-collapsed) ④再收金刚页(.chrome-nav-off) —— 这一节只管第三档，
+   所以全部挂在 `.chrome-nav-off` 上；前两档时底栏照旧显示。
+   底栏是 `position:fixed`，占位全靠外壳的 padding 撑着：竖屏 `padding-bottom:78px`、
+   横屏 `padding-right:56px + safe-area`（styles.css 的横屏重排节）。所以「收走」要两件事——
+   把它滑出屏幕，再把外壳那份占位交还给内容，否则原位会留一条空白。
+   滑出而非 display:none：与顶栏同样是可逆的折叠动画（motion=off 时由 design-tokens 的
+   全局规则一并灭掉）。`visibility` 只写在收起侧、延迟到滑完才 hidden：固定层就此退出
+   键盘/读屏可达范围，展开时按基础态立刻恢复。
+   ⚠ 过渡必须**两边都写**（基础态 + 收起态）：CSS 过渡取的是变化后那套样式里的
+   transition，只写在收起侧会导致「展开时没有动画、瞬间弹回」。 */
+.app-shell .bottom-nav{transition:transform .24s ease, visibility 0s linear 0s}
+.app-shell.chrome-nav-off .bottom-nav{
+  transform:translateX(-50%) translateY(110%); visibility:hidden;
+  transition:transform .24s ease, visibility 0s linear .24s;
+}
+@media (orientation:portrait){
+  /* 竖屏：底栏那份 78px 让出去，内容可以一直排到底（页面自己的下边距仍在） */
+  .app-shell.chrome-nav-off{padding-bottom:var(--safe-area-bottom, env(safe-area-inset-bottom))}
+  /* 贴底固定层原本按「底栏上方」摆位（toast/app-toast 84px、批量条 68px），
+     收起后跟着落回底部，不然会在半空悬着。 */
+  .app-shell.chrome-nav-off .toast,
+  .app-shell.chrome-nav-off .app-toast,
+  .app-shell.chrome-nav-off .batch-selection-bar{bottom:calc(16px + var(--safe-area-bottom, env(safe-area-inset-bottom)))}
+}
+@media (orientation:landscape){
+  /* 横屏：金刚页是右缘 56px 竖条，往右滑出；外壳让给它的 56px 还给主区（内容因此变宽，
+     顶栏也从 788 铺回整屏），只保留刘海那一侧的 safe-area。 */
+  .app-shell.chrome-nav-off .bottom-nav{transform:translateX(110%)}
+  .app-shell.chrome-nav-off{padding-bottom:0;padding-right:env(safe-area-inset-right)}
+  /* 贴底/贴右的固定层原按「内容中心 = 屏幕中心 − 28px」摆位（styles.css 横屏节），
+     竖条收起后回到屏幕中心。 */
+  .app-shell.chrome-nav-off .toast,
+  .app-shell.chrome-nav-off .app-toast,
+  .app-shell.chrome-nav-off .coach-mark,
+  .app-shell.chrome-nav-off .batch-selection-bar{left:50%}
+  .app-shell.chrome-nav-off .batch-selection-bar{width:min(92vw,520px)}
+}
+
+/* ── 横屏双栏「顶天立地」：高度由链路推出来，不再逐档写常数（用户 10-06）──────
+   口径只有一条：主区 = 100dvh − 顶栏实高，打谱页 = 主区，行序里**只有棋盘那一行**吃剩余高度。
+   改前 styles.css 与本文件一共留着九处 `100dvh − 常数` 的棋盘预算（−176 / −220 / −136 / −300 /
+   −350 / −232 / −104 / −138 / −184），每个常数都是照着某一次实测填的，换个屏幕就偏。实测三处：
+   · 844×390 折叠后棋盘 286，而它那一行有 ~332 没人用；
+   · 右栏被 `max-height:calc(100dvh - 220px)!important` 钉在 170px（那一行 286px）
+     —— 就是「右边那个框只利用了一半」的根因；
+   · 1180×820 无论折叠与否整页都多滚 17~18px（−220 / −136 都没把走棋行的 64px 算进去）。
+   行高确定之后另有一条好处：右栏撑满行、内容超高在列内滚，行撑不高，
+   所以「右边一展开就把左边的走棋顶出屏幕」（用户 10-04 报的那条）从机制上不可能再发生。 */
+@media (orientation:landscape) and (min-width:640px) {
+  /* 只对打谱页生效：库 / 设置 / 手册仍按自然高度整页滚动。 */
+  .app-shell.split-layout-enabled:has(>.app-main>.record-page.action-layout-page)>.app-main{
+    height:calc(100dvh - var(--landscape-chrome,68px)); min-height:0; overflow:hidden;
+  }
+  .app-shell.split-layout-enabled .record-page.action-layout-page{
+    height:100%; min-height:0;
+    /* 页面自己那 20px 下边距在横屏里就是白掉的棋盘高度（844×390 折叠后实测棋盘下还有 20px
+       空档）；收到 10px，够棋盘那道投影落地，又不再留一整条。 */
+    padding-block:4px 10px;
+    /* 行序：1 状态栏、2 对局提示条、3 开局卡、4 棋盘+右栏、5 走棋行。
+       逐行钉死而不是靠自动排布：旧版只在有提示条时用 `:has()` 把右栏挪一行
+       （styles.css:1162），提示条与开局卡同时出现时棋盘会落进 auto 行、整页多滚一屏。
+       行距关掉（空行不占缝），间距由这几项各自的下边距提供。 */
+    grid-template-rows:auto auto auto minmax(0,1fr) auto; row-gap:0;
+  }
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.unified-status{ grid-column:1 / -1; grid-row:1; margin-bottom:6px }
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.duel-in-record-notice{ grid-column:1 / -1; grid-row:2; margin-bottom:6px }
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.ai-opening-banner{ grid-column:1 / -1; grid-row:3; margin-bottom:6px }
+  /* 折叠 = 整条状态栏从布局里拿掉。行是显式钉好的，删掉它不会让棋盘/右栏上移一行
+     （这正是改前那条 `height:0` 不敢用 display:none 的原因）；而 `height:0` 本身还漏 8px：
+     矮横屏那条 4 类的 `.action-layout-page .unified-status{padding:4px}` 压过折叠规则里
+     3 类的 `padding:0`，border-box 下 `height:0` 装不下上下各 4px 内边距，
+     就露出 8px（844×390、932×430 实测 y=38..46）。 */
+  .app-shell.split-layout-enabled.chrome-collapsed .record-page.action-layout-page>.unified-status{ display:none }
+  /* 棋盘：正方形，边长 = 第 4 行的高度。SVG 的宽高是内联的 `width/min-width = 缩放%`
+     （未缩放就是 100%），CSS 压不住，所以尺寸由容器定：容器 `height:100% + aspect-ratio`
+     反推出宽，列比行窄时 `max-width:100%` 夹住退回按宽算。 */
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.board-scroller:not(.is-zoomed){
+    grid-column:1; grid-row:4; justify-self:center; align-self:stretch;
+    width:auto; height:100%; max-width:100%; max-height:none; min-height:0;
+    aspect-ratio:1/1; display:block; overflow:auto;
+  }
+  /* 捏合放大：容器铺满该格、由内联 max-height 定高，棋盘按百分比超出后在容器内平移。 */
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.board-scroller.is-zoomed{
+    grid-column:1; grid-row:4; justify-self:stretch; align-self:stretch;
+    width:100%; max-width:100%; max-height:none; min-height:0; display:block; overflow:auto;
+  }
+  /* 右栏：从棋盘那一行一直铺到走棋行底下（`4 / -1`），底边与左边的走棋行齐平。
+     内容超高就在列内滚；行高是确定的，所以列再高也顶不动左边的走棋行。 */
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.record-rail{
+    grid-column:2; grid-row:4 / -1; align-self:stretch; min-width:0; min-height:0;
+    max-height:none; height:auto; overflow-y:auto; overscroll-behavior:contain;
+  }
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.record-rail .action-layout-workspace{ flex:1 0 auto; min-height:0 }
+  /* 常驻操作栏不再被 `margin-top:auto` 推到列最底（styles.css:1215 那条 7 类的规则是为
+     「走棋行住在右栏里、要贴着底栏」那个年代写的；现在够高的横屏走棋行已经搬到棋盘下面，
+     这一推就在列中间留出一个大洞，用户 10-06 看到的「按钮只占上半截」有一半是它）。
+     特异度与那条相同、写在它后面，所以这里赢。 */
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.record-rail .action-layout-workspace .workspace-status{ margin-top:0 }
+  /* 子功能区（分析头、候选点、复盘图都住在里面）吃掉这一列剩下的高度，框自己长到
+     与走棋行底边齐平 —— 用户 10-06：「那个框的范围不够高，浪费了至少一半的空间」。
+     四条都用 `flex-grow:1 + flex-shrink:0`：只许长不许被压，矮横屏（844×390 折叠）这一列
+     的内容本来就有 405 高，压进 342 会让面板里的行溢出到框外，宁可让右栏整体内滚。 */
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.record-rail .context-dock{ flex:1 0 auto; min-height:0; margin-bottom:0; display:flex; flex-direction:column }
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.record-rail .context-dock .action-tool-panel{ flex:1 0 auto; min-height:0; display:flex; flex-direction:column }
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.record-rail .context-dock .dock-panel{ flex:1 0 auto; min-height:0 }
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.record-rail .ai-analysis-panel{ min-height:100% }
+  /* 走棋行：够高的横屏摆在棋盘正下方（`wideSplitViewport` 为真时 JSX 才把它挂在这一层，
+     矮横屏它仍住在右栏里，那一档这一格是空的、不占高度）。 */
+  .app-shell.split-layout-enabled .record-page.action-layout-page>[data-rail-zone="moves"],
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.moves-row{
+    grid-column:1; grid-row:5; align-self:start; min-width:0; margin:6px 0 0;
+  }
+}
+
+/* ── 大字号下的分析控件行：改成等宽网格，避免最后一枚孤零零掉行（用户 2026-10-05）────────
+   上面那段 360px 的收紧是按**正常字号**算的（6 枚控件 339px + 间距）；字号放大到 115%/130%
+   之后每枚都变宽，5 枚一行的 `持续/rapfi/5 选/胜率/0 位` 会变成 4+1 或 5+1，最后那枚单独占一行。
+   这里在放大档改成三列网格：5 枚 = 3+2，每行都填满，观感与「起点/上一手/…」那种分组一致；
+   每格仍然左标签右值（对齐），`.panel-select` 撑满格子（重复）。 */
+.app-shell:is(.font-scale-large, .font-scale-xlarge) .ai-analysis-row--main {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; align-items: stretch;
+}
+.app-shell:is(.font-scale-large, .font-scale-xlarge) .ai-analysis-row--main .panel-select {
+  margin-left: 0; min-width: 0; width: 100%;
+}
+.app-shell:is(.font-scale-large, .font-scale-xlarge) .ai-analysis-row--main .panel-select-trigger {
+  width: 100%; min-width: 0; padding-left: 8px; padding-right: 8px;
+}
+
+
+
+/* 功能区按钮透明度（编辑器里「按钮大小 / 仅图标」那一行的第三个控件）。 */
+.layout-options .layout-opacity { display:flex; align-items:center; gap:8px; }
+.layout-options .layout-opacity > input { width:100%; max-width:150px; height:16px; accent-color:var(--green); touch-action:pan-x; }
+.layout-options .layout-opacity > output { min-width:38px; color:var(--muted); font-size:11px; font-weight:700; text-align:right; }
+
+/* 竖屏以棋盘宽度为准；横屏继续使用双栏和实际剩余高度。 */
+@media (orientation:portrait) and (min-width:700px){
+  .app-shell.split-layout-enabled .record-page.action-layout-page{
+    display:flex;flex-direction:column;gap:10px;padding-inline:0;
+  }
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.board-scroller:not(.is-zoomed){
+    width:100%;max-width:none;height:auto;max-height:none;margin-inline:0;align-self:stretch;
+  }
+  .app-shell.split-layout-enabled .record-page.action-layout-page>.record-rail{
+    width:100%;max-height:none;overflow:visible;
+  }
 }

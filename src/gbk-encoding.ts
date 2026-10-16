@@ -32,7 +32,15 @@ const buildMap = (): Map<number, number> => {
 };
 
 /** Encode a Unicode string as GBK bytes (ASCII fast path, no table build). */
-export const encodeGbkString = (text: string): Uint8Array<ArrayBuffer> => {
+export const encodeGbkString = (text: string): Uint8Array<ArrayBuffer> => encodeGbkStringWithReport(text).bytes;
+
+/**
+ * Same encoding, plus how many characters had no GBK mapping and were written as
+ * `?`. LIB is a GBK container, so a comment holding an emoji (or any character
+ * outside GBK) is silently lossy — callers that write user text into LIB should
+ * surface that count instead of letting the text quietly change.
+ */
+export const encodeGbkStringWithReport = (text: string): { bytes: Uint8Array<ArrayBuffer>; replaced: number } => {
   let needsTable = false;
   for (let index = 0; index < text.length; index += 1) {
     if (text.charCodeAt(index) > 0x7f) { needsTable = true; break; }
@@ -40,16 +48,17 @@ export const encodeGbkString = (text: string): Uint8Array<ArrayBuffer> => {
   if (!needsTable) {
     const bytes = new Uint8Array(text.length);
     for (let index = 0; index < text.length; index += 1) bytes[index] = text.charCodeAt(index);
-    return bytes;
+    return { bytes, replaced: 0 };
   }
   const map = unicodeToGbk ?? (unicodeToGbk = buildMap());
   const bytes: number[] = [];
+  let replaced = 0;
   for (let index = 0; index < text.length; index += 1) {
     const code = text.charCodeAt(index);
     if (code <= 0x7f) { bytes.push(code); continue; }
     const gbk = map.get(code);
-    if (gbk === undefined) { bytes.push(0x3f); continue; }
+    if (gbk === undefined) { bytes.push(0x3f); replaced += 1; continue; }
     bytes.push(gbk >> 8, gbk & 0xff);
   }
-  return Uint8Array.from(bytes);
+  return { bytes: Uint8Array.from(bytes), replaced };
 };

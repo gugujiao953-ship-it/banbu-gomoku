@@ -13,14 +13,26 @@ export type RenLibWebBranchResult = {
   position?: unknown;
 };
 
+// 资源地址必须按构建 base 解析（2026-09-18 网页版可用性普查）：写死站点根的
+// "/renlib/…" 在根路径部署（APK 与本地 dev）下没问题，但网页版挂在子路径
+// （…/banbu-gomoku/app/）时会请求到站点根 → 404，LIB 棋谱直接打不开。
+// 解析成绝对 URL 同时也满足 createRenLibWebWorker 的部署边界（它只接受绝对
+// http(s) 或站点根路径，相对路径会抛错）。非浏览器环境（单测）保持原写法。
+const renlibAssetUrl = (path: string): string => {
+  const relative = `${import.meta.env.BASE_URL}${path}`;
+  const base = globalThis.document?.baseURI;
+  return base ? new URL(relative, base).href : `/${path}`;
+};
+
 const defaultAssets: RenLibWebWorkerAssets = {
-  workerUrl: "/renlib/RenjuLib_worker.js",
-  wasmUrl: "/renlib/RenLib.wasm",
+  workerUrl: renlibAssetUrl("renlib/RenjuLib_worker.js"),
+  wasmUrl: renlibAssetUrl("renlib/RenLib.wasm"),
 };
 
 export class RenLibWebSession {
   private readonly worker: Worker;
   private request = 0;
+  private closed = false;
   private pending = new Map<number, { resolve: (value: any) => void; reject: (error: unknown) => void; events: Map<string, unknown> }>();
 
   constructor(assets: RenLibWebWorkerAssets = defaultAssets) {
@@ -50,6 +62,8 @@ export class RenLibWebSession {
   }
 
   private send(cmd: string, parameter?: unknown, transfer?: Transferable[]) {
+    // 同 DpViewSession：关闭后 worker 已终止，postMessage 会被静默丢弃、promise 永不落地。
+    if (this.closed) return Promise.reject(new Error("RenLib 网页核心会话已关闭，请重新打开"));
     const requestId = ++this.request;
     return new Promise<any>((resolve, reject) => {
       this.pending.set(requestId, { resolve, reject, events: new Map() });
@@ -85,6 +99,7 @@ export class RenLibWebSession {
   }
 
   close() {
+    this.closed = true;
     for (const waiter of this.pending.values()) waiter.reject(new Error("RenLib 网页核心会话已关闭"));
     this.pending.clear();
     this.worker.terminate();

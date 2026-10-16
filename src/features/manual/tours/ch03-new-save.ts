@@ -33,7 +33,7 @@ export const ch03: TourStep[] = [
     title: "草稿保护",
     lead: "未保存的改动会先保留为草稿，顶部状态条会给出提示。",
     tips: [
-      { sel: ".workspace-current", name: "当前棋谱", desc: "切谱、新建、导入或开始做题前如果还有草稿，应用会先让你选保存、放弃或取消。", icon: PenLine },
+      { sel: ".workspace-current", name: "当前棋谱", desc: "切谱、新建、导入或开始做题前如果还有草稿，应用会先让你四选一：保存草稿并切换 / 创建修改副本并切换 / 放弃草稿并切换 / 取消。", icon: PenLine },
     ],
   },
   { id: "create-discard",

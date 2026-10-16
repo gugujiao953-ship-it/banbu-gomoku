@@ -44,7 +44,7 @@ export const ch04: TourStep[] = [
     mode: "puzzle",
     tips: [
       { sel: ".puzzle-nav-row", name: "题目导航", desc: "固定五键：上一题、选题、下一题、悔棋、重启；悔棋只退你走过的回合，重启会清掉本题的临时改动。", icon: RotateCw },
-      { sel: ".action-bottom-row", name: "题目首行", desc: "分析（帮你想一手）、应战/摆棋、VCF、禁手规则、更多，共五格。", icon: Gauge },
+      { sel: ".action-bottom-row", name: "题目首行", desc: "分析（帮你想一手）、应战/摆棋、禁手规则、更多，共四格。", icon: Gauge },
     ],
   },
   { id: "diff-done",

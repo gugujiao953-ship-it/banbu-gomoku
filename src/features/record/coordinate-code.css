@@ -1,0 +1,25 @@
+/* 「粘贴坐标代码」面板（2026-09-17）。只用语义 token，七个主题都跟随；
+   输入框本身沿用全局 .sheet-body textarea 的样式，这里只补工具行与提示列表。 */
+.coordinate-code-sheet { display: flex; flex-direction: column; gap: 10px; }
+.coordinate-code-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.coordinate-code-toolbar label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.coordinate-code-toolbar select {
+  height: 36px; padding: 0 8px; border: 1px solid var(--surface-border, #ddd7cd); border-radius: 10px;
+  background: var(--surface); color: var(--ink); font-size: 12px; accent-color: var(--green);
+}
+.coordinate-code-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* ready 徽标同样弃用裸 --green 文字：21 套主题实测 --green 直接压面板底色在
+   baroque 只有 4.35:1；改成 jade 底 + ink 字（实测最低 7.66），样式与分支树的 em 徽标同族。 */
+.coordinate-code-count.ready { color: var(--ink); background: var(--jade); padding: 3px 9px; border-radius: 9px; font-weight: 700; }
+.coordinate-code-sheet textarea { min-height: 132px; font-family: ui-monospace, monospace; font-size: 13px; letter-spacing: .04em; }
+.coordinate-code-notes {
+  margin: 0; padding: 9px 11px 9px 25px; border-radius: 12px;
+  background: var(--jade); color: var(--ink); font-size: 11px; line-height: 1.6;
+  /* 文字刻意用 --ink 而不是本项目惯用的 --green：21 套主题实测 --green 压 --jade
+     有 5 套不达标（baroque 3.62 / kawaii 4.29 / jiangnan 4.42 / rice 4.45 / rain 4.47），
+     --ink 压 --jade 最低 7.66。两个都是随主题翻色的 token，一起翻不会踩
+     「固定色块上压翻色文字」的坑。 */
+}
+.coordinate-code-notes li + li { margin-top: 4px; }
+.coordinate-code-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.coordinate-code-actions .primary-button, .coordinate-code-actions .secondary-button { width: 100%; min-width: 0; }

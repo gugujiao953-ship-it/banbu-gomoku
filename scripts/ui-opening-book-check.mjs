@@ -80,7 +80,9 @@ const stoneSequence = async () => {
 };
 
 // S3: 索索夫-8 端到端（开局引擎自动前 3 手：n1=H8，n2/n3=簿组内随机——动态跟线）
-await page.evaluate(() => { [...document.querySelectorAll("nav.bottom-nav button")].find((b) => (b.textContent || "").includes("AI"))?.click(); });
+await page.evaluate(() => { [...document.querySelectorAll("nav.bottom-nav button")].find((b) => (b.textContent || "").includes("对弈"))?.click(); });
+await page.waitForTimeout(700);
+await page.locator('[data-duel-entry="ai"] .duel-entry-action').click();
 await page.waitForTimeout(900);
 // 弹窗难度行右侧的开局库开关（与设置页同一状态源，S2 已开启 → pressed=true）
 const bookToggle = await page.evaluate(() => {

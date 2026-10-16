@@ -9,6 +9,18 @@ export const JSDELIVR_VERSION_URL = "https://cdn.jsdelivr.net/gh/gugujiao953-shi
 export type VersionRelation = "update-available" | "same" | "current-ahead";
 export type UpdateSourceId = "pages" | "jsdelivr" | "github";
 
+/** 除应用内直装之外的其他下载方式。只有 version.json 里写了才出现——作者没把
+ *  当期安装包传到那个网盘时就不写，界面自然不显示，不会指向上一版的旧包。 */
+export interface MirrorLinks {
+  baidu?: string;
+  lanzou?: string;
+  /** 蓝奏云的分享密码（可选；百度云用链接自带的 ?pwd= 直接进，无需提取码）。 */
+  lanzouCode?: string;
+  /** 加速直链（第三方 GitHub 反代）：点一下就下载，不用进发布页再点一次。
+   *  发版脚本按 release 直链自动拼出来，代理换域名时改 version.json 即可生效。 */
+  accel?: string;
+}
+
 export interface LatestRelease {
   version: string;
   tag: string;
@@ -17,6 +29,12 @@ export interface LatestRelease {
   relation: VersionRelation;
   /** 本次命中的更新源，便于界面/诊断显示。 */
   source: UpdateSourceId;
+  /** APK 直连地址（version.json 未写时按版本号拼公开仓 release asset）。 */
+  apkUrl: string;
+  /** APK 的 SHA-256（可选）；有值时下载完必须校验通过才交给安装器。 */
+  apkSha256?: string;
+  /** 网盘等备用入口；字段缺失即不显示。 */
+  mirrors: MirrorLinks;
 }
 
 interface VersionJsonPayload {
@@ -24,6 +42,9 @@ interface VersionJsonPayload {
   tag?: unknown;
   publishedAt?: unknown;
   url?: unknown;
+  apk?: unknown;
+  sha256?: unknown;
+  mirrors?: unknown;
 }
 
 interface GithubReleaseResponse {
@@ -87,7 +108,32 @@ export const versionRelation = (currentVersion: string, latestVersion: string): 
   return "same";
 };
 
-interface RawRelease { version: string; tag: string; publishedAt?: string; url?: string }
+interface RawRelease { version: string; tag: string; publishedAt?: string; url?: string; apkUrl?: string; apkSha256?: string; mirrors: MirrorLinks }
+
+const RELEASE_DOWNLOAD_BASE = "https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/download";
+
+/** CI 产出的安装包命名是固定的（.github/workflows/android-release.yml），因此
+ *  即使 version.json 没写 apk 字段也能按版本号拼出直连地址。 */
+export const apkAssetUrl = (version: string) =>
+  `${RELEASE_DOWNLOAD_BASE}/v${version.replace(/^v/i, "")}/banbu-gomoku-${version.replace(/^v/i, "")}-android-release.apk`;
+
+const readString = (value: unknown): string | undefined =>
+  typeof value === "string" && value.trim() ? value.trim() : undefined;
+
+const readMirrors = (value: unknown): MirrorLinks => {
+  if (!value || typeof value !== "object") return {};
+  const record = value as Record<string, unknown>;
+  const mirrors: MirrorLinks = {};
+  const baidu = readString(record.baidu);
+  const lanzou = readString(record.lanzou);
+  const lanzouCode = readString(record.lanzouCode);
+  const accel = readString(record.accel);
+  if (baidu) mirrors.baidu = baidu;
+  if (lanzou) mirrors.lanzou = lanzou;
+  if (lanzouCode) mirrors.lanzouCode = lanzouCode;
+  if (accel) mirrors.accel = accel;
+  return mirrors;
+};
 
 const readVersionJson = async (fetchImpl: FetchLike, url: string, signal: AbortSignal): Promise<RawRelease> => {
   const response = await fetchImpl(url, { signal, cache: "no-store" });
@@ -101,6 +147,9 @@ const readVersionJson = async (fetchImpl: FetchLike, url: string, signal: AbortS
     tag,
     publishedAt: typeof payload.publishedAt === "string" ? payload.publishedAt : undefined,
     url: typeof payload.url === "string" && payload.url.trim() ? payload.url.trim() : undefined,
+    apkUrl: readString(payload.apk),
+    apkSha256: readString(payload.sha256),
+    mirrors: readMirrors(payload.mirrors),
   };
 };
 
@@ -124,6 +173,9 @@ const readGithubApi = async (fetchImpl: FetchLike, signal: AbortSignal): Promise
       version: tag.replace(/^v/i, ""),
       tag,
       publishedAt: typeof entry.published_at === "string" ? entry.published_at : undefined,
+      // GitHub API 只给版本信息，没有任何镜像配置——网盘入口只有站点上的
+      // version.json 能声明，因此走 API 兜底时不会出现网盘按钮。
+      mirrors: {},
     };
   }
   throw new Error("GitHub 上没有匹配应用版本的发布");
@@ -169,6 +221,9 @@ export async function checkForLatestRelease(
         url: raw.url ?? `${GITHUB_RELEASES_URL}/tag/${encodeURIComponent(raw.tag)}`,
         relation: versionRelation(currentVersion, raw.version),
         source: id,
+        apkUrl: raw.apkUrl ?? apkAssetUrl(raw.version),
+        apkSha256: raw.apkSha256,
+        mirrors: raw.mirrors,
       };
     } catch (error) {
       failures.push(`${id}: ${error instanceof Error ? error.message : String(error)}`);

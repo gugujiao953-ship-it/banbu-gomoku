@@ -1,0 +1,1019 @@
+/* 棋魂：徽章 + 说明页（2026-10-09）。
+ *
+ * ⚠ 本文件在 `src/features/**` 下，会被 vite 的 scalableUiFonts 插件改写 font-size
+ *   （随「特大字」档缩放），这是有意的；卡片宽度用 vw 夹取，避免大字横向溢出。
+ *
+ * 对比度口径：本模块的文字颜色全部走主题令牌（--ink / --muted / --green-2）或
+ * 自带底色的固定色对（魂火金 #f4e4bd 配深金 #6b4c17），并经
+ * `qa/achievements-contrast.mjs` 在 21 套主题下逐条量过 ≥4.5:1。
+ */
+
+/* ── 魂火图标 ─────────────────────────────────────────────────────── */
+
+.soul-flame { display: block; flex: 0 0 auto; }
+
+/* 呼吸动效：只给"解说页版头"那个大图用（列表/徽章里静态，免得满屏都在动）。
+   2.6s 一个周期、幅度很小（缩放 4% + 亮度 8%），是"火在轻轻跳"而不是闪烁。 */
+.soul-flame.is-animated { animation: soul-flame-breathe 2.6s ease-in-out infinite; }
+
+@keyframes soul-flame-breathe {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50%      { transform: scale(1.04); filter: brightness(1.08); }
+}
+
+/* ── 两种形态（用户 10-09 第十轮：「还是搞成两种形态吧，不用动效切换了」）──────
+   上一版是 11 秒自动燃烧循环（常态 ⇄ 反相交叉淡化）。用户改主意要**手动**切换：
+   点一下棋魂就 +1 并翻面 —— 于是"翻面"成了给点击的即时反馈，
+   不再需要常驻动画在后台烧（那个动画还一直占着合成层，属于白耗电）。
+
+   两态由组件按 `state` 换**渲染哪一层**（不是 CSS 切换透明度）：
+     · normal：黑焰 + 白亮边的芯
+     · burnt ：白焰 + 暗芯
+   所以这里只剩一个"切换瞬间"的短过渡，给翻面一点手感（140ms，一次性）。 */
+
+.soul-flame.is-two-state { transition: filter 140ms ease-out; }
+
+/* 翻面时的轻微回弹：只在切换那一刻跑一次（不是 infinite），
+   既能看出"变了"，又不留常驻动画。 */
+@keyframes soul-flame-flip {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.07); }
+  100% { transform: scale(1); }
+}
+.soul-flame.is-burnt { animation: soul-flame-flip 260ms ease-out 1; }
+
+/* ⚠ 上一版这里是「11 秒自动燃烧循环」（`@property --soul-burn-mix` + 关键帧插值），
+   第十轮用户改成**手动两态**后整块删掉了。留这条注释是为了说明将来若要恢复自动循环：
+   `@property` 的 `inherits` **必须写 true** —— 动画宿主是 `<svg>`、而使用该变量的元素
+   是它的**子元素**，写 false 会让子元素收不到动画值、动画静默失效。
+   （当时踩过：探针读 `<svg>` 自身的变量明明在动，截图 14 帧却一模一样。） */
+@media (prefers-reduced-motion: reduce) {
+  .soul-flame.is-animated { animation: none; }
+  /* 翻面回弹也停掉（形态本身照常切换，只是不做缩放动画）。 */
+  .soul-flame.is-burnt { animation: none; }
+}
+
+/* ── 徽章（对弈页标题行，最左） ───────────────────────────────────── */
+
+.soul-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  /* 与同行的 .duel-stats-button 同高（36px），但形状更宽——它带数字。 */
+  min-height: 36px;
+  padding: 0 10px 0 8px;
+  border: 1px solid color-mix(in srgb, var(--gold, #c79c4a) 42%, var(--line, #dfdad0));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 12%, var(--surface, #fff));
+  color: var(--ink, #292620);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.soul-badge b {
+  font-variant-numeric: tabular-nums;
+  /* 数字用深金：它是"钱"，和魂火同色系；在浅色/深色主题下都够对比度
+     （深色主题由文件末尾的覆盖改成亮金）。 */
+  color: var(--progress-soul-ink-strong, #6b4c17);
+}
+
+.soul-badge:active {
+  background: color-mix(in srgb, var(--gold, #c79c4a) 22%, var(--surface, #fff));
+}
+
+/* ── 说明页 ───────────────────────────────────────────────────────── */
+
+.soul-panel {
+  display: flex;
+  flex-direction: column;
+  /* 间距分两档（2026-10-10 调版）：上半（版面 / 累计 / 切换）之间收一些，
+     让它们读成**一组**；而 16px 的均匀间距正是"四个盒子各管各的"那种乱的来源。
+     下半的正文段间距另由 [data-soul-pane] 给（那里是长文本，需要更宽的行间）。 */
+  gap: 12px;
+  padding-bottom: 4px;
+}
+
+.soul-panel > .soul-tabs { margin-bottom: 0; }
+
+/* 切换按钮与它下面那一版之间留回 16px：这里是上下半的**分界线**，需要明显一点
+   （上半共用 12px 的紧凑节奏，越过这条线就是正文，间距要更大）。 */
+.soul-panel > .soul-tabs + * { margin-top: 4px; }
+
+/* 1. 魂火版头 —— 这一页的"招牌"（余额是整页最大的字） */
+.soul-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* 间距从 2px 提到 4px：魂火与余额之间要有一口气，
+     但余额下面那枚提示胶囊自己带 margin-top（8px），所以这里只给基础量。 */
+  gap: 4px;
+  /* 上小下大：魂火是图形、留白可以少（它自己带 12px 内边距），
+     底部要托住那枚提示胶囊。 */
+  padding: 8px 14px 14px;
+  border: 1px solid color-mix(in srgb, var(--gold, #c79c4a) 34%, var(--line, #dfdad0));
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--gold, #c79c4a) 20%, transparent) 0%, transparent 62%),
+    var(--surface, #fff);
+}
+
+.soul-hero-flame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  /* 它现在是个 `<button>`（点一下 +1），所以要把按钮的默认外观清掉。
+     `padding` 给一点，让点击热区比图案本身略大（92px 的图、热区约 116px）。 */
+  padding: 12px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  /* 光晕：魂火背后一圈暖光，让它像在发光而不是贴上去的 */
+  filter: drop-shadow(0 6px 20px color-mix(in srgb, var(--gold, #c79c4a) 46%, transparent));
+}
+
+/* 不可点时（只读场景没传 onTapGain）去掉手型光标，避免"看起来能点"。 */
+.soul-hero-flame:disabled { cursor: default; }
+
+/* 按下时轻微内缩 —— 连点的即时手感（配合飘字与翻面） */
+.soul-hero-flame:not(:disabled):active { transform: scale(.94); }
+
+/* 键盘可达性：焦点环走在主题色上（默认 outline 在浅底金字上很淡） */
+.soul-hero-flame:focus-visible {
+  outline: 3px solid var(--green, #365e4b);
+  outline-offset: 2px;
+  border-radius: 20px;
+}
+
+/* ── 「点一下 +1」的提示（贴在魂火正下方，2026-10-10 两轮定稿）─────────────
+   用户 10-09 要的是「这个机制可以写在上面一点让人知道」；10-10 先指出位置不对：
+   「上面那个点击棋魂+1的里面的说明去掉，放到合适的位置」；
+   再指出文案还是多：「可无限点 · 每点一下换一副模样 这个文本去掉，只留下前面那句话」。
+
+   所以现在就是**一枚一行的小胶囊**：贴着魂火、只有「点魂火 +1」四个字。
+   副标题删掉不只是"少一行"——它原本要在 420/360px 上和主句抢同一行、
+   在 320px 上拆两行把胶囊从 30px 撑到 47px，而它说的那两件事
+   （可无限点、点一下换模样）用户点一次就全看到了，不值得一直占着位置。 */
+
+.soul-hero-tap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 5px 11px;
+  border: 1px dashed color-mix(in srgb, var(--gold, #c79c4a) 55%, var(--line, #dfdad0));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 9%, transparent);
+  /* 虚线边框是有意的：它不是一张"信息卡"（实线会让人以为要点它），
+     而是一条"这里可以点"的提示。 */
+}
+
+.soul-hero-tap > svg {
+  flex: 0 0 auto;
+  color: var(--progress-soul-ink, #6b4c17);
+}
+
+.soul-hero-tap b {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--progress-soul-ink-strong, #6b4c17);
+  white-space: nowrap;
+}
+
+/* ── 点一下飘出的「+1」──
+   位置：贴在魂火**右上角**（用户 10-09：「右上角会飘出一个＋1」）。
+   实现：绝对定位在按钮内、向上飘 26px 并淡出，900ms 一次（与 JS 的清理时长一致）。 */
+
+.soul-tap-float {
+  position: absolute;
+  /* 起点在图标的**右上角**（用户 10-09：「右上角会飘出一个＋1」）。
+     按钮含 12px padding，所以 68%/8% 落在火焰右肩上方一点——
+     再往右上就脱离图标了，再往左下会压住火焰的尖。 */
+  left: 68%;
+  top: 8%;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--progress-soul-ink-strong, #6b4c17);
+  /* 白描边让它在魂火的黑半边上也读得清 */
+  -webkit-text-stroke: 3px var(--surface, #fff);
+  paint-order: stroke;
+  pointer-events: none;
+  animation: soul-tap-float 900ms cubic-bezier(.2, .8, .3, 1) both;
+}
+
+@keyframes soul-tap-float {
+  0%   { opacity: 0; transform: translate(calc(-50% + var(--tap-drift, 0px)), 6px) scale(.7); }
+  22%  { opacity: 1; transform: translate(calc(-50% + var(--tap-drift, 0px)), 0) scale(1.12); }
+  60%  { opacity: 1; transform: translate(calc(-50% + var(--tap-drift, 0px)), -14px) scale(1); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--tap-drift, 0px)), -26px) scale(.96); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 减动效下"飘"改成原地淡出：位置与透明度都保留（用户仍要看得到 +1），只去掉位移 */
+  @keyframes soul-tap-float {
+    0%   { opacity: 0; transform: translate(-50%, 0); }
+    25%  { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, 0); }
+  }
+  .soul-hero-flame:not(:disabled):active { transform: none; }
+}
+
+.soul-hero-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  /* 余额往上贴一点：魂火本身带 12px 内边距，再叠加 gap 会显得数字飘在下面。
+     这个负值把"魂火底边 → 数字"压回视觉上相邻。 */
+  margin-top: -8px;
+}
+
+.soul-hero-figure b {
+  font: 700 40px/1 Georgia, serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--progress-soul-ink-strong, #6b4c17);
+}
+
+.soul-hero-figure span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted, #68635b);
+}
+
+.soul-hero-exact {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--muted, #68635b);
+}
+
+.soul-hero-exact b { font-variant-numeric: tabular-nums; }
+
+/* 2. 累计 / 已用 */
+.soul-totals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+/* ── 版面切换（用户 10-09 第十二轮）──────────────────────────────────
+   「搞成两个版面，一个是说明，一个是明细……切换按钮放在累计消耗，累计获得的下面，
+    就是上面部分是共用，下面部分才分开放」。
+
+   所以它排在 `.soul-totals` 之后、两个版面之前 —— 视觉上就是一道分界线：
+   上面（魂火 + 累计）两个版面共用，从这里往下分叉。
+   写法照项目既有的 `.duel-stats-tabs`（同样的 42px 高、12px 圆角、选中态用
+   `color-mix` 压深而不是纯主色 —— 纯 `--green` 压淡底在部分主题下不到 4.5:1）。 */
+
+.soul-tabs {
+  display: flex;
+  gap: 6px;
+  /* 与上下都留出间距，明确"这是分界" */
+  margin: 2px 0 2px;
+}
+
+.soul-tabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--line, #dfdad0);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  color: var(--ink, #292620);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+/* 「明细」右侧挂一个条数小标（让人知道点进去有多少条，也提示数据在那一版） */
+.soul-tabs button small {
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--line, #dfdad0) 55%, transparent);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted, #68635b);
+}
+
+.soul-tabs button.active {
+  border-color: var(--green, #365e4b);
+  background: color-mix(in srgb, var(--green, #365e4b) 12%, var(--surface, #fff));
+  /* 选中态文字用「主色压深」：纯 --green 压淡底在部分主题不到 4.5:1
+     （同 .duel-stats-tabs 的理由） */
+  color: color-mix(in srgb, var(--green, #365e4b) 55%, var(--ink, #292620));
+}
+
+.soul-tabs button.active small {
+  background: color-mix(in srgb, var(--green, #365e4b) 22%, transparent);
+  color: color-mix(in srgb, var(--green, #365e4b) 55%, var(--ink, #292620));
+}
+
+.soul-total {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 0 8px;
+  padding: 11px 12px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 14px;
+  background: var(--surface, #fff);
+}
+
+.soul-total-icon {
+  grid-row: 1 / 3;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+}
+
+.soul-total-icon.up { background: #e5eee8; color: #2f6b4d; }
+.soul-total-icon.down { background: #f3e7e4; color: #9c5346; }
+
+.soul-total b {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink, #292620);
+}
+
+.soul-total small { font-size: 11px; color: var(--muted, #68635b); }
+
+/* 3/4/5. 三个说明块共用标题样式 */
+/* 说明版面：三段（是什么 / 怎么攒 / 能花在哪）现在同属一个 tabpanel div，
+   而 .soul-panel 的 gap 只作用在直接子元素上 ⇒ 这里补一份段间距。 */
+[data-soul-pane="guide"] {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.soul-explain h3,
+.soul-earn h3,
+.soul-spend h3,
+.soul-history h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink, #292620);
+}
+
+.soul-history h3 small { font-size: 11px; font-weight: 400; color: var(--muted, #68635b); }
+
+.soul-explain p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted, #68635b);
+}
+
+.soul-explain p + p { margin-top: 7px; }
+
+/* 首句（"这不是氪金"）单独给出视觉分量：它是这一页最该被读到的一句，
+   所以字号提一档、底色给一块暖调 —— 但**不用**金框卡片，
+   那会变成第二个"盒子"、把这一页又堆满。 */
+.soul-explain-lead {
+  margin-bottom: 8px !important;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 8%, transparent);
+  font-size: 11.5px !important;
+  line-height: 1.65;
+  color: var(--ink, #292620) !important;
+}
+
+.soul-explain p strong { color: var(--ink, #292620); font-weight: 700; }
+
+/* 4. 怎么攒 */
+.soul-earn ul,
+.soul-spend ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.soul-earn li,
+.soul-spend li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+
+.soul-earn-copy,
+.soul-spend li > span { min-width: 0; }
+
+.soul-earn-copy b,
+.soul-spend li b {
+  display: block;
+  font-size: 12px;
+  color: var(--ink, #292620);
+}
+
+.soul-earn-copy small,
+.soul-spend li small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--muted, #68635b);
+}
+
+.soul-earn-amount,
+.soul-spend li em {
+  flex: 0 0 auto;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--progress-soul-ink, #6b4c17);
+}
+
+/* 调过档的数额：原价划掉 + 实价，颜色往"被改过"的信号色偏一点。
+   用 s 而不是删掉原价，是因为"我把它从 8 改成 80"这个信息本身就该看得见。 */
+.soul-earn-amount.tuned s,
+.soul-spend li em s {
+  margin-right: 5px;
+  font-weight: 600;
+  text-decoration: line-through;
+  color: var(--muted, #68635b);
+}
+
+/* 被调度停发的来源：整行压暗，数额用中性色——它是"暂时不发"而不是"报错"。 */
+.soul-earn li:has(.soul-earn-amount.off) b { color: var(--muted, #68635b); }
+.soul-earn-amount.off { color: var(--muted, #68635b); }
+
+.soul-earn-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted, #68635b);
+}
+
+/* 调度摘要：只在有非默认项时出现。视觉上要"看得见但不抢戏"——
+   它是一条**提示**（说明为什么数字和表上不一样），不是警告。 */
+.soul-dial-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 9px 0 0;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--gold, #c79c4a) 34%, var(--line, #dfdad0));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 6%, var(--surface, #fff));
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted, #68635b);
+}
+
+.soul-dial-note > span:first-child {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--progress-soul-ink, #6b4c17);
+}
+
+.soul-dial-note b {
+  margin-right: 6px;
+  color: var(--ink, #292620);
+}
+
+/* 5. 能花在哪（当前为空） */
+.soul-spend-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed color-mix(in srgb, var(--gold, #c79c4a) 40%, var(--line, #dfdad0));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 7%, var(--surface, #fff));
+}
+
+.soul-spend-empty > span {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 18%, var(--surface, #fff));
+  color: var(--progress-soul-ink, #6b4c17);
+}
+
+.soul-spend-empty b { display: block; font-size: 12px; color: var(--ink, #292620); }
+.soul-spend-empty small { display: block; margin-top: 3px; font-size: 11px; line-height: 1.5; color: var(--muted, #68635b); }
+
+/* 6. 最近收支 */
+.soul-history ul {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.soul-history li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 11px;
+  background: var(--surface, #fff);
+}
+
+.soul-entry-icon {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+}
+
+.soul-history li.in .soul-entry-icon { background: #e5eee8; color: #2f6b4d; }
+.soul-history li.out .soul-entry-icon { background: #f3e7e4; color: #9c5346; }
+
+.soul-entry-copy { min-width: 0; }
+
+.soul-entry-copy b {
+  display: block;
+  font-size: 12px;
+  color: var(--ink, #292620);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.soul-entry-copy small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted, #68635b);
+}
+
+.soul-entry-amount {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.soul-history li.in .soul-entry-amount { color: #2f6b4d; }
+.soul-history li.out .soul-entry-amount { color: #9c5346; }
+
+.soul-history-empty {
+  margin: 0;
+  padding: 14px 12px;
+  border: 1px dashed var(--line, #dfdad0);
+  border-radius: 12px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted, #68635b);
+}
+
+/* ── 深色主题 ─────────────────────────────────────────────────────── */
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .soul-panel,
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .soul-badge {
+  /* 深色底上金色必须换成亮金：写死的深金 #6b4c17 压深底只有 2.1:1 左右。 */
+  --progress-soul-ink: #e0c17d;
+  --progress-soul-ink-strong: #e8cd8a;
+}
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .soul-total-icon.up { background: #24382e; color: #8fcaa8; }
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .soul-total-icon.down { background: #3a2c28; color: #e0a396; }
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .soul-history li.in .soul-entry-icon { background: #24382e; color: #8fcaa8; }
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .soul-history li.out .soul-entry-icon { background: #3a2c28; color: #e0a396; }
+
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .soul-history li.in .soul-entry-amount { color: #8fcaa8; }
+:is(html[data-theme="dark"], html[data-theme="rain"], html[data-theme="jiangnan"],
+    html[data-theme="firefly"], html[data-theme="pixel"], html[data-theme="cyber"],
+    html[data-theme="blackgold"], html[data-theme="aurora"], html[data-theme="deepsea"],
+    html[data-theme="pelican"],html[data-theme="soul"],
+    html[data-theme="dunhuang"]) .soul-history li.out .soul-entry-amount { color: #e0a396; }
+
+@media (max-width: 380px) {
+  .soul-hero-figure b { font-size: 34px; }
+  .soul-earn li, .soul-spend li { padding: 8px 10px; }
+}
+
+/* ── 棋魂获得提示（高频事件用紧凑条，与成就大卡共用顶部锚点） ────────────
+   用户 2026-10-09：「那个动效弹窗以及其他地方的说明加入一个这种的显示」。
+   位置理由与成就卡一致（顶栏下沿滑入、无遮罩、不拦操作，见 ProgressReward.tsx）。
+   体量刻意比成就卡小：连赢十题会弹十次，大卡会变成骚扰。 */
+
+/**
+ * 棋魂获得提示（用户 2026-10-10 两轮定稿）。
+ *
+ * ## 位置：**右上角**
+ *
+ * 用户：「你那那个弹窗应该在最右上角出现吧，不然太容易遮挡视线」。
+ * 原来在顶部**正中**（`left: 50%` + `translateX(-50%)`）—— 那正是视线中心，
+ * 弹一次挡一次。右上角是页面上最"空"的一隅（标题行右侧本来就有徽章，
+ * 但那是静态的、不会持续打断）。
+ *
+ * ## 形状：**没有框**
+ *
+ * 用户：「背景还是有框框，我要的是只有图案和数字，背景是没有框框的，
+ * 就像点一下棋魂会有的那个"+1"一样的」。
+ *
+ * 所以整条提示**没有底色、没有边框、没有阴影** —— 只有一枚魂火 + 数字 + 来源。
+ * 它在任何主题的底色上都必须读得清，所以文字用**白描边**（`-webkit-text-stroke`
+ * + `paint-order`，和面板里那个飘出的「+1」同一套做法），
+ * 这样浅色主题、深色主题、以及棋盘上方都能看。
+ */
+.soul-gain {
+  position: fixed;
+  /* **最上面区域**（用户 2026-10-10 第三轮：「那个棋魂获取的弹窗也是[要放最上面]……
+     不要挡住棋盘了」）。
+     ⚠ 顶栏高 68px、棋盘从 108px 开始 —— 所以提示条必须落在 **0..68 这一条里**，
+     否则就会压到棋盘上（78px 那版实测已经压住棋盘上沿）。
+     顶栏那 68px 是**界面外壳**（标题与图标按钮），被临时盖住 2 秒远好过盖住棋盘：
+     棋盘才是用户正在看的东西。
+
+     纵向**居中在那条带子里**（16px = (68 − 35) / 2）而不是贴着最上沿：
+     贴边看着像"挤到屏幕外面去了"，居中才像一条有意放在顶栏上的提示。 */
+  top: calc(var(--safe-area-top, env(safe-area-inset-top)) + 16px);
+  right: 10px;
+  z-index: 85;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: max-content;
+  max-width: min(calc(100vw - 24px), 320px);
+  /* 无框（用户：「背景是没有框框的」）：没有底色、没有边框、没有阴影。
+     ⚠ 但纯"什么都没有"会跟底下的东西糊在一起（实测压住状态行文字时两层直接叠）。
+     所以文字身后必须垫一层**深色**的东西，而且不能是白的：
+     这枚图标是黑白的（魂火外圈黑、内核白，见 SoulFlame），白衬底会把内核那片白吞掉，
+     只剩一个黑轮廓浮在雾里 ⇒ 整枚提示又白又糊（第一版就是这么被用户判「太白了，看不太清楚」）。
+
+     2026-10-12：这一层从「规则椭圆柔光」换成**云雾轮廓**。用户两句原话：
+     「以前的弹窗不是这么规则的，而是那种很帅气的像是游戏一样的，云雾形状的」
+     +「背后的那个阴影完全可以去掉，弹窗的形状一体化就行了」。
+     所以现在只有**一条路径**：衬底与形状是同一个东西，不再另画一块暗芯。
+     生成器与全部口径见 `soul-gain-shape.ts`；六方案评审稿见 `design-lab/soul-gain-smoke-lab.html`。 */
+  padding: 3px 8px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: #2b2118;
+  pointer-events: none;   /* 连关闭按钮都不给：2.2 秒就没了，点它反而打断视线 */
+  animation: soul-gain-enter 420ms var(--ease-enter, cubic-bezier(.22,.9,.25,1)) both;
+}
+
+/* 魂火**不加描边也不加投影**（用户 10-12：背后阴影完全去掉）：它是黑白双色图形，
+   描边会把白芯糊掉；而投影就是刚被去掉的那个"影子"。
+   它现在坐在墨形上，靠自身那圈反色发丝边（见 SoulFlame）就分得开。 */
+.soul-gain .soul-flame { filter: none; }
+.soul-gain.is-leaving { animation: soul-gain-leave 240ms ease-in both; }
+
+/**
+ * 云雾衬底：**一条轮廓同时当形状和暗底**（替掉原来的 `.soul-gain::before` 椭圆柔光）。
+ *
+ * 定位/尺寸必须和 `soul-gain-shape.ts` 的 `SOUL_MIST_PAD` 对上：
+ * 盒外扩 左 16 / 右 10 / 上 12 / 下 10 ⇒ 偏移 -16 / -12，尺寸 100%+26 / 100%+22。
+ * 路径按标称盒生成，JSX 上 `preserveAspectRatio="none"` 让横向随文案伸缩、竖向恒定。
+ *
+ * ## 为什么深色衬底要**横向铺满整段文字**（这条教训从 10-11 活到今天）
+ *
+ * 10-11 那次"深色主题下字都看不清"的真凶是旧柔光用了 `radial-gradient(closest-side, …)`：
+ * 提示条是横长的（170+×40），`closest-side` 取的是**上下**那条边 ⇒ 渐变在**左右两侧早早透明**，
+ * 右边两行小字落在完全没有衬底的页面上（实测 40–42 / 66 条不合格、最低 3.26；
+ * 改成显式椭圆尺寸后 0 / 66、最低 6.46）。
+ * 同一个约束现在换成形状语言表达：`soul-gain-shape.ts` 里那条**保底轮廓**
+ * （比盒子略大的方超椭圆 + 两端垫肩）就是"衬底必须横着铺满"的实现 ——
+ * 它一旦收尖，右边小字与左边魂火就会重新露在白底上。
+ *
+ * ⚠ 深色与"文字区是实的"是**门禁要求**，不是审美：`qa/achievements-contrast.mjs`
+ * 按 `#1a1610` 当背景量文字、门槛 4.5:1。
+ *
+ * ⚠ 纵向只有 ±11px 可长：提示条要落在顶栏那 68px 带子里（棋盘从 108px 起，
+ * 用户 10-10：「不要挡住棋盘」），盒顶 16 + 盒高 40 ⇒ 下沿最多 67。
+ * 生成端已经把轮廓夹进这个范围，这里 `overflow: visible` 只是不裁掉滤镜外扩的那一圈。
+ */
+.soul-gain-mist {
+  position: absolute;
+  left: -16px;
+  top: -12px;
+  width: calc(100% + 26px);
+  height: calc(100% + 22px);
+  overflow: visible;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ⚠ 需要一层自己的层叠上下文：`z-index: -1` 的衬底要落在**文字下面、页面上面**，
+   不给容器 isolation 它会钻到页面背景后面去（那种表现是"衬底根本没出现"）。 */
+.soul-gain { isolation: isolate; }
+
+.soul-gain-flame {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  /* 2026-10-12：这里原来有一圈暖色 drop-shadow（"让魂火像在暗底上发光"）——
+     用户点名去掉背后所有阴影，而它身下那条墨形本来就在发光，不需要再托一层影。 */
+  animation: soul-gain-float 2.2s ease-in-out infinite;
+}
+
+/* ── 「图标 + 数字」两段（用户 2026-10-10 要的游戏风）─────────────────
+   形态照游戏里"捡到东西"的提示：**左图标、右大数字**，来源缩到最右边的小字。
+   数字是这枚提示里唯一的大号元素 —— 扫一眼要看到的就是它。
+
+   ⚠ 2026-10-10 第八轮：数字后面那个「棋魂」小字**已删**（用户：「目前是图标-数字-棋魂-说明，
+     这四个，你把棋魂这个字去了呀」）。图案就是单位，再写两个字是同一句话说两遍、
+     还把"图标+数字"这个整体撑散了。所以这一段只剩一个数字，间距也重调过。 */
+
+.soul-gain-gain {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.soul-gain-gain b {
+  /* 20px（原 19px）：删掉旁边的「棋魂」小字之后，数字成了这一段唯一的内容，
+     略放大一点让它独占这枚提示的视觉重心。 */
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+  /* ⚠ 颜色必须走**令牌**，不能写死深金。
+     第一版我用"深金 + 白描边"以为能在任意底色上读 —— 对比度门禁当场打回：
+     文字色的对比度是**按字形本身**算的，而 `paint-order: stroke fill` 里描边是画在
+     字形**背后**的，探针（和真实的视觉判断）都不认它。深色主题下
+     深金压深底只有 2.29:1（实测）。
+     所以改成令牌：浅色主题是深金、深色主题是亮金（`--progress-soul-ink-strong`
+     在深色主题下会被整组换成亮金，见本文件末尾那一段覆盖）。 */
+  /* 固定亮金，**不用令牌**：这枚提示条是无框的，它背后是"页面上任意东西"，
+     而那套令牌是按"卡片表面"调出来的（实测拿它配浮层会翻 8 套主题）。
+     我们自己在它身后画了一条**深色**墨形（见 .soul-gain-mist 与 soul-gain-shape.ts），
+     所以本地背景恒为暗色，亮金才是与它匹配的那一半。 */
+  color: #ffd87a;
+  /**
+   * 描边 = **2.5px**（20px 字号，比例 ≈ 0.125）。
+   *
+   * `-webkit-text-stroke` 是**居中描边**（一半画在字形内部），所以宽度必须跟着字号走：
+   * 同一条提示里 11px 的小字用 `1.2px`、这个 20px 的数字用 `2.5px`，
+   * 两者比例一致 —— 小字那边为什么必须收细，见 `.soul-gain-copy small` 的注释
+   * （2.5px 配 11px 会把笔画吃掉）。
+   *
+   * 顺带记一笔：数字一直是这枚提示里最清楚的部分（比小字稳得多），
+   * 所以用户报"字都看不清"时**不要**先怀疑这里 —— 实测也是这样（数字 4.87~12.1）。
+   */
+  -webkit-text-stroke: 2.5px #1a1610e6;
+  paint-order: stroke fill;
+}
+
+.soul-gain-copy {
+  min-width: 0;
+  /* 与数字之间的分隔：无框之后不能再画一条线（那又会像框），
+     改成靠间距 + 字号差分开。
+     ⚠ 「棋魂」那两个字删掉之后，这里要**多留一点**：原来中间隔着"棋魂"，
+     视觉上已经有一道软分隔；现在数字直接贴着来源走，间距不够就会读成
+     "+12战胜大师档"（实测挤在一起）。 */
+  padding-left: 6px;
+}
+
+.soul-gain-copy small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #ecdfc0;
+  /**
+   * 小字用**细描边 + 浅色晕影**（2026-10-11 调）。
+   *
+   * 起因是用户报"深色主题下那些字好暗" —— 但**归因做过 A/B，真凶不是这里**
+   * （是当时那圈椭圆柔光用 `closest-side` 只铺了一半，教训记在 .soul-gain-mist 那段注释里）：
+   * 单独回退描边这几行 ⇒ 门禁仍然全绿；单独回退柔光渐变 ⇒ 立刻 40 条红。
+   *
+   * 那这里为什么还是改了？因为它是**整条提示里最小的字**（11px），
+   * 柔光修好之后它的余量也最小 —— 而且是同一批"在暗底上读不清"的观感来源之一：
+   *  · 描边从 `2.5px` 收到 `1.2px`：`-webkit-text-stroke` 是**居中描边**（一半画在
+   *    字形内部），11px 的中文字笔画只有 1~1.5px 宽，2.5px 会从两侧各吃掉 1.25px
+   *    ⇒ 笔画几乎被描边吃光，只剩一圈黑轮廓。收细后笔画回来了（6 倍放大图可见）；
+   *  · 颜色从 `#e6d6b4` 提到 `#ecdfc0`（更亮一档）。
+   *
+   * 一句话：**修的是衬底，这两处是把最小号的字也做到有余量**。
+   *
+   * 2026-10-12：这里原来还有一圈**浅色 text-shadow 晕影**（画在字形外圈、不吃笔画，
+   * 用来在花底上把字托出来）。现在文字身后就是那条墨形 —— 衬底比晕影实在得多，
+   * 而用户点名「背后的那个阴影完全可以去掉」⇒ 删。描边留着（它是轮廓不是影子）。
+   */
+  -webkit-text-stroke: 1.2px #1a1610d9;
+  paint-order: stroke fill;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 132px;
+  text-align: right;
+}
+
+.soul-gain-copy .soul-gain-total {
+  /* 「共 N」是次要信息，但**不能暗到读不出**：上一版 `#c9b98f` 在深柔光上
+     只有 3.5 上下（实测最低 2.9）。提到与来源同一档亮度，
+     靠字号/字重（它更小）体现层级，而不是靠压暗颜色 ——
+     在 11px 这个尺寸上，"暗一点"就等于"看不见"。 */
+  color: #e2d3b0;
+}
+
+/* 窄屏：来源文字更短，免得把胶囊撑到屏幕外 */
+@media (max-width: 380px) {
+  .soul-gain-copy small { max-width: 96px; }
+}
+
+/* 进场/离场：右上角定位，所以**不再有 translateX(-50%)**（那是居中定位才需要的）。
+   位移方向也改成从右侧滑入（它就在右边，从上方掉下来会穿过整片画面）。 */
+@keyframes soul-gain-enter {
+  0%   { opacity: 0; transform: translateX(18px) scale(.94); }
+  60%  { opacity: 1; transform: translateX(-2px) scale(1.02); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes soul-gain-leave {
+  0%   { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(14px); }
+}
+
+/* 魂火轻轻上浮 —— 幅度极小（2px），是"在燃"的感觉而不是跳动 */
+@keyframes soul-gain-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+
+/* ── 结算处的棋魂标签（VCF 结算弹窗 / 对弈结算 / 说明页复用） ────────── */
+
+.soul-gain-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--line, #dfdad0) 70%, transparent);
+  border-radius: 11px;
+  background: var(--surface, #fff);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.soul-gain-tag b { font-weight: 700; color: var(--progress-soul-ink-strong, #6b4c17); }
+
+.soul-gain-tag small { font-size: 11px; color: var(--muted, #68635b); }
+
+@media (prefers-reduced-motion: reduce) {
+  .soul-gain,
+  .soul-gain.is-leaving {
+    animation: soul-gain-fade 180ms ease-out both;
+    transform: translateX(-50%);
+  }
+  .soul-gain-flame { animation: none; }
+}
+
+@keyframes soul-gain-fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (min-width: 700px) {
+  .soul-gain {
+    /* 桌面同样是"最上面那条"（顶栏在宽屏是 68px 高、且 app-shell 有 18px 外边距） */
+    top: calc(var(--safe-area-top, env(safe-area-inset-top)) + 26px);
+    left: auto;
+    right: 28px;
+    transform: none;
+  }
+  @keyframes soul-gain-enter {
+    0%   { opacity: 0; transform: translateY(-14px) scale(.94); }
+    60%  { opacity: 1; transform: translateY(2px) scale(1.01); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes soul-gain-leave {
+    0%   { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-12px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .soul-gain, .soul-gain.is-leaving { animation: soul-gain-fade 180ms ease-out both; transform: none; }
+  }
+}
+
+/* ── 「能花在哪」的商店分组（2026-10-10 解锁商店上线后）─────────────────
+   76 项商品平铺会滚很久（用户明确不要臃肿），所以只按类分组给"多少项 / 多少起"，
+   具体的挑选交给设置页那一块（外观卡上就地长着锁）。 */
+
+.soul-shop-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.soul-shop-groups li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 13px;
+  background: var(--surface, #fff);
+}
+
+.soul-shop-copy { flex: 1 1 auto; min-width: 0; }
+.soul-shop-copy b { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink, #292620); }
+.soul-shop-copy small { display: block; margin-top: 2px; font-size: 11px; color: var(--muted, #68635b); }
+
+/* 组标题右侧的项数小标 */
+.soul-shop-copy b em {
+  font-style: normal;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--line, #dfdad0) 55%, transparent);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted, #68635b);
+}
+
+.soul-shop-price {
+  flex: 0 0 auto;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--progress-soul-ink, #6b4c17);
+}
+
+.soul-spend-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted, #68635b);
+}
+
+/* 已解锁进度：给"收集"一个看得见的终点 */
+.soul-shop-progress {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 9px 0 0;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--gold, #c79c4a) 30%, var(--line, #dfdad0));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--gold, #c79c4a) 6%, var(--surface, #fff));
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted, #68635b);
+}
+
+.soul-shop-progress > span:first-child {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--progress-soul-ink, #6b4c17);
+}
+
+.soul-shop-progress b { color: var(--ink, #292620); }

@@ -14,7 +14,12 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 392, height: 852 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e).slice(0, 160)));
-await page.addInitScript(() => localStorage.setItem("banbu-first-run-welcome-v1", "true"));
+await page.addInitScript(() => {
+  localStorage.setItem("banbu-first-run-welcome-v1", "true");
+  // 2026-10-13 起人机对弈的「悔棋」= **10 棋魂一次**（直接扣账本，见 App 的 takeDuelUndo），
+  // 余额不足会如实拒绝 —— 本门禁测的是**回退语义**（退完必须轮到自己），所以先把钱灌够。
+  localStorage.setItem("banbu-soul-ledger-v1", JSON.stringify([{ id: "gate-undo", at: Date.now(), amount: 500, reason: "manual", detail: "门禁灌余额" }]));
+});
 await page.goto(`${url}?qa=1`, { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(2200);
 
@@ -25,9 +30,25 @@ const occ = () => page.evaluate(() => [...document.querySelectorAll(".board-hit"
 const status = () => page.evaluate(() => (document.body.innerText.match(/第 \d+ 手 \/ \d+/) || ["?"])[0]);
 const clickPoint = async (n) => { await page.evaluate((pt) => { const c = [...document.querySelectorAll('[role="gridcell"]')].find(e => { const l = e.getAttribute("aria-label") || ""; return l.startsWith(pt) || l.endsWith(pt); }); c?.dispatchEvent(new MouseEvent("click", { bubbles: true })); }, n); await page.waitForTimeout(800); };
 const clickAria = async (n) => { await page.evaluate((pt) => { const c = [...document.querySelectorAll("button")].find(e => (e.getAttribute("aria-label") || "") === pt); c?.click(); }, n); await page.waitForTimeout(700); };
+/** 随机点一个空位（不取中位：两边都往中间堆会连五，对局一结束就没法测回退了）。 */
+const playRandom = () => page.evaluate(() => {
+  const hits = [...document.querySelectorAll(".board-hit")].filter(h => h.getAttribute("aria-disabled") !== "true" && (h.getAttribute("aria-label") || "").includes("空位"));
+  hits[Math.floor(Math.random() * hits.length)]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+});
+// 09-28 起对局界面是专门的一屏：悔棋在 `[data-duel-undo]` 上（那里没有打谱的「上一手」按钮）。
+// 两条路都留着：先试对弈界面的悔棋，找不到再回退到打谱页的「上一手」，这样这条门禁
+// 在两种入口下测的都是同一件事——回退后必须落在轮到自己的局面。
+const clickUndo = async () => {
+  const onDuel = await page.locator("[data-duel-undo]").count();
+  if (onDuel) { await page.locator("[data-duel-undo]").click(); }
+  else { await clickAria("上一手"); }
+  await page.waitForTimeout(700);
+};
 
 // 默认规则（无禁手自由）人机对战
-await page.evaluate(() => { [...document.querySelectorAll("nav.bottom-nav button")].find((x) => (x.textContent || "").includes("AI"))?.click(); });
+await page.evaluate(() => { [...document.querySelectorAll("nav.bottom-nav button")].find((b) => (b.textContent || "").includes("对弈"))?.click(); });
+await page.waitForTimeout(700);
+await page.locator('[data-duel-entry="ai"] .duel-entry-action').click();
 await page.waitForTimeout(900);
 await page.evaluate(() => { const x = [...document.querySelectorAll(".ai-game-setup button")].find((e) => (e.textContent || "").includes("开始人机对战")); x?.click(); });
 await page.waitForTimeout(5000);
@@ -38,13 +59,20 @@ await page.waitForTimeout(7000);
 const before = await occ();
 check("S1 对局推进到 4 子", before.length >= 4, JSON.stringify(before));
 
-// 上一手 → 回退到「轮到自己」的局面（退掉 AI 应手 + 自己上一手，即退 2 手）
-await clickAria("上一手");
+// 2026-10-13 新规则：**开局前 10 手不许悔棋**（`DUEL_UNDO_LOCK_MOVES`），所以先下到 10 手以上。
+// 这一条不是给门禁让路，而是它自己要验的事实之一 —— 锁定期内点悔棋必须"拒绝且不扣钱"，
+// 那条正向断言在 `qa/duel-undo-check.mjs`。
+for (let i = 0; i < 14 && (await occ()).length < 10; i += 1) { await playRandom(); await page.waitForTimeout(3500); }
+const mid = await occ();
+check("S1b 已下满 10 手（悔棋锁定期已过）", mid.length >= 10, `stones=${mid.length}`);
+
+// 悔棋 → 回退到「轮到自己」的局面（退掉 AI 应手 + 自己上一手，即退 2 手）
+await clickUndo();
 const afterPrev = await occ();
-check("S2 回退后落在自己的回合（退掉 AI 应手+自己上一手）", afterPrev.length === before.length - 2, `before=${JSON.stringify(before)} after=${JSON.stringify(afterPrev)}`);
+check("S2 回退后落在自己的回合（退掉 AI 应手+自己上一手）", afterPrev.length === mid.length - 2, `mid=${JSON.stringify(mid)} after=${JSON.stringify(afterPrev)}`);
 
 // 点「旧着法」位置 = 正常落子并让引擎应手（不再只是切光标）
-const oldMove = before.find((c) => c && !afterPrev.includes(c)) || "";
+const oldMove = mid.find((c) => c && !afterPrev.includes(c)) || "";
 check("S3 能识别回退掉的位置", Boolean(oldMove), oldMove);
 await clickPoint(oldMove);
 await page.waitForTimeout(9000);

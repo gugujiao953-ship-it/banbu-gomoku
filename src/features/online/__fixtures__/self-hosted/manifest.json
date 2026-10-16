@@ -1,0 +1,1 @@
+{"title":"我的题库","sets":[{"title":"黑先VCF","file":"sets/black-first-vcf.json","type":"VCF","count":3},{"title":"六路连珠1","file":"sets/six-path.json","type":"VCT"},{"title":"远端大集","file":"https://raw.githubusercontent.com/someone/renju/main/big.json","type":"混合","count":100},{"title":"坏条目"},{"file":"sets/untitled.json"}]}

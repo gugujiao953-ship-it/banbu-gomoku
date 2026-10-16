@@ -1,0 +1,97 @@
+/* 长按环形菜单（用户 09-17 第二批①）。只用语义 token，七套主题跟着走。
+ * backdrop 透明全屏，负责"点空白关闭"；菜单本体以按下点为圆心绝对定位。 */
+.radial-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 46;
+  background: transparent;
+}
+.radial-menu {
+  position: fixed;
+  z-index: 47;
+  width: 0;
+  height: 0;
+}
+.radial-menu-anchor {
+  position: absolute;
+  left: -5px;
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--green) 55%, transparent);
+}
+/* 内环（切页扇区）：与外环同心的 SVG，只占 14–58 这条半径带。
+ * 负偏移 = 半宽，让它以菜单原点（按下点）为圆心；touch-action 关掉浏览器手势，
+ * 否则沿环滑动会被当成页面滚动。 */
+.radial-menu-pages {
+  position: absolute;
+  left: -58px;
+  top: -58px;
+  overflow: visible;
+  touch-action: none;
+  /* 整环抬一层：不投影的话半透明扇区会和棋盘网格糊在一起，页名读不出来。 */
+  filter: drop-shadow(0 4px 12px color-mix(in srgb, var(--ink) 26%, transparent));
+}
+.radial-page-wedge {
+  /* 近乎不透明的面：让"这是一层菜单"看得分明，同时透出一点棋盘以免完全挡住局面。 */
+  fill: color-mix(in srgb, var(--surface) 94%, transparent);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.radial-page-wedge.is-active {
+  /* 当前页要一眼认出来：整格实色 + 白字，比"淡一点"可靠得多（也照顾色弱用户）。 */
+  fill: var(--jade);
+  stroke: var(--jade);
+  stroke-width: 2;
+}
+.radial-menu-pages g[role='tab'] .radial-page-label { fill: var(--ink); }
+.radial-menu-pages g[role='tab'][aria-selected="true"] .radial-page-label { fill: #fff; }
+/* 键盘聚焦用描边，不用浏览器那圈橙色方框（落在扇区上非常突兀）。 */
+.radial-menu-pages g[role='tab'] { outline: none; }
+.radial-menu-pages g[role='tab']:focus-visible .radial-page-wedge {
+  stroke: var(--jade);
+  stroke-width: 2.5;
+  stroke-dasharray: 4 3;
+}
+.radial-page-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  fill: var(--ink);
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+}
+.radial-menu-item {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 22%, transparent);
+  animation: radial-menu-pop .14s ease-out;
+}
+.radial-menu-item.is-cancel { color: var(--muted); }
+.radial-menu-item:disabled { opacity: .45; }
+.radial-menu-item:not(:disabled):active { background: color-mix(in srgb, var(--jade) 30%, var(--surface)); }
+@keyframes radial-menu-pop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .radial-menu-item { animation: none; }
+}

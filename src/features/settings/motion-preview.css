@@ -1,0 +1,28 @@
+/* 「外观 → 公用效果」的预览舞台（MotionEffectsPreview.tsx）。
+   颜色全部走主题变量——20 套主题都要能看，这条是 qa/theme-adaptation 的口径。 */
+.motion-effects-preview { margin: 2px 0 10px; padding: 9px; border: 1px solid var(--surface-border, var(--line)); border-radius: 14px; background: var(--surface-2, var(--paper)); }
+.motion-effects-preview-stage { position: relative; max-width: 210px; margin: 0 auto; }
+.motion-effects-preview-stage svg { border-radius: 12px; }
+.motion-effects-preview-bg { fill: var(--paper); stroke: var(--surface-border, var(--line)); stroke-width: 1; }
+.motion-effects-preview-stage svg { color: var(--ink); }
+.motion-effects-preview-replay { position: absolute; right: 6px; bottom: 6px; min-height: 30px; padding: 0 9px; display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--surface-border, var(--line)); border-radius: 9px; background: var(--surface, var(--paper)); color: var(--green-2, var(--green)); font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.motion-effects-preview-caption { margin: 8px 0 0; display: flex; flex-direction: column; gap: 3px; }
+.motion-effects-preview-caption b { color: var(--ink); font-size: 11px; }
+.motion-effects-preview-caption small { color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+.motion-effects-preview-caption .motion-effects-preview-off { color: var(--red); }
+
+/* ── 特效版面：动效寄生在**外观那块共用预览**里（2026-10-09）──────────────────
+   用户：「公用特效那里还是一块新棋盘，上面一个下面一个的，我们要用那一套预览，
+   不过里面的棋子可以只有一个，和其他预览的三个棋子里面不一样，以方便用来展示不同棋子材质下的动效」。
+   所以：共享预览上的 5 枚静态棋子在这一版面**隐藏**，只留 MotionEffectsPreview 插进来的
+   那一枚演出棋子（[data-preview-stone]），并在下面给一个重播条。 */
+.material-live-preview.pane-motion-live .material-crop .material-crop-stones,
+.material-live-preview.pane-motion-live .material-crop g[data-stones] { display:none; }
+
+/* 寄生模式的容器：不再是"一块带边框的卡片"，只做面板与说明 */
+.motion-effects-preview-inline { margin: 2px 0 0; padding: 0; border: 0; background: transparent; }
+.motion-effects-inline-bar { display: flex; align-items: center; gap: 9px; }
+.motion-effects-inline-bar > span { min-width: 0; flex: 1; }
+.motion-effects-inline-bar > span > b { display: block; color: var(--ink); font-size: 11.5px; }
+.motion-effects-inline-bar > span > small { display: block; margin-top: 2px; color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+.motion-effects-preview-inline .motion-effects-preview-replay { position: static; flex: 0 0 auto; }

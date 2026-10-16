@@ -1,0 +1,4206 @@
+{
+  "generated": "2026-09-28",
+  "events": [
+    {
+      "event": "第18届",
+      "year": "2025",
+      "checked": "2026-09-28",
+      "method": "本项目 scripts/fetch-world-championship-sources.mjs 逐页读取励精连珠教室正赛轮次页，只登记页面上原文成对的「黑 - 白」；无 robots 限制（该站 robots.txt 为 404），逐页间隔 1.2 秒。",
+      "pages": [
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18qtr1.htm",
+          "stage": "第18届 R1",
+          "games": [
+            "Wai Chan Keong - Mesila Villem",
+            "Lents Johann - Pajuste Renee",
+            "Wang Qingqing - Heo Jeong-bin",
+            "Katsev Ilya - Mei Fan",
+            "Li Xiaoqing - Jonsson Peter",
+            "Epifanov Dmitry - Kirkan Alp Ali",
+            "Kolk Kuno - Oll Aivo",
+            "Gardström Petter - Park Do Young",
+            "Poghosyan Vahe - Gromov Danila"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18qtr2.htm",
+          "stage": "第18届 R2",
+          "games": [
+            "Wai Chan Keong - Epifanov Dmitry",
+            "Lents Johann - Oll Aivo",
+            "Gromov Danila - Mei Fan",
+            "Li Xiaoqing - Gardström Petter",
+            "Heo Jeong-bin - Pajuste Renee",
+            "Wang Qingqing - Kolk Kuno",
+            "Kirkan Alp Ali - Mesila Villem",
+            "Katsev Ilya - Poghosyan Vahe",
+            "Jonsson Peter - Park Do Young"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18qtr3.htm",
+          "stage": "第18届 R3",
+          "games": [
+            "Mei Fan - Gardström Petter",
+            "Wai Chan Keong - Lents Johann",
+            "Wang Qingqing - Epifanov Dmitry",
+            "Li Xiaoqing - Mesila Villem",
+            "Katsev Ilya - Gromov Danila",
+            "Poghosyan Albert - Jonsson Peter",
+            "Park Do Young - Kolk Kuno",
+            "Poghosyan Vahe - Pajuste Renee",
+            "Kirkan Alp Ali - Poghosyan Davit"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18qtr4.htm",
+          "stage": "第18届 R4",
+          "games": [
+            "Mei Fan - Oll Aivo",
+            "Li Xiaoqing - Wai Chan Keong",
+            "Gardström Petter - Epifanov Dmitry",
+            "Heo Jeong-bin - Gromov Danila",
+            "Jonsson Peter - Kirkan Alp Ali",
+            "Wang Qingqing - Lents Johann",
+            "Katsev Ilya - Pajuste Renee",
+            "Poghosyan Albert - Poghosyan Vahe",
+            "Poghosyan Davit - Kolk Kuno"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18qtr5.htm",
+          "stage": "第18届 R5",
+          "games": [
+            "Wai Chan Keong - Mei Fan",
+            "Epifanov Dmitry - Oll Aivo",
+            "Gromov Danila - Park Do Young",
+            "Gardström Petter - Heo Jeong-bin",
+            "Kirkan Alp Ali - Lents Johann",
+            "Li Xiaoqing - Pajuste Renee",
+            "Wang Qingqing - Jonsson Peter",
+            "Mesila Villem - Kolk Kuno",
+            "Poghosyan Albert - Katsev Ilya",
+            "Poghosyan Davit - Poghosyan Vahe"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18qtr6.htm",
+          "stage": "第18届 R6",
+          "games": [
+            "Mei Fan - Epifanov Dmitry",
+            "Wai Chan Keong - Gromov Danila",
+            "Oll Aivo - Gardström Petter",
+            "Li Xiaoqing - Kirkan Alp Ali",
+            "Park Do Young - Lents Johann",
+            "Wang Qingqing - Katsev Ilya",
+            "Mesila Villem - Pajuste Renee",
+            "Heo Jeong-bin - Jonsson Peter",
+            "Poghosyan Vahe - Kolk Kuno",
+            "Poghosyan Davit - Poghosyan Albert"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18qtr7.htm",
+          "stage": "第18届 R7",
+          "games": [
+            "Li Xiaoqing - Mei Fan",
+            "Gromov Danila - Epifanov Dmitry",
+            "Wai Chan Keong - Oll Aivo",
+            "Mesila Villem - Gardström Petter",
+            "Park Do Young - Kirkan Alp Ali",
+            "Poghosyan Vahe - Wang Qingqing",
+            "Heo Jeong-bin - Lents Johann",
+            "Katsev Ilya - Jonsson Peter",
+            "Poghosyan Davit - Pajuste Renee",
+            "Poghosyan Albert - Kolk Kuno"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18qtr8.htm",
+          "stage": "第18届 R8",
+          "games": [
+            "Oll Aivo - Gromov Danila",
+            "Park Do Young - Mei Fan",
+            "Li Xiaoqing - Epifanov Dmitry",
+            "Wai Chan Keong - Wang Qingqing",
+            "Heo Jeong-bin - Mesila Villem",
+            "Gardström Petter - Katsev Ilya",
+            "Poghosyan Vahe - Kirkan Alp Ali",
+            "Poghosyan Albert - Lents Johann",
+            "Pajuste Renee - Kolk Kuno",
+            "Jonsson Peter - Poghosyan Davit"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18atr1.htm",
+          "stage": "第18届 R1",
+          "games": [
+            "Mei Fan - Cao Dong",
+            "Li Xiaoqing - Mesila Villem",
+            "Ni Zhongxing - Gromov Danila",
+            "Kamiya Shunsuke - Lu Hai",
+            "Okabe Hiroshi - He Shujun",
+            "Nakayama Tomoharu - Oll Aivo"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18atr2.htm",
+          "stage": "第18届 R2",
+          "games": [
+            "Nakayama Tomoharu - Cao Dong",
+            "Oll Aivo - Okabe Hiroshi",
+            "Kamiya Shunsuke - He Shujun",
+            "Lu Hai - Gromov Danila",
+            "Li Xiaoqing - Mei Fan"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18atr3.htm",
+          "stage": "第18届 R3",
+          "games": [
+            "Li Xiaoqing - Cao Dong",
+            "Mei Fan - Ni Zhongxing",
+            "Lu Hai - Mesila Villem",
+            "He Shujun - Gromov Danila",
+            "Kamiya Shunsuke - Oll Aivo",
+            "Nakayama Tomoharu - Okabe Hiroshi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18atr4.htm",
+          "stage": "第18届 R4",
+          "games": [
+            "Cao Dong - Okabe Hiroshi",
+            "Nakayama Tomoharu - Kamiya Shunsuke",
+            "Gromov Danila - Oll Aivo",
+            "Mesila Villem - He Shujun",
+            "Lu Hai - Mei Fan",
+            "Li Xiaoqing - Ni Zhongxing"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18atr5.htm",
+          "stage": "第18届 R5",
+          "games": [
+            "Ni Zhongxing - Cao Dong",
+            "Li Xiaoqing - Lu Hai",
+            "He Shujun - Mei Fan",
+            "Oll Aivo - Mesila Villem",
+            "Gromov Danila - Nakayama Tomoharu",
+            "Okabe Hiroshi - Kamiya Shunsuke"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18atr6.htm",
+          "stage": "第18届 R6",
+          "games": [
+            "Kamiya Shunsuke - Cao Dong",
+            "Gromov Danila - Okabe Hiroshi",
+            "Mesila Villem - Nakayama Tomoharu",
+            "Oll Aivo - Mei Fan",
+            "Li Xiaoqing - He Shujun",
+            "Lu Hai - Ni Zhongxing"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18atr7.htm",
+          "stage": "第18届 R7",
+          "games": [
+            "Cao Dong - Lu Hai",
+            "He Shujun - Ni Zhongxing",
+            "Li Xiaoqing - Oll Aivo",
+            "Mei Fan - Nakayama Tomoharu",
+            "Mesila Villem - Okabe Hiroshi",
+            "Gromov Danila - Kamiya Shunsuke"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18atr8.htm",
+          "stage": "第18届 R8",
+          "games": [
+            "Cao Dong - Gromov Danila",
+            "Kamiya Shunsuke - Mesila Villem",
+            "Okabe Hiroshi - Mei Fan",
+            "Li Xiaoqing - Nakayama Tomoharu",
+            "Oll Aivo - Ni Zhongxing",
+            "He Shujun - Lu Hai"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18atr9.htm",
+          "stage": "第18届 R9",
+          "games": [
+            "He Shujun - Cao Dong",
+            "Lu Hai - Oll Aivo",
+            "Nakayama Tomoharu - Ni Zhongxing",
+            "Li Xiaoqing - Okabe Hiroshi",
+            "Mei Fan - Kamiya Shunsuke",
+            "Mesila Villem - Gromov Danila"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18atr10.htm",
+          "stage": "第18届 R10",
+          "games": [
+            "Cao Dong - Mesila Villem",
+            "Gromov Danila - Mei Fan",
+            "Li Xiaoqing - Kamiya Shunsuke",
+            "Ni Zhongxing - Okabe Hiroshi",
+            "Lu Hai - Nakayama Tomoharu",
+            "Oll Aivo - He Shujun"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18atr11.htm",
+          "stage": "第18届 R11",
+          "games": [
+            "Oll Aivo - Cao Dong",
+            "He Shujun - Nakayama Tomoharu",
+            "Lu Hai - Okabe Hiroshi",
+            "Ni Zhongxing - Kamiya Shunsuke",
+            "Gromov Danila - Li Xiaoqing"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18wtr1.htm",
+          "stage": "第18届 R1",
+          "games": [
+            "Wang Qingqing - Yu Yajun",
+            "Jin Rui - Wan Junhong",
+            "Metreveli Irina - Hovhannisyan Syuzanna",
+            "Shen Lanxin - Fujita Maiko"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18wtr2.htm",
+          "stage": "第18届 R2",
+          "games": [
+            "Wang Qingqing - Shen Lanxin",
+            "Fujita Maiko - Hovhannisyan Syuzanna",
+            "Metreveli Irina - Jin Rui",
+            "Wan Junhong - Yu Yajun"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18wtr3.htm",
+          "stage": "第18届 R3",
+          "games": [
+            "Wang Qingqing - Wan Junhong",
+            "Metreveli Irina - Yu Yajun",
+            "Jin Rui - Fujita Maiko",
+            "Shen Lanxin - Hovhannisyan Syuzanna"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18wtr4.htm",
+          "stage": "第18届 R4",
+          "games": [
+            "Hovhannisyan Syuzanna - Wang Qingqing",
+            "Shen Lanxin - Jin Rui",
+            "Fujita Maiko - Yu Yajun",
+            "Metreveli Irina - Wan Junhong"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18wtr5.htm",
+          "stage": "第18届 R5",
+          "games": [
+            "Wang Qingqing - Metreveli Irina",
+            "Fujita Maiko - Wan Junhong",
+            "Shen Lanxin - Yu Yajun",
+            "Jin Rui - Hovhannisyan Syuzanna"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18wtr6.htm",
+          "stage": "第18届 R6",
+          "games": [
+            "Wang Qingqing - Jin Rui",
+            "Hovhannisyan Syuzanna - Yu Yajun",
+            "Metreveli Irina - Fujita Maiko"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18wtr7.htm",
+          "stage": "第18届 R7",
+          "games": [
+            "Wang Qingqing - Fujita Maiko",
+            "Shen Lanxin - Metreveli Irina",
+            "Wan Junhong - Hovhannisyan Syuzanna",
+            "Jin Rui - Yu Yajun"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18btr1.htm",
+          "stage": "第18届 R1",
+          "games": [
+            "Tanaka Shotaro - Wai Chan Keong",
+            "Sumarokova Aleksandra - Epifanov Dmitry",
+            "Lents Johann - Podolský Petr",
+            "Liu Yang - Sun In",
+            "Fukui Nobuhiro - Poghosyan Albert",
+            "Kolk Kuno - Pajuste Renee",
+            "Shimura Hiroki - Heo Jeong-bin",
+            "Poghosyan Vahe - Holub Matej",
+            "Poghosyan Davit - Kirkan Alp Ali",
+            "Malowiejski Piotr - Krejcir Libor",
+            "Katsev Ilya - Mikes Alois",
+            "Park Doyoung - Horak Jakub"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18btr2.htm",
+          "stage": "第18届 R2",
+          "games": [
+            "Wai Chan Keong - Holub Matej",
+            "Epifanov Dmitry - Kirkan Alp Ali",
+            "Fukui Nobuhiro - Katsev Ilya",
+            "Heo Jeong-bin - Park Doyoung",
+            "Pajuste Renee - Sun In",
+            "Liu Yang - Kolk Kuno",
+            "Poghosyan Vahe - Tanaka Shotaro",
+            "Poghosyan Davit - Sumarokova Aleksandra",
+            "Poghosyan Albert - Mikes Alois",
+            "Shimura Hiroki - Horak Jakub"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18btr3.htm",
+          "stage": "第18届 R3",
+          "games": [
+            "Wai Chan Keong - Katsev Ilya",
+            "Lents Johann - Epifanov Dmitry",
+            "Park Doyoung - Pajuste Renee",
+            "Sumarokova Aleksandra - Liu Yang",
+            "Tanaka Shotaro - Fukui Nobuhiro",
+            "Podolský Petr - Heo Jeong-bin",
+            "Kirkan Alp Ali - Poghosyan Albert",
+            "Kolk Kuno - Shimura Hiroki"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2025/wc18btr4.htm",
+          "stage": "第18届 R4",
+          "games": [
+            "Wai Chan Keong - Epifanov Dmitry",
+            "Pajuste Renee - Lents Johann",
+            "Liu Yang - Katsev Ilya",
+            "Park Doyoung - Fukui Nobuhiro",
+            "Sun In - Heo Jeong-bin",
+            "Kirkan Alp Ali - Horák Jakub",
+            "Poghosyan Albert - Tanaka Shotaro",
+            "Shimura Hiroki - Sumarokova Aleksandra"
+          ]
+        }
+      ],
+      "notes": "由脚本抓取，未逐页人工复核；每条都带页面地址，抽查时按地址回原页对。轮次页不给胜负分，结果一律留空。"
+    },
+    {
+      "event": "第17届",
+      "year": "2023",
+      "checked": "2026-09-28",
+      "method": "本项目 scripts/fetch-world-championship-sources.mjs 逐页读取励精连珠教室正赛轮次页，只登记页面上原文成对的「黑 - 白」；无 robots 限制（该站 robots.txt 为 404），逐页间隔 1.2 秒。",
+      "pages": [
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17qr1.htm",
+          "stage": "第17届 R1",
+          "games": [
+            "Inoue Fumiya - Oll Aivo",
+            "Kang Sang-min - Ni Zhongxing",
+            "Lee Ho-June - Lu Hai",
+            "Alp Ali - Pajuste Renee",
+            "Park Doyoung - Burtsev Nikolay"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17qr2.htm",
+          "stage": "第17届 R2",
+          "games": [
+            "Ni Zhongxing - Burtsev Nikolay",
+            "Alp Ali - Lu Hai",
+            "Oll Aivo - Pajuste Renee",
+            "Inoue Fumiya - Kang Sang-min",
+            "Park Doyoung - Lee Ho-June"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17qr3.htm",
+          "stage": "第17届 R3",
+          "games": [
+            "Alp Ali - Ni Zhongxing",
+            "Oll Aivo - Lee Ho-June",
+            "Lu Hai - Inoue Fumiya",
+            "Pajuste Renee - Burtsev Nikolay",
+            "Park Doyoung - Kang Sang-min"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17qr4.htm",
+          "stage": "第17届 R4",
+          "games": [
+            "Lu Hai - Ni Zhongxing",
+            "Lee Ho-June - Burtsev Nikolay",
+            "Park Doyoung - Oll Aivo",
+            "Pajuste Renee - Kang Sang-min"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17qr5.htm",
+          "stage": "第17届 R5",
+          "games": [
+            "Inoue Fumiya - Ni Zhongxing",
+            "Burtsev Nikolay - Lu Hai",
+            "Kang Sang-min - Oll Aivo",
+            "Pajuste Renee - Park Doyoung"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17qr6.htm",
+          "stage": "第17届 R6",
+          "games": [
+            "Ni Zhongxing - Lee Ho-June",
+            "Pajuste Renee - Lu Hai",
+            "Burtsev Nikolay - Oll Aivo",
+            "Park Doyoung - Inoue Fumiya"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17qr7.htm",
+          "stage": "第17届 R7",
+          "games": [
+            "Ni Zhongxing - Oll Aivo",
+            "Kang Sang-min - Lu Hai",
+            "Inoue Fumiya - Burtsev Nikolay",
+            "Pajuste Renee - Lee Ho-June"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17ar1.htm",
+          "stage": "第17届 R1",
+          "games": [
+            "Ni Zhongxing - Inoue Fumiya",
+            "Okabe Hiroshi - Epifanov Dmitry",
+            "Burtsev Nikolay - Cao Dong",
+            "Mei Fan - Nakayama Tomoharu",
+            "Lu Hai - Kamiya Shunsuke",
+            "Lee Ho-June - Pinsky Alexander"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17ar2.htm",
+          "stage": "第17届 R2",
+          "games": [
+            "Ni Zhongxing - Lee Ho-June",
+            "Pinsky Alexander - Lu Hai",
+            "Kamiya Shunsuke - Mei Fan",
+            "Cao Dong - Nakayama Tomoharu",
+            "Burtsev Nikolay - Epifanov Dmitry",
+            "Inoue Fumiya - Okabe Hiroshi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17ar3.htm",
+          "stage": "第17届 R3",
+          "games": [
+            "Okabe Hiroshi - Ni Zhongxing",
+            "Inoue Fumiya - Burtsev Nikolay",
+            "Nakayama Tomoharu - Epifanov Dmitry",
+            "Kamiya Shunsuke - Cao Dong",
+            "Pinsky Alexander - Mei Fan",
+            "Lu Hai - Lee Ho-June"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17ar4.htm",
+          "stage": "第17届 R4",
+          "games": [
+            "Lu Hai - Ni Zhongxing",
+            "Mei Fan - Lee Ho-June",
+            "Pinsky Alexander - Cao Dong",
+            "Kamiya Shunsuke - Epifanov Dmitry",
+            "Nakayama Tomoharu - Inoue Fumiya",
+            "Okabe Hiroshi - Burtsev Nikolay"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17ar5.htm",
+          "stage": "第17届 R5",
+          "games": [
+            "Ni Zhongxing - Burtsev Nikolay",
+            "Nakayama Tomoharu - Okabe Hiroshi",
+            "Kamiya Shunsuke - Inoue Fumiya",
+            "Epifanov Dmitry - Pinsky Alexander",
+            "Lee Ho-June - Cao Dong",
+            "Mei Fan - Lu Hai"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17ar6.htm",
+          "stage": "第17届 R6",
+          "games": [
+            "Mei Fan - Ni Zhongxing",
+            "Lu Hai - Cao Dong",
+            "Lee Ho-June - Epifanov Dmitry",
+            "Pinsky Alexander - Inoue Fumiya",
+            "Kamiya Shunsuke - Okabe Hiroshi",
+            "Burtsev Nikolay - Nakayama Tomoharu"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17ar7.htm",
+          "stage": "第17届 R7",
+          "games": [
+            "Ni Zhongxing - Nakayama Tomoharu",
+            "Kamiya Shunsuke - Burtsev Nikolay",
+            "Pinsky Alexander - Okabe Hiroshi",
+            "Inoue Fumiya - Lee Ho-June",
+            "Epifanov Dmitry - Lu Hai",
+            "Mei Fan - Cao Dong"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17ar8.htm",
+          "stage": "第17届 R8",
+          "games": [
+            "Cao Dong - Ni Zhongxing",
+            "Mei Fan - Epifanov Dmitry",
+            "Inoue Fumiya - Lu Hai",
+            "Okabe Hiroshi - Lee Ho June",
+            "Pinsky Alexander - Burtsev Nikolay",
+            "Nakayama Tomoharu - Kamiya Shunsuke"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17ar9.htm",
+          "stage": "第17届 R9",
+          "games": [
+            "Kamiya Shunsuke - Ni Zhongxing",
+            "Nakayama Tomoharu - Pinsky Alexander",
+            "Lee Ho-June - Burtsev Nikolay",
+            "Okabe Hiroshi - Lu Hai",
+            "Inoue Fumiya - Mei Fan",
+            "Epifanov Dmitry - Cao Dong"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17ar10.htm",
+          "stage": "第17届 R10",
+          "games": [
+            "Ni Zhongxing - Epifanov Dmitry",
+            "Inoue Fumiya - Cao Dong",
+            "Okabe Hiroshi - Mei Fan",
+            "Lu Hai - Burtsev Nikolay",
+            "Nakayama Tomoharu - Lee Ho-June",
+            "Pinsky Alexander - Kamiya Shunsuke"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17ar11.htm",
+          "stage": "第17届 R11",
+          "games": [
+            "Pinsky Alexander - Ni Zhongxing",
+            "Kamiya Shunsuke - Lee Ho-June",
+            "Nakayama Tomoharu - Lu Hai",
+            "Burtsev Nikolay - Mei Fan",
+            "Okabe Hiroshi - Cao Dong",
+            "Inoue Fumiya - Epifanov Dmitry"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17wr1.htm",
+          "stage": "第17届 R1",
+          "games": [
+            "Petrova Maria - Fokicheva Anna",
+            "Porokhina Ekaterina - Metreveli Irina",
+            "Fujita Maiko - Wang Qingqing"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17wr2.htm",
+          "stage": "第17届 R2",
+          "games": [
+            "Petrova Maria - Wang Qingqing",
+            "Wang Qingqing - Petrova Maria",
+            "Metreveli Irina - Fujita Maiko",
+            "Porokhina Ekaterina - Fokicheva Anna"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17wr3.htm",
+          "stage": "第17届 R3",
+          "games": [
+            "Porokhina Ekaterina - Petrova Maria",
+            "Petrova Maria - Porokhina Ekaterina",
+            "Fujita Maiko - Fokicheva Anna",
+            "Wang Qingqing - Metreveli Irina"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17wr4.htm",
+          "stage": "第17届 R4",
+          "games": [
+            "Petrova Maria - Metreveli Irina",
+            "Metreveli Irina - Petrova Maria",
+            "Wang Qingqing - Fokicheva Anna",
+            "Porokhina Ekaterina - Fujita Maiko"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17wr5.htm",
+          "stage": "第17届 R5",
+          "games": [
+            "Petrova Maria - Fujita Maiko",
+            "Fujita Maiko - Petrova Maria",
+            "Porokhina Ekaterina - Wang Qingqing",
+            "Metreveli Irina - Fokicheva Anna",
+            "Fokicheva Anna - Metreveli Irina"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17wr1.htm",
+          "stage": "第17届 R6",
+          "games": [
+            "Petrova Maria - Fokicheva Anna",
+            "Porokhina Ekaterina - Metreveli Irina",
+            "Fujita Maiko - Wang Qingqing"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17wr2.htm",
+          "stage": "第17届 R7",
+          "games": [
+            "Petrova Maria - Wang Qingqing",
+            "Wang Qingqing - Petrova Maria",
+            "Metreveli Irina - Fujita Maiko",
+            "Porokhina Ekaterina - Fokicheva Anna"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17wr3.htm",
+          "stage": "第17届 R8",
+          "games": [
+            "Porokhina Ekaterina - Petrova Maria",
+            "Petrova Maria - Porokhina Ekaterina",
+            "Fujita Maiko - Fokicheva Anna",
+            "Wang Qingqing - Metreveli Irina"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17wr4.htm",
+          "stage": "第17届 R9",
+          "games": [
+            "Petrova Maria - Metreveli Irina",
+            "Metreveli Irina - Petrova Maria",
+            "Wang Qingqing - Fokicheva Anna",
+            "Porokhina Ekaterina - Fujita Maiko"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17wr5.htm",
+          "stage": "第17届 R10",
+          "games": [
+            "Petrova Maria - Fujita Maiko",
+            "Fujita Maiko - Petrova Maria",
+            "Porokhina Ekaterina - Wang Qingqing",
+            "Metreveli Irina - Fokicheva Anna",
+            "Fokicheva Anna - Metreveli Irina"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17br1.htm",
+          "stage": "第17届 R1",
+          "games": [
+            "Berezin Roman - Park Doyoung",
+            "Kang Sang-min - Pajuste Renee",
+            "Alp Ali - Zvezdina Nataliya",
+            "Huang Xiuyi - Metreveli Maksim",
+            "Chernetsova Ekaterina - Burtsev Peter"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2023/wc17br2.htm",
+          "stage": "第17届 R2",
+          "games": [
+            "Metreveli Maksim - Burtsev Peter",
+            "Zvezdina Nataliya - Huang Xiuyi",
+            "Alp Ali - Pajuste Renee",
+            "Berezin Roman - Kang Sang-min",
+            "Zencir Pelin - Park Doyoung"
+          ]
+        }
+      ],
+      "notes": "由脚本抓取，未逐页人工复核；每条都带页面地址，抽查时按地址回原页对。轮次页不给胜负分，结果一律留空。"
+    },
+    {
+      "event": "第16届",
+      "year": "2019",
+      "checked": "2026-09-28",
+      "method": "本项目 scripts/fetch-world-championship-sources.mjs 逐页读取励精连珠教室正赛轮次页，只登记页面上原文成对的「黑 - 白」；无 robots 限制（该站 robots.txt 为 404），逐页间隔 1.2 秒。",
+      "pages": [
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16qtr1.htm",
+          "stage": "第16届 R1",
+          "games": [
+            "Topkin Georg-Romet - Nakayama Tomoharu",
+            "Epifanov Dmitry - Wai Chan Keong",
+            "Oll Aivo - Kim Hong Soon",
+            "Li Xiaoqing - Sun In",
+            "Jang Won-cheol - Wang Qingqing",
+            "Jonsson Peter - Fedotov Denis",
+            "Nikonov Konstantin - Rahumagi Brenet",
+            "Park Woong-bae - Mesila Villem"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16qtr2.htm",
+          "stage": "第16届 R2",
+          "games": [
+            "Oll Aivo - Fedotov Denis",
+            "Li Xiaoqing - Koyama Jun",
+            "Wang Qingqing - Mesila Villem",
+            "Rahumagi Brenet - Gardstrom Petter",
+            "Wai Chan Keong - Nakayama Tomoharu",
+            "Topkin Georg-Romet - Epifanov Dmitry",
+            "Jonsson Peter - Kim Hong Soon",
+            "Sandstrom Richard - Sun In",
+            "Jang Won-cheol - Park Woong-bae"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16qtr3.htm",
+          "stage": "第16届 R3",
+          "games": [
+            "Gardstrom Petter - Fedotov Denis",
+            "Koyama Jun - Mesila Villem",
+            "Li Xiaoqing - Epifanov Dmitry",
+            "Nakayama Tomoharu - Kim Hong Soon",
+            "Wai Chan Keong - Rahumagi Brenet",
+            "Jang Won-cheol - Oll Aivo",
+            "Topkin Georg-Romet - Sun In",
+            "Sandstrom Richard - Nikonov Konstantin",
+            "Jonsson Peter - Park Woong-bae"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16qtr4.htm",
+          "stage": "第16届 R4",
+          "games": [
+            "Gardstrom Petter - Mesila Villem",
+            "Nakayama Tomoharu - Epifanov Dmitry",
+            "Koyama Jun - Wai Chan Keong",
+            "Fedotov Denis - Sun In",
+            "Li Xiaoqing - Kim Hong Soon",
+            "Wang Qingqing - Rahumagi Brenet",
+            "Jang Won-cheol - Nikonov Konstantin",
+            "Topkin Georg-Romet - Jonsson Peter",
+            "Sandstrom Richard - Park Woong-bae"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16qtr5.htm",
+          "stage": "第16届 R5",
+          "games": [
+            "Gardstrom Petter - Oll Aivo",
+            "Mesila Villem - Nakayama Tomoharu",
+            "Koyama Jun - Fedotov Denis",
+            "Wai Chan Keong - Wang Qingqing",
+            "Nikonov Konstantin - Li Xiaoqing",
+            "Park Woong-bae - Topkin Georg-Romet",
+            "Sun In - Kim Hong Soon",
+            "Rahumagi Brenet - Jang Won-cheol",
+            "Sandstrom Richard - Jonsson Peter"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16qtr6.htm",
+          "stage": "第16届 R6",
+          "games": [
+            "Mesila Villem - Oll Aivo",
+            "Gardstrom Petter - Koyama Jun",
+            "Fedotov Denis - Epifanov Dmitry",
+            "Li Xiaoqing - Nakayama Tomoharu",
+            "Wai Chan Keong - Sun In",
+            "Topkin Georg-Romet - Nikonov Konstantin",
+            "Wang Qingqing - Park Woong-bae",
+            "Sandstrom Richard - Kim Hong Soon",
+            "Rahumagi Brenet - Jonsson Peter"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16qtr7.htm",
+          "stage": "第16届 R7",
+          "games": [
+            "Nakayama Tomoharu - Gardstrom Petter",
+            "Wai Chan Keong - Oll Aivo",
+            "Mesila Villem - Fedotov Denis",
+            "Topkin Georg-Romet - Koyama Jun",
+            "Wang Qingqing - Epifanov Dmitry",
+            "Jang Won-cheol - Sun In",
+            "Nikonov Konstantin - Jonsson Peter",
+            "Sandstrom Richard - Li Xiaoqing",
+            "Park Woong-bae - Kim Hong Soon"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16atr1.htm",
+          "stage": "第16届 R1",
+          "games": [
+            "Kamiya Shunsuke - Epifanov Dmitry",
+            "Inoue Fumiya - Nakayama Tomoharu",
+            "Oll Aivo - Okabe Hiroshi",
+            "Koyama Jun - Mei Fan",
+            "Gardstrom Petter - Sushkov Vladimir",
+            "Cao Dong - Fedotov Denis"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16atr2.htm",
+          "stage": "第16届 R2",
+          "games": [
+            "Fedotov Denis - Kamiya Shunsuke",
+            "Cao Dong - Sushkov Vladimir",
+            "Gardstrom Petter - Mei Fan",
+            "Koyama Jun - Oll Aivo",
+            "Okabe Hiroshi - Inoue Fumiya",
+            "Nakayama Tomoharu - Epifanov Dmitry"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16atr3.htm",
+          "stage": "第16届 R3",
+          "games": [
+            "Kamiya Shunsuke - Nakayama Tomoharu",
+            "Okabe Hiroshi - Epifanov Dmitry",
+            "Koyama Jun - Inoue Fumiya",
+            "Oll Aivo - Gardstrom Petter",
+            "Cao Dong - Mei Fan",
+            "Sushkov Vladimir - Fedotov Denis"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16atr4.htm",
+          "stage": "第16届 R4",
+          "games": [
+            "Kamiya Shunsuke - Sushkov Vladimir",
+            "Mei Fan - Fedotov Denis",
+            "Cao Dong - Oll Aivo",
+            "Gardstrom Petter - Inoue Fumiya",
+            "Koyama Jun - Epifanov Dmitry",
+            "Nakayama Tomoharu - Okabe Hiroshi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16atr5.htm",
+          "stage": "第16届 R5",
+          "games": [
+            "Kamiya Shunsuke - Okabe Hiroshi",
+            "Koyama Jun - Nakayama Tomoharu",
+            "Gardstrom Petter - Epifanov Dmitry",
+            "Cao Dong - Inoue Fumiya",
+            "Oll Aivo - Fedotov Denis",
+            "Mei Fan - Sushkov Vladimir"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16atr6.htm",
+          "stage": "第16届 R6",
+          "games": [
+            "Mei Fan - Kamiya Shunsuke",
+            "Oll Aivo - Sushkov Vladimir",
+            "Inoue Fumiya - Fedotov Denis",
+            "Epifanov Dmitry - Cao Dong",
+            "Gardstrom Petter - Nakayama Tomoharu",
+            "Koyama Jun - Okabe Hiroshi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16atr7.htm",
+          "stage": "第16届 R7",
+          "games": [
+            "Koyama Jun - Kamiya Shunsuke",
+            "Gardstrom Petter - Okabe Hiroshi",
+            "Nakayama Tomoharu - Cao Dong",
+            "Fedotov Denis - Epifanov Dmitry",
+            "Sushkov Vladimir - Inoue Fumiya",
+            "Oll Aivo - Mei Fan"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16atr8.htm",
+          "stage": "第16届 R8",
+          "games": [
+            "Kamiya Shunsuke - Oll Aivo",
+            "Inoue Fumiya - Mei Fan",
+            "Sushkov Vladimir - Epifanov Dmitry",
+            "Fedotov Denis - Nakayama Tomoharu",
+            "Okabe Hiroshi - Cao Dong",
+            "Koyama Jun - Gardstrom Petter"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16atr9.htm",
+          "stage": "第16届 R9",
+          "games": [
+            "Inoue Fumiya - Kamiya Shunsuke",
+            "Oll Aivo - Epifanov Dmitry",
+            "Mei Fan - Nakayama Tomoharu",
+            "Sushkov Vladimir - Okabe Hiroshi",
+            "Fedotov Denis - Koyama Jun",
+            "Gardstrom Petter - Cao Dong"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16atr10.htm",
+          "stage": "第16届 R10",
+          "games": [
+            "Gardstrom Petter - Kamiya Shunsuke",
+            "Cao Dong - Koyama Jun",
+            "Fedotov Denis - Okabe Hiroshi",
+            "Sushkov Vladimir - Nakayama Tomoharu",
+            "Mei Fan - Epifanov Dmitry",
+            "Inoue Fumiya - Oll Aivo"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16atr11.htm",
+          "stage": "第16届 R11",
+          "games": [
+            "Cao Dong - Kamiya Shunsuke",
+            "Fedotov Denis - Gardstrom Petter",
+            "Koyama Jun - Sushkov Vladimir",
+            "Mei Fan - Okabe Hiroshi",
+            "Oll Aivo - Nakayama Tomoharu",
+            "Inoue Fumiya - Epifanov Dmitry"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16wtr1.htm",
+          "stage": "第16届 R1",
+          "games": [
+            "Li Xiaoqing - Oborina Anastasja",
+            "Wang Qingqing - Yusupmurzina Darya",
+            "Liu Xun - Salnikova Nonna",
+            "Tolstoguzova Sofia - Wu Zhiqin",
+            "Fujita Maiko - Reimand Hanna-Kai",
+            "Yu Yajun - Kolk Mari",
+            "Metreveli Irina - Kollo Liisa Maria"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16wtr2.htm",
+          "stage": "第16届 R2",
+          "games": [
+            "Li Xiaoqing - Wu Zhiqin",
+            "Fujita Maiko - Wang Qingqing",
+            "Liu Xun - Yu Yajun",
+            "Oborina Anastasja - Metreveli Irina",
+            "Yusupmurzina Darya - Reimand Hanna-Kai",
+            "Salnikova Nonna - Kolk Mari",
+            "Kollo Liisa Maria - Tolstoguzova Sofia"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16wtr3.htm",
+          "stage": "第16届 R3",
+          "games": [
+            "Wang Qingqing - Metreveli Irina",
+            "Liu Xun - Wu Zhiqin",
+            "Li Xiaoqing - Yusupmurzina Darya",
+            "Fujita Maiko - Salnikova Nonna",
+            "Tolstoguzova Sofia - Yu Yajun",
+            "Oborina Anastasja - Kolk Mari",
+            "Kollo Liisa Maria - Reimand Hanna-Kai"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16wtr4.htm",
+          "stage": "第16届 R4",
+          "games": [
+            "Metreveli Irina - Wu Zhiqin",
+            "Salnikova Nonna - Li Xiaoqing",
+            "Wang Qingqing - Liu Xun",
+            "Yu Yajun - Fujita Maiko",
+            "Yusupmurzina Darya - Tolstoguzova Sofia",
+            "Oborina Anastasja - Reimand Hanna-Kai",
+            "Kollo Liisa Maria - Kolk Mari"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16wtr5.htm",
+          "stage": "第16届 R5",
+          "games": [
+            "Li Xiaoqing - Metreveli Irina",
+            "Wang Qingqing - Wu Zhiqin",
+            "Tolstoguzova Sofia - Salnikova Nonna",
+            "Liu Xun - Oborina Anastasja",
+            "Reimand Hanna-Kai - Yu Yajun",
+            "Fujita Maiko - Kolk Mari",
+            "Kollo Liisa Maria - Yusupmurzina Darya"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16wtr6.htm",
+          "stage": "第16届 R6",
+          "games": [
+            "Oborina Anastasja - Wu Zhiqin",
+            "Li Xiaoqing - Tolstoguzova Sofia",
+            "Fujita Maiko - Metreveli Irina",
+            "Wang Qingqing - Salnikova Nonna",
+            "Liu Xun - Reimand Hanna-Kai",
+            "Yusupmurzina Darya - Kolk Mari"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16wtr7.htm",
+          "stage": "第16届 R7",
+          "games": [
+            "Wu Zhiqin - Fujita Maiko",
+            "Wang Qingqing - Li Xiaoqing",
+            "Metreveli Irina - Tolstoguzova Sofia",
+            "Liu Xun - Yusupmurzina Darya",
+            "Oborina Anastasja - Yu Yajun",
+            "Kolk Mari - Reimand Hanna-Kai",
+            "Kollo Liisa Maria - Salnikova Nonna"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16wtr8.htm",
+          "stage": "第16届 R8",
+          "games": [
+            "Wu Zhiqin - Yu Yajun",
+            "Li Xiaoqing - Fujita Maiko",
+            "Metreveli Irina - Yusupmurzina Darya",
+            "Tolstoguzova Sofia - Wang Qingqing",
+            "Reimand Hanna-Kai - Salnikova Nonna",
+            "Liu Xun - Kolk Mari"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16wtr9.htm",
+          "stage": "第16届 R9",
+          "games": [
+            "Yusupmurzina Darya - Wu Zhiqin",
+            "Reimand Hanna-Kai - Li Xiaoqing",
+            "Metreveli Irina - Kolk Mari",
+            "Wang Qingqing - Yu Yajun",
+            "Oborina Anastasja - Salnikova Nonna",
+            "Liu Xun - Tolstoguzova Sofia",
+            "Fujita Maiko - Kollo Liisa Maria"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16btr1.htm",
+          "stage": "第16届 R1",
+          "games": [
+            "Wai Chan Keong - Metreveli Maksim",
+            "Lisyutin Alexandr - Nikonov Konstantin",
+            "Kolk Kuno - Fitzermann Adrian",
+            "Mesila Villem - Kurdina Olga",
+            "Topkin Georg-Romet - Huang Xiuyi",
+            "Laube Pavel - Rahumagi Brenet",
+            "Piik Sander - Kim Hong Soon",
+            "Sun In - Moor Karl-Mattias",
+            "Jang Won-cheol - Metreveli Georgiy",
+            "Sadova Taisia - Lavrik-Karmazin Maksim",
+            "Salnikov Pavel - Koni Kirke",
+            "Rumyantseva Ekaterina - Zajk Micha",
+            "Rizvanov Edward - Burtsev Peter",
+            "Taiblin Yuriy - Gorbachev Daniil",
+            "Park Woong-bae - Ikonen Jussi",
+            "Nitov Melissa - Balabhai Viktor"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16btr2.htm",
+          "stage": "第16届 R2",
+          "games": [
+            "Metreveli Georgiy - Ikonen Jussi",
+            "Kurdina Olga - Gorbachev Daniil",
+            "Metreveli Maksim - Sadova Taisia",
+            "Moor Karl-Mattias - Kim Hong Soon",
+            "Mesila Villem - Balabhai Viktor",
+            "Wai Chan Keong - Zajk Micha",
+            "Rizvanov Edward - Piik Sander",
+            "Sun In - Huang Xiuyi",
+            "Koni Kirke - Park Woong-bae",
+            "Topkin Georg-Romet - Rahumagi Brenet",
+            "Nikonov Konstantin - Sandstrom Richard",
+            "Rumyantseva Ekaterina - Kolk Kuno",
+            "Jang Won-cheol - Bushkovsky Lyudvik",
+            "Laube Pavel - Salnikov Pavel",
+            "Lavrik-Karmazin Maksim - Burtsev Peter"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2019/wc16btr3.htm",
+          "stage": "第16届 R3",
+          "games": [
+            "Lavrik-Karmazin Maksim - Wai Chan Keong",
+            "Rahumagi Brenet - Fitzermann Adrian",
+            "Sandstrom Richard - Mesila Villem",
+            "Jang Won-cheol - Moor Karl-Mattias",
+            "Sadova Taisia - Taiblin Yuriy",
+            "Nikonov Konstantin - Salnikov Pavel",
+            "Koni Kirke - Topkin Georg-Romet",
+            "Balabhai Viktor - Buszkowski Ludwik",
+            "Sun In - Burtsev Peter",
+            "Park Woong-bae - Kolk Kuno",
+            "Huang Xiuyi - Rizvanov Edward",
+            "Nitov Melissa - Ikonen Jussi",
+            "Piik Sander - Laube Pavel",
+            "Metreveli Maksim - Metreveli Georgiy",
+            "Lisyutin Alexandr - Rumyantseva Ekaterina"
+          ]
+        }
+      ],
+      "notes": "由脚本抓取，未逐页人工复核；每条都带页面地址，抽查时按地址回原页对。轮次页不给胜负分，结果一律留空。"
+    },
+    {
+      "event": "第15届",
+      "year": "2017",
+      "checked": "2026-09-28",
+      "method": "本项目 scripts/fetch-world-championship-sources.mjs 逐页读取励精连珠教室正赛轮次页，只登记页面上原文成对的「黑 - 白」；无 robots 限制（该站 robots.txt 为 404），逐页间隔 1.2 秒。",
+      "pages": [
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15qr1.htm",
+          "stage": "第15届 R1",
+          "games": [
+            "Okabe Hiroshi - Lu Wei-Yuan",
+            "Sushkov Vladimir - Chou Huang Yu-Chien",
+            "Nakayama Tomoharu - Gardstrom Petter",
+            "Mesila Villem - Lan Zhiren",
+            "Balabhai Viktor - Oll Aivo",
+            "Sun In - Tang Kai Lam",
+            "Chen Ko-Han - Kim Hong Soon",
+            "Lin Huang-Yu - Jonsson Peter",
+            "Topkin Georg-Romet - Mei Fan",
+            "Rahumagi Brenet - Koyama Jun",
+            "Wai Chan Keong - Wang Yuxuan",
+            "Hobemagi Martin - Liu Yang",
+            "Park Sang-Hyeon - Tachi Masaya",
+            "Epifanov Dmitry - Cho Ik-hyun"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15qr2.htm",
+          "stage": "第15届 R2",
+          "games": [
+            "Sushkov Vladimir - Koyama Jun",
+            "Nakayama Tomoharu - Hobemagi Martin",
+            "Tachi Masaya - Lan Zhiren",
+            "Oll Aivo - Epifanov Dmitry",
+            "Lin Huang-Yu - Wai Chan Keong",
+            "Chen Ko-Han - Lu Wei-Yuan",
+            "Mei Fan - Sun In",
+            "Jonsson Peter - Wang Yuxuan",
+            "Chou Huang Yu-Chien - Rahumagi Brenet",
+            "Gardstrom Petter - Liu Yang",
+            "Mesila Villem - Park Sang-Hyeon",
+            "Balabhai Viktor - Cho Ik-hyun"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15qr3.htm",
+          "stage": "第15届 R3",
+          "games": [
+            "Oll Aivo - Nakayama Tomoharu",
+            "Koyama Jun - Lan Zhiren",
+            "Lin Huang-Yu - Okabe Hiroshi",
+            "Tachi Masaya - Tang Kai Lam",
+            "Topkin Georg-Romet - Lu Wei-Yuan",
+            "Wai Chan Keong - Sushkov Vladimir",
+            "Mei Fan - Chou Huang Yu-Chien",
+            "Wang Yuxuan - Balabhai Viktor",
+            "Mesila Villem - Hobemagi Martin",
+            "Liu Yang - Epifanov Dmitry",
+            "Chen Ko-Han - Gardstrom Petter",
+            "Sun In - Kim Hong Soon",
+            "Jonsson Peter - Park Sang-Hyeon",
+            "Cho Ik-hyun - Rahumagi Brenet"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15qr4.htm",
+          "stage": "第15届 R4",
+          "games": [
+            "Wai Chan Keong - Nakayama Tomoharu",
+            "Lu Wei-Yuan - Tang Kai Lam",
+            "Lan Zhiren - Okabe Hiroshi",
+            "Wai Wang Yuxuan - Oll Aivo",
+            "Lin Huang-Yu - Liu Yang",
+            "Koyama Jun - Mei Fan",
+            "Hobemagi Martin - Chen Ko-Han",
+            "Topkin Georg-Romet - Kim Hong Soon",
+            "Epifanov Dmitry - Tachi Masaya",
+            "Sushkov Vladimir - Rahumagi Brenet",
+            "Chou Huang Yu-Chien - Park Sang-Hyeon",
+            "Balabhai Viktor - Mesila Villem",
+            "Jonsson Peter - Gardstrom Petter",
+            "Sun In - Cho Ik-hyun"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15qr5.htm",
+          "stage": "第15届 R5",
+          "games": [
+            "Lu Wei-Yuan - Nakayama Tomoharu",
+            "Lan Zhiren - Lin Huang-Yu",
+            "Oll Aivo - Mei Fan",
+            "Tang Kai Lam - Kim Hong Soon",
+            "Chen Ko-Han - Wai Chan Keong",
+            "Okabe Hiroshi - Koyama Jun",
+            "Mesila Villem - Sushkov Vladimir",
+            "Hobemagi Martin - Wang Yuxuan",
+            "Liu Yang - Chou Huang Yu-Chien",
+            "Epifanov Dmitry - Topkin Georg-Romet",
+            "Tachi Masaya - Balabhai Viktor",
+            "Rahumagi Brenet - Gardstrom Petter",
+            "Park Sang-Hyeon - Sun In",
+            "Jonsson Peter - Cho Ik-hyun"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15qr6.htm",
+          "stage": "第15届 R6",
+          "games": [
+            "Nakayama Tomoharu - Lin Huang-Yu",
+            "Lu Wei-Yuan - Mei Fan",
+            "Chen Ko-Han - Tang Kai Lam",
+            "Okabe Hiroshi - Oll Aivo",
+            "Sushkov Vladimir - Wang Yuxuan",
+            "Chou Huang Yu-Chien - Lan Zhiren",
+            "Koyama Jun - Kim Hong Soon",
+            "Wai Chan Keong - Tachi Masaya",
+            "Topkin Georg-Romet - Hobemagi Martin",
+            "Gardstrom Petter - Epifanov Dmitry",
+            "Mesila Villem - Liu Yang",
+            "Sun In - Jonsson Peter",
+            "Rahumagi Brenet - Balabhai Viktor",
+            "Cho Ik-hyun - Park Sang-Hyeon"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15qr7.htm",
+          "stage": "第15届 R7",
+          "games": [
+            "Nakayama Tomoharu - Mei Fan",
+            "Lin Huang-Yu - Tang Kai Lam",
+            "Okabe Hiroshi - Sushkov Vladimir",
+            "Chen Ko-Han - Chou Huang Yu-Chien",
+            "Koyama Jun - Lu Wei-Yuan",
+            "Lan Zhiren - Topkin Georg-Romet",
+            "Tachi Masaya - Oll Aivo",
+            "Sun In - Wang Yuxuan",
+            "Wai Chan Keong - Epifanov Dmitry",
+            "Liu Yang - Kim Hong Soon",
+            "Hobemagi Martin - Balabhai Viktor",
+            "Gardstrom Petter - Park Sang-Hyeon",
+            "Mesila Villem - Cho Ik-hyun",
+            "Rahumagi Brenet - Jonsson Peter"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15ar1.htm",
+          "stage": "第15届 R1",
+          "games": [
+            "Lin Liu-Min - Lin Huang-Yu",
+            "Chou Huang Yu-Chien - Makarov Pavel",
+            "Kamiya Shunsuke - Lin Shu-Hsuan",
+            "Sushkov Vladimir - Mei Fan",
+            "Zhu Jianfeng - Qi Guan",
+            "Nakamura Shigeru - Nakayama Tomoharu"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15ar2.htm",
+          "stage": "第15届 R2",
+          "games": [
+            "Nakamura Shigeru - Lin Huang-Yu",
+            "Zhu Jianfeng - Nakayama Tomoharu",
+            "Qi Guan - Mei Fan",
+            "Kamiya Shunsuke - Sushkov Vladimir",
+            "Lin Shu-Hsuan - Makarov Pavel",
+            "Chou Huang Yu-Chien - Lin Liu-Min"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15ar3.htm",
+          "stage": "第15届 R3",
+          "games": [
+            "Lin Huang-Yu - Chou Huang Yu-Chien",
+            "Lin Liu-Min - Lin Shu-Hsuan",
+            "Makarov Pavel - Sushkov Vladimir",
+            "Kamiya Shunsuke - Qi Guan",
+            "Mei Fan - Nakayama Tomoharu",
+            "Zhu Jianfeng - Nakamura Shigeru"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15ar4.htm",
+          "stage": "第15届 R4",
+          "games": [
+            "Zhu Jianfeng - Lin Huang-Yu",
+            "Nakamura Shigeru - Mei Fan",
+            "Kamiya Shunsuke - Nakayama Tomoharu",
+            "Makarov Pavel - Qi Guan",
+            "Lin Liu-Min - Sushkov Vladimir",
+            "Chou Huang Yu-Chien - Lin Shu-Hsuan"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15ar5.htm",
+          "stage": "第15届 R5",
+          "games": [
+            "Chou Huang Yu-Chien - Sushkov Vladimir",
+            "Qi Guan - Lin Liu-Min",
+            "Makarov Pavel - Nakayama Tomoharu",
+            "Nakamura Shigeru - Kamiya Shunsuke",
+            "Mei Fan - Zhu Jianfeng"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15ar6.htm",
+          "stage": "第15届 R6",
+          "games": [
+            "Lin Huang-Yu - Mei Fan",
+            "Kamiya Shunsuke - Zhu Jianfeng",
+            "Nakamura Shigeru - Makarov Pavel",
+            "Lin Liu-Min - Nakayama Tomoharu",
+            "Chou Huang Yu-Chien - Qi Guan",
+            "Lin Shu-Hsuan - Sushkov Vladimir"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15ar7.htm",
+          "stage": "第15届 R7",
+          "games": [
+            "Sushkov Vladimir - Lin Huang-Yu",
+            "Lin Shu-Hsuan - Qi Guan",
+            "Chou Huang Yu-Chien - Nakayama Tomoharu",
+            "Nakamura Shigeru - Lin Liu-Min",
+            "Makarov Pavel - Zhu Jianfeng",
+            "Kamiya Shunsuke - Mei Fan"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15ar8.htm",
+          "stage": "第15届 R8",
+          "games": [
+            "Kamiya Shunsuke - Lin Huang-Yu",
+            "Mei Fan - Makarov Pavel",
+            "Lin Liu-Min - Zhu Jianfeng",
+            "Chou Huang Yu-Chien - Nakamura Shigeru",
+            "Nakayama Tomoharu - Lin Shu-Hsuan",
+            "Qi Guan - Sushkov Vladimir"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15ar9.htm",
+          "stage": "第15届 R9",
+          "games": [
+            "Qi Guan - Lin Huang-Yu",
+            "Sushkov Vladimir - Nakayama Tomoharu",
+            "Lin Shu-Hsuan - Nakamura Shigeru",
+            "Chou Huang Yu-Chien - Zhu Jianfeng",
+            "Mei Fan - Lin Liu-Min",
+            "Kamiya Shunsuke - Makarov Pavel"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15ar10.htm",
+          "stage": "第15届 R10",
+          "games": [
+            "Lin Huang-Yu - Makarov Pavel",
+            "Kamiya Shunsuke - Lin Liu-Min",
+            "Chou Huang Yu-Chien - Mei Fan",
+            "Lin Shu-Hsuan - Zhu Jianfeng",
+            "Nakamura Shigeru - Sushkov Vladimir",
+            "Nakayama Tomoharu - Qi Guan"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15ar11.htm",
+          "stage": "第15届 R11",
+          "games": [
+            "Lin Huang-Yu - Nakayama Tomoharu",
+            "Qi Guan - Nakamura Shigeru",
+            "Sushkov Vladimir - Zhu Jianfeng",
+            "Mei Fan - Lin Shu-Hsuan",
+            "Chou Huang Yu-Chien - Kamiya Shunsuke",
+            "Makarov Pavel - Lin Liu-Min"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15wr1.htm",
+          "stage": "第15届 R1",
+          "games": [
+            "Sung Pei-Jung - Yusupmurzina Darya",
+            "Chien Yung-Hsuan - Wu Zhiqin",
+            "Yang Hsiao-Yu - Wang Qingqing",
+            "Lashko Kira - Ke Fang-Ying",
+            "Metreveli Irina - Liu Xun"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15wr2.htm",
+          "stage": "第15届 R2",
+          "games": [
+            "Liu Xun - Lashko Kira",
+            "Wang Qingqing - Ke Fang-Ying",
+            "Wu Zhiqin - Yang Hsiao-Yu",
+            "Yusupmurzina Darya - Chien Yung-Hsuan",
+            "Lin Chiao-Ying - Sung Pei-Jung"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15wr3.htm",
+          "stage": "第15届 R3",
+          "games": [
+            "Lin Chiao-Ying - Chien Yung-Hsuan",
+            "Yang Hsiao-Yu - Yusupmurzina Darya",
+            "Ke Fang-Ying - Wu Zhiqin",
+            "Wang Qingqing - Liu Xun",
+            "Metreveli Irina - Lashko Kira"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15wr4.htm",
+          "stage": "第15届 R4",
+          "games": [
+            "Lin Chiao-Ying - Yang Hsiao-Yu",
+            "Chien Yung-Hsuan - Sung Pei-Jung",
+            "Yusupmurzina Darya - Ke Fang-Ying",
+            "Wu Zhiqin - Liu Xun",
+            "Wang Qingqing - Metreveli Irina"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15wr5.htm",
+          "stage": "第15届 R5",
+          "games": [
+            "Sung Pei-Jung - Yang Hsiao-Yu",
+            "Ke Fang-Ying - Lin Chiao-Ying",
+            "Yusupmurzina Darya - Liu Xun",
+            "Metreveli Irina - Wu Zhiqin",
+            "Wang Qingqing - Lashko Kira"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15wr6.htm",
+          "stage": "第15届 R6",
+          "games": [
+            "Wu Zhiqin - Lashko Kira",
+            "Yusupmurzina Darya - Metreveli Irina",
+            "Lin Chiao-Ying - Liu Xun",
+            "Sung Pei-Jung - Ke Fang-Ying",
+            "Yang Hsiao-Yu - Chien Yung-Hsuan"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15wr7.htm",
+          "stage": "第15届 R7",
+          "games": [
+            "Ke Fang-Ying - Chien Yung-Hsuan",
+            "Liu Xun - Sung Pei-Jung",
+            "Lin Chiao-Ying - Metreveli Irina",
+            "Lashko Kira - Yusupmurzina Darya",
+            "Wang Qingqing - Wu Zhiqin"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15wr8.htm",
+          "stage": "第15届 R8",
+          "games": [
+            "Yusupmurzina Darya - Wang Qingqing",
+            "Lin Chiao-Ying - Lashko Kira",
+            "Sung Pei-Jung - Metreveli Irina",
+            "Chien Yung-Hsuan - Liu Xun",
+            "Ke Fang-Ying - Yang Hsiao-Yu"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15wr9.htm",
+          "stage": "第15届 R9",
+          "games": [
+            "Liu Xun - Yang Hsiao-Yu",
+            "Chien Yung-Hsuan - Metreveli Irina",
+            "Lashko Kira - Sung Pei-Jung",
+            "Lin Chiao-Ying - Wang Qingqing",
+            "Wu Zhiqin - Yusupmurzina Darya"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15wr10.htm",
+          "stage": "第15届 R10",
+          "games": [
+            "Lin Chiao-Ying - Wu Zhiqin",
+            "Sung Pei-Jung - Wang Qingqing",
+            "Chien Yung-Hsuan - Lashko Kira",
+            "Yang Hsiao-Yu - Metreveli Irina",
+            "Ke Fang-Ying - Liu Xun"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15wr11.htm",
+          "stage": "第15届 R11",
+          "games": [
+            "Metreveli Irina - Ke Fang-Ying",
+            "Yang Hsiao-Yu - Lashko Kira",
+            "Wang Qingqing - Chien Yung-Hsuan",
+            "Wu Zhiqin - Sung Pei-Jung",
+            "Lin Chiao-Ying - Yusupmurzina Darya"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2017/wc15br1.htm",
+          "stage": "第15届 R1",
+          "games": [
+            "Liao Jun-Yen - Okabe Hiroshi",
+            "Lan Zhiren - Huang Sheng-Hsun",
+            "Topkin Georg-Romet - Tang Kai Lam",
+            "Chen Ko-Han - Feng Sheng-Yu",
+            "Koyama Jun - Rahumagi Brenet",
+            "Tachi Masaya - Metreveli Maksim",
+            "Wai Chan Keong - Epifanov Dmitry",
+            "Liu Yang - Lu Wei-Yuan",
+            "Tatsutomi Hiroyuki - Huang Yen-Hua",
+            "Yang Yu-Hsiung - Hsu Chung-Yi",
+            "Sun In - Tao Tao",
+            "Jonsson Peter - Chang Ming-Jun"
+          ]
+        }
+      ],
+      "notes": "由脚本抓取，未逐页人工复核；每条都带页面地址，抽查时按地址回原页对。轮次页不给胜负分，结果一律留空。"
+    },
+    {
+      "event": "第14届",
+      "year": "2015",
+      "checked": "2026-09-28",
+      "method": "本项目 scripts/fetch-world-championship-sources.mjs 逐页读取励精连珠教室正赛轮次页，只登记页面上原文成对的「黑 - 白」；无 robots 限制（该站 robots.txt 为 404），逐页间隔 1.2 秒。",
+      "pages": [
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14qr1.htm",
+          "stage": "第14届 R1",
+          "games": [
+            "Poltaratsky Nikolay - Lin Huang-Yu",
+            "Mesila Villem - Nakayama Tomoharu",
+            "Kamiya Shunsuke - Mano Yoshihisa",
+            "Tachi Masaya - Huang Yen-Hua",
+            "Balabhai Viktor - Fedorkin Oleg",
+            "Wang Qingqing - Mosinyan Davit",
+            "Jonsson Peter - Epifanov Dmitry",
+            "Hobemagi Martin - Jellve Emma",
+            "Koyama Jun - Topkin Georg-Romet",
+            "Ishitani Shinichi - Khramov Andrey",
+            "Karasyov Maxim - Sun In",
+            "Tang Kai Lam - Lin Liu-Min"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14qr2.htm",
+          "stage": "第14届 R2",
+          "games": [
+            "Lin Huang-Yu - Hobemagi Martin",
+            "Koyama Jun - Nakayama Tomoharu",
+            "Kamiya Shunsuke - Ishitani Shin-ichi",
+            "Huang Yen-Hua - Fedorkin Oleg",
+            "Wang Qingqing - Tang Kai Lam",
+            "Sun In - Epifanov Dmitry",
+            "Balabhai Viktor - Tachi Masaya",
+            "Karasyov Maxim - Jonsson Peter",
+            "Mosinyan Davit - Lin Liu-Min",
+            "Jellve Emma - Poltaratsky Nikolay",
+            "Topkin Georg-Romet - Mesila Villem",
+            "Khramov Andrey - Mano Yoshihisa"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14qr3.htm",
+          "stage": "第14届 R3",
+          "games": [
+            "Epifanov Dmitry - Lin Huang-Yu",
+            "Koyama Jun - Kamiya Shunsuke",
+            "Huang Yen-Hua - Tang Kai Lam",
+            "Nakayama Tomoharu - Fedorkin Oleg",
+            "Tachi Masaya - Poltaratsky Nikolay",
+            "Wang Qingqing - Mesila Villem",
+            "Hobemagi Martin - Mano Yoshihisa",
+            "Ishitani Shin-ichi - Jonsson Peter",
+            "Lin Liu-Min - Sun In",
+            "Karasyov Maxim - Jellve Emma",
+            "Topkin Georg-Romet - Balabhai Viktor",
+            "Khramov Andrey - Mosinyan Davit"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14qr4.htm",
+          "stage": "第14届 R4",
+          "games": [
+            "Tang Kai Lam - Lin Huang-Yu",
+            "Kamiya Shunsuke - Fedorkin Oleg",
+            "Tachi Masaya - Hobemagi Martin",
+            "Wang Qingqing - Koyama Jun",
+            "Ishitani Shin-ichi - Epifanov Dmitry",
+            "Huang Yen-Hua - Lin Liu-Min",
+            "Nakayama Tomoharu - Jonsson Peter",
+            "Sun In - Mesila Villem",
+            "Mano Yoshihisa - Balabhai Viktor",
+            "Poltaratsky Nikolay - Khramov Andrey",
+            "Topkin Georg-Romet - Karasyov Maxim",
+            "Mosinyan Davit - Jellve Emma"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14qr5.htm",
+          "stage": "第14届 R5",
+          "games": [
+            "Tang Kai Lam - Fedorkin Oleg",
+            "Lin Huang-Yu - Kamiya Shunsuke",
+            "Hobemagi Martin - Epifanov Dmitry",
+            "Koyama Jun - Huang Yen-Hua",
+            "Tachi Masaya - Wang Qingqing",
+            "Nakayama Tomoharu - Poltaratsky Nikolay",
+            "Ishitani Shin-ichi - Mesila Villem",
+            "Balabhai Viktor - Lin Liu-Min",
+            "Mano Yoshihisa - Karasyov Maxim",
+            "Jellve Emma - Jonsson Peter",
+            "Topkin Georg-Romet - Mosinyan Davit"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14qr6.htm",
+          "stage": "第14届 R6",
+          "games": [
+            "Tang Kai Lam - Hobemagi Martin",
+            "Fedorkin Oleg - Lin Huang-Yu",
+            "Koyama Jun - Epifanov Dmitry",
+            "Mesila Villem - Kamiya Shunsuke",
+            "Lin Liu-Min - Wang Qingqing",
+            "Huang Yen-Hua - Poltaratsky Nikolay",
+            "Nakayama Tomoharu - Tachi Masaya",
+            "Sun In - Ishitani Shin-ichi",
+            "Jonsson Peter - Mano Yoshihisa",
+            "Balabhai Viktor - Jellve Emma",
+            "Karasyov Maxim - Mosinyan Davit",
+            "Topkin Georg-Romet - Khramov Andrey"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14qr7.htm",
+          "stage": "第14届 R7",
+          "games": [
+            "Tang Kai Lam - Epifanov Dmitry",
+            "Hobemagi Martin - Fedorkin Oleg",
+            "Lin Huang-Yu - Wang Qingqing",
+            "Kamiya Shunsuke - Huang Yen-Hua",
+            "Koyama Jun - Lin Liu-Min",
+            "Sun In - Nakayama Tomoharu",
+            "Mesila Villem - Poltaratsky Nikolay",
+            "Jonsson Peter - Balabhai Viktor",
+            "Karasyov Maxim - Tachi Masaya",
+            "Topkin Georg-Romet - Ishitani Shin-ichi",
+            "Mosinyan Davit - Mano Yoshihisa",
+            "Jellve Emma - Khramov Andrey"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14ar1.htm",
+          "stage": "第14届 R1",
+          "games": [
+            "Salnikov Pavel - Fedorkin Oleg",
+            "Makarov Pavel - Taimla Tunnet",
+            "Qi Guan - Lan Zhiren",
+            "Hobemagi Martin - Kamiya Shunsuke",
+            "Okabe Hiroshi - Tang Kai Lam",
+            "Lin Huang-Yu - Chen Ko-Han"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14ar2.htm",
+          "stage": "第14届 R2",
+          "games": [
+            "Fedorkin Oleg - Lin Huang-Yu",
+            "Tang Kai Lam - Chen Ko-Han",
+            "Okabe Hiroshi - Kamiya Shunsuke",
+            "Qi Guan - Hobemagi Martin",
+            "Lan Zhiren - Taimla Tunnet",
+            "Makarov Pavel - Salnikov Pavel"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14ar3.htm",
+          "stage": "第14届 R3",
+          "games": [
+            "Fedorkin Oleg - Makarov Pavel",
+            "Lan Zhiren - Salnikov Pavel",
+            "Taimla Tunnet - Hobemagi Martin",
+            "Okabe Hiroshi - Qi Guan",
+            "Kamiya Shunsuke - Chen Ko-Han",
+            "Tang Kai Lam - Lin Huang-Yu"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14ar4.htm",
+          "stage": "第14届 R4",
+          "games": [
+            "Tang Kai Lam - Fedorkin Oleg",
+            "Lin Huang-Yu - Kamiya Shunsuke",
+            "Qi Guan - Chen Ko-Han",
+            "Taimla Tunnet - Okabe Hiroshi",
+            "Hobemagi Martin - Salnikov Pavel",
+            "Lan Zhiren - Makarov Pavel"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14ar5.htm",
+          "stage": "第14届 R5",
+          "games": [
+            "Lan Zhiren - Fedorkin Oleg",
+            "Okabe Hiroshi - Salnikov Pavel",
+            "Chen Ko-Han - Taimla Tunnet",
+            "Qi Guan - Lin Huang-Yu",
+            "Tang Kai Lam - Kamiya Shunsuke"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14ar6.htm",
+          "stage": "第14届 R6",
+          "games": [
+            "Kamiya Shunsuke - Fedorkin Oleg",
+            "Tang Kai Lam - Qi Guan",
+            "Lin Huang-Yu - Taimla Tunnet",
+            "Salnikov Pavel - Chen Ko-Han",
+            "Okabe Hiroshi - Makarov Pavel",
+            "Hobemagi Martin - Lan Zhiren"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14ar7.htm",
+          "stage": "第14届 R7",
+          "games": [
+            "Hobemagi Martin - Fedorkin Oleg",
+            "Lan Zhiren - Okabe Hiroshi",
+            "Makarov Pavel - Chen Ko-Han",
+            "Lin Huang-Yu - Salnikov Pavel",
+            "Tang Kai Lam - Taimla Tunnet",
+            "Kamiya Shunsuke - Qi Guan"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14ar8.htm",
+          "stage": "第14届 R8",
+          "games": [
+            "Fedorkin Oleg - Qi Guan",
+            "Kamiya Shunsuke - Taimla Tunnet",
+            "Tang Kai Lam - Salnikov Pavel",
+            "Lin Huang-Yu - Makarov Pavel",
+            "Okabe Hiroshi - Hobemagi Martin"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14ar9.htm",
+          "stage": "第14届 R9",
+          "games": [
+            "Okabe Hiroshi - Fedorkin Oleg",
+            "Chen Ko-Han - Hobemagi Martin",
+            "Lan Zhiren - Lin Huang-Yu",
+            "Makarov Pavel - Tang Kai Lam",
+            "Salnikov Pavel - Kamiya Shunsuke",
+            "Qi Guan - Taimla Tunnet"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14ar10.htm",
+          "stage": "第14届 R10",
+          "games": [
+            "Fedorkin Oleg - Taimla Tunnet",
+            "Salnikov Pavel - Qi Guan",
+            "Kamiya Shunsuke - Makarov Pavel",
+            "Lan Zhiren - Tang Kai Lam",
+            "Hobemagi Martin - Lin Huang-Yu",
+            "Okabe Hiroshi - Chen Ko-Han"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14ar11.htm",
+          "stage": "第14届 R11",
+          "games": [
+            "Chen Ko-Han - Fedorkin Oleg",
+            "Okabe Hiroshi - Lin Huang-Yu",
+            "Lan Zhiren - Kamiya Shunsuke",
+            "Qi Guan - Makarov Pavel",
+            "Salnikov Pavel - Taimla Tunnet"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14wr1.htm",
+          "stage": "第14届 R1",
+          "games": [
+            "Sung Pei-Jung - Wang Qingqing",
+            "Sumarokova Aleksandra - Prokopets Tatyana",
+            "Metreveli Irina - Kurdina Olga",
+            "Jellve Emma - Salnikova Nonna",
+            "Lashko Kira - Guo Xinlu"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14wr2.htm",
+          "stage": "第14届 R2",
+          "games": [
+            "Salnikova Nonna - Lashko Kira",
+            "Jellve Emma - Kurdina Olga",
+            "Metreveli Irina - Prokopets Tatyana",
+            "Sumarokova Aleksandra - Wang Qingqing",
+            "Yang Yimeng - Sung Pei-Jung"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14wr3.htm",
+          "stage": "第14届 R3",
+          "games": [
+            "Sumarokova Aleksandra - Yang Yimeng",
+            "Metreveli Irina - Wang Qingqing",
+            "Jellve Emma - Prokopets Tatyana",
+            "Lashko Kira - Kurdina Olga",
+            "Guo Xinlu - Salnikova Nonna"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14wr4.htm",
+          "stage": "第14届 R4",
+          "games": [
+            "Kurdina Olga - Guo Xinlu",
+            "Lashko Kira - Prokopets Tatyana",
+            "Tang Kai Lam - Fedorkin Oleg",
+            "Sung Pei-Jung - Sumarokova Aleksandra"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14wr5.htm",
+          "stage": "第14届 R5",
+          "games": [
+            "Sung Pei-Jung - Metreveli Irina",
+            "Yang Yimeng - Jellve Emma",
+            "Lashko Kira - Wang Qingqing",
+            "Guo Xinlu - Prokopets Tatyana",
+            "Salnikova Nonna - Kurdina Olga"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14wr6.htm",
+          "stage": "第14届 R6",
+          "games": [
+            "Salnikova Nonna - Prokopets Tatyana",
+            "Wang Qingqing - Guo Xinlu",
+            "Yang Yimeng - Lashko Kira",
+            "Sung Pei-Jung - Jellve Emma",
+            "Metreveli Irina - Sumarokova Aleksandra"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14wr7.htm",
+          "stage": "第14届 R7",
+          "games": [
+            "Sumarokova Aleksandra - Jellve Emma",
+            "Lashko Kira - Sung Pei-Jung",
+            "Guo Xinlu - Yang Yimeng",
+            "Salnikova Nonna - Wang Qingqing",
+            "Kurdina Olga - Prokopets Tatyana"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14wr8.htm",
+          "stage": "第14届 R8",
+          "games": [
+            "Wang Qingqing - Kurdina Olga",
+            "Salnikova Nonna - Yang Yimeng",
+            "Sung Pei-Jung - Guo Xinlu",
+            "Sumarokova Aleksandra - Lashko Kira",
+            "Jellve Emma - Metreveli Irina"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14wr9.htm",
+          "stage": "第14届 R9",
+          "games": [
+            "Lashko Kira - Metreveli Irina",
+            "Guo Xinlu - Sumarokova Aleksandra",
+            "Sung Pei-Jung - Salnikova Nonna",
+            "Kurdina Olga - Yang Yimeng",
+            "Wang Qingqing - Prokopets Tatyana"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14wr10.htm",
+          "stage": "第14届 R10",
+          "games": [
+            "Yang Yimeng - Prokopets Tatyana",
+            "Sung Pei-Jung - Kurdina Olga",
+            "Sumarokova Aleksandra - Salnikova Nonna",
+            "Metreveli Irina - Guo Xinlu",
+            "Jellve Emma - Lashko Kira"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14wr11.htm",
+          "stage": "第14届 R11",
+          "games": [
+            "Guo Xinlu - Jellve Emma",
+            "Salnikova Nonna - Metreveli Irina",
+            "Kurdina Olga - Sumarokova Aleksandra",
+            "Prokopets Tatyana - Sung Pei-Jung",
+            "Wang Qingqing - Yang Yimeng"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2015/wc14br1.htm",
+          "stage": "第14届 R1",
+          "games": [
+            "Jonsson Peter - Nakayama Tomoharu",
+            "Wang Chih-Kung - Tachi Masaya",
+            "Volkov Sergey - Epifanov Dmitry",
+            "Huang Xiuyi - Koyama Jun",
+            "Karasyov Maxim - Rumyantseva Ekaterina",
+            "Ponezhin Gennady - Lin Liu-Min",
+            "Topkin Georg-Romet - Vershinin Pavel",
+            "Barykin Victor - Danilin Ivan",
+            "Mesila Villem - Lavrik-Karmazin Maksim",
+            "Fedoseyev Arseniy - Mano Yoshihisa",
+            "Huang Yen-Hua - Karpov Fyodor",
+            "Diachkov Nikita - Balabhai Viktor",
+            "Stoyanov Kirill - Filinov Vladimir",
+            "Miyagawa Junzo - Lapin Ivan",
+            "Berezin Roman - Sun In",
+            "Khramov Andrey - Sirategyan Karen",
+            "Fedotov Denis - Stoyanova Anastasiya"
+          ]
+        }
+      ],
+      "notes": "由脚本抓取，未逐页人工复核；每条都带页面地址，抽查时按地址回原页对。轮次页不给胜负分，结果一律留空。"
+    },
+    {
+      "event": "第13届",
+      "year": "2013",
+      "checked": "2026-09-28",
+      "method": "本项目 scripts/fetch-world-championship-sources.mjs 逐页读取励精连珠教室正赛轮次页，只登记页面上原文成对的「黑 - 白」；无 robots 限制（该站 robots.txt 为 404），逐页间隔 1.2 秒。",
+      "pages": [
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rqtr1.htm",
+          "stage": "第13届 R1",
+          "games": [
+            "Fedorkin Oleg - Potapov Alexey",
+            "Hobemagi Martin - Okabe Hiroshi",
+            "Oll Aivo - Jonsson Peter",
+            "Kudomi Takahiro - Sushkov Vladimir",
+            "Sandstrom Richard - Andersson Tord",
+            "Pajuste Renee - Ishitani Shinichi",
+            "Lents Johann - Miyagawa Jyunzo",
+            "Salnikov Pavel - Filinov Vladimir"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rqtr2.htm",
+          "stage": "第13届 R2",
+          "games": [
+            "Okabe Hiroshi - Miyagawa Jyunzo",
+            "Oll Aivo - Sushkov Vladimir",
+            "Sandstrom Richard - Pajuste Renee",
+            "Filinov Vladimir - Potapov Alexey",
+            "Kudomi Takahiro - Fedorkin Oleg",
+            "Ishitani Shinichi - Jonsson Peter",
+            "Andersson Tord - Salnikov Pavel",
+            "Lents Johann - Hobemagi Martin"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rqtr3.htm",
+          "stage": "第13届 R3",
+          "games": [
+            "Sushkov Vladimir - Okabe Hiroshi",
+            "Fedorkin Oleg - Pajuste Renee",
+            "Potapov Alexey - Oll Aivo",
+            "Sandstrom Richard - Salnikov Pavel",
+            "Filinov Vladimir - Lents Johann",
+            "Miyagawa Jyunzo - Ishitani Shinichi",
+            "Kudomi Takahiro - Andersson Tord"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rqtr4.htm",
+          "stage": "第13届 R4",
+          "games": [
+            "Okabe Hiroshi - Pajuste Renee",
+            "Miyagawa Jyunzo - Sushkov Vladimir",
+            "Fedorkin Oleg - Salnikov Pavel",
+            "Filinov Vladimir - Oll Aivo",
+            "Potapov Alexey - Lents Johann",
+            "Kudomi Takahiro - Sandstrom Richard",
+            "Hobemagi Martin - Ishitani Shinichi",
+            "Andersson Tord - Jonsson Peter"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rqtr5.htm",
+          "stage": "第13届 R5",
+          "games": [
+            "Oll Aivo - Okabe Hiroshi",
+            "Fedorkin Oleg - Sushkov Vladimir",
+            "Pajuste Renee - Potapov Alexey",
+            "Kudomi Takahiro - Salnikov Pavel",
+            "Miyagawa Jyunzo - Hobemagi Martin",
+            "Lents Johann - Jonsson Peter",
+            "Sandstrom Richard - Ishitani Shinichi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rqtr6.htm",
+          "stage": "第13届 R6",
+          "games": [
+            "Sushkov Vladimir - Pajuste Renee",
+            "Okabe Hiroshi - Fedorkin Oleg",
+            "Oll Aivo - Salnikov Pavel",
+            "Hobemagi Martin - Potapov Aleksei",
+            "Kudomi Takahiro - Filinov Vladimir",
+            "Sandstrom Richard - Lents Johann",
+            "Jonsson Peter - Miyagawa Jyunzo",
+            "Ishitani Shinichi - Andersson Tord"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rqtr7.htm",
+          "stage": "第13届 R7",
+          "games": [
+            "Okabe Hiroshi - Salnikov Pavel",
+            "Sushkov Vladimir - Hobemagi Martin",
+            "Pajuste Renee - Oll Aivo",
+            "Filinov Vladimir - Fedorkin Oleg",
+            "Kudomi Takahiro - Jonsson Peter",
+            "Sandstrom Richard - Potapov Alexey",
+            "Lents Johann - Ishitani Shinichi",
+            "Andersson Tord - Miyagawa Jyunzo"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13ratr1.htm",
+          "stage": "第13届 R1",
+          "games": [
+            "Oosumi Yuuki - Taimla Tunnet",
+            "Epifanov Dmitry - Sushkov Vladimir",
+            "Salnikov Pavel - Hobemagi Martin",
+            "Lan Zhiren - Oll Aivo",
+            "Okabe Hiroshi - Chen Ko-Han",
+            "Cao Dong - Wang Qingqing"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13ratr2.htm",
+          "stage": "第13届 R2",
+          "games": [
+            "Wang Qingqing - Taimla Tunnet",
+            "Chen Ko-Han - Cao Dong",
+            "Lan Zhiren - Okabe Hiroshi",
+            "Oll Aivo - Hobemagi Martin",
+            "Sushkov Vladimir - Salnikov Pavel",
+            "Oosumi Yuuki - Epifanov Dmitry"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13ratr3.htm",
+          "stage": "第13届 R3",
+          "games": [
+            "Taimla Tunnet - Epifanov Dmitry",
+            "Salnikov Pavel - Oosumi Yuuki",
+            "Oll Aivo - Sushkov Vladimir",
+            "Hobemagi Martin - Okabe Hiroshi",
+            "Lan Zhiren - Cao Dong",
+            "Wang Qingqing - Chen Ko-Han"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13ratr4.htm",
+          "stage": "第13届 R4",
+          "games": [
+            "Taimla Tunnet - Chen Ko-Han",
+            "Wang Qingqing - Lan Zhiren",
+            "Hobemagi Martin - Cao Dong",
+            "Sushkov Vladimir - Okabe Hiroshi",
+            "Oll Aivo - Oosumi Yuuki",
+            "Salnikov Pavel - Epifanov Dmitry"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13ratr5.htm",
+          "stage": "第13届 R5",
+          "games": [
+            "Salnikov Pavel - Taimla Tunnet",
+            "Oll Aivo - Epifanov Dmitry",
+            "Oosumi Yuuki - Okabe Hiroshi",
+            "Sushkov Vladimir - Cao Dong",
+            "Wang Qingqing - Hobemagi Martin",
+            "Lan Zhiren - Chen Ko-Han"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13ratr6.htm",
+          "stage": "第13届 R6",
+          "games": [
+            "Lan Zhiren - Taimla Tunnet",
+            "Hobemagi Martin - Chen Ko-Han",
+            "Wang Qingqing - Sushkov Vladimir",
+            "Cao Dong - Oosumi Yuuki",
+            "Epifanov Dmitry - Okabe Hiroshi",
+            "Oll Aivo - Salnikov Pavel"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13ratr7.htm",
+          "stage": "第13届 R7",
+          "games": [
+            "Oll Aivo - Taimla Tunnet",
+            "Okabe Hiroshi - Salnikov Pavel",
+            "Cao Dong - Epifanov Dmitry",
+            "Wang Qingqing - Oosumi Yuuki",
+            "Chen Ko-Han - Sushkov Vladimir",
+            "Lan Zhiren - Hobemagi Martin"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13ratr8.htm",
+          "stage": "第13届 R8",
+          "games": [
+            "Taimla Tunnet - Hobemagi Martin",
+            "Lan Zhiren - Sushkov Vladimir",
+            "Oosumi Yuuki - Chen Ko-Han",
+            "Wang Qingqing - Epifanov Dmitry",
+            "Cao Dong - Salnikov Pavel",
+            "Oll Aivo - Okabe Hiroshi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13ratr9.htm",
+          "stage": "第13届 R9",
+          "games": [
+            "Taimla Tunnet - Okabe Hiroshi",
+            "Oll Aivo - Cao Dong",
+            "Wang Qingqing - Salnikov Pavel",
+            "Epifanov Dmitry - Chen Ko-Han",
+            "Oosumi Yuuki - Lan Zhiren",
+            "Hobemagi Martin - Sushkov Vladimir"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13ratr10.htm",
+          "stage": "第13届 R10",
+          "games": [
+            "Sushkov Vladimir - Taimla Tunnet",
+            "Hobemagi Martin - Oosumi Yuuki",
+            "Lan Zhiren - Epifanov Dmitry",
+            "Salnikov Pavel - Chen Ko-Han",
+            "Oll Aivo - Wang Qingqing",
+            "Cao Dong - Okabe Hiroshi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13ratr11.htm",
+          "stage": "第13届 R11",
+          "games": [
+            "Taimla Tunnet - Cao Dong",
+            "Okabe Hiroshi - Wang Qingqing",
+            "Chen Ko-Han - Oll Aivo",
+            "Lan Zhiren - Salnikov Pavel",
+            "Hobemagi Martin - Epifanov Dmitry",
+            "Oosumi Yuuki - Sushkov Vladimir"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rwtr1.htm",
+          "stage": "第13届 R1",
+          "games": [
+            "Reimand Hanna-Kai - Narva Mai",
+            "Metreveli Irina - Lashko Kira",
+            "Kurdina Olga - Jogimaa Carmen",
+            "Tiivel Tuuli - Kolk Kaia",
+            "Krayeva Tatyana - Oborina Anastasja"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rwtr2.htm",
+          "stage": "第13届 R2",
+          "games": [
+            "Oborina Anastasja - Narva Mai",
+            "Kolk Kaia - Krayeva Tatyana",
+            "Tiivel Tuuli - Jogimaa Carmen",
+            "Lashko Kira - Kurdina Olga",
+            "Reimand Hanna-Kai - Metreveli Irina"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rwtr3.htm",
+          "stage": "第13届 R3",
+          "games": [
+            "Metreveli Irina - Narva Mai",
+            "Kurdina Olga - Reimand Hanna-Kai",
+            "Lashko Kira - Tiivel Tuuli",
+            "Krayeva Tatyana - Jogimaa Carmen",
+            "Oborina Anastasja - Kolk Kaia"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rwtr4.htm",
+          "stage": "第13届 R4",
+          "games": [
+            "Narva Mai - Kolk Kaia",
+            "Oborina Anastasja - Jogimaa Carmen",
+            "Lashko Kira - Krayeva Tatyana",
+            "Reimand Hanna-Kai - Tiivel Tuuli",
+            "Metreveli Irina - Kurdina Olga"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rwtr5.htm",
+          "stage": "第13届 R5",
+          "games": [
+            "Kurdina Olga - Narva Mai",
+            "Tiivel Tuuli - Metreveli Irina",
+            "Krayeva Tatyana - Reimand Hanna-Kai",
+            "Lashko Kira - Oborina Anastasja",
+            "Jogimaa Carmen - Kolk Kaia"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rwtr6.htm",
+          "stage": "第13届 R6",
+          "games": [
+            "Jogimaa Carmen - Narva Mai",
+            "Lashko Kira - Kolk Kaia",
+            "Reimand Hanna-Kai - Oborina Anastasja",
+            "Metreveli Irina - Krayeva Tatyana",
+            "Kurdina Olga - Tiivel Tuuli"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rwtr7.htm",
+          "stage": "第13届 R7",
+          "games": [
+            "Tiivel Tuuli - Narva Mai",
+            "Krayeva Tatyana - Kurdina Olga",
+            "Metreveli Irina - Oborina Anastasja",
+            "Kolk Kaia - Reimand Hanna-Kai",
+            "Jogimaa Carmen - Lashko Kira"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rwtr8.htm",
+          "stage": "第13届 R8",
+          "games": [
+            "Lashko Kira - Narva Mai",
+            "Metreveli Irina - Kolk Kaia",
+            "Oborina Anastasja - Kurdina Olga",
+            "Tiivel Tuuli - Krayeva Tatyana"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rwtr9.htm",
+          "stage": "第13届 R9",
+          "games": [
+            "Krayeva Tatyana - Narva Mai",
+            "Tiivel Tuuli - Oborina Anastasja",
+            "Kolk Kaia - Kurdina Olga",
+            "Metreveli Irina - Jogimaa Carmen",
+            "Lashko Kira - Reimand Hanna-Kai"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rbtr1.htm",
+          "stage": "第13届 R1",
+          "games": [
+            "Kudomi Takahiro - Miyagawa Jyunzo",
+            "Tiivel Siim - Moor Karl Mattias",
+            "Poltaratskiy Nikolay - Kolk Kuno",
+            "Lohmus Kristofer - Holtsman Kris",
+            "Salnikova Nonna - Olumets Erko",
+            "Taiblin Yuriy - Ikla Markus",
+            "Malowiejski Piotr - Tesarik Stepan",
+            "Andersson Tord - Lillemaa Argo",
+            "Huang Xiuyi - Sadova Taisiia",
+            "Sandstrom Richard - Carlsson Martin",
+            "Rumyantseva Ekaterina - Kallikorm Kevin Kaido",
+            "Potapov Alexey - Belkina Nadezhda",
+            "Godlewski Filip - Topkin Georg-Romet",
+            "Filinov Vladimir - Rahumagi Brenet",
+            "Makarov Pavel - Fedorkin Oleg",
+            "Ishitani Shinichi - Mesila Villem",
+            "Ikonen Jussi - Kostlivy Radim"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rbtr2.htm",
+          "stage": "第13届 R2",
+          "games": [
+            "Moor Karl Mattias - Miyagawa Jyunzo",
+            "Lohmus Kristofer - Poltaratskiy Nikolay",
+            "Huang Xiuyi - Salnikova Nonna",
+            "Taiblin Yuriy - Andersson Tord",
+            "Malowiejski Piotr - Godlewski Filip",
+            "Makarov Pavel - Rumyantseva Ekaterina",
+            "Sandstrom Richard - Potapov Alexey",
+            "Filinov Vladimir - Ishitani Shinichi",
+            "Ikonen Jussi - Kudomi Takahiro",
+            "Kolk Kuno - Holtsman Kris",
+            "Ikla Markus - Lillemaa Argo",
+            "Sadova Taisiia - Olumets Erko",
+            "Carlsson Martin - Belkina Nadezhda",
+            "Tesarik Stepan - Topkin Georg-Romet",
+            "Mesila Villem - Rahumagi Brenet",
+            "Kallikorm Kevin Kaido - Fedorkin Oleg",
+            "Tiivel Siim - Kostlivy Radim"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2013/wc13rbtr3.htm",
+          "stage": "第13届 R3",
+          "games": [
+            "Salnikova Nonna - Makarov Pavel",
+            "Miyagawa Jyunzo - Taiblin Yuriy",
+            "Poltaratskiy Nikolay - Ishitani Shinichi",
+            "Sandstrom Richard - Moor Karl Mattias",
+            "Kolk Kuno - Olumets Erko",
+            "Tesarik Stepan - Lohmus Kristofer",
+            "Lillemaa Argo - Filinov Vladimir",
+            "Carlsson Martin - Andersson Tord",
+            "Huang Xiuyi - Rumyantseva Ekaterina",
+            "Mesila Villem - Potapov Alexey",
+            "Fedorkin Oleg - Godlewski Filip",
+            "Kostlivy Radim - Sadova Taisiia",
+            "Kudomi Takahiro - Holtsman Kris",
+            "Topkin Georg-Romet - Ikla Markus",
+            "Rahumagi Brenet - Belkina Nadezhda",
+            "Tiivel Siim - Kallikorm Kevin Kaido"
+          ]
+        }
+      ],
+      "notes": "由脚本抓取，未逐页人工复核；每条都带页面地址，抽查时按地址回原页对。轮次页不给胜负分，结果一律留空。"
+    },
+    {
+      "event": "第12届",
+      "year": "2011",
+      "checked": "2026-09-28",
+      "method": "本项目 scripts/fetch-world-championship-sources.mjs 逐页读取励精连珠教室正赛轮次页，只登记页面上原文成对的「黑 - 白」；无 robots 限制（该站 robots.txt 为 404），逐页间隔 1.2 秒。",
+      "pages": [
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rqtr1.htm",
+          "stage": "第12届 R1",
+          "games": [
+            "Zowadova Monika - Dai Xiaohan",
+            "Ono Takayuki - Okabe Hiroshi",
+            "Rybka Ales - Andersson Tord",
+            "Kise Katsumi - Hou I-Cheng",
+            "Soosorv Ants - Karasyov Maxim",
+            "Hobemagi Martin - Kamiya Shunsuke",
+            "Pajuste Renee - Poghosyan Albert",
+            "Lin Huang-Yu - Kawamura Norihiko",
+            "Sumarokov Evgeny - Blomstedt Torbjorn",
+            "Chiang Ping-Hung - Chen Ko-Han"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rqtr2.htm",
+          "stage": "第12届 R2",
+          "games": [
+            "Zowadova Monika - Karasyov Maxim",
+            "Hobemagi Martin - Poghosyan Albert",
+            "Kawamura Norihiko - Soosorv Ants",
+            "Dai Xiaohan - Okabe Hiroshi",
+            "Kise Katsumi - Rybka Ales",
+            "Sumarokov Evgeny - Nikonov Konstantin",
+            "Andersson Tord - Chen Ko-Han",
+            "Ono Takayuki - Hou I-Cheng",
+            "Lin Huang-Yu - Warner Emma",
+            "Kamiya Shunsuke - Pajuste Renee",
+            "Blomstedt Torbjorn - Chiang Ping-Hung"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rqtr3.htm",
+          "stage": "第12届 R3",
+          "games": [
+            "Dai Xiaohan - Rybka Ales",
+            "Zowadova Monika - Pajuste Renee",
+            "Okabe Hiroshi - Kise Katsumi",
+            "Nikonov Konstantin - Hobemagi Martin",
+            "Chen Ko-Han - Soosorv Ants",
+            "Ono Takayuki - Chiang Ping-Hung",
+            "Warner Emma - Andersson Tord",
+            "Kawamura Norihiko - Blomstedt Torbjorn",
+            "Sumarokov Evgeny - Karasyov Maxim",
+            "Hou I-Cheng - Lin Huang-Yu",
+            "Poghosyan Albert - Kamiya Shunsuke"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rqtr4.htm",
+          "stage": "第12届 R4",
+          "games": [
+            "Dai Xiaohan - Kise Katsumi",
+            "Zowadova Monika - Warner Emma",
+            "Okabe Hiroshi - Kawamura Norihiko",
+            "Chiang Ping-Hung - Rybka Ales",
+            "Kamiya Shunsuke - Nikonov Konstantin",
+            "Soosorv Ants - Hobemagi Martin",
+            "Blomstedt Torbjorn - Poghosyan Albert",
+            "Karasyov Maxim - Pajuste Renee",
+            "Lin Huang-Yu - Sumarokov Evgeny",
+            "Chen Ko-Han - Hou I-Cheng",
+            "Ono Takayuki - Andersson Tord"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rqtr5.htm",
+          "stage": "第12届 R5",
+          "games": [
+            "Nikonov Konstantin - Dai Xiaohan",
+            "Zowadova Monika - Blomstedt Torbjorn",
+            "Okabe Hiroshi - Hobemagi Martin",
+            "Rybka Ales - Hou I-Cheng",
+            "Kise Katsumi - Kawamura Norihiko",
+            "Soosorv Ants - Lin Huang-Yu",
+            "Kamiya Shunsuke - Sumarokov Evgeny",
+            "Warner Emma - Chiang Ping-Hung",
+            "Chen Ko-Han - Poghosyan Albert",
+            "Andersson Tord - Karasyov Maxim",
+            "Ono Takayuki - Pajuste Renee"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rqtr6.htm",
+          "stage": "第12届 R6",
+          "games": [
+            "Dai Xiaohan - Soosorv Ants",
+            "Kamiya Shunsuke - Zowadova Monika",
+            "Okabe Hiroshi - Nikonov Konstantin",
+            "Pajuste Renee - Rybka Ales",
+            "Kise Katsumi - Hobemagi Martin",
+            "Sumarokov Evgeny - Hou I-Cheng",
+            "Ono Takayuki - Lin Huang-Yu",
+            "Poghosyan Albert - Andersson Tord",
+            "Chen Ko-Han - Kawamura Norihiko",
+            "Warner Emma - Blomstedt Torbjorn",
+            "Karasyov Maxim - Chiang Ping-Hung"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rqtr7.htm",
+          "stage": "第12届 R7",
+          "games": [
+            "Soosorv Ants - Okabe Hiroshi",
+            "Rybka Ales - Chen Ko-Han",
+            "Nikonov Konstantin - Ono Takayuki",
+            "Dai Xiaohan - Hou I-Cheng",
+            "Lin Huang-Yu - Kise Katsumi",
+            "Sumarokov Evgeny - Hobemagi Martin",
+            "Kamiya Shunsuke - Kawamura Norihiko",
+            "Warner Emma - Karasyov Maxim",
+            "Blomstedt Torbjorn - Andersson Tord",
+            "Pajuste Renee - Chiang Ping-Hung",
+            "Zowadova Monika - Poghosyan Albert"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12ratr1.htm",
+          "stage": "第12届 R1",
+          "games": [
+            "Dai Xiaohan - Cao Dong",
+            "Oll Aivo - Taimla Tunnet",
+            "Oosumi Yuuki - Andersson Tord",
+            "Hou I-Cheng - Huang Jinxian",
+            "Sushkov Vladimir - Artemiev Sergey",
+            "Okabe Hiroshi - Lin Huang-Yu"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12ratr2.htm",
+          "stage": "第12届 R2",
+          "games": [
+            "Dai Xiaohan - Lin Huang-Yu",
+            "Okabe Hiroshi - Artemiev Sergey",
+            "Sushkov Vladimir - Hou I-Cheng",
+            "Oosumi Yuuki - Huang Jinxian",
+            "Andersson Tord - Oll Aivo",
+            "Taimla Tunnet - Cao Dong"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12ratr3.htm",
+          "stage": "第12届 R3",
+          "games": [
+            "Taimla Tunnet - Dai Xiaohan",
+            "Andersson Tord - Cao Dong",
+            "Oll Aivo - Huang Jinxian",
+            "Oosumi Yuuki - Sushkov Vladimir",
+            "Okabe Hiroshi - Hou I-Cheng",
+            "Artemiev Sergey - Lin Huang-Yu"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12ratr4.htm",
+          "stage": "第12届 R4",
+          "games": [
+            "Artemiev Sergey - Dai Xiaohan",
+            "Lin Huang-Yu - Hou I-Cheng",
+            "Okabe Hiroshi - Oosumi Yuuki",
+            "Sushkov Vladimir - Oll Aivo",
+            "Cao Dong - Huang Jinxian",
+            "Taimla Tunnet - Andersson Tord"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12ratr5.htm",
+          "stage": "第12届 R5",
+          "games": [
+            "Andersson Tord - Dai Xiaohan",
+            "Huang Jinxian - Taimla Tunnet",
+            "Sushkov Vladimir - Cao Dong",
+            "Oll Aivo - Okabe Hiroshi",
+            "Oosumi Yuuki - Lin Huang-Yu",
+            "Hou I-Cheng - Artemiev Sergey"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12ratr6.htm",
+          "stage": "第12届 R6",
+          "games": [
+            "Dai Xiaohan - Hou I-Cheng",
+            "Artemiev Sergey - Oosumi Yuuki",
+            "Lin Huang-Yu - Oll Aivo",
+            "Okabe Hiroshi - Cao Dong",
+            "Sushkov Vladimir - Taimla Tunnet",
+            "Andersson Tord - Huang Jinxian"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12ratr7.htm",
+          "stage": "第12届 R7",
+          "games": [
+            "Dai Xiaohan - Huang Jinxian",
+            "Sushkov Vladimir - Andersson Tord",
+            "Taimla Tunnet - Okabe Hiroshi",
+            "Cao Dong - Lin Huang-Yu",
+            "Artemiev Sergey - Oll Aivo",
+            "Hou I-Cheng - Oosumi Yuuki"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12ratr8.htm",
+          "stage": "第12届 R8",
+          "games": [
+            "Oosumi Yuuki - Dai Xiaohan",
+            "Hou I-Cheng - Oll Aivo",
+            "Artemiev Sergey - Cao Dong",
+            "Lin Huang-Yu - Taimla Tunnet",
+            "Sushkov Vladimir - Huang Jinxian"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12ratr9.htm",
+          "stage": "第12届 R9",
+          "games": [
+            "Dai Xiaohan - Sushkov Vladimir",
+            "Okabe Hiroshi - Huang Jinxian",
+            "Lin Huang-Yu - Andersson Tord",
+            "Artemiev Sergey - Taimla Tunnet",
+            "Hou I-Cheng - Cao Dong",
+            "Oll Aivo - Oosumi Yuuki"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12ratr10.htm",
+          "stage": "第12届 R10",
+          "games": [
+            "Dai Xiaohan - Oll Aivo",
+            "Oosumi Yuuki - Cao Dong",
+            "Hou I-Cheng - Taimla Tunnet",
+            "Andersson Tord - Artemiev Sergey",
+            "Huang Jinxian - Lin Huang-Yu",
+            "Sushkov Vladimir - Okabe Hiroshi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12ratr11.htm",
+          "stage": "第12届 R11",
+          "games": [
+            "Okabe Hiroshi - Dai Xiaohan",
+            "Lin Huang-Yu - Sushkov Vladimir",
+            "Artemiev Sergey - Huang Jinxian",
+            "Andersson Tord - Hou I-Cheng",
+            "Oosumi Yuuki - Taimla Tunnet",
+            "Cao Dong - Oll Aivo"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rwtr1.htm",
+          "stage": "第12届 R1",
+          "games": [
+            "Oborina Anastasja - Metreveli Irina",
+            "Warner Emma - Lashko Kira",
+            "Poghosyan Yeva - Nikonova Natalya",
+            "Zowadova Monika - Arai Kazumi",
+            "Mirme Madli - Savik Aki"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rwtr2.htm",
+          "stage": "第12届 R2",
+          "games": [
+            "Oborina Anastasja - Savik Aki",
+            "Zowadova Monika - Mirme Madli",
+            "Poghosyan Yeva - Arai Kazumi",
+            "Warner Emma - Nikonova Natalya",
+            "Metreveli Irina - Lashko Kira"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rwtr3.htm",
+          "stage": "第12届 R3",
+          "games": [
+            "Oborina Anastasja - Lashko Kira",
+            "Metreveli Irina - Nikonova Natalya",
+            "Arai Kazumi - Warner Emma",
+            "Poghosyan Yeva - Mirme Madli",
+            "Zowadova Monika - Savik Aki"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rwtr4.htm",
+          "stage": "第12届 R4",
+          "games": [
+            "Zowadova Monika - Oborina Anastasja",
+            "Savik Aki - Poghosyan Yeva",
+            "Warner Emma - Mirme Madli",
+            "Metreveli Irina - Arai Kazumi",
+            "Lashko Kira - Nikonova Natalya"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rwtr5.htm",
+          "stage": "第12届 R5",
+          "games": [
+            "Nikonova Natalya - Oborina Anastasja",
+            "Arai Kazumi - Lashko Kira",
+            "Mirme Madli - Metreveli Irina",
+            "Savik Aki - Warner Emma",
+            "Poghosyan Yeva - Zowadova Monika"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rwtr6.htm",
+          "stage": "第12届 R6",
+          "games": [
+            "Poghosyan Yeva - Oborina Anastasja",
+            "Warner Emma - Zowadova Monika",
+            "Metreveli Irina - Savik Aki",
+            "Mirme Madli - Lashko Kira",
+            "Nikonova Natalya - Arai Kazumi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rwtr7.htm",
+          "stage": "第12届 R7",
+          "games": [
+            "Arai Kazumi - Oborina Anastasja",
+            "Mirme Madli - Nikonova Natalya",
+            "Savik Aki - Lashko Kira",
+            "Zowadova Monika - Metreveli Irina",
+            "Warner Emma - Poghosyan Yeva"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rwtr8.htm",
+          "stage": "第12届 R8",
+          "games": [
+            "Oborina Anastasja - Warner Emma",
+            "Metreveli Irina - Poghosyan Yeva",
+            "Zowadova Monika - Lashko Kira",
+            "Nikonova Natalya - Savik Aki",
+            "Arai Kazumi - Mirme Madli"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rwtr9.htm",
+          "stage": "第12届 R9",
+          "games": [
+            "Mirme Madli - Oborina Anastasja",
+            "Savik Aki - Arai Kazumi",
+            "Zowadova Monika - Nikonova Natalya",
+            "Poghosyan Yeva - Lashko Kira",
+            "Metreveli Irina - Warner Emma"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rbtr1.htm",
+          "stage": "第12届 R1",
+          "games": [
+            "Carlsson Martin - Bulatovsky Oleg",
+            "Karasyov Maxim - Lillemaa Argo",
+            "Kamiya Shunsuke - Maltell Tommy",
+            "Pestov Arseni - Ono Takayuki",
+            "Sumarokov Evgeny - Malowiejski Piotr",
+            "Kise Katsumi - Chiang Ping-Hung",
+            "Pestereva Maria - Nakayama Tomoharu",
+            "Blomstedt Torbjorn - Potapov Alexey",
+            "Nikonov Konstantin - Iio Yoshihiro",
+            "Krayeva Tatyana - Balabhai Viktor",
+            "Poltaratskiy Nikolay - Rachitskaya Viktoria",
+            "Hobemagi Martin - Belkina Nadezhda",
+            "Pajuste Renee - Staub Rain"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rbtr2.htm",
+          "stage": "第12届 R2",
+          "games": [
+            "Kise Katsumi - Lillemaa Argo",
+            "Rachitskaya Viktoria - Iio Yoshihiro",
+            "Pestov Arseni - Belkina Nadezhda",
+            "Potapov Alexey - Chiang Ping-Hung",
+            "Poltaratskiy Nikolay - Nikonov Konstantin",
+            "Maltell Tommy - Krayeva Tatyana",
+            "Hobemagi Martin - Balabhai Viktor",
+            "Ono Takayuki - Blomstedt Torbjorn",
+            "Malowiejski Piotr - Pestereva Maria",
+            "Nakayama Tomoharu - Sumarokov Evgeny",
+            "Karasyov Maxim - Kamiya Shunsuke",
+            "Pajuste Renee - Carlsson Martin"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2011/wc12rbtr3.htm",
+          "stage": "第12届 R3",
+          "games": [
+            "Iio Yoshihiro - Staub Rain",
+            "Chiang Ping-Hung - Hobemagi Martin",
+            "Malowiejski Piotr - Lillemaa Argo",
+            "Pestov Arseni - Maltell Tommy",
+            "Kise Katsumi - Carlsson Martin",
+            "Poltaratskiy Nikolay - Kamiya Shunsuke",
+            "Pestereva Maria - Blomstedt Torbjorn",
+            "Sumarokov Evgeny - Belkina Nadezhda",
+            "Nakayama Tomoharu - Balabhai Viktor",
+            "Krayeva Tatyana - Potapov Alexey",
+            "Nikonov Konstantin - Pajuste Renee",
+            "Ono Takayuki - Karasyov Maxim"
+          ]
+        }
+      ],
+      "notes": "由脚本抓取，未逐页人工复核；每条都带页面地址，抽查时按地址回原页对。轮次页不给胜负分，结果一律留空。"
+    },
+    {
+      "event": "第9届",
+      "year": "2005",
+      "checked": "2026-09-28",
+      "method": "本项目 scripts/fetch-world-championship-sources.mjs 逐页读取励精连珠教室正赛轮次页，只登记页面上原文成对的「黑 - 白」；无 robots 限制（该站 robots.txt 为 404），逐页间隔 1.2 秒。",
+      "pages": [
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9qt1.htm",
+          "stage": "第9届 R1",
+          "games": [
+            "Wang Chih-Kung - Purk Andry",
+            "Kozhin Mikhail - Oll Aivo",
+            "Tarannikov Yuriy - Karlsson Stefan",
+            "Lents Johann - Andersson Tord",
+            "Iio Yoshihiro - Oosumi Yuuki",
+            "Cheng Wei-Yuan - Yamaguchi Makoto",
+            "Nowakowski Maciej - Chen Ko-Han",
+            "Ishitani Shinichi - Ilu Timo",
+            "Poghosyan Albert - Sushkov Vladimir"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9qt2.htm",
+          "stage": "第9届 R2",
+          "games": [
+            "Poghosyan Albert - Nowakowski Maciej",
+            "Chen Ko-Han - Sushkov Vladimir",
+            "Andersson Tord - Yamaguchi Makoto",
+            "Cheng Wei-Yuan - Lents Johann",
+            "Wang Chih-Kung - Oosumi Yuuki",
+            "Tarannikov Yuriy - Oll Aivo",
+            "Ishitani Shinichi - Karlsson Stefan"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9qt3.htm",
+          "stage": "第9届 R3",
+          "games": [
+            "Karlsson Stefan - Purk Andry",
+            "Andersson Tord - Oosumi Yuuki",
+            "Wang Chih-Kung - Lents Johann",
+            "Poghosyan Albert - Ishitani Shinichi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9qt4.htm",
+          "stage": "第9届 R4",
+          "games": [
+            "Karlsson Stefan - Yamaguchi Makoto",
+            "Iio Yoshihiro - Kozhin Mikhail",
+            "Ishitani Shinichi - Aivo Oll",
+            "Tord Andersson - Yuri Tarannikov",
+            "Albert Poghosyan - Wang Chin-Kung",
+            "Cheng Wei Yuan - Chen Ko Han",
+            "Johann Lents - Yuuki Oosumi",
+            "Andry Purk - Vladimir Sushkov",
+            "Maciej Nowakowski - Timo Ilu"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9qt5.htm",
+          "stage": "第9届 R5",
+          "games": [
+            "Iio Yoshihiro - Yamaguchi Makoto",
+            "Yuri Tarannikov - Chen Ko-Han",
+            "Maciej Nowakowski - Shin-ichi Ishitani",
+            "Timo Ilu - Johann Lents",
+            "Albert Poghosyan - Yuuki Oosumi",
+            "Cheng Wei-Yuan - Andry Purk",
+            "Aivo Oll - Vladimir Sushkov",
+            "Wang Chin-Kung - Mikhail Kozhin"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9qt6.htm",
+          "stage": "第9届 R6",
+          "games": [
+            "Yuuki Oosumi - Mikhail Kozhin",
+            "Yuri Tarannikov - Makoto Yamaguchi",
+            "Vladimir Sushkov - Iio Yoshihiro",
+            "Timo Ilu - Aivo Oll",
+            "Wang Chin-Kung - Maciej Nowakowski",
+            "Andry Purk - Tord Andersson",
+            "Cheng Wei-Yuan - Stefan Karlsson",
+            "Chen Kohan - Shin-ichi Ishitani",
+            "Poghosyan Albert - Lents Johann"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9qt7.htm",
+          "stage": "第9届 R7",
+          "games": [
+            "Andersson Tord - Oll Aivo",
+            "Kozhin Mikhail - Poghosyan Albert",
+            "Chen Ko-Han - Purk Andry",
+            "Sushkov Vladimir - Karlsson Stefan",
+            "Wang Chin-Kung - Ishitani Shinichi",
+            "Maciej Nowakowski - Lents Johann",
+            "Yamaguchi Makoto - Oosumi Yuuki",
+            "Ilu Timo - Iio Yoshihiro",
+            "Cheng Wei-Yuan - Tarannikov Yuriy"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9at1.htm",
+          "stage": "第9届 R1",
+          "games": [
+            "Taimla Tunnet - Hermansson Hannes",
+            "Artemiev Sergey - Karlsson Stefan",
+            "Savrasova Yulia - Chingin Konstantin",
+            "Okabe Hiroshi - Purk Andry",
+            "Andersson Tord - Meritee Ando",
+            "Tarannikov Yuriy - Sushkov Vladimir"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9at2.htm",
+          "stage": "第9届 R2",
+          "games": [
+            "Hermansson Hannes - Tarannikov Yuriy",
+            "Andersson Tord - Sushkov Vladimir",
+            "Purk Andry - Meritee Ando",
+            "Okabe Hiroshi - Chingin Konstantin",
+            "Savrasova Yulia - Artemiev Sergey",
+            "Tunnet Taimla - Stefan Karlsson"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9at3.htm",
+          "stage": "第9届 R3",
+          "games": [
+            "Hannes Hermansson - Stefan Karlsson",
+            "Tunnet Taimla - Stefan Karlsson",
+            "Hiroshi Okabe - Sergey Artemiev",
+            "Konstantin Chingin - Ando Meritee",
+            "Andry Purk - Vladimir Sushkov",
+            "Yuriy Tarannikov - Tord Andersson"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9at4.htm",
+          "stage": "第9届 R4",
+          "games": [
+            "Hannes Hermansson - Tord Andersson",
+            "Yuriy Tarannikov - Andry Purk",
+            "Konstantin Chingin - Vladimir Sushkov",
+            "Sergey Artemiev - Ando Meritee",
+            "Hiroshi Okabe - Tunnet Taimla",
+            "Yulia Savrasova - Stefan Karlsson"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9at5.htm",
+          "stage": "第9届 R5",
+          "games": [
+            "Hermansson Hannes - Savrasova Yulia",
+            "Okabe Hiroshi - Karlsson Stefan",
+            "Taimla Tunnet - Meritee Ando",
+            "Artemiev Sergey - Sushkov Vladimir",
+            "Chingin Konstantin - Tarannikov Yuriy",
+            "Purk Andry - Andersson Tord"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9at6.htm",
+          "stage": "第9届 R6",
+          "games": [
+            "Hermansson Hannes - Purk Andry",
+            "Andersson Tord - Chingin Konstantin",
+            "Tarannikov Yuriy - Artemiev Sergey",
+            "Vladimir Sushkov - Tunnet Taimla",
+            "Meritee Ando - Karlsson Stefan",
+            "Savrasova Yulia - Okabe Hiroshi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9at7.htm",
+          "stage": "第9届 R7",
+          "games": [
+            "Okabe Hiroshi - Hermansson Hannes",
+            "Savrasova Yulia - Meritee Ando",
+            "Karlsson Stefan - Sushkov Vladimir",
+            "Taimla Tunnet - Tarannikov Yuriy",
+            "Andersson Tord - Artemiev Sergey",
+            "Purk Andry - Chingin Konstantin"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9at8.htm",
+          "stage": "第9届 R8",
+          "games": [
+            "Chingin Konstantin - Hermansson Hannes",
+            "Artemiev Sergey - Purk Andry",
+            "Taimla Tunnet - Andersson Tord",
+            "Tarannikov Yuriy - Karlsson Stefan",
+            "Savrasova Yulia - Sushkov Vladimir",
+            "Okabe Hiroshi - Meritee Ando"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9at9.htm",
+          "stage": "第9届 R9",
+          "games": [
+            "Meritee Ando - Hermansson Hannes",
+            "Tarannikov Yuriy - Savrasova Yulia",
+            "Andersson Tord - Karlsson Stefan",
+            "Purk Andry - Taimla Tunnet",
+            "Artemiev Sergey - Chingin Konstantin"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9at10.htm",
+          "stage": "第9届 R10",
+          "games": [
+            "Hermansson Hannes - Artemiev Sergey",
+            "Taimla Tunnet - Chingin Konstantin",
+            "Andry Purk - Stefan Karlsson",
+            "Savrasova Yulia - Andersson Tord",
+            "Okabe Hiroshi - Tarannikov Yuriy",
+            "Meritee Ando - Sushkov Vladimir"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9at11.htm",
+          "stage": "第9届 R11",
+          "games": [
+            "Hermansson Hannes - Sushkov Vladimir",
+            "Meritee Ando - Tarannikov Yuriy",
+            "Okabe Hiroshi - Andersson Tord",
+            "Purk Andry - Savrasova Yulia",
+            "Karlsson Stefan - Chingin Konstantin",
+            "Taimla Tunnet - Artemiev Sergey"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9wt1.htm",
+          "stage": "第9届 R1",
+          "games": [
+            "Yakovleva Alyona - Widman Linnea",
+            "Krayeva Tatyana - Yang Hsiao-Yu",
+            "Irina Metreveli - Irene Karlsson",
+            "Sorokina Oksana - Klooster Karin",
+            "Karimova Dinara - Kolk Kaia",
+            "Tuvikene Maris - Pestereva Maria"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9wt2.htm",
+          "stage": "第9届 R2",
+          "games": [
+            "Yang Hsiao-Yu - Sorokina Oksana",
+            "Tuvikene Maris - Metreveli Irina",
+            "Yakovleva Alyona - Kolk Kaia",
+            "Krayeva Tatyana - Klooster Karin",
+            "Karimova Dinara - Widman Linnea"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9wt3.htm",
+          "stage": "第9届 R3",
+          "games": [
+            "Yang Hsiao-Yu - Tuvikene Maris",
+            "Metreveli Irina - Sorokina Oksana",
+            "Yakovleva Alyona - Krayeva Tatyana",
+            "Pestereva Maria - Widman Linnea",
+            "Karlsson Irene - Klooster Karin",
+            "Kolk Kaia - Klooster Tiina"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9wt4.htm",
+          "stage": "第9届 R4",
+          "games": [
+            "Krayeva Tatyana - Karlsson Irene",
+            "Irina Metreveli - Kaia Kolk",
+            "Sorokina Oksana - Tuvikene Maris",
+            "Yang Hsiao-Yu - Widman Linnea",
+            "Yakovleva Alyona - Klooster Tiina",
+            "Pestereva Maria - Karimova Dinara"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9wt5.htm",
+          "stage": "第9届 R5",
+          "games": [
+            "Yakovleva Alyona - Tuvikene Maris",
+            "Karimova Dinara - Klooster Tiina",
+            "Klooster Karin - Yang Hsiao-Yu",
+            "Krayeva Tatyana - Sorokina Oksana",
+            "Karlsson Irene - Kolk Kaia"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9wt6.htm",
+          "stage": "第9届 R6",
+          "games": [
+            "Widman Linnea - Klooster Tiina",
+            "Karimova Dinara - Klooster Karin",
+            "Tuvikene Maris - Karlsson Irene",
+            "Krayeva Tatyana - Pestereva Maria",
+            "Yang Hsiao-Yu - Metreveli Irina"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9wt7.htm",
+          "stage": "第9届 R7",
+          "games": [
+            "Klooster Karin - Klooster Tiina",
+            "Karimova Dinara - Yakovleva Alyona",
+            "Metreveli Irina - Widman Linnea",
+            "Pestereva Maria - Sorokina Oksana"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9wt8.htm",
+          "stage": "第9届 R8",
+          "games": [
+            "Karimova Dinara - Yang Hsiao-Yu",
+            "Widman Linnea - Tuvikene Maris",
+            "Krayeva Tatyana - Klooster Tiina"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9wt9.htm",
+          "stage": "第9届 R9",
+          "games": [
+            "Klooster Karin - Widman Linnea",
+            "Karimova Dinara - Metreveli Irina",
+            "Krayeva Tatyana - Tuvikene Maris",
+            "Yakovleva Alyona - Sorokina Oksana"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif2005/wc9bt3.htm",
+          "stage": "第9届 R3",
+          "games": [
+            "Balabhai Viktor - Ishitani Shinichi"
+          ]
+        }
+      ],
+      "notes": "由脚本抓取，未逐页人工复核；每条都带页面地址，抽查时按地址回原页对。轮次页不给胜负分，结果一律留空。"
+    },
+    {
+      "event": "第5届",
+      "year": "1997",
+      "checked": "2026-09-28",
+      "method": "本项目 scripts/fetch-world-championship-sources.mjs 逐页读取励精连珠教室正赛轮次页，只登记页面上原文成对的「黑 - 白」；无 robots 限制（该站 robots.txt 为 404），逐页间隔 1.2 秒。",
+      "pages": [
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5qt1.htm",
+          "stage": "第5届 R1",
+          "games": [
+            "Sinyov Igor - Chung Hsien-chi",
+            "Peskov Stepan - Ponomarenko Nikolay",
+            "Karlsson Stefan - Degtyar Felix",
+            "Veidemanis Arnis - Poghosyan Albert",
+            "Andersson Tord - Nara Hideki",
+            "Voskanyan Eduard - Eybatov Nizami",
+            "Doroshkevich Igor - Sagara Takashi",
+            "Kashihara Akihiko - Khramov Andrey",
+            "Soosyrv Ants - Balanova Jelena",
+            "Gurckis Gatis - Karatayev Igor"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5qt2.htm",
+          "stage": "第5届 R2",
+          "games": [
+            "Sinyov Igor - Soosyrv Ants",
+            "Sagara Takashi - Kashihara Akihiko",
+            "Balanova Jelena - Khramov Andrey",
+            "Andersson Tord - Pogosyan Albert",
+            "Doroshkevich Igor - Voskanyan Eduard",
+            "Peskov Stepan - Karatayev Igor",
+            "Karlsson Stefan - Ponomarenko Nikolay",
+            "Veidemanis Arnis - Nara Hideki",
+            "Eybatov Nizami - Gurckis Gatis"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5qt3.htm",
+          "stage": "第5届 R3",
+          "games": [
+            "Sagara Takashi - Sinyov Igor",
+            "Peskov Stepan - Voskanyan Eduard",
+            "Karlsson Stefan - Soosorv Ants",
+            "Doroshkevich Igor - Andersson Tord",
+            "Karatayev Igor - Chung Hsien-chi",
+            "Pogosyan Albert - Khramov Andrey",
+            "Eybatov Nizami - Nara Hideki",
+            "Balanova Jelena - Gurckis Gatis",
+            "Kashihara Akihiko - Ponomarenko Nikolay",
+            "Degtyar Felix - Veidemanis Arnis"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5qt4.htm",
+          "stage": "第5届 R4",
+          "games": [
+            "Soosorv Ants - Eybatov Nizami",
+            "Sagara Takashi - Nara Hideki",
+            "Kashihara Akihiko - Andersson Tord",
+            "Voskanyan Eduard - Karlsson Stefan",
+            "Balanova Jelena - Degtyar Felix",
+            "Peskov Stepan - Chung Hsien-chi",
+            "Khramov Andrey - Sinyov Igor",
+            "Gurckis Gatis - Veidemanis Arnis",
+            "Ponomarenko Nikolay - Karatayev Igor",
+            "Pogosyan Albert - Doroshkevich Igor"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5qt5.htm",
+          "stage": "第5届 R5",
+          "games": [
+            "Sagara Takashi - Soosorv Ants",
+            "Eybatov Nizami - Ponomarenko Nikolay",
+            "Voskanyan Eduard - Degtyar Felix",
+            "Khramov Andrey - Chung Hsien-chi",
+            "Pogosyan Albert - Balanova Jelena",
+            "Doroshkevich Igor - Karatayev Igor",
+            "Peskov Stepan - Andersson Tord",
+            "Gurckis Gatis - Sinyov Igor",
+            "Kashihara Akihiko - Nara Hideki",
+            "Karlsson Stefan - Veidemanis Arnis"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5qt6.htm",
+          "stage": "第5届 R6",
+          "games": [
+            "Voskanyan Eduard - Kashihara Akihiko",
+            "Ponomarenko Nikolay - Sinyov Igor",
+            "Pogosyan Albert - Gurckis Gatis",
+            "Peskov Stepan - Veidemanis Arnis",
+            "Khramov Andrey - Eybatov Nizami",
+            "Andersson Tord - Degtyar Felix",
+            "Balanova Jelena - Karatayev Igor",
+            "Chung Hsien-chi - Doroshkevich Igor",
+            "Sagara Takashi - Karlsson Stefan"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5qt7.htm",
+          "stage": "第5届 R7",
+          "games": [
+            "Soosorv Ants - Voskanyan Eduard",
+            "Nara Hideki - Sinyov Igor",
+            "Kashihara Akihiko - Karlsson Stefan",
+            "Peskov Stepan - Sagara Takashi",
+            "Veidemanis Arnis - Ponomarenko Nikolay",
+            "Andersson Tord - Eybatov Nizami",
+            "Pogosyan Albert - Degtyar Felix",
+            "Chung Hsien-chi - Balanova Jelena",
+            "Khramov Andrey - Karatayev Igor",
+            "Doroshkevich Igor - Gurckis Gatis"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5at1.htm",
+          "stage": "第5届 R1",
+          "games": [
+            "Sinyov Igor - Soosorv Ants",
+            "Klimashin Alexandr - Hasegawa Kazuto",
+            "Kawamura Norihiko - Meritee Ando",
+            "Gardstrom Petter - Kozhin Mikhail",
+            "Reims Aldis - Nara Hideki",
+            "Sagara Takashi - Karlsson Stefan"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5at2.htm",
+          "stage": "第5届 R2",
+          "games": [
+            "Sagara Takashi - Soosorv Ants",
+            "Karlsson Stefan - Nara Hideki",
+            "Reims Aldis - Kozhin Mikhail",
+            "Meritee Ando - Gardstrom Petter",
+            "Klimashin Alexandr - Kawamura Norihiko",
+            "Hasegawa Kazuto - Sinyov Igor"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5at3.htm",
+          "stage": "第5届 R3",
+          "games": [
+            "Hasegawa Kazuto - Soosorv Ants",
+            "Sinyov Igor - Kawamura Norihiko",
+            "Gardstrom Petter - Klimashin Alexandr",
+            "Reims Aldis - Meritee Ando",
+            "Karlsson Stefan - Kozhin Mikhail",
+            "Sagara Takashi - Nara Hideki"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5at4.htm",
+          "stage": "第5届 R4",
+          "games": [
+            "Soosorv Ants - Nara Hideki",
+            "Kozhin Mikhail - Sagara Takashi",
+            "Karlsson Stefan - Meritee Ando",
+            "Reims Aldis - Klimashin Alexandr",
+            "Gardstrom Petter - Sinyov Igor",
+            "Hasegawa Kazuto - Kawamura Norihiko"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5at5.htm",
+          "stage": "第5届 R5",
+          "games": [
+            "Kawamura Norihiko - Soosorv Ants",
+            "Gardstrom Petter - Hasegawa Kazuto",
+            "Sinyov Igor - Reims Aldis",
+            "Karlsson Stefan - Klimashin Alexandr",
+            "Sagara Takashi - Meritee Ando",
+            "Kozhin Mikhail - Nara Hideki"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5at6.htm",
+          "stage": "第5届 R6",
+          "games": [
+            "Kozhin Mikhail - Soosorv Ants",
+            "Nara Hideki - Meritee Ando",
+            "Sagara Takashi - Klimashin Alexandr",
+            "Karlsson Stefan - Sinyov Igor",
+            "Hasegawa Kazuto - Reims Aldis",
+            "Gardstrom Petter - Kawamura Norihiko"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5at7.htm",
+          "stage": "第5届 R7",
+          "games": [
+            "Gardstrom Petter - Soosorv Ants",
+            "Reims Aldis - Kawamura Norihiko",
+            "Karlsson Stefan - Hasegawa Kazuto",
+            "Sinyov Igor - Sagara Takashi",
+            "Klimashin Alexandr - Nara Hideki",
+            "Kozhin Mikhail - Meritee Ando"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5at8.htm",
+          "stage": "第5届 R8",
+          "games": [
+            "Meritee Ando - Soosorv Ants",
+            "Kozhin Mikhail - Klimashin Alexandr",
+            "Sinyov Igor - Nara Hideki",
+            "Sagara Takashi - Hasegawa Kazuto",
+            "Karlsson Stefan - Kawamura Norihiko",
+            "Reims Aldis - Gardstrom Petter"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5at9.htm",
+          "stage": "第5届 R9",
+          "games": [
+            "Reims Aldis - Soosorv Ants",
+            "Gardstrom Petter - Karlsson Stefan",
+            "Kawamura Norihiko - Sagara Takashi",
+            "Nara Hideki - Hasegawa Kazuto",
+            "Sinyov Igor - Kozhin Mikhail",
+            "Meritee Ando - Klimashin Alexandr"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5at10.htm",
+          "stage": "第5届 R10",
+          "games": [
+            "Soosorv Ants - Klimashin Alexandr",
+            "Sinyov Igor - Meritee Ando",
+            "Hasegawa Kazuto - Kozhin Mikhail",
+            "Nara Hideki - Kawamura Norihiko",
+            "Gardstrom Petter - Sagara Takashi",
+            "Reims Aldis - Karlsson Stefan"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5at11.htm",
+          "stage": "第5届 R11",
+          "games": [
+            "Karlsson Stefan - Soosorv Ants",
+            "Sagara Takashi - Reims Aldis",
+            "Gardstrom Petter - Nara Hideki",
+            "Kozhin Mikhail - Kawamura Norihiko",
+            "Hasegawa Kazuto - Meritee Ando",
+            "Sinyov Igor - Klimashin Alexandr"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5wt1.htm",
+          "stage": "第5届 R1",
+          "games": [
+            "Balanova Yelena - Lebedeva Yelena"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5wt2.htm",
+          "stage": "第5届 R2",
+          "games": [
+            "Metreveli Irina - Skuridina Olga",
+            "Yakovleva Alyona - Balanova Jelena",
+            "Lebedeva Yelena - Salnikova Nonna"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5wt3.htm",
+          "stage": "第5届 R3",
+          "games": [
+            "Alyona Yakovleva - Yelena Balanova"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5wt4.htm",
+          "stage": "第5届 R4",
+          "games": [
+            "Natalia Vasilieva - Metreveli Irina",
+            "Yelena Balanova - Olga Skuridina",
+            "Lebedeva Yelena - Yakovleva Alyona"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5wt5.htm",
+          "stage": "第5届 R5",
+          "games": [
+            "Salnikova Nonna - Skuridina Olga"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5wt6.htm",
+          "stage": "第5届 R6",
+          "games": [
+            "Nikonova Natalya - Balanova Jelena",
+            "Lebedeva Yelena - Skuridina Olga"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5wt7.htm",
+          "stage": "第5届 R7",
+          "games": [
+            "Skuridina Olga - Yakovleva Alyona",
+            "Salnikova Nonna - Vasilieva Natalia",
+            "Balanova Yelena - Zaitseva Olga"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5wt8.htm",
+          "stage": "第5届 R8",
+          "games": [
+            "Metreveli Irina - Balanova Yelena",
+            "Vasilieva Natalia - Lebedeva Yelena"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5wt9.htm",
+          "stage": "第5届 R9",
+          "games": [
+            "Yakovleva Alyona - Vasilieva Natalia",
+            "Metreveli Irina - Salnikova Nonna"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5wt10.htm",
+          "stage": "第5届 R10",
+          "games": [
+            "Metreveli Irina - Lebedeva Yelena"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5wt11.htm",
+          "stage": "第5届 R11",
+          "games": [
+            "Vasilieva Natalia - Skuridina Olga",
+            "Yakovleva Alyona - Metreveli Irina",
+            "Jelena Balanova - Nonna Salnikova"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1997/wc5bt1.htm",
+          "stage": "第5届 R1",
+          "games": [
+            "Olyunin Sergey - Lunkin Vitali",
+            "Barykin Victor - Moiseev Kirill",
+            "Nikonov Konstantin - Na Wei",
+            "Maltsev Oleg - Golosov Victor",
+            "Asplund Bengt - Makarov Pavel",
+            "Peskov Stepan - Filippov Sergey",
+            "Bobkov Yevgeni - Pavinich Andrey",
+            "Doroshkevich Igor - Fedorkin Oleg",
+            "Kashihara Akihiro - Tatsutomi Hiroyuki",
+            "Volkov Sergey - Sawai Toshio",
+            "Nosovsky Alexander - Jonsson Peter",
+            "Demidov Alexey - Ponomarenko Nikolay",
+            "Kolesnikov Alexey - Smirnov Sergey",
+            "Hayakawa Kazuto - Ses Pavel",
+            "Khramov Andrey - Kabanov Dmitri",
+            "Chung Hsien-chi - Veidemanis Arnis Sokolsky Andrey",
+            "Pogosyan Albert - Degtyar Felix",
+            "Andersson Tord - Semyonov Vladimir",
+            "Sushkov Vladimir - Filinov Vladimir"
+          ]
+        }
+      ],
+      "notes": "由脚本抓取，未逐页人工复核；每条都带页面地址，抽查时按地址回原页对。轮次页不给胜负分，结果一律留空。"
+    },
+    {
+      "event": "第4届",
+      "year": "1995",
+      "checked": "2026-09-28",
+      "method": "本项目 scripts/fetch-world-championship-sources.mjs 逐页读取励精连珠教室正赛轮次页，只登记页面上原文成对的「黑 - 白」；无 robots 限制（该站 robots.txt 为 404），逐页间隔 1.2 秒。",
+      "pages": [
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4qtr2.htm",
+          "stage": "第4届 1",
+          "games": [
+            "Veidemanis Arnis - Chung Hsien-Chi",
+            "Stepan Peskov - Nizami Eybatov",
+            "Margus Tuvikene - Petter Gardstrom",
+            "Dmitry Ilyin - Petter Gardstrom"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4qtr5.htm",
+          "stage": "第4届 1",
+          "games": [
+            "Ilyin Dmitry - Tuvikene Margus",
+            "Gardstrom Petter - Peskov Stepan",
+            "Gardstrom Petter - Chung Hsien-Chi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4qtr5.htm",
+          "stage": "第4届 1",
+          "games": [
+            "Ilyin Dmitry - Tuvikene Margus",
+            "Gardstrom Petter - Peskov Stepan",
+            "Gardstrom Petter - Chung Hsien-Chi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4qtr5.htm",
+          "stage": "第4届 1",
+          "games": [
+            "Ilyin Dmitry - Tuvikene Margus",
+            "Gardstrom Petter - Peskov Stepan",
+            "Gardstrom Petter - Chung Hsien-Chi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4qtr1.htm",
+          "stage": "第4届 0.5",
+          "games": [
+            "Gardstrom Petter - Veidemanis Arnis",
+            "Veidemanis Arnis - Margus Tuvikene",
+            "Veidemanis Arnis - Eybatov Nizami",
+            "Eibatov Nizami - Ilyin Dmitry"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4qtr2.htm",
+          "stage": "第4届 1",
+          "games": [
+            "Veidemanis Arnis - Chung Hsien-Chi",
+            "Stepan Peskov - Nizami Eybatov",
+            "Margus Tuvikene - Petter Gardstrom",
+            "Dmitry Ilyin - Petter Gardstrom"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4qtr3.htm",
+          "stage": "第4届 1",
+          "games": [
+            "Stepan Peskov - Chung Hsien-Chi",
+            "Eibatov Nizami - Ilyin Dmitry",
+            "Veidemanis Arnis - Eybatov Nizami",
+            "Chung Hsien-Chi - Tuvikene Margus"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4qtr5.htm",
+          "stage": "第4届 1",
+          "games": [
+            "Ilyin Dmitry - Tuvikene Margus",
+            "Gardstrom Petter - Peskov Stepan",
+            "Gardstrom Petter - Chung Hsien-Chi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4qtr2.htm",
+          "stage": "第4届 1",
+          "games": [
+            "Veidemanis Arnis - Chung Hsien-Chi",
+            "Stepan Peskov - Nizami Eybatov",
+            "Margus Tuvikene - Petter Gardstrom",
+            "Dmitry Ilyin - Petter Gardstrom"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4qtr4.htm",
+          "stage": "第4届 1",
+          "games": [
+            "Veidemanis Arnis - Ilyin Dmitry",
+            "Tuvikene Margus - Peskov Stepan",
+            "Ilyin Dmitry - Chung Hsien-Chi",
+            "Poghosyan Albert - Tuvikene Margus"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4qtr6.htm",
+          "stage": "第4届 1",
+          "games": [
+            "Poghosyan Albert - Chung Hsien-Chi",
+            "Chung Hsien-Chi - Eybatov Nizami"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4qtr3.htm",
+          "stage": "第4届 1",
+          "games": [
+            "Stepan Peskov - Chung Hsien-Chi",
+            "Eibatov Nizami - Ilyin Dmitry",
+            "Veidemanis Arnis - Eybatov Nizami",
+            "Chung Hsien-Chi - Tuvikene Margus"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4qtr4.htm",
+          "stage": "第4届 1",
+          "games": [
+            "Veidemanis Arnis - Ilyin Dmitry",
+            "Tuvikene Margus - Peskov Stepan",
+            "Ilyin Dmitry - Chung Hsien-Chi",
+            "Poghosyan Albert - Tuvikene Margus"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4btr1.htm",
+          "stage": "第4届 R1",
+          "games": [
+            "Taiblin Yuri - Tatsutomi Hiroyuki",
+            "Bertilsson Anders - Hasegawa Kazuto",
+            "Chung Hsien-Chi - Bertilsson Anders",
+            "Balanova Yelena - Hasegawa Kazuto",
+            "Pavinich Andrey - Chung Hsien-Chi",
+            "Balanova Yelena - Eibatov Nizami",
+            "Gurckis Gatis - Wallgren Bjorn",
+            "Salnikova Nonna - Chernov Sergey",
+            "Chernov Sergey - Harju Eve",
+            "Smirnov Sergey - Chernov Sergey",
+            "Hayakawa Yoshimi - Alexandrov Victor",
+            "Smirnov Sergey - Chung Hsien-Chi",
+            "Alexandrov Victor - Tuvikene Margus",
+            "Alexandrov Victor - Balanova Yelena",
+            "Veidemanis Arnis - Chung Hsien-Chi",
+            "Metreveli Irina - Sokolsky Andrey"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4btr2.htm",
+          "stage": "第4届 R2",
+          "games": [
+            "Na Wei - Wallgren Bjorn",
+            "Tatsutomi Hiroyuki - Fedorkin Oleg",
+            "Demidov Alexei - Wallgren Bjorn",
+            "Tatsutomi Hiroyuki - Smirnov Sergey",
+            "Alexandrov Victor - Wallgren Bjorn",
+            "Sinyov Igor - Chernov Sergey",
+            "Metreveli Irina - Naber Lauri",
+            "Gaujens Artis - Eibatov Nizami",
+            "Hasegawa Kazuto - Skuridina Olga",
+            "Na Wei - Eibatov Nizami",
+            "Eibatov Nizami - Nikonov Konstantin",
+            "Sawai T. - Taiblin Yuri",
+            "Gaujens Artis - Nikonov Konstantin"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4btr3.htm",
+          "stage": "第4届 R3",
+          "games": [
+            "Mitsumori Masao - Tuvikene Margus",
+            "Gaujens Artis - Pavinich Andrey",
+            "Fedorkin Oleg - Mitsumori Masao",
+            "Smirnov Sergey - Hayakawa Yoshimi",
+            "Eibatov Nizami - Demidov Alexei",
+            "Jonsson Peter - Matyuk Valeri",
+            "Eibatov Nizami - Matyuk Valeri",
+            "Hayakawa Yoshimi - Sinyov Igor",
+            "Mitsumori Masao - Matyuk Valeri",
+            "Tatsutomi Hiroyuki - Chernov Sergey",
+            "Gaujens Artis - Tuvikene Margus",
+            "Metreveli Irina - Taiblin Yuri"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4btr4.htm",
+          "stage": "第4届 R4",
+          "games": [
+            "Wallgren Bjorn - Bertilsson Anders",
+            "Matyuk Valeri - Bertilsson Anders",
+            "Sinyov Igor - Taiblin Yuriy",
+            "Alexandrov Victor - Gurckis Gatis",
+            "Gaujens Artis - Sokolsky Andrey",
+            "Hayakawa Yoshimi - Mitsumori Masao",
+            "Chernov Sergey - Hasegawa Kazuto",
+            "Metreveli Irina - Gurckis Gatis",
+            "Smirnov Sergey - Tuvikene Margus",
+            "Demidov Alexei - Hayakawa Yoshimi",
+            "Demidov Alexey - Fedorkin Oleg"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4btr5.htm",
+          "stage": "第4届 R5",
+          "games": [
+            "Hayakawa Yoshimi - Pavinich Andrey",
+            "Nikonov Konstantin - Tatsutomi Hiroyuki",
+            "Pavinich Andrey - Tatsutomi Hiroyuki",
+            "Na Wei - Mitsumori Masao",
+            "Balanova Jelena - Fedorkin Oleg",
+            "Sinyov Igor - Gurckis Gatis",
+            "Jonsson Peter - Salnikova Nonna",
+            "Alexandrov Victor - Matyuk Valeri",
+            "Tuvikene Margus - Bertilsson Anders",
+            "Demidov Alexei - Pavinich Andrey",
+            "Naber Lauri - Pavinich Andrey"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4btr6.htm",
+          "stage": "第4届 R6",
+          "games": [
+            "Chung Hsien-Chi - Salnikova Nonna",
+            "Tatsutomi Mutsumi - Pavinich Andrey",
+            "Salnikova Nonna - Nikonov Konstantin",
+            "Naber Lauri - Nikonov Konstantin",
+            "Gurckis Gatis - Mitsumori Masao",
+            "Taiblin Yuriy - Salnikova Nonna",
+            "Fedorkin Oleg - Gurckis Gatis",
+            "Sinyov Igor - Mitsumori Masao",
+            "Gaujens Artis - Jonsson Peter",
+            "Hayakawa Yoshimi - Fedorkin Oleg",
+            "Chernov Sergey - Gurckis Gatis"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4btr7.htm",
+          "stage": "第4届 R7",
+          "games": [
+            "Sawai Toshio - Balanova Jelena",
+            "Sinyov Igor - Metreveli Irina",
+            "Hasegawa Kazuto - Jonsson Peter",
+            "Jonsson Peter - Chung Hsien-Chi",
+            "Hayakawa Yoshimi - Hasegawa Kazuto",
+            "Nikonov Konstantin - Jonsson Peter",
+            "Alexandrov Victor - Sinyov Igor",
+            "Balanova Jelena - Metreveli Irina",
+            "Salnikova Nonna - Alexandrov Victor",
+            "Matyuk Valeri - Taiblin Yuriy",
+            "Sokolsky Andrey - Eibatov Nizami"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1995/wc4btr8.htm",
+          "stage": "第4届 R8",
+          "games": [
+            "Balanova Jelena - Skuridina Olga",
+            "Hasegawa Kazuto - Demidov Alexey",
+            "Chung Hsien-Chi - Sawai Toshio",
+            "Wallgren Bjorn - Eibatov Nizami",
+            "Fedorkin Oleg - Gaujens Artis",
+            "Demidov Alexey - Matyuk Valeri",
+            "Gurckis Gatis - Pavinich Andrey",
+            "Smirnov Sergey - Jonsson Peter",
+            "Hasegawa Kazuto - Sinyov Igor",
+            "Taiblin Yuriy - Chernov Sergey",
+            "Tuvikene Margus - Sokolsky Andrey"
+          ]
+        }
+      ],
+      "notes": "由脚本抓取，未逐页人工复核；每条都带页面地址，抽查时按地址回原页对。轮次页不给胜负分，结果一律留空。"
+    },
+    {
+      "event": "第2届",
+      "year": "1991",
+      "checked": "2026-09-28",
+      "method": "本项目 scripts/fetch-world-championship-sources.mjs 逐页读取励精连珠教室正赛轮次页，只登记页面上原文成对的「黑 - 白」；无 robots 限制（该站 robots.txt 为 404），逐页间隔 1.2 秒。",
+      "pages": [
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2ar1.htm",
+          "stage": "第2届 R1",
+          "games": [
+            "Sinyov Igor - Voskanyan Eduard",
+            "Unterweger Michael - Gardstrom Petter",
+            "Hasegawa Kazuto - Nara Hideki",
+            "Yamaguchi Yusui - Palmgren Jan",
+            "Sundling Ingvar - Nakamura Shigeru",
+            "Kozhin Mikhail - Reims Aldis"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2ar2.htm",
+          "stage": "第2届 R2",
+          "games": [
+            "Reims Aldis - Voskanyan Eduard",
+            "Kozhin Mikhail - Sundling Ingvar",
+            "Palmgren Jan - Nara Hideki",
+            "Hasegawa Kazuto - Unterweger Michael",
+            "Gardstrom Petter - Sinyov Igor"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2ar3.htm",
+          "stage": "第2届 R3",
+          "games": [
+            "Gardstrom Petter - Voskanyan Eduard",
+            "Sinyov Igor - Hasegawa Kazuto",
+            "Unterweger Michael - Palmgren Jan",
+            "Nara Hideki - Nakamura Shigeru",
+            "Yamaguchi Yusui - Kozhin Mikhail",
+            "Sundling Ingvar - Reims Aldis"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2ar4.htm",
+          "stage": "第2届 R4",
+          "games": [
+            "Sundling Ingvar - Voskanyan Eduard",
+            "Reims Aldis - Yamaguchi Yusui",
+            "Kozhin Mikhail - Nara Hideki",
+            "Nakamura Shigeru - Unterweger Michael",
+            "Palmgren Jan - Sinyov Igor",
+            "Hasegawa Kazuto - Gardstrom Petter"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2ar5.htm",
+          "stage": "第2届 R5",
+          "games": [
+            "Hasegawa Kazuto - Voskanyan Eduard",
+            "Gardstrom Petter - Palmgren Jan",
+            "Sinyov Igor - Nakamura Shigeru",
+            "Kozhin Mikhail - Unterweger Michael",
+            "Reims Aldis - Nara Hideki",
+            "Yamaguchi Yusui - Sundling Ingvar"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2ar6.htm",
+          "stage": "第2届 R6",
+          "games": [
+            "Yamaguchi Yusui - Voskanyan Eduard",
+            "Sundling Ingvar - Nara Hideki",
+            "Reims Aldis - Unterweger Michael",
+            "Kozhin Mikhail - Sinyov Igor",
+            "Gardstrom Petter - Nakamura Shigeru",
+            "Palmgren Jan - Hasegawa Kazuto"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2ar7.htm",
+          "stage": "第2届 R7",
+          "games": [
+            "Palmgren Jan - Voskanyan Eduard",
+            "Hasegawa Kazuto - Nakamura Shigeru",
+            "Gardstrom Petter - Kozhin Mikhail",
+            "Sinyov Igor - Reims Aldis",
+            "Unterweger Michael - Sundling Ingvar",
+            "Nara Hideki - Yamaguchi Yusui"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2ar8.htm",
+          "stage": "第2届 R8",
+          "games": [
+            "Voskanyan Eduard - Nara Hideki",
+            "Yamaguchi Yusui - Unterweger Michael",
+            "Sundling Ingvar - Sinyov Igor",
+            "Reims Aldis - Gardstrom Petter",
+            "Kozhin Mikhail - Hasegawa Kazuto",
+            "Nakamura Shigeru - Palmgren Jan"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2ar9.htm",
+          "stage": "第2届 R9",
+          "games": [
+            "Nakamura Shigeru - Voskanyan Eduard",
+            "Palmgren Jan - Kozhin Mikhail",
+            "Hasegawa Kazuto - Reims Aldis",
+            "Gardstrom Petter - Sundling Ingvar",
+            "Sinyov Igor - Yamaguchi Yusui",
+            "Unterweger Michael - Nara Hideki"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2ar10.htm",
+          "stage": "第2届 R10",
+          "games": [
+            "Unterweger Michael - Voskanyan Eduard",
+            "Sinyov Igor - Nara Hideki",
+            "Yamaguchi Yusui - Gardstrom Petter",
+            "Sundling Ingvar - Hasegawa Kazuto",
+            "Reims Aldis - Palmgren Jan",
+            "Kozhin Mikhail - Nakamura Shigeru"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2ar11.htm",
+          "stage": "第2届 R11",
+          "games": [
+            "Kozhin Mikhail - Voskanyan Eduard",
+            "Nakamura Shigeru - Reims Aldis",
+            "Palmgren Jan - Sundling Ingvar",
+            "Hasegawa Kazuto - Yamaguchi Yusui",
+            "Gardstrom Petter - Nara Hideki",
+            "Sinyov Igor - Unterweger Michael"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br1.htm",
+          "stage": "第2届 R1",
+          "games": [
+            "Dzainukov Eldar - Veidemanis Arnis",
+            "Matsuura Hiroshi - Zabrodin Evgeny",
+            "Meritee Ando - Karlsson Stefan",
+            "Zabrodin Alexander - Milevsky Alexandr",
+            "Hayakawa Yoshimi - Savchenko Igor",
+            "Atreshenkov Gennadi - Nikonov Konstantin",
+            "Sakhapov Albert - Jonsson Peter",
+            "Semyonov Vladimir - Sakamoto Hiroshi",
+            "Malyshev Alexander - Krasnonosov Dmitry",
+            "Dvoeglazov Vladimir - Tatsutomi Hiroyuki",
+            "Nekludov Sergey - Atreschenkov Gennadi",
+            "Meritee Ando - Hayakawa K."
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br2.htm",
+          "stage": "第2届 R2",
+          "games": [
+            "Biryukov Mikhail - Bobkov Evgeniy",
+            "Milevsky Alexandr - Mikhailov Alexandr",
+            "Zabrodin Alexander - Terteryan Alexander",
+            "Filinov Vladimir - Krasnonosov Dmitrij",
+            "Kallman Jonas - Eibatov Nizami",
+            "Karlsson Stefan - Sakamoto Hirouji",
+            "Matsuura Hiroshi - Semyonov Vladimir",
+            "Moiseyev Kirill - Atreshenkov Gennadi",
+            "Salnikov Pavel - Kawamura Norihiko",
+            "Savchenko Igor - Asplund Bengt",
+            "Smirnov Sergey - Hayakawa Yoshimi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br3.htm",
+          "stage": "第2届 R3",
+          "games": [
+            "Alexandrov Victor - Nikonov Konstantin",
+            "Asplund Bengt - Zabrodin Evgeny",
+            "Bobkov Evgeniy - Milevsky Alexandr",
+            "Hayakawa Yoshimi - Bashirov Rustam",
+            "Biryukov Mikhail - Ilyin Dmitry",
+            "Krasnonosov Dmitry - Mitsumori Masao",
+            "Poghosyan Albert - Kawamura Norihiko",
+            "Sawai Toshio - Semyonov Vladimir",
+            "Zabrodin Alexander - Salnikov Pavel"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br4.htm",
+          "stage": "第2届 R4",
+          "games": [
+            "Eibatov Nizami - Semyonov Vladimir",
+            "Hayakawa Yoshimi - Veidemanis Arnis",
+            "Karlsson Stefan - Tatsutomi Hiroyuki",
+            "Moiseyev Kirill - Bobkov Evgeniy",
+            "Nikonov Konstantin - Kawamura Norihiko",
+            "Zabrodin Evgeny - Savchenko Igor",
+            "Bashirov Rustam - Sotnikov Mikhail",
+            "Mikhailov Alexandr - Sakhapov Albert",
+            "Salnikov Pavel - Milevsky Alexandr",
+            "Smirnov Sergey - Iljin Dmitrij",
+            "Zabrodin Alexander - Matsuura Hiroshi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br5.htm",
+          "stage": "第2届 R5",
+          "games": [
+            "Ilyin Dmitry - Dzainukov Eldar",
+            "Kawamura Norihiko - Meritee Ando",
+            "Maltell Tommy - Semyonov Vladimir",
+            "Eibatov Nizami - Bashirov Rustam",
+            "Atreshenkov Gennadi - Ivanov Alexey",
+            "Mikhailov Nikolay - Nikonov Konstantin",
+            "Milevsky Alexandr - Jonsson Peter",
+            "Zabrodin Evgeny - Filinov Vladimir",
+            "Holgersson Goran - Salnikov Pavel",
+            "Moiseyev Kirill - Alexandrov Victor",
+            "Sotnikov Mikhail - Veidemanis Arnis"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br6.htm",
+          "stage": "第2届 R6",
+          "games": [
+            "Karlsson Stefan - Filinov Vladimir",
+            "Alexandrov Victor - Poghosyan Albert",
+            "Talsky Vladimir - Atreshenkov Gennadi",
+            "Bashirov Rustam - Moiseyev Kirill",
+            "Kawamura Norihiko - Veidemanis Arnis",
+            "Mitsumori Masao - Zabrodin Evgeny",
+            "Nikonov Konstantin - Eibatov Nizami",
+            "Salnikov Pavel - Mikhailov Nikolay",
+            "Semyonov Vladimir - Ilyin Dmitry",
+            "Sotnikov Mikhail - Krasnonosov Dmitry",
+            "Tarannikov Yuriy - Bobkov Evgeniy"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br7.htm",
+          "stage": "第2届 R7",
+          "games": [
+            "Kawamura Norihiko - Filinov Vladimir"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br1.htm",
+          "stage": "第2届 Ne",
+          "games": [
+            "Dzainukov Eldar - Veidemanis Arnis",
+            "Matsuura Hiroshi - Zabrodin Evgeny",
+            "Meritee Ando - Karlsson Stefan",
+            "Zabrodin Alexander - Milevsky Alexandr",
+            "Hayakawa Yoshimi - Savchenko Igor",
+            "Atreshenkov Gennadi - Nikonov Konstantin",
+            "Sakhapov Albert - Jonsson Peter",
+            "Semyonov Vladimir - Sakamoto Hiroshi",
+            "Malyshev Alexander - Krasnonosov Dmitry",
+            "Dvoeglazov Vladimir - Tatsutomi Hiroyuki",
+            "Nekludov Sergey - Atreschenkov Gennadi",
+            "Meritee Ando - Hayakawa K."
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br1.htm",
+          "stage": "第2届 Tt",
+          "games": [
+            "Dzainukov Eldar - Veidemanis Arnis",
+            "Matsuura Hiroshi - Zabrodin Evgeny",
+            "Meritee Ando - Karlsson Stefan",
+            "Zabrodin Alexander - Milevsky Alexandr",
+            "Hayakawa Yoshimi - Savchenko Igor",
+            "Atreshenkov Gennadi - Nikonov Konstantin",
+            "Sakhapov Albert - Jonsson Peter",
+            "Semyonov Vladimir - Sakamoto Hiroshi",
+            "Malyshev Alexander - Krasnonosov Dmitry",
+            "Dvoeglazov Vladimir - Tatsutomi Hiroyuki",
+            "Nekludov Sergey - Atreschenkov Gennadi",
+            "Meritee Ando - Hayakawa K."
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br1.htm",
+          "stage": "第2届 Me",
+          "games": [
+            "Dzainukov Eldar - Veidemanis Arnis",
+            "Matsuura Hiroshi - Zabrodin Evgeny",
+            "Meritee Ando - Karlsson Stefan",
+            "Zabrodin Alexander - Milevsky Alexandr",
+            "Hayakawa Yoshimi - Savchenko Igor",
+            "Atreshenkov Gennadi - Nikonov Konstantin",
+            "Sakhapov Albert - Jonsson Peter",
+            "Semyonov Vladimir - Sakamoto Hiroshi",
+            "Malyshev Alexander - Krasnonosov Dmitry",
+            "Dvoeglazov Vladimir - Tatsutomi Hiroyuki",
+            "Nekludov Sergey - Atreschenkov Gennadi",
+            "Meritee Ando - Hayakawa K."
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br2.htm",
+          "stage": "第2届 Sm",
+          "games": [
+            "Biryukov Mikhail - Bobkov Evgeniy",
+            "Milevsky Alexandr - Mikhailov Alexandr",
+            "Zabrodin Alexander - Terteryan Alexander",
+            "Filinov Vladimir - Krasnonosov Dmitrij",
+            "Kallman Jonas - Eibatov Nizami",
+            "Karlsson Stefan - Sakamoto Hirouji",
+            "Matsuura Hiroshi - Semyonov Vladimir",
+            "Moiseyev Kirill - Atreshenkov Gennadi",
+            "Salnikov Pavel - Kawamura Norihiko",
+            "Savchenko Igor - Asplund Bengt",
+            "Smirnov Sergey - Hayakawa Yoshimi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br1.htm",
+          "stage": "第2届 My",
+          "games": [
+            "Dzainukov Eldar - Veidemanis Arnis",
+            "Matsuura Hiroshi - Zabrodin Evgeny",
+            "Meritee Ando - Karlsson Stefan",
+            "Zabrodin Alexander - Milevsky Alexandr",
+            "Hayakawa Yoshimi - Savchenko Igor",
+            "Atreshenkov Gennadi - Nikonov Konstantin",
+            "Sakhapov Albert - Jonsson Peter",
+            "Semyonov Vladimir - Sakamoto Hiroshi",
+            "Malyshev Alexander - Krasnonosov Dmitry",
+            "Dvoeglazov Vladimir - Tatsutomi Hiroyuki",
+            "Nekludov Sergey - Atreschenkov Gennadi",
+            "Meritee Ando - Hayakawa K."
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br1.htm",
+          "stage": "第2届 Kr",
+          "games": [
+            "Dzainukov Eldar - Veidemanis Arnis",
+            "Matsuura Hiroshi - Zabrodin Evgeny",
+            "Meritee Ando - Karlsson Stefan",
+            "Zabrodin Alexander - Milevsky Alexandr",
+            "Hayakawa Yoshimi - Savchenko Igor",
+            "Atreshenkov Gennadi - Nikonov Konstantin",
+            "Sakhapov Albert - Jonsson Peter",
+            "Semyonov Vladimir - Sakamoto Hiroshi",
+            "Malyshev Alexander - Krasnonosov Dmitry",
+            "Dvoeglazov Vladimir - Tatsutomi Hiroyuki",
+            "Nekludov Sergey - Atreschenkov Gennadi",
+            "Meritee Ando - Hayakawa K."
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br1.htm",
+          "stage": "第2届 HK",
+          "games": [
+            "Dzainukov Eldar - Veidemanis Arnis",
+            "Matsuura Hiroshi - Zabrodin Evgeny",
+            "Meritee Ando - Karlsson Stefan",
+            "Zabrodin Alexander - Milevsky Alexandr",
+            "Hayakawa Yoshimi - Savchenko Igor",
+            "Atreshenkov Gennadi - Nikonov Konstantin",
+            "Sakhapov Albert - Jonsson Peter",
+            "Semyonov Vladimir - Sakamoto Hiroshi",
+            "Malyshev Alexander - Krasnonosov Dmitry",
+            "Dvoeglazov Vladimir - Tatsutomi Hiroyuki",
+            "Nekludov Sergey - Atreschenkov Gennadi",
+            "Meritee Ando - Hayakawa K."
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br1.htm",
+          "stage": "第2届 At",
+          "games": [
+            "Dzainukov Eldar - Veidemanis Arnis",
+            "Matsuura Hiroshi - Zabrodin Evgeny",
+            "Meritee Ando - Karlsson Stefan",
+            "Zabrodin Alexander - Milevsky Alexandr",
+            "Hayakawa Yoshimi - Savchenko Igor",
+            "Atreshenkov Gennadi - Nikonov Konstantin",
+            "Sakhapov Albert - Jonsson Peter",
+            "Semyonov Vladimir - Sakamoto Hiroshi",
+            "Malyshev Alexander - Krasnonosov Dmitry",
+            "Dvoeglazov Vladimir - Tatsutomi Hiroyuki",
+            "Nekludov Sergey - Atreschenkov Gennadi",
+            "Meritee Ando - Hayakawa K."
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br2.htm",
+          "stage": "第2届 HY",
+          "games": [
+            "Biryukov Mikhail - Bobkov Evgeniy",
+            "Milevsky Alexandr - Mikhailov Alexandr",
+            "Zabrodin Alexander - Terteryan Alexander",
+            "Filinov Vladimir - Krasnonosov Dmitrij",
+            "Kallman Jonas - Eibatov Nizami",
+            "Karlsson Stefan - Sakamoto Hirouji",
+            "Matsuura Hiroshi - Semyonov Vladimir",
+            "Moiseyev Kirill - Atreshenkov Gennadi",
+            "Salnikov Pavel - Kawamura Norihiko",
+            "Savchenko Igor - Asplund Bengt",
+            "Smirnov Sergey - Hayakawa Yoshimi"
+          ]
+        },
+        {
+          "url": "https://www.ljrenju.com/news/rif1991/wc2br1.htm",
+          "stage": "第2届 Dv",
+          "games": [
+            "Dzainukov Eldar - Veidemanis Arnis",
+            "Matsuura Hiroshi - Zabrodin Evgeny",
+            "Meritee Ando - Karlsson Stefan",
+            "Zabrodin Alexander - Milevsky Alexandr",
+            "Hayakawa Yoshimi - Savchenko Igor",
+            "Atreshenkov Gennadi - Nikonov Konstantin",
+            "Sakhapov Albert - Jonsson Peter",
+            "Semyonov Vladimir - Sakamoto Hiroshi",
+            "Malyshev Alexander - Krasnonosov Dmitry",
+            "Dvoeglazov Vladimir - Tatsutomi Hiroyuki",
+            "Nekludov Sergey - Atreschenkov Gennadi",
+            "Meritee Ando - Hayakawa K."
+          ]
+        }
+      ],
+      "notes": "由脚本抓取，未逐页人工复核；每条都带页面地址，抽查时按地址回原页对。轮次页不给胜负分，结果一律留空。"
+    }
+  ]
+}

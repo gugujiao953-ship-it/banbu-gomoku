@@ -1,5 +1,6 @@
 import "fake-indexeddb/auto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { exportLargeStorageRecords, replaceLargeStorageRecords } from "./large-storage";
 import { addMove, createDocument } from "./game";
 import { exportJson, exportSgf, importRecordFile } from "./formats";
 import { buildCompactRenLibIndex, createLazyDocument } from "./compact-index";
@@ -7,6 +8,42 @@ import { commitDraftAsDerivedVersion, loadDraftForDocument, removeDraftForDocume
 import type { DraftOperation } from "./draft-operations";
 
 describe("large-record storage", () => {
+  it("keeps the previous stores if a replacement put throws synchronously", async () => {
+    const original = createDocument("must survive invalid replacement");
+    await saveLargeDocument(original);
+    const before = await exportLargeStorageRecords();
+    await expect(replaceLargeStorageRecords({ documents: [{ id: "valid" }, {}], summaries: [], drafts: [], indexChunks: [] })).rejects.toThrow();
+    expect(await exportLargeStorageRecords()).toEqual(before);
+  });
+
+  it("keeps the previous compact record and chunks if a chunk write fails", async () => {
+    const original = createDocument("original compact contents");
+    const index = { ...buildCompactRenLibIndex(original), nodeCount: 1000001 };
+    await saveCompactIndex(original, index);
+    const before = await exportLargeStorageRecords();
+    const put = IDBObjectStore.prototype.put;
+    const fault = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (this: IDBObjectStore, value, key) {
+      if (this.name === "index-chunks" && (value as { field?: string }).field === "moveCode") throw new DOMException("chunk cannot be cloned", "DataCloneError");
+      return key === undefined ? put.call(this, value) : put.call(this, value, key);
+    });
+    try {
+      await expect(saveCompactIndex({ ...original, metadata: { ...original.metadata, title: "replacement" } }, index)).rejects.toThrow();
+    } finally { fault.mockRestore(); }
+    expect(await exportLargeStorageRecords()).toEqual(before);
+  });
+
+  it("gives separate derived saves unique IDs even in the same millisecond", async () => {
+    const original = createDocument("same millisecond saves");
+    await saveCompactIndex(original, buildCompactRenLibIndex(original));
+    const now = vi.spyOn(Date, "now").mockReturnValue(1000);
+    try {
+      const first = await commitDraftAsDerivedVersion(original, [], { ...original.metadata, title: "first" });
+      const second = await commitDraftAsDerivedVersion(original, [], { ...original.metadata, title: "second" });
+      expect(first.id).not.toBe(second.id);
+      expect((await loadLargeDocument(first.id))?.metadata.title).toBe("first");
+    } finally { now.mockRestore(); }
+  });
+
   it("round-trips a document saving and reloading", async () => {
     let document = createDocument("storage roundtrip");
     document = addMove(document, document.rootId, { row: 7, col: 7 }).document;

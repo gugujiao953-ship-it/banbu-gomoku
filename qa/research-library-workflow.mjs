@@ -34,7 +34,7 @@ await page.addInitScript(({ activeDocument, recentDocument }) => {
   localStorage.setItem("renju-note-library-v1", JSON.stringify([activeDocument, recentDocument]));
   localStorage.setItem("renju-note-draft-v2:qa-recent", JSON.stringify({ operations: [{ type: "update-node", nodeId: "recent-root", patch: { comment: "待整理" } }], redo: [], updatedAt: "2026-08-30T08:45:00.000Z" }));
   localStorage.setItem("renju-note-library-folders-v1", JSON.stringify({ recordFolders: ["未分类"], puzzleFolders: ["内置题库", "我的题库"], recordAssignments: {}, puzzleAssignments: {} }));
-  localStorage.setItem("banbu-enhancement-settings-v1", JSON.stringify({ tabletSplit: false, gestureZoom: false, gestureSwipe: false, recentImports: false, aiBoardHints: false, coachMarks: false }));
+  localStorage.setItem("banbu-enhancement-settings-v1", JSON.stringify({ gestureZoom: false, gestureSwipe: false, recentImports: false, aiBoardHints: false, coachMarks: false }));
 }, { activeDocument: active, recentDocument: recent });
 
 try {
@@ -79,9 +79,10 @@ try {
 
   await page.getByRole("button", { name: "打开导出方式" }).click();
   await page.locator(".export-scope-grid button").filter({ hasText: "当前变化" }).click();
-  await page.getByRole("button", { name: /选择格式导出/ }).click();
+  // 导出弹窗已改版：范围与格式同屏，不再有「选择格式导出」层，格式按钮名为纯格式名。
+  await page.locator(".export-format-grid").waitFor({ state: "visible" });
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: /SGF（当前变化）/ }).click();
+  await page.locator(".export-format-grid button").filter({ has: page.locator('b:text-is("SGF")') }).click();
   const download = await downloadPromise;
   const downloadPath = await download.path();
   if (!download.suggestedFilename().includes("当前变化")) throw new Error(`当前变化导出文件名异常：${download.suggestedFilename()}`);
@@ -95,7 +96,8 @@ try {
   await page.getByRole("button", { name: "有草稿 1", exact: true }).click();
   await page.locator(".record-list article").filter({ hasText: "有草稿的最近棋谱" }).waitFor();
   await page.getByRole("button", { name: /资料安全/ }).click();
-  await page.getByRole("button", { name: /打开回收站/ }).waitFor();
+  // 资料安全面板的入口按钮文案已简化为「回收站」（旧版是「打开回收站」）。
+  await page.getByRole("button", { name: "回收站", exact: true }).waitFor();
   await page.getByRole("button", { name: /导出完整备份/ }).waitFor();
   await page.getByRole("button", { name: /恢复完整备份/ }).waitFor();
   await page.keyboard.press("Escape");

@@ -7,8 +7,8 @@ android {
         applicationId "cn.renjunote.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 27
-        versionName "1.1.8"
+        versionCode 101
+        versionName "1.2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -30,10 +30,42 @@ android {
             }
         }
     }
+    // 原生引擎要能被 exec：必须让安装器把 jniLibs 解压到 nativeLibraryDir。
+    // AGP 8 默认 useLegacyPackaging=false（libs 留在 APK 里直接 mmap），那样
+    // 可执行文件取不到路径、也没法执行——「随包带一个可执行文件」这条路的硬前提。
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     buildTypes {
+        debug {
+            // 本地联调：debug 包与对外签名包签名不同，装不进同一个包名。加后缀让两者
+            // 在模拟器上共存，不必卸载已装的测试包。清单里的 ${applicationId}.fileprovider
+            // 会自动跟着变，不受影响。
+            applicationIdSuffix ".debug"
+            // 调试端口与网页调试桥：debug 包恒开。
+            resValue "string", "banbu_debug_webview", "true"
+        }
         release {
             if (releaseStore && releaseStorePassword && releaseKeyAlias && releaseKeyPassword) {
                 signingConfig signingConfigs.release
+            }
+            /* 大模型调试通道（2026-10-09）：release 签名下也能开调试端口/网页调试桥 ——
+               真机调试必须走这条路，因为 MIUI（K20 实测）拒绝安装 debug 签名的包
+               （INSTALL_FAILED_USER_RESTRICTED，adb/pm/流式三种装法都试过）。
+               用 resValue 而不是 buildConfigField：本工程没开 buildFeatures.buildConfig。
+               ⚠ 正式发版必须确认它是 "false"（否则发布包带着 9222 调试端口）；
+                 由 src/android-web-cache-migration.test.ts 一并守住这条。 */
+            resValue "string", "banbu_debug_webview",
+                    (project.findProperty("banbu.debugWebview") ?: "false").toString()
+            // 只打真机用的 ABI。真机（含所有现代手机）是 arm64-v8a；x86_64 只存在于模拟器，
+            // 而 AGP 默认把 jniLibs 里**所有**架构都打进包——等于白送一份体积（Rapfi 约
+            // 1.4MB；将来换成 KataGo 那种 15-25MB 的二进制就贵得多）。
+            // debug 包**不过滤**：本机联调要在 x86_64 模拟器（MuMu）上跑。
+            ndk {
+                abiFilters "arm64-v8a"
             }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

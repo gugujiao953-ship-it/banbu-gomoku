@@ -2,4 +2,7 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <external-path name="my_images" path="." />
     <cache-path name="my_cache_images" path="." />
+    <!-- 应用内下载的新版安装包先落在应用外部 files 目录（无需任何存储权限），
+         再由 ApkInstallPlugin 经 FileProvider 把 content:// URI 交给系统安装器。 -->
+    <external-files-path name="banbu_shared_files" path="." />
 </paths>

@@ -1,6 +1,8 @@
-import { createDocument, isSupportedBoardSize, parseCoordinate } from "./game";
+import { coordinateName, createDocument, isSupportedBoardSize, parseCoordinate } from "./game";
 import { parsePuzzleRule } from "./features/puzzles/puzzle-rules";
 import type { GameDocument, Player, Position, RecordNode, RuleSet } from "./types";
+import type { GeneratedPuzzle } from './features/puzzle-generator/model';
+import { generatedMatchesPuzzle } from './features/puzzle-generator/collection';
 
 export interface PuzzleStone extends Position { player: Player }
 export interface Puzzle {
@@ -14,6 +16,8 @@ export interface Puzzle {
   boardSize?: number;
   /** Explicit puzzle rules override the user's general doing-puzzle preference. */
   rule?: RuleSet;
+  /** Full proof/theme survive backup and JSON export; reverified before play. */
+  generated?: GeneratedPuzzle;
 }
 export interface PuzzleCollection {
   id: string;
@@ -36,6 +40,10 @@ const COLLECTIONS_KEY = "renju-note-puzzle-collections-v1";
 const PROGRESS_KEY = "renju-note-puzzle-progress-v1";
 const TITLE_OVERRIDES_KEY = "renju-note-puzzle-title-overrides-v1";
 const REMOVED_BUILTIN_COLLECTION_IDS = new Set(["original-tactics"]);
+// 导入题集的 id 曾经只有 `imported-<毫秒>`：同一毫秒内的两次导入（例如 ZIP 里多个文件、
+// 或极快地连点两次）会拿到同一个 id，后一份把前一份静默顶掉。补一个进程内自增序号。
+let importedCollectionSerial = 0;
+const nextImportedCollectionId = () => `imported-${Date.now().toString(36)}-${(importedCollectionSerial += 1).toString(36)}`;
 const builtinPuzzleCollections: PuzzleCollection[] = [];
 interface PuzzleTitleOverrides { collections: Record<string, string>; puzzles: Record<string, string> }
 export type PuzzleProgress = Record<string, { solved: boolean; attempts: number; updatedAt: string }>;
@@ -100,10 +108,19 @@ export function loadPuzzleProgress(): PuzzleProgress {
 
 export function savePuzzleProgress(progress: PuzzleProgress) { localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress)); }
 
-export function deriveWrongPuzzleEntries(collections: PuzzleCollection[], progress: PuzzleProgress): PuzzleReviewEntry[] {
+/**
+ * 错题本：尝试过（有完局记录）但还没解出的题。
+ *
+ * `masteredKeys` 是可选的「已掌握」键集合（键形如 `collectionId/puzzleId`）——用户
+ * 手动标记「不用再练了」的题从这里收起，但**不动 solved**（2026-09-21）。做成可选
+ * 参数而不是必传对象，是为了让既有调用点与单测不必跟着改。
+ */
+export function deriveWrongPuzzleEntries(collections: PuzzleCollection[], progress: PuzzleProgress, masteredKeys?: ReadonlySet<string>): PuzzleReviewEntry[] {
   return collections.flatMap((collection, collectionIndex) => collection.puzzles.flatMap((puzzle, puzzleIndex) => {
-    const entry = progress[puzzleProgressKey(collection.id, puzzle.id)];
+    const key = puzzleProgressKey(collection.id, puzzle.id);
+    const entry = progress[key];
     if (!entry || entry.solved || (entry.attempts || 0) <= 0) return [];
+    if (masteredKeys?.has(key)) return [];
     return [{
       collectionId: collection.id,
       collectionIndex,
@@ -134,9 +151,20 @@ export function createPuzzleDocument(puzzle: Puzzle, rule: RuleSet = puzzle.rule
   puzzle.stones.forEach((item, index) => {
     const id = makeNodeId(puzzle.id, index);
     nodes[parentId] = { ...nodes[parentId], children: [id], preferredChildId: id };
-    nodes[id] = { id, parentId, children: [], move: { row: item.row, col: item.col, player: item.player }, comment: "", marks: [] };
+    // 题目数据里的 player（首手方）才是权威轮次：预置子是一组「局面棋子」而非手序，
+    // 最后一张子未必是走完那一手的对手色（白先题常以白子收尾），只按最后落子的颜色反推
+    // 会把白先题算成黑先（分析按黑算、用户白子被「现在轮到陪练落子」挡住）。把权威轮次
+    // 显式钉在终局节点上，nextPlayerAt 便以此为局面行棋方。
+    const isLast = index === puzzle.stones.length - 1;
+    nodes[id] = {
+      id, parentId, children: [],
+      move: { row: item.row, col: item.col, player: item.player },
+      ...(isLast ? { setup: { black: [], white: [], empty: [], nextPlayer: puzzle.player } } : {}),
+      comment: "", marks: [],
+    };
     parentId = id;
   });
+  if (!puzzle.stones.length) nodes[rootId] = { ...nodes[rootId], setup: { black: [], white: [], empty: [], nextPlayer: puzzle.player } };
   return {
     document: {
       ...document,
@@ -161,7 +189,7 @@ const parseNativeCoordinateSequence = (value: unknown, size: number): { position
   const source = Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").join(" ") : typeof value === "string" ? value : "";
   const positions: Position[] = [];
   const invalid: string[] = [];
-  const pattern = /([A-Za-z])(\d{1,2})/g;
+  const pattern = /([A-Za-z]{1,2})(\d{1,2})/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source))) {
@@ -246,7 +274,7 @@ const parseNativeObjectEntry = (entry: JsonObject, entryIndex: number, warnings:
     let sequenceIndex = 0;
     for (const value of values) {
       if (typeof value !== "string") { warnings.push("第 " + (entryIndex + 1) + " 题含非文本棋子序列"); continue; }
-      const colored = value.match(/^\s*([A-Za-z]\d{1,2})\s*,\s*([12])\s*$/);
+      const colored = value.match(/^\s*([A-Za-z]{1,2}\d{1,2})\s*,\s*([12])\s*$/);
       if (colored) {
         const position = parseCoordinate(colored[1], size);
         if (position) addPuzzleStone(stones, position, colored[2] === "1" ? "black" : "white", warnings, "第 " + (entryIndex + 1) + " 题");
@@ -294,7 +322,12 @@ const importNativePuzzleObject = (raw: JsonObject, title: string, metadata?: Par
     const parsed = parseNativeObjectEntry(entry, entryIndex, warnings);
     if (!parsed.stones.length) { skipped += 1; return; }
     const prompt = parsed.comment || ((parsed.player === "black" ? "黑" : "白") + "先，击败陪练");
-    puzzles.push({ id: "imported-" + (entryIndex + 1), title: textValue(entry.title) || ("第 " + (entryIndex + 1) + " 题"), prompt, difficulty: parsed.difficulty, stones: parsed.stones, player: parsed.player, boardSize: parsed.size, ...(parsed.rule ? { rule: parsed.rule } : {}) });
+    const puzzle: Puzzle = { id: "imported-" + (entryIndex + 1), title: textValue(entry.title) || ("第 " + (entryIndex + 1) + " 题"), prompt, difficulty: parsed.difficulty, stones: parsed.stones, player: parsed.player, boardSize: parsed.size, ...(parsed.rule ? { rule: parsed.rule } : {}) };
+    if (entry.generated !== undefined) {
+      if (!generatedMatchesPuzzle(entry.generated, puzzle)) { skipped++; warnings.push(`第 ${entryIndex + 1} 题的生成证明与题面不一致，已跳过`); return; }
+      puzzle.generated = entry.generated; puzzle.id = entry.generated.id;
+    }
+    puzzles.push(puzzle);
   });
   if (!puzzles.length) throw new Error("没有找到可用题目");
   const defaultSettings = isJsonObject(raw.defaultSettings) ? raw.defaultSettings : undefined;
@@ -303,7 +336,7 @@ const importNativePuzzleObject = (raw: JsonObject, title: string, metadata?: Par
   const collectionTitle = title === "导入题集" && settings ? settings : title;
   return {
     collection: {
-      id: metadata?.id || "imported-" + Date.now(),
+      id: metadata?.id || nextImportedCollectionId(),
       title: collectionTitle,
       source: metadata?.source || textValue(raw.link) || "用户导入",
       license: metadata?.license || "由用户确认使用权",
@@ -355,12 +388,14 @@ export function importKaibaoPuzzleJson(text: string, title = "导入题集", met
     puzzles.push({ id: `imported-${entryIndex + 1}`, title: `第 ${entryIndex + 1} 题`, prompt: `${player === "black" ? "黑" : "白"}先，击败陪练`, difficulty: Math.min(5, Math.max(1, stars || 2)) as Puzzle["difficulty"], stones, player });
   });
   if (!puzzles.length) throw new Error("没有找到可用题目");
-  return { collection: { id: metadata?.id || `imported-${Date.now()}`, title, source: metadata?.source || "用户导入", license: metadata?.license || "由用户确认使用权", puzzles }, skipped, warnings };
+  return { collection: { id: metadata?.id || nextImportedCollectionId(), title, source: metadata?.source || "用户导入", license: metadata?.license || "由用户确认使用权", puzzles }, skipped, warnings };
 }
 
 export async function loadNativeKaibaoCollections(): Promise<PuzzleCollection[]> {
   const collections = await Promise.all(NATIVE_KAIBAO_SETS.map(async (title, index) => {
-    const response = await fetch(`/puzzles/kaibao/${title}.json`);
+    // 按构建 base 取路径：站点根写法（"/puzzles/…"）在网页版子路径部署
+    // （…/banbu-gomoku/app/）下会请求到站点根 → 404，题库整个是空的。
+    const response = await fetch(`${import.meta.env.BASE_URL}puzzles/kaibao/${title}.json`);
     if (!response.ok) throw new Error(`题集加载失败：${title}`);
     return importKaibaoPuzzleJson(await response.text(), title, {
       id: `native-kaibao-${index + 1}`,
@@ -369,4 +404,37 @@ export async function loadNativeKaibaoCollections(): Promise<PuzzleCollection[]>
     }).collection;
   }));
   return applyTitleOverrides(collections);
+}
+
+/**
+ * 把本机题集导出成题集 JSON（可直接再导入，或交给别的工具读）。
+ *
+ * 与 `importKaibaoPuzzleJson` 互为逆运算（有单测按坐标/颜色/尺寸/规则/难度逐项对拍），
+ * 目的是让「自己找题 → 在本应用里整理 → 推到自己的仓库 → 别的设备上取回」这条闭环成立：
+ * 导出的格式就是清单里 `sets[].file` 指向的那份文件。
+ *
+ * 用**分色写法**（blackStones / whiteStones）而不是连续坐标串：连续串隐含「黑白交替、黑先」，
+ * 题目里的预置子未必满足这个约定，分色写出来才不会在往返时串色。
+ */
+export function exportPuzzleCollectionJson(collection: PuzzleCollection): string {
+  return JSON.stringify({
+    link: collection.source || "",
+    defaultSettings: { title: collection.title },
+    puzzles: collection.puzzles.map((puzzle) => {
+      const size = puzzle.boardSize || 15;
+      return {
+        side: puzzle.player === "black" ? 1 : 2,
+        // 规则写**名字**而不是数字编码：`parsePuzzleRule` 刻意不猜第三方数字编码（0/2 各家含义不同），
+        // 写数字会在往返时被静默丢掉——这条正是导出往返单测抓出来的。
+        ...(puzzle.rule ? { rule: puzzle.rule } : {}),
+        size,
+        level: puzzle.difficulty,
+        title: puzzle.title,
+        ...(puzzle.prompt ? { comment: puzzle.prompt } : {}),
+        blackStones: puzzle.stones.filter((stone) => stone.player === "black").map((stone) => coordinateName(stone, size)).join(" "),
+        whiteStones: puzzle.stones.filter((stone) => stone.player === "white").map((stone) => coordinateName(stone, size)).join(" "),
+        ...(puzzle.generated ? { generated: puzzle.generated } : {}),
+      };
+    }),
+  }, null, 1);
 }

@@ -34,16 +34,17 @@ assert(await textarea.count() === 1, '注释输入框未出现');
 await textarea.fill('导出往返验证注释');
 await page.locator('.sheet-body').getByRole('button', { name: /完成/ }).click();
 await page.waitForTimeout(300);
-// 顶部常驻导出入口
-await page.getByRole('button', { name: '打开导出方式' }).click();
-await page.waitForTimeout(200);
-await page.getByRole('button', { name: '选择格式导出' }).click();
-const [sgfDownload] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /SGF（整谱）/ }).click()]);
-await page.getByRole('button', { name: '打开导出方式' }).click();
-if (await page.getByRole('button', { name: /JSON（整谱）/ }).count() === 0) {
-  await page.getByRole('button', { name: '选择格式导出' }).click();
-}
-const [jsonDownload] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /JSON（整谱）/ }).click()]);
+// 顶部常驻导出入口。导出弹窗已改版：范围与格式同屏，格式按钮就在 .export-format-grid
+// 里（旧版还有一层「选择格式导出」，以及带范围后缀的「SGF（整谱）」按钮名）。
+const openExportSheet = async () => {
+  await page.getByRole('button', { name: '打开导出方式' }).click();
+  await page.locator('.export-format-grid').waitFor({ state: 'visible' });
+};
+const formatButton = (label) => page.locator('.export-format-grid button').filter({ has: page.locator(`b:text-is("${label}")`) });
+await openExportSheet();
+const [sgfDownload] = await Promise.all([page.waitForEvent('download'), formatButton('SGF').click()]);
+if (!(await page.locator('.export-format-grid').isVisible().catch(() => false))) await openExportSheet();
+const [jsonDownload] = await Promise.all([page.waitForEvent('download'), formatButton('JSON').click()]);
 assert(sgfDownload.suggestedFilename().endsWith('.sgf'), 'SGF 文件名错误');
 assert(jsonDownload.suggestedFilename().endsWith('.json'), 'JSON 文件名错误');
 const sgfPath = join(dir, 'export.sgf'), jsonPath = join(dir, 'export.json');

@@ -1,0 +1,122 @@
+/**
+ * 道具栏（加时 / 提示 / 悔棋三颗卡）的样式 —— **由组件自己带**，不放页面 CSS 里。
+ *
+ * ## 为什么单独一个文件（2026-10-13）
+ *
+ * 这三颗卡是共用组件 `VcfItemBar.tsx`，但它的样式原来写在 `vcf-challenge.css` 里，
+ * 而那份 CSS 只被 `VcfChallengePage.tsx` import，那个页面又是 `lazy()` 的
+ * （`App.tsx:237`）。人机对弈页只静态引了组件、没引页面 ⇒ **对弈页里的道具栏完全没有样式**：
+ * 实测单颗 70×24 的裸按钮、整排 `display: block`，而 VCF 页是 46×52 的竖排卡 + flex。
+ * 用户那句「这些卡的前端和 vcf 挑战的也不一样，没有完全参考」就是这个。
+ *
+ * 所以样式跟着组件走：谁 import 组件，谁就自动拿到同一份外观。
+ * （对弈页那三颗卡在 2026-10-13 同日按用户口径撤掉了 —— 对弈悔棋改成操作条上直接扣
+ *  10 棋魂，加时/提示不进对局 —— 但**这份拆分留着**：理由与"对弈页"无关，是"组件自带样式"。）
+ * 说明/购买弹窗（`.vcfch-itemback` / `.vcfch-itemcard*`）本来就在
+ * `src/features/progress/soul-lockable.css`（共享文件），所以它一直是好的 —— 保持不动。
+ *
+ * 体量口径的来历（用户三轮点名）留在下面原注释里，改尺寸前先读。
+ */
+
+/* ── 道具栏（用户 2026-10-10 两轮 → 2026-10-12 第三轮放大）──────────────
+   第一轮：「都做图标，下面是数量，有一个+号……不能太大了，但是要能够点到，
+   也不能变得不是一屏」——做成了 56×62 的三张卡。
+   第二轮改位置与体量：「放到计时的左边，和计时在同一行，那个数字和图案紧凑一点，
+   尽量不要太高了这个卡片，**高度压缩在那一行的高度**，不要太突兀」。
+   第三轮（本轮）：「那三个道具我觉得完全可以再大一点，目前感觉有点小，高度完全可以
+   再高一点，那个+号也可以放下面……**不超过左边两个加起来的高度**（你执xx，x手=xx分）」。
+
+   ⇒ 上限就是左块两段之和：`.vcfch-side-chip` **35px** + `.vcfch-meta` **17px** = **52px**（实测），
+   所以每颗做 52px 高。形态改成**竖排两段**：上半＝图标+数量（点它用道具），
+   下半＝整条宽的「+」（点它问价与用法），中间一条发丝线分开。
+   横向反而省了：单颗从 62×30 改成 46×52，整条从 194px 收到 146px。
+   状态行实高（实测）：横屏 35→52（+17，靠上面两条反推常数补回去）；
+   **竖屏窄机从 88→60** —— 旧版 194px 宽的道具栏把左块挤成了三行，改版后不挤了，
+   反而省 28px（360×640 的溢出从 52px 降到 24px，再用 296→320 收干净）。 */
+
+.vcfch-items {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* 不再有独立的一行内边距：它现在是状态行的一部分 */
+  padding: 0;
+}
+
+/* 单颗道具：**竖排两段**（上半用、下半问价），**它本身不可点**
+   （里面是两个各自独立的按钮，见 VcfItemBar 的注释） */
+.vcfch-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  /* 高度顶到左块两段之和（53px）留 1px 余量 —— 用户点名的上限 */
+  min-height: 52px;
+  min-width: 46px;
+  padding: 0;
+  border: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  color: var(--ink, #292620);
+  overflow: hidden;
+}
+
+/* 上半：点它用道具（占剩余全部高度） */
+.vcfch-item-use {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+
+.vcfch-item-use:not(:disabled):active { opacity: .6; }
+
+.vcfch-item-use:disabled { opacity: .45; }
+
+/* 用完的：整颗压暗一档（一眼看出"这个没了"），但仍然可点（点了弹购买） */
+.vcfch-item.is-empty { background: color-mix(in srgb, var(--line, #dfdad0) 16%, var(--surface, #fff)); }
+
+.vcfch-item-icon { color: var(--muted, #68635b); display: grid; place-items: center; }
+
+.vcfch-item b {
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  min-width: 10px;
+  text-align: center;
+  color: var(--ink, #292620);
+}
+
+.vcfch-item b.empty { color: var(--muted, #68635b); font-weight: 600; }
+
+/* 下半：「+」= 问价与用法，**整条宽**贴在底下（用户 2026-10-12：「那个+号也可以放下面」），
+   与上半用一条发丝线分开。它是真按钮，所以给的是**它自己的面积**而不是 ::after 撑热区
+   （那种做法对读屏不友好，也让"点了没反应"难排查）。 */
+.vcfch-item-info {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 100%;
+  height: 21px;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--surface-border, #e6e1d8);
+  border-radius: 0 0 9px 9px;
+  /* ⚠ 底色与字色都必须走主题令牌，不能吃 `--progress-soul-ink` 的兜底：
+     实测 light/dark/deepsea/pixel 四档该变量**在 :root 上都没定义**（它只在棋魂那套
+     `.soul-*` 作用域里有值），所以旧版这颗一直是深棕 #6b4c17 压在"透明金"上 ——
+     浅色主题没问题，暗色主题下 46×21 的一整条几乎看不清（本轮把「+」放大到整条宽才暴露）。
+     现在底=主题表面色掺一点金、字=主题主墨色，两边都由令牌跟着主题走。 */
+  background: color-mix(in srgb, var(--gold, #c79c4a) 18%, var(--surface, #fff));
+  color: var(--ink, #292620);
+  cursor: pointer;
+}
+
+.vcfch-item-info:active { background: color-mix(in srgb, var(--gold, #c79c4a) 34%, var(--surface, #fff)); }

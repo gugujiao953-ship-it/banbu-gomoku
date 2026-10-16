@@ -58,9 +58,15 @@ export const findPositionMatches = (documents: GameDocument[], target: Cell[][],
       node.setup?.white.forEach((position) => write(position, "white"));
       if (node.move && (node.move.row < 0 || node.move.row >= board.length || node.move.col < 0 || node.move.col >= board.length || board[node.move.row][node.move.col])) { restore(); return; }
       if (node.move) write(node.move, node.move.player);
-      let next = node.setup?.nextPlayer || player;
+      // Precedence must match nextPlayerAt (game.ts): an explicitly declared
+      // side to move wins over the side inferred from the last move's colour.
+      // A node can carry both (puzzle presets and imported SGF with PL[W] do),
+      // and the old order made the two halves of the app disagree about whose
+      // turn it was — positionKey then embedded the wrong side and the search
+      // missed every such record.
       const turnPlayer = node.move?.player || node.passPlayer;
-      if (turnPlayer) next = turnPlayer === "black" ? "white" : "black";
+      let next = turnPlayer ? (turnPlayer === "black" ? "white" : "black") : player;
+      if (node.setup?.nextPlayer) next = node.setup.nextPlayer;
       const nodeDepth = depth + (turnPlayer ? 1 : 0);
       if (positionKey(board, next, includeSymmetry) === wanted) {
         matches.push({
