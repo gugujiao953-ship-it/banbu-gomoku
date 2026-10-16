@@ -1,5 +1,7 @@
 # 半步五子棋打谱
 
+**中文** · [English](./README.en.md)
+
 ![半步五子棋打谱](marketing/social-preview-1280x640.png)
 
 移动优先的五子棋 / 连珠打谱、读谱、做题与题库工具：共享核心用 React + TypeScript，网页版是 PWA（离线可用、含 iOS），Android 应用用 Capacitor 打包；本地 AI 引擎（Rapfi / KataGo）全部在设备上跑，不连服务器也能分析。
@@ -31,7 +33,7 @@
 
 项目仓库：[github.com/gugujiao953-ship-it/banbu-gomoku](https://github.com/gugujiao953-ship-it/banbu-gomoku)
 
-桌面参考软件的功能拆解与移动端迁移决策见 [DESKTOP_REFERENCE_AUDIT.md](./DESKTOP_REFERENCE_AUDIT.md)，开宝 APK、题库格式与界面参照见 [KAIBAO_REFERENCE_AUDIT.md](./KAIBAO_REFERENCE_AUDIT.md)。
+桌面参考软件的功能拆解与移动端迁移决策见 [desktop-reference-audit.md](./docs/reference/desktop-reference-audit.md)，开宝 APK、题库格式与界面参照见 [kaibao-reference-audit.md](./docs/reference/kaibao-reference-audit.md)。
 
 ## 简单致谢
 
@@ -98,6 +100,19 @@
 `.lib` 是 RenLib 的二进制变化树格式。当前生产入口直接使用网页 ReadLib/RenLib 的原生 JavaScript + WASM 核心：打开后只投影当前路径和当前分支到现有 UI，分支文字与节点注释由原核心按局面查询。软件不再设置 200MB 上限；实际可打开大小取决于浏览器/WebView 可用内存。当前一次打开一份 LIB，浏览会话为只读；编辑、持久化与导出适配将在动态核心之上继续实现。
 
 `.txt` 不是统一的五子棋专有格式，本项目只把它作为 `H8 I8 H9` 一类纯文本坐标序列的兼容入口。JSON 分为棋谱库使用的 RENJU 完整变化树、带明确 `moves` 字段的落子列表对象与题库页使用的开宝兼容题集数组，三者会分别校验，不猜测坐标基准不明的任意数组。
+
+## 仓库结构
+
+```
+src/         应用源码（React + TypeScript）
+public/      网页版静态资源（含识谱模型与 ORT 运行时）
+android/     Capacitor 原生工程（原生引擎插件、随包权重）
+scripts/     构建、打包与发布工具
+qa/          浏览器回归门禁（见 qa/README.md）
+docs/        中文文档（竞品拆解等调研笔记在 docs/reference/）
+models/      AI 模型与变体索引（见 models/README.md）
+marketing/   各版本的宣传页与素材
+```
 
 ## 本地开发
 
