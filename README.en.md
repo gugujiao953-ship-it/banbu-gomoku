@@ -8,9 +8,20 @@ A mobile-first Go-Moku / Renju **game-record (kifu) study tool**: record, study,
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/gugujiao953-ship-it/banbu-gomoku)](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest)
+[![Quality Gate](https://github.com/gugujiao953-ship-it/banbu-gomoku/actions/workflows/quality.yml/badge.svg)](https://github.com/gugujiao953-ship-it/banbu-gomoku/actions/workflows/quality.yml)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Web-blue.svg)](#downloads)
 
+Current stable release: **v1.2.0** (2026-10-15) · see [Releases](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest) for exact version, size and SHA-256.
+
 Built with React + TypeScript (shared core) for the web/PWA and Capacitor for Android.
+
+## Screenshots
+
+| **Record** | **Problems** |
+|:---:|:---:|
+| ![Record workspace](marketing/screenshots/record.png) | ![Problem training](marketing/screenshots/puzzle.png) |
+| **Play vs AI** | **Game library** |
+| ![Play vs AI](marketing/screenshots/ai-duel.png) | ![Game library](marketing/screenshots/library.png) |
 
 ## Downloads
 
@@ -39,7 +50,7 @@ In-app update notes: **Settings → About → What's new in this version**. Full
 - Daily puzzle page, wrong-answer book, per-problem attempt history kept separate from the board
 - **VCF challenge**: every move must be a four-threat; rating ladder, three timer modes and three in-game items
 - **Puzzle generator**: ordinary / forbidden-move / shape / text problems, 3–100 moves, custom shape drawing, test-play, history
-- Achievements (89) and the "soul" collection used to unlock themes, boards, stones and items
+- Achievements and the "soul" collection used to unlock themes, boards, stones and items
 
 **Play & AI**
 - Local human-vs-AI games with the full Renju opening rule set (free opening, swap, 3-swap, 5-two, 5-multi, Yamaguchi, Soosõrv-8, Taraguchi-10)
@@ -64,30 +75,29 @@ Export: `.sgf` (for RenLib and other tools), `.renju` (full variation tree, comm
 
 ```powershell
 npm install
-npm run dev
+npm run dev          # dev server
+npm test             # unit tests
+npm run build        # production build (AI assets → typecheck → build → size check)
 ```
 
-Build and test:
-
-```powershell
-npm test
-npm run build
-```
-
-## Android
-
-The `android/` folder is a Capacitor native project.
+Android (the `android/` folder is a Capacitor native project; JDK 21 and the Android SDK are required — the release script prefers the toolchain inside the project so it does not depend on a global `JAVA_HOME`):
 
 ```powershell
 npm run android:sync
 npm run android:open
 
 cd android
-.\gradlew.bat assembleDebug        # debug APK
-npm run android:release            # signed release APK (builds web, syncs, verifies metadata)
+.\gradlew.bat assembleDebug     # debug APK
+npm run android:release         # signed release APK (builds web, syncs, verifies metadata)
 ```
 
-Release process: [docs/Android发布流程.md](./docs/Android发布流程.md). JDK 21 and the Android SDK are required; the release script prefers the toolchain inside the project so it does not depend on a global `JAVA_HOME`.
+Release process: [docs/Android发布流程.md](./docs/Android发布流程.md). Engine and model assets are placed into the package by build scripts, so a fresh clone builds out of the box.
+
+Visual regression gate (Playwright places real moves at 360×800 and 412×915 touch viewports and verifies coordinates, edits, variations, candidate points and more):
+
+```powershell
+node .\qa\mobile-visual.mjs
+```
 
 ## Repository layout
 
@@ -99,8 +109,18 @@ scripts/      build, packaging and release tooling
 qa/           browser-based regression gates (see qa/README.md)
 docs/         documentation (Chinese; reference audits in docs/reference/)
 models/       index of the AI models & variants shipped or used (see models/README.md)
-marketing/    landing page and promo material per release
+marketing/    landing page source, app screenshots and current-release promo assets
 ```
+
+## Documentation
+
+| Doc | Contents |
+| --- | --- |
+| [RELEASE_NOTES.md](./RELEASE_NOTES.md) | version-by-version development log |
+| [docs/项目全景说明.md](./docs/项目全景说明.md) | project overview and asset map (Chinese) |
+| [docs/Android发布流程.md](./docs/Android发布流程.md) | packaging & release SOP (Chinese) |
+| [docs/adr/](./docs/adr) | architecture decision records |
+| [docs/reference/](./docs/reference) | reference-software audits (Chinese) |
 
 ## Feedback
 

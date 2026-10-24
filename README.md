@@ -8,9 +8,18 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/gugujiao953-ship-it/banbu-gomoku)](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest)
+[![Quality Gate](https://github.com/gugujiao953-ship-it/banbu-gomoku/actions/workflows/quality.yml/badge.svg)](https://github.com/gugujiao953-ship-it/banbu-gomoku/actions/workflows/quality.yml)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Web-blue.svg)](#下载与在线使用)
 
 当前稳定版：**v1.2.0**（2026-10-15）· 版本号、体积与 SHA-256 以 [Releases](https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest) 为准。
+
+## 应用一览
+
+| **打谱** | **做题** |
+|:---:|:---:|
+| ![打谱工作区](marketing/screenshots/record.png) | ![做题训练](marketing/screenshots/puzzle.png) |
+| **人机对弈** | **棋谱库** |
+| ![人机对弈与开局规则](marketing/screenshots/ai-duel.png) | ![棋谱库](marketing/screenshots/library.png) |
 
 ## 下载与在线使用
 
@@ -23,64 +32,55 @@
 
 更新说明：应用内「设置 → 关于 → 本版本更新内容」随时可看；开发日志与逐版细节见 [RELEASE_NOTES.md](./RELEASE_NOTES.md)。
 
-## 反馈与参与
+## 功能特性
 
-- **有问题、想加功能**：直接[提一个 issue](https://github.com/gugujiao953-ship-it/banbu-gomoku/issues/new/choose)——仓库里带了反馈模板；把「设置 → 关于 → 兼容性自检」的输出一起贴上，定位会快很多。
-- **随便聊聊**：欢迎到 [Discussions](https://github.com/gugujiao953-ship-it/banbu-gomoku/discussions) 发帖。
-- 想自己编译：`npm ci && npm run build`（网页版），`npm run android:release` 打 Android 包；引擎与模型资产由构建脚本铺进包内。
-
-> 这是一个 Vibecoding 的产物，也是一款永久免费、开放源代码的软件。希望它能让手机打谱和做题更方便；如果你也做五子棋工具，欢迎互相借鉴。
-
-项目仓库：[github.com/gugujiao953-ship-it/banbu-gomoku](https://github.com/gugujiao953-ship-it/banbu-gomoku)
-
-桌面参考软件的功能拆解与移动端迁移决策见 [desktop-reference-audit.md](./docs/reference/desktop-reference-audit.md)，开宝 APK、题库格式与界面参照见 [kaibao-reference-audit.md](./docs/reference/kaibao-reference-audit.md)。
-
-## 简单致谢
-
-- 打谱功能参考爱五子棋打谱软件与 RenLib / SGF 生态。
-- 做题交互和题集格式参考开宝五子棋。
-- AI 搜索思路参考 SlowRenju 等公开项目。
-
-感谢这些前辈软件、开发者和开源社区。本项目代码以 MIT License 开放；第三方名称与内容的原始权利归各自权利人所有。
-
-## 已实现
+### 打谱与棋谱库
 
 - 5–25 路方形棋盘（默认 15 路），手机触控落子，点击已有棋子跳转到对应手数
 - 棋盘四边固定显示 A–O / 15–1 坐标，支持显示/隐藏、旋转 90° 和左右镜像
-- 完整变化树：创建分支、设为主线、删除当前变化及其后续
-- 变化面板显示分支后续坐标预览，并提供“回到分叉支点创建变化”
+- 完整变化树：创建分支、设为主线、删除当前变化及其后续；变化面板显示分支后续坐标预览，并提供「回到分叉支点创建变化」
 - 改着模式：选中当前手后点棋盘空位替换坐标，保留后续变化
 - 候选点模式：A–E 局面标签，节点级保存并以 SGF `LB` 交换
-- 局面分析：VCF 强制胜搜索（连续冲四，带独立证明校验），以及按成五、活四、冲四、活三和防守点给出的可解释候选排序（启发式，不是完整 VCT 证明器）
-- AI 思考：本地 Rapfi 分析推荐落点、胜率、主变化与 Top-3 候选；Rapfi 不可用时回退自研搜索并明确标注，不伪造胜率
-- 本地人机对战：连珠 / 标准规则、禁手辅助提示、执黑执白与开局规则选择，全部本机运行
-- 开局规则：自由开局、一手交换、三手交换、五手两打、五手多打（3–10 打）、山口、索索夫-8、塔十（塔拉山口-10）与塔拉（五次交换）；另有无禁手与无禁六不胜模式
-- 暗色 / 浅色主题：跟随系统或手动切换，夜间打谱友好
-- 多套外观主题、棋盘与棋子预设，支持雨幕、水墨、雪落、青花瓷、像素和赛博等风格
-- 程序化落子音效、音量/静音设置、落子与胜负动效，以及 `prefers-reduced-motion` 降级
-- 设置页按“使用手册与反馈、核心偏好、数据与兼容、可选增强、设备布局”折叠整理，版本信息固定在底部
-- 一键备份与恢复：棋谱库、题库、进度、草稿、设置与大型索引清单整包导出导入，恢复前完整校验
-- 分享图片：棋盘局面导出为图片，可选显示手数与坐标，便于发帖与群聊分享
-- 图片识谱：自动定位网格并识别棋子颜色与手数，截图带手数时可恢复落子顺序（识别后请人工校对）
 - 起点、上一手、下一手、终点导航，支持外接键盘左右方向键
 - 当前棋谱内查找坐标、手数、节点注释、局面文字与着法评价，结果可直接跳转
 - 节点注释、局面文字，以及好手 / 坏手 / 疑问手 / 趣着 / 胜着 / 唯一手 / 研究点评价
 - 独立棋盘标注：1–9、胜 / 败 / 平 / 平衡、攻守提示、A–E、自定义文字，以及长按圆圈 / 三角 / 叉号
 - 连珠黑方常见长连、四四、三三禁手辅助提示（研究模式不阻止落子）
-- 本地棋谱库和约 0.5 秒防抖自动保存
-- 棋谱库按棋谱名、棋手、赛事主题即时检索
-- LIB 不设软件层文件大小上限；使用网页 ReadLib/RenLib WASM 核心在独立 Worker 中打开，并按当前局面实时查询分支与原生注释，不再把整谱转换为前端对象树
-- 普通与大型棋谱均处理内容重复和 ID 冲突，并隔离单文件失败
-- 规则、棋手、赛事、日期等棋谱信息
-- 可安装 PWA、离线缓存、安卓安全区和竖屏适配
+- 行棋、研究、记录、应战、选题和视图收进可折叠上下文工具坞
+- 本地棋谱库按棋谱名、棋手、赛事主题即时检索；约 0.5 秒防抖自动保存；普通与大型棋谱均处理内容重复和 ID 冲突，并隔离单文件失败
+- LIB 不设软件层文件大小上限：使用网页 ReadLib/RenLib WASM 核心在独立 Worker 中打开，按当前局面实时查询分支与原生注释，不再把整谱转换为前端对象树
+- 规则、棋手、赛事、日期等棋谱信息编辑
+
+### 做题与训练
+
 - 单棋盘工作区：打谱 / 做题是同一棋盘的行为状态，翻面时完整保留原棋谱会话
 - 当前棋谱 / 题目栏可点击切换；题集、题号、搜索、先手与完成状态集中在同一选择器
-- 行棋、研究、记录、应战、选题和视图收进可折叠上下文工具坞
 - 做题初始盘面与尝试历史分离；悔棋回退一人一机，重启只恢复本题初始局面
 - 玩家落子后由独立 Web Worker 陪练应对，支持强制停止且旧任务不能回写新题面
 - 棋盘页上一题 / 下一题、题集文件夹、完成进度和导入题集持久化
 - 兼容开宝二维 JSON 题库：星级、空占位、A–O / 1–15 坐标和黑白尾码
-- 本地构建内置 17 个题库，共约 6,367 道题；另含“祁观vs弈心 人机大战五局”五盘棋谱和“九天指南v5-1”局面数据库入口
+- 本地构建内置 17 个题库，共约 6,367 道题；另含「祁观vs弈心 人机大战五局」五盘棋谱和「九天指南v5-1」局面数据库入口
+
+### AI 与对弈
+
+- AI 思考：本地 Rapfi 分析推荐落点、胜率、主变化与 Top-3 候选；Rapfi 不可用时回退自研搜索并明确标注，不伪造胜率
+- 局面分析：VCF 强制胜搜索（连续冲四，带独立证明校验），以及按成五、活四、冲四、活三和防守点给出的可解释候选排序（启发式，不是完整 VCT 证明器）
+- 本地人机对战：连珠 / 标准规则、禁手辅助提示、执黑执白与开局规则选择，全部本机运行
+- 开局规则：自由开局、一手交换、三手交换、五手两打、五手多打（3–10 打）、山口、索索夫-8、塔十（塔拉山口-10）与塔拉（五次交换）；另有无禁手与无禁六不胜模式
+
+### 外观与体验
+
+- 暗色 / 浅色主题：跟随系统或手动切换，夜间打谱友好
+- 多套外观主题、棋盘与棋子预设，支持雨幕、水墨、雪落、青花瓷、像素和赛博等风格
+- 程序化落子音效、音量/静音设置、落子与胜负动效，以及 `prefers-reduced-motion` 降级
+- 设置页按「使用手册与反馈、核心偏好、数据与兼容、可选增强、设备布局」折叠整理，版本信息固定在底部
+- 可安装 PWA、离线缓存、安卓安全区和竖屏适配
+
+### 工具与数据
+
+- 一键备份与恢复：棋谱库、题库、进度、草稿、设置与大型索引清单整包导出导入，恢复前完整校验
+- 分享图片：棋盘局面导出为图片，可选显示手数与坐标，便于发帖与群聊分享
+- 图片识谱：自动定位网格并识别棋子颜色与手数，截图带手数时可恢复落子顺序（识别后请人工校对）
 
 ## 文件兼容
 
@@ -101,6 +101,34 @@
 
 `.txt` 不是统一的五子棋专有格式，本项目只把它作为 `H8 I8 H9` 一类纯文本坐标序列的兼容入口。JSON 分为棋谱库使用的 RENJU 完整变化树、带明确 `moves` 字段的落子列表对象与题库页使用的开宝兼容题集数组，三者会分别校验，不猜测坐标基准不明的任意数组。
 
+## 本地开发
+
+```powershell
+npm install
+npm run dev          # 开发服务器
+npm test             # 全量单测
+npm run build        # 生产构建（AI 资产准备 → 类型检查 → 构建 → 体积检查）
+```
+
+Android（`android/` 是 Capacitor 原生工程，需要 JDK 21 与 Android SDK；发布脚本优先使用项目内工具链，不依赖全局 `JAVA_HOME`）：
+
+```powershell
+npm run android:sync
+npm run android:open
+
+cd android
+.\gradlew.bat assembleDebug     # debug APK
+npm run android:release         # 签名 release APK（自动构建 Web、同步 Capacitor、校验元数据）
+```
+
+发布流程说明见 [docs/Android发布流程.md](./docs/Android发布流程.md)；引擎与模型资产由构建脚本铺进包内，克隆后即可构建。
+
+视觉回归门禁（Playwright 在 360×800 和 412×915 触控视口下实际落子，验证坐标、改着、变化、候选点、局面评价、查找、批量导入、重复去重、页面宽度与棋谱库，生成 `artifacts/` 截图）：
+
+```powershell
+node .\qa\mobile-visual.mjs
+```
+
 ## 仓库结构
 
 ```
@@ -111,53 +139,31 @@ scripts/     构建、打包与发布工具
 qa/          浏览器回归门禁（见 qa/README.md）
 docs/        中文文档（竞品拆解等调研笔记在 docs/reference/）
 models/      AI 模型与变体索引（见 models/README.md）
-marketing/   各版本的宣传页与素材
+marketing/   落地页源、应用截图与当前版本宣传素材
 ```
 
-## 本地开发
+## 文档
 
-```powershell
-npm install
-npm run dev
-```
+| 文档 | 内容 |
+| --- | --- |
+| [RELEASE_NOTES.md](./RELEASE_NOTES.md) | 逐版本开发日志与实测细节 |
+| [docs/项目全景说明.md](./docs/项目全景说明.md) | 项目全景与资产地图 |
+| [docs/Android发布流程.md](./docs/Android发布流程.md) | 打包与发布 SOP |
+| [docs/adr/](./docs/adr) | 关键技术决策记录 |
+| [docs/reference/](./docs/reference) | 桌面参考软件与开宝题库的拆解笔记 |
+| [docs/iOS-网页版说明.md](./docs/iOS-网页版说明.md) | iOS 上使用网页版（PWA）的说明 |
 
-生产构建和测试：
+## 反馈与参与
 
-```powershell
-npm test
-npm run build
-```
+- **有问题、想加功能**：直接[提一个 issue](https://github.com/gugujiao953-ship-it/banbu-gomoku/issues/new/choose)——仓库里带了反馈模板；把「设置 → 关于 → 兼容性自检」的输出一起贴上，定位会快很多。
+- **随便聊聊**：欢迎到 [Discussions](https://github.com/gugujiao953-ship-it/banbu-gomoku/discussions) 发帖。
 
-## Android
+> 这是一个 Vibecoding 的产物，也是一款永久免费、开放源代码的软件。希望它能让手机打谱和做题更方便；如果你也做五子棋工具，欢迎互相借鉴。
 
-项目已包含 `android/` Capacitor 原生工程。
+## 简单致谢
 
-```powershell
-npm run android:sync
-npm run android:open
-```
+- 打谱功能参考爱五子棋打谱软件与 RenLib / SGF 生态。
+- 做题交互和题集格式参考开宝五子棋。
+- AI 搜索思路参考 SlowRenju 等公开项目。
 
-命令行构建 debug APK：
-
-```powershell
-cd android
-.\gradlew.bat assembleDebug
-```
-
-发布版 APK（自动构建 Web、同步 Capacitor、复用既有 release 签名并校验元数据）：
-
-```powershell
-npm run android:release
-```
-
-发布流程说明见 [docs/Android发布流程.md](./docs/Android发布流程.md)。当前 v1.1.8 Release APK 和 SHA-256 校验文件保存在本地 `artifacts/releases/1.1.8/`，GitHub Release 页面会提供下载。
-
-需要 JDK 21、Android Studio / Android SDK；发布脚本会优先使用项目内的工具链，避免依赖全局 `JAVA_HOME`。
-
-## 视觉验收
-
-```powershell
-node .\qa\mobile-visual.mjs
-```
-
-脚本使用 Playwright 在 360×800 和 412×915 触控视口下实际落子，并验证坐标、改着、变化、候选点、局面评价、查找、批量导入、重复去重、页面宽度与棋谱库，最后生成 `artifacts/` 截图。
+感谢这些前辈软件、开发者和开源社区。本项目代码以 MIT License 开放；第三方名称与内容的原始权利归各自权利人所有（见 [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md)）。
