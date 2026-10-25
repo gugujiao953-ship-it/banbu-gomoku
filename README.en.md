@@ -56,9 +56,9 @@ In-app update notes: **Settings → About → What's new in this version**. Full
 - Local human-vs-AI games with the full Renju opening rule set (free opening, swap, 3-swap, 5-two, 5-multi, Yamaguchi, Soosõrv-8, Swap2, Taraguchi-10, Taraguchi)
 - Custom opening setup: place stones yourself, save the position, or load a record from your library as the opening
 - **Rapfi and KataGo engines are bundled in the APK** — no extra download, no network needed; cloud (your own KataGo server) is optional and only used for analysis
-- Engines are verified for 5–22-line boards and the app says so honestly beyond that (the board itself supports 5–30 lines)
+- Analysis works on 5–22-line boards (flagship KataGo tops out at 15 lines and hands over to the built-in engine); from 23 lines up the app says so honestly. The board itself supports 5–30 lines
 - VCF forced-win search with independent proof checking, plus local win-rate / candidate-point analysis
-- Experimental modes: 6 rule variants and "Skill Gomoku", a level-based roguelike with skills, perks and the soul economy
+- Experimental modes: 6 rule variants, "Skill Gomoku" (a level-based roguelike with skills, perks and the soul economy), and online play (experimental, off by default)
 
 **Utility**
 - Image recognition: locate the grid in a screenshot and read stones, colours and move numbers
