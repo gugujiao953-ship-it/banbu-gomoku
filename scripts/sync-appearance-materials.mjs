@@ -11,7 +11,7 @@
  *    node scripts/sync-appearance-materials.mjs          生成
  *    node scripts/sync-appearance-materials.mjs --check   只检查是否最新（CI 用）
  */
-import { readFileSync, writeFileSync, readdirSync, mkdirSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -99,6 +99,17 @@ function build() {
     + `  ...HANDMADE,\n`
     + `];\n`);
   return { emitted, keep, count: files.length };
+}
+
+/* 外观实验室（预览/skins）只在私有源仓：公开仓里生成物即真相，无从校验漂移。
+   --check 遇到实验室缺失就跳过（CI 不红）；真要改外观请去私有源仓执行本脚本。 */
+if (!existsSync(LAB_SKINS)) {
+  if (process.argv.includes("--check")) {
+    console.log("✓ 预览/skins 不存在（本仓不含外观实验室），跳过外观同步校验");
+    process.exit(0);
+  }
+  console.error("预览/skins 不存在：外观实验室只在私有源仓，请到私有源仓执行本脚本。");
+  process.exit(1);
 }
 
 const { emitted, keep, count } = build();

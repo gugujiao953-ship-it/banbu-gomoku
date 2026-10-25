@@ -61,6 +61,7 @@ describe("enhancement settings", () => {
       engineThreads: 0,
       openingBook: false,
       fastRecognition: true,
+      fullScreenMode: false,
       analysisMaxMemoryMb: 128,
       analysisCache: true,
       gameReviewBudgetMs: 800,
