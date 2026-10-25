@@ -340,7 +340,7 @@ section{padding:clamp(72px,9vw,120px) 0;position:relative}
       <div class="theme"><div class="sw" style="background:linear-gradient(135deg,#0a1524,#123055 55%,#2e6ea6)"></div><div class="nm">TH-08 深海幽蓝</div></div>
     </div>
     <div class="chips rv" style="margin-top:22px">
-      <span class="chip"><b>MAT</b>14 棋盘 + 16 棋子，带预览</span>
+      <span class="chip"><b>MAT</b>上架棋盘材质 41 套 + 多套棋子，带预览</span>
       <span class="chip"><b>FX</b>公用效果实时预览舞台</span>
       <span class="chip"><b>SCALE</b>界面字号覆盖全部界面</span>
       <span class="chip"><b>CONTRAST</b>20 套配色逐屏量过对比度</span>
@@ -388,7 +388,7 @@ section{padding:clamp(72px,9vw,120px) 0;position:relative}
         <dl>
           <dt>随包三台</dt><dd>KataGo b10c128 小网 <b>3.2MB</b> + KataGo b24c256 大网 <b>21.9MB</b>（int8）+ Rapfi 原生 <b>0.43.02</b>，都不用在应用外下载</dd>
           <dt>INT8</dt><dd>大网 42.4MB → 21.9MB，同机实测 5.6 → 10.9 访问/秒（1.95×）；旧 fp16 模型升级时自动删除</dd>
-          <dt>路数</dt><dd>应用支持 5–30 路；引擎实测 5–22 路生效、23 路起不可用，选路数时如实提示，不静默降级</dd>
+          <dt>路数</dt><dd>应用摆盘 5–30 路；分析在 5–22 路可用（旗舰 KataGo 仅 15 路以内，超过自动让位内置引擎），23 路起如实提示，不静默降级</dd>
           <dt>参数</dt><dd>搜索线程 4 / 6 / 8 / 12 / 16 / 20 / 24 七档（默认 16）、NN 缓存五档 100M / 200M / 400M / 800M / 1.6G</dd>
           <dt>云端</dt><dd>可选 iKataGo：填自己的服务器即可用远端算力，凭据只存本机；目前只有「分析」走云端</dd>
           <dt>后台</dt><dd>切出时分析、AI 应手、复盘、VCF 生成一起停，回前台自动续</dd>
@@ -400,7 +400,7 @@ section{padding:clamp(72px,9vw,120px) 0;position:relative}
           <dt>棋盘</dt><dd>5–30 路，缩放上限 2.35 → 6 倍、放大后可平移，棋子大小滑杆与序号倍率可调</dd>
           <dt>开局</dt><dd>十项开局规则（含 Swap2 / 山口 / 塔十），五手 N 打与索索夫打点按开局库好点自适应宣布</dd>
           <dt>禁手</dt><dd>无禁手 / 有禁手切换，禁手点实时提示</dd>
-          <dt>外观</dt><dd>22 套主题（20 套逐屏量过对比度）+ 棋盘材质 14 种 + 棋子材质 16 种 + 界面字号缩放覆盖全部界面</dd>
+          <dt>外观</dt><dd>23 套主题（20 套逐屏量过对比度）+ 上架棋盘材质 41 套与多套棋子材质 + 界面字号缩放覆盖全部界面</dd>
           <dt>横屏</dt><dd>一律双栏（右缘 56px 竖条导航），桌面浏览器同这套</dd>
         </dl>
       </div>
@@ -464,7 +464,7 @@ document.querySelectorAll("[data-split]").forEach(function(el){
   });
 });
 /* 跑马灯 */
-var FACTS = ["SGF / LIB / DP / DB / ZIP 全格式","KATAGO ON DEVICE","INT8 21.9MB","RAPFI 0.43.02","6,367 道内置题","22 套主题 · 20 套量过对比度","5–30 路棋盘","全程可离线","十项开局规则","成就与棋魂系统"];
+var FACTS = ["SGF / LIB / DP / DB / ZIP 全格式","KATAGO ON DEVICE","INT8 21.9MB","RAPFI 0.43.02","6,367 道内置题","23 套主题 · 20 套量过对比度","5–30 路棋盘","全程可离线","十项开局规则","成就与棋魂系统"];
 var tick = document.getElementById("tick");
 var half = document.createElement("span");
 FACTS.forEach(function(f){ half.innerHTML += f + "<i>◆</i>"; });
@@ -502,7 +502,7 @@ LOGS.forEach(function(l, i){
 });
 /* 14 条限制 */
 var LIMITS = [
- ["23 路以上的棋盘引擎不可用","应用本身 5–30 路都能摆，但引擎（KataGo / Rapfi）实测只有 5–22 路生效，23 路起会如实提示、不静默降级。摆盘与研究不受限。"],
+ ["16 路以上的棋盘没有旗舰引擎","应用本身 5–30 路都能摆。旗舰 KataGo 只支持 15 路以内，16 路起自动让位给内置 rapfi（实测 5–22 路生效）；23 路起没有引擎可用，应用会如实提示，不静默降级。摆盘与研究不受限。"],
  ["大网比小网慢一个数量级，也更耗电","换成 int8 之后，小网仍比大网快约 10 倍（同一台测试机：小网 106.9 访问/秒，大网 fp16 时代 5.6、int8 之后 10.9）。日常分析请用默认的「b10c128 小网」，要棋力再切大网；限时越短差距越明显，长时间大网分析建议接电源。"],
  ["int8 的强度只做了小样本验证","同预算 4 局对抗 2:2 持平，policy 首选一致率 83.7%，没跑 20+ 局的大样本。所以本页只说「快了多少」，不说「强了多少」。"],
  ["云端引擎只接管「分析」","iKataGo 现在是分析通道，人机对弈仍跑本机引擎；而且要先自己填服务器地址、用户名、密码、平台才生效。连不上会如实报错，不会悄悄换回本机引擎。"],
