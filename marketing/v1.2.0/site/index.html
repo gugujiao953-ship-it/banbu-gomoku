@@ -181,6 +181,19 @@ section{padding:clamp(72px,9vw,120px) 0;position:relative}
 .dl-card .go{margin-top:auto;padding-top:16px;font-family:var(--mono);font-size:12px;letter-spacing:.16em;color:#c8b586}
 .fb{margin-top:26px;font-size:13.5px;color:rgba(236,229,208,.66);line-height:2}
 .fb a{color:#e6c98a}
+.ios-guide{margin-top:26px;border:1px solid rgba(236,229,208,.24);border-radius:16px;padding:24px clamp(20px,2.6vw,32px);background:rgba(255,255,255,.045)}
+.ios-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:18px}
+.ios-head .badge{flex:none;font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:#16332a;background:#c8b586;border-radius:8px;padding:4px 10px;font-weight:700;margin-top:3px}
+.ios-head h3{font-family:var(--serif);font-size:18px;color:#f2ecda;letter-spacing:.04em}
+.ios-head p{font-size:13px;color:rgba(236,229,208,.66);line-height:1.8;margin-top:4px}
+.ios-steps{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;counter-reset:step;padding:0}
+.ios-steps li{counter-increment:step;font-size:13px;color:rgba(236,229,208,.78);line-height:1.9;border:1px dashed rgba(236,229,208,.24);border-radius:12px;padding:14px 16px 14px 48px;position:relative}
+.ios-steps li::before{content:counter(step,decimal-leading-zero);position:absolute;left:14px;top:15px;font-family:var(--mono);font-size:12px;color:#c8b586}
+.ios-steps b{color:#f2ecda}
+.ios-steps a{color:#e6c98a;text-decoration:none;border-bottom:1px dashed rgba(230,201,138,.5)}
+.ios-more{margin-top:14px;font-size:12.5px;color:rgba(236,229,208,.55);line-height:1.8}
+.ios-more a{color:#e6c98a}
+@media(max-width:860px){.ios-steps{grid-template-columns:1fr}}
 .end{margin-top:clamp(48px,6vw,72px);border-top:1px solid rgba(236,229,208,.16);padding:26px 0 34px;display:flex;flex-wrap:wrap;gap:10px 28px;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:rgba(236,229,208,.45)}
 .end a{color:rgba(236,229,208,.66);text-decoration:none}
 .end a:hover{color:#e6c98a}
@@ -440,6 +453,21 @@ section{padding:clamp(72px,9vw,120px) 0;position:relative}
         <span class="d">GitHub 直连慢时的备用通道。</span>
         <span class="go">取件码 hrbj ↗</span>
       </a>
+    </div>
+    <div class="ios-guide rv">
+      <div class="ios-head">
+        <span class="badge">iOS</span>
+        <div>
+          <h3>iPhone / iPad 用户：不用安装，三十秒变应用</h3>
+          <p>网页版在 iOS 上就是「应用」——添加到主屏幕后是全屏独立窗口、离线可用、图标在桌面，装过的引擎包照常运行。</p>
+        </div>
+      </div>
+      <ol class="ios-steps">
+        <li><span>用 <b>Safari</b> 打开网页版（必须是 Safari；微信、Chrome 内置浏览器不支持）。<a href="https://gugujiao953-ship-it.github.io/banbu-gomoku/app/">打开 ↗</a></span></li>
+        <li><span>点底部<b>「分享」</b>按钮（方框 + 向上箭头），菜单里选<b>「添加到主屏幕」</b>，确认添加。</span></li>
+        <li><span>回到桌面点图标：以后每次都是全屏启动，和普通应用一样，断网也能用。</span></li>
+      </ol>
+      <p class="ios-more">遇到问题看图文详解：<a href="https://github.com/gugujiao953-ship-it/banbu-gomoku/blob/main/docs/iOS-%E7%BD%91%E9%A1%B5%E7%89%88%E8%AF%B4%E6%98%8E.md">docs/iOS-网页版说明.md</a>（离线原理、图标不显示、iOS 升级后注意什么，都在里面）。</p>
     </div>
     <p class="fb rv">有问题、想加功能：直接 <a href="https://github.com/gugujiao953-ship-it/banbu-gomoku/issues/new/choose">提一个 issue</a>（仓库带反馈模板，附上「设置 → 关于 → 兼容性自检」的输出定位更快）；随便聊聊去 <a href="https://github.com/gugujiao953-ship-it/banbu-gomoku/discussions">Discussions</a>。应用内「设置 → 关于 → 本版本更新内容」随时可看更新说明。</p>
     <div class="end">
