@@ -1,605 +1,723 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>半步五子棋打谱 · v1.2.0 · 手机端五子棋打谱软件</title>
-<meta name="description" content="半步五子棋打谱 v1.2.0：旗舰引擎 KataGo 随包自带、在手机上原生运行，不用下载；识谱核对屏可编辑、专门的对弈界面与可恢复对局、四种计时制的比赛计时器、整局复盘、14 张棋盘与 16 种棋子材质、字号缩放全量生效。全程可离线，开源免费。">
-<meta property="og:title" content="半步五子棋打谱 · 打谱与研究 1.2.0">
-<meta property="og:description" content="旗舰引擎 KataGo 随包进手机、本机原生运行；打谱、导入、分析、做题全程可离线。开源免费，网页版与 Android 双端。">
-<meta property="og:image" content="assets/site-record.jpg">
-<meta name="theme-color" content="#f4efe4">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2324513f'/%3E%3Ccircle cx='26' cy='26' r='11' fill='%23f4efe4'/%3E%3Ccircle cx='40' cy='40' r='11' fill='%23182b22' stroke='%23f4efe4' stroke-width='2'/%3E%3C/svg%3E">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>半步五子棋打谱 1.2.1</title>
+<meta name="description" content="半步五子棋打谱 1.2.1：在线对弈、技能五子棋 36 关、变体五子棋 6 种、VCF 出题到 90–100 手、手机识谱 12 秒降到 8 秒左右、题池 7,555 道。开源 MIT。">
+<meta name="theme-color" content="#07080B">
 <style>
 :root{
-  --paper:#f4efe4; --paper-2:#ede6d4; --paper-3:#e6ddc6;
-  --ink:#20291c; --ink-2:#4a5244; --ink-3:#7a7f6e;
-  --green:#24513f; --green-deep:#16332a; --gold:#a8813c; --gold-2:#8a6a2f;
-  --seal:#a63c2a; --line:rgba(32,41,28,.16); --line-2:rgba(32,41,28,.34);
-  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","STSong",STZhongsong,SimSun,serif;
-  --sans:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
-  --mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono","JetBrains Mono",monospace;
-  --shadow-1:0 1px 2px rgba(32,41,28,.05),0 2px 4px rgba(32,41,28,.05),0 8px 16px rgba(32,41,28,.07),0 20px 40px rgba(32,41,28,.08);
-  --shadow-2:0 2px 4px rgba(22,51,42,.10),0 12px 28px rgba(22,51,42,.14),0 32px 64px rgba(22,51,42,.16);
+  --ink:#07080B; --ink2:#0B0D11; --ink3:#101318;
+  --paper:#EFEAE1; --paper2:#C9C4BA; --muted:#868A93; --dim:#5D626C;
+  --gold:#D9A45B; --gold2:#F2CE96; --jade:#6FC3AC;
+  --line:rgba(239,234,225,.11); --line2:rgba(239,234,225,.18);
+  --serif:"Songti SC","Source Han Serif SC","Noto Serif SC",Georgia,serif;
+  --sans:"Inter","Helvetica Neue","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Consolas,monospace;
+  --w:1240px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{
-  background:var(--paper);color:var(--ink);font-family:var(--sans);
-  font-size:16px;line-height:1.9;letter-spacing:.015em;
-  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
-}
-::selection{background:rgba(168,129,60,.28)}
-a{color:inherit}
+html{scroll-behavior:smooth;overflow-x:clip}
+body{background:var(--ink);color:var(--paper);font-family:var(--sans);font-size:15px;line-height:1.75;
+  -webkit-font-smoothing:antialiased;overflow-x:clip}
+a{color:inherit;text-decoration:none}
 img{display:block;max-width:100%}
-.skip{position:absolute;left:-9999px;top:0;background:var(--green);color:var(--paper);padding:.6em 1em;z-index:99}
-.skip:focus{left:12px;top:12px}
-/* 纸纹 */
-body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:60;opacity:.05;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-.wrap{max-width:1160px;margin:0 auto;padding:0 clamp(20px,4vw,48px)}
-/* ── 导航 ── */
-.nav{position:sticky;top:0;z-index:50;background:rgba(244,239,228,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.nav-in{display:flex;align-items:center;gap:20px;height:64px}
-.brand{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-weight:700;font-size:18px;letter-spacing:.08em;text-decoration:none;white-space:nowrap}
-@media(max-width:480px){.brand{font-size:15px}.brand small{display:none}.nav-cta{padding:8px 13px;font-size:11px}}
-.brand .mark{width:30px;height:30px;border-radius:8px;background:var(--green);position:relative;flex:none}
-.brand .mark i{position:absolute;width:9px;height:9px;border-radius:50%;background:var(--paper);top:5px;left:5px}
-.brand .mark b{position:absolute;width:9px;height:9px;border-radius:50%;background:var(--green-deep);border:1.5px solid var(--paper);bottom:5px;right:5px}
-.brand small{font-family:var(--mono);font-size:10px;color:var(--ink-3);letter-spacing:.18em;font-weight:400;margin-left:2px}
-.nav-links{display:flex;gap:4px;margin-left:auto}
-.nav-links a{font-size:13px;text-decoration:none;color:var(--ink-2);padding:6px 12px;border-radius:99px;letter-spacing:.06em;transition:background .25s,color .25s}
-.nav-links a:hover{color:var(--ink);background:rgba(32,41,28,.06)}
-.nav-links a.on{color:var(--green);background:rgba(36,81,63,.10)}
-.nav-cta{flex:none;font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-decoration:none;background:var(--green);color:var(--paper);padding:9px 16px;border-radius:10px;box-shadow:var(--shadow-1);transition:transform .25s,background .25s}
-.nav-cta:hover{background:var(--green-deep);transform:translateY(-1px)}
-@media(max-width:860px){.nav-links{display:none}}
-/* ── 通用 ── */
-section{padding:clamp(72px,9vw,120px) 0;position:relative}
-.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.32em;color:var(--gold-2);display:flex;align-items:center;gap:14px;margin-bottom:22px}
-.kicker::after{content:"";height:1px;width:72px;background:var(--line-2)}
-.sec-h{font-family:var(--serif);font-weight:700;font-size:clamp(30px,4.6vw,52px);line-height:1.25;letter-spacing:.05em}
-.sec-h em{font-style:normal;color:var(--green)}
-.sec-sub{margin-top:14px;color:var(--ink-2);font-size:15px;max-width:720px}
-.chip{font-family:var(--mono);font-size:11px;letter-spacing:.12em;border:1px solid var(--line-2);border-radius:6px;padding:2px 9px;color:var(--ink-2);white-space:nowrap}
-.chip b{color:var(--gold-2);font-weight:600;margin-right:7px}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-.rv{opacity:0;transform:translateY(26px);transition:opacity .9s cubic-bezier(.2,.65,.2,1),transform .9s cubic-bezier(.2,.65,.2,1);transition-delay:var(--d,0ms)}
-.rv.in{opacity:1;transform:none}
-/* ── HERO ── */
-.hero{padding:clamp(56px,7vw,96px) 0 0;overflow:hidden}
-.hero-grid{display:grid;grid-template-columns:1.08fr .92fr;gap:clamp(32px,5vw,72px);align-items:center}
-.tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px}
-.tags .chip{background:rgba(255,255,255,.4)}
-.tags .chip.hot{background:var(--gold);border-color:var(--gold);color:#fbf7ec}
-.h1{font-family:var(--serif);font-weight:700;font-size:clamp(44px,6.4vw,84px);line-height:1.18;letter-spacing:.06em}
-.h1 .row{display:block}
-.h1 .v{color:var(--gold-2);font-size:.42em;vertical-align:.62em;font-family:var(--mono);letter-spacing:.12em;margin-left:.3em;border:1px solid rgba(168,129,60,.45);padding:.14em .5em;border-radius:.35em}
-.h1 .c{display:inline-block;opacity:0;transform:translateY(.55em) rotate(3deg);animation:cup .85s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:calc(var(--i)*60ms + .15s)}
-@keyframes cup{to{opacity:1;transform:none}}
-.h-en{font-family:var(--mono);font-size:12px;letter-spacing:.42em;color:var(--ink-3);margin:18px 0 26px}
-.lead{font-size:clamp(15px,1.35vw,17.5px);border-left:3px solid var(--gold);padding-left:18px;color:var(--ink)}
-.lead b{color:var(--green)}
-.hero-new{margin-top:16px;font-size:14.5px;color:var(--ink-2)}
-.hero-new b{color:var(--ink)}
-.cta-row{display:flex;flex-wrap:wrap;gap:14px;margin-top:30px;align-items:center}
-.btn{display:inline-flex;align-items:center;gap:10px;text-decoration:none;border-radius:12px;padding:14px 24px;font-size:15px;font-weight:600;letter-spacing:.04em;transition:transform .25s,box-shadow .25s,background .25s}
-.btn svg{width:16px;height:16px;flex:none}
-.btn-pri{background:var(--green);color:var(--paper);box-shadow:var(--shadow-2)}
-.btn-pri:hover{background:var(--green-deep);transform:translateY(-2px)}
-.btn-line{border:1.5px solid var(--line-2);color:var(--ink);background:rgba(255,255,255,.35)}
-.btn-line:hover{border-color:var(--green);color:var(--green);transform:translateY(-2px)}
-.btn-ghost{font-family:var(--mono);font-size:13px;color:var(--ink-2);text-decoration:none;border-bottom:1px dashed var(--line-2);padding:4px 2px}
-.btn-ghost:hover{color:var(--green);border-color:var(--green)}
-.hero-url{margin-top:22px;font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.04em;word-break:break-all}
-.hero-url b{color:var(--ink-2);font-weight:600}
-.shot{position:relative;border-radius:18px;background:linear-gradient(145deg,#fbf7ec,#efe8d6);border:1px solid var(--line);padding:14px;box-shadow:var(--shadow-2);transform:rotate(1.2deg)}
-.shot img{border-radius:10px;width:100%;height:auto}
-.shot figcaption{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;color:var(--ink-3);padding:12px 4px 2px}
-.shot .corner{position:absolute;width:14px;height:14px;border:2px solid var(--gold);opacity:.7}
-.shot .c1{top:-6px;left:-6px;border-right:0;border-bottom:0}
-.shot .c2{bottom:-6px;right:-6px;border-left:0;border-top:0}
-.stats{margin-top:clamp(56px,7vw,84px);border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,0))}
-.stats-in{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
-.stat{padding:30px clamp(16px,2.4vw,40px);border-left:1px solid var(--line)}
-.stat:first-child{border-left:0}
-.stat .n{font-family:var(--serif);font-weight:700;font-size:clamp(34px,3.6vw,52px);color:var(--green);letter-spacing:.02em}
-.stat .n small{font-size:.4em;color:var(--gold-2);margin-left:4px}
-.stat .t{font-size:13.5px;color:var(--ink-2);margin-top:2px}
-.stat-note{font-size:12px;color:var(--ink-3);line-height:1.8;padding:14px clamp(16px,2.4vw,40px);border-top:1px dashed var(--line)}
-@media(max-width:960px){.hero-grid{grid-template-columns:1fr}.shot{transform:none;max-width:440px}.stats-in{grid-template-columns:1fr}.stat{border-left:0;border-top:1px solid var(--line)}.stat:first-child{border-top:0}}
-/* ── 跑马灯 ── */
-.ticker{background:var(--green-deep);color:#e9e2cf;overflow:hidden;padding:13px 0}
-.tick-track{display:inline-flex;gap:0;white-space:nowrap;animation:tick 46s linear infinite;will-change:transform}
-.tick-track span{font-family:var(--mono);font-size:12px;letter-spacing:.24em;padding:0 1.6rem}
-.tick-track i{color:var(--gold);font-style:normal;padding:0 1.6rem}
-@keyframes tick{to{transform:translateX(-50%)}}
-.ticker:hover .tick-track{animation-play-state:paused}
-/* ── S1 功能 ── */
-.shots3{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(16px,2.4vw,28px);margin:clamp(36px,5vw,56px) 0}
-.shots3 .shot{transform:rotate(0)}
-.shots3 figure{transition:transform .35s cubic-bezier(.2,.7,.2,1),box-shadow .35s}
-.shots3 figure:hover{transform:translateY(-6px);box-shadow:0 3px 6px rgba(22,51,42,.08),0 18px 36px rgba(22,51,42,.14),0 40px 80px rgba(22,51,42,.14)}
-.shots3 .shot:nth-child(1){transform:rotate(-1.1deg)}
-.shots3 .shot:nth-child(3){transform:rotate(1.1deg)}
-.shots3 .shot:nth-child(1):hover,.shots3 .shot:nth-child(3):hover{transform:rotate(0) translateY(-6px)}
-.mods{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-1)}
-.mod{background:var(--paper);padding:clamp(22px,2.6vw,34px)}
-.mod .no{font-family:var(--serif);font-size:15px;color:var(--gold-2);letter-spacing:.2em}
-.mod h3{font-family:var(--serif);font-size:20px;font-weight:700;margin:8px 0 10px;letter-spacing:.05em}
-.mod p{font-size:14px;color:var(--ink-2);line-height:1.95}
-.mod p b{color:var(--ink)}
-@media(max-width:860px){.shots3{grid-template-columns:1fr;max-width:440px;margin-left:auto;margin-right:auto}.shots3 .shot{transform:none!important}.mods{grid-template-columns:1fr}}
-/* ── S2 外观 ── */
-.look{background:linear-gradient(180deg,var(--paper) 0%,var(--paper-2) 18%,var(--paper-2) 82%,var(--paper) 100%)}
-.look-cols{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,4vw,56px);margin-top:clamp(32px,4vw,48px)}
-.look-cols p{font-size:14.5px;color:var(--ink-2);line-height:2}
-.look-cols p b{color:var(--ink)}
-.themes{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:26px}
-.theme{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.4)}
-.theme .sw{height:64px}
-.theme .nm{font-size:12px;padding:8px 10px;color:var(--ink-2);letter-spacing:.06em}
-@media(max-width:860px){.look-cols{grid-template-columns:1fr}.themes{grid-template-columns:repeat(2,1fr)}}
-/* ── S3 更新 ── */
-.logs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:clamp(32px,4vw,48px)}
-.log{border:1px solid var(--line);border-radius:14px;padding:20px 22px;background:rgba(255,255,255,.4);transition:transform .3s,box-shadow .3s}
-.log:hover{transform:translateY(-3px);box-shadow:var(--shadow-1)}
-.log .no{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;color:var(--gold-2)}
-.log h3{font-family:var(--serif);font-size:17px;font-weight:700;margin:6px 0 8px;letter-spacing:.04em}
-.log p{font-size:13.5px;color:var(--ink-2);line-height:1.9}
-.log .chips{margin-top:12px}
-@media(max-width:860px){.logs{grid-template-columns:1fr}}
-/* ── S4 规格 ── */
-.spec-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(20px,3vw,36px);margin-top:clamp(32px,4vw,48px)}
-.spec{border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.42);padding:clamp(22px,2.6vw,32px);box-shadow:var(--shadow-1)}
-.spec h3{font-family:var(--serif);font-size:19px;font-weight:700;letter-spacing:.05em;display:flex;align-items:center;gap:12px;margin-bottom:16px}
-.spec h3 .chip{flex:none}
-.spec dl{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;font-size:13.5px}
-.spec dt{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--gold-2);padding-top:3px;white-space:nowrap}
-.spec dd{color:var(--ink-2);line-height:1.85}
-.spec dd b{color:var(--ink)}
-@media(max-width:860px){.spec-grid{grid-template-columns:1fr}}
-/* ── S5 限制 ── */
-.limits-sec{background:linear-gradient(180deg,var(--paper) 0%,var(--paper-3) 14%,var(--paper-3) 86%,var(--paper) 100%)}
-.limits{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:clamp(32px,4vw,48px)}
-.lim{display:flex;gap:14px;border:1px dashed var(--line-2);border-radius:12px;padding:16px 18px;background:rgba(255,255,255,.35)}
-.lim .no{flex:none;font-family:var(--mono);font-size:11px;color:var(--seal);border:1px solid rgba(166,60,42,.4);border-radius:6px;padding:2px 7px;height:fit-content;letter-spacing:.1em}
-.lim h3{font-size:14.5px;font-weight:700;letter-spacing:.03em}
-.lim p{font-size:13px;color:var(--ink-2);line-height:1.85;margin-top:4px}
-@media(max-width:860px){.limits{grid-template-columns:1fr}}
-/* ── 页脚 ── */
-.get{background:var(--green-deep);color:#ece5d0;padding:clamp(72px,9vw,110px) 0 0}
-.get .kicker{color:#c8b586}
-.get .kicker::after{background:rgba(236,229,208,.3)}
-.get .sec-h{color:#f2ecda}
-.get .sec-sub{color:rgba(236,229,208,.72)}
-.dl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:clamp(32px,4vw,48px)}
-.dl-card{border:1px solid rgba(236,229,208,.22);border-radius:16px;padding:26px;background:rgba(255,255,255,.04);display:flex;flex-direction:column;gap:6px;text-decoration:none;transition:transform .3s,border-color .3s,background .3s}
-.dl-card:hover{transform:translateY(-4px);border-color:rgba(236,229,208,.5);background:rgba(255,255,255,.07)}
-.dl-card .t{font-family:var(--serif);font-size:19px;font-weight:700;color:#f2ecda;letter-spacing:.05em}
-.dl-card .d{font-size:13px;color:rgba(236,229,208,.66);line-height:1.8}
-.dl-card .go{margin-top:auto;padding-top:16px;font-family:var(--mono);font-size:12px;letter-spacing:.16em;color:#c8b586}
-.fb{margin-top:26px;font-size:13.5px;color:rgba(236,229,208,.66);line-height:2}
-.fb a{color:#e6c98a}
-.ios-guide{margin-top:26px;border:1px solid rgba(236,229,208,.24);border-radius:16px;padding:24px clamp(20px,2.6vw,32px);background:rgba(255,255,255,.045)}
-.ios-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:18px}
-.ios-head .badge{flex:none;font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:#16332a;background:#c8b586;border-radius:8px;padding:4px 10px;font-weight:700;margin-top:3px}
-.ios-head h3{font-family:var(--serif);font-size:18px;color:#f2ecda;letter-spacing:.04em}
-.ios-head p{font-size:13px;color:rgba(236,229,208,.66);line-height:1.8;margin-top:4px}
-.ios-steps{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;counter-reset:step;padding:0}
-.ios-steps li{counter-increment:step;font-size:13px;color:rgba(236,229,208,.78);line-height:1.9;border:1px dashed rgba(236,229,208,.24);border-radius:12px;padding:14px 16px 14px 48px;position:relative}
-.ios-steps li::before{content:counter(step,decimal-leading-zero);position:absolute;left:14px;top:15px;font-family:var(--mono);font-size:12px;color:#c8b586}
-.ios-steps b{color:#f2ecda}
-.ios-steps a{color:#e6c98a;text-decoration:none;border-bottom:1px dashed rgba(230,201,138,.5)}
-.ios-more{margin-top:14px;font-size:12.5px;color:rgba(236,229,208,.55);line-height:1.8}
-.ios-more a{color:#e6c98a}
-@media(max-width:860px){.ios-steps{grid-template-columns:1fr}}
-.end{margin-top:clamp(48px,6vw,72px);border-top:1px solid rgba(236,229,208,.16);padding:26px 0 34px;display:flex;flex-wrap:wrap;gap:10px 28px;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:rgba(236,229,208,.45)}
-.end a{color:rgba(236,229,208,.66);text-decoration:none}
-.end a:hover{color:#e6c98a}
-.end .serif{font-family:var(--serif);font-size:15px;letter-spacing:.14em;color:#f2ecda}
-@media(max-width:860px){.dl-grid{grid-template-columns:1fr}}
-@media (prefers-reduced-motion: reduce){
-  html{scroll-behavior:auto}
-  .rv{opacity:1;transform:none;transition:none}
-  .h1 .c{opacity:1;transform:none;animation:none}
-  .tick-track{animation:none}
-  *{transition-duration:.01ms!important;animation-duration:.01ms!important}
-}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.wrap{max-width:var(--w);margin:0 auto;padding:0 40px}
+@media(max-width:760px){.wrap{padding:0 20px}}
+
+/* ── 背景层 ───────────────────────────────────────────── */
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg .grid{position:absolute;inset:0;
+  background-image:linear-gradient(rgba(239,234,225,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(239,234,225,.045) 1px,transparent 1px);
+  background-size:72px 72px;
+  -webkit-mask-image:radial-gradient(120% 90% at 50% -10%,#000 20%,transparent 78%);
+          mask-image:radial-gradient(120% 90% at 50% -10%,#000 20%,transparent 78%);}
+.bg .glow{position:absolute;width:900px;height:900px;border-radius:50%;filter:blur(90px);opacity:.5}
+.bg .g1{top:-420px;right:-260px;background:radial-gradient(circle,rgba(217,164,91,.22),transparent 62%)}
+.bg .g2{top:24%;left:-380px;background:radial-gradient(circle,rgba(111,195,172,.12),transparent 64%)}
+.bg .g3{bottom:-520px;left:34%;background:radial-gradient(circle,rgba(120,140,200,.10),transparent 66%)}
+.bg .grain{position:absolute;inset:0;opacity:.16;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E")}
+.bg .vign{position:absolute;inset:0;background:radial-gradient(140% 100% at 50% 0,transparent 40%,rgba(4,5,7,.72) 100%)}
+
+/* ── 幽灵字 & 竖排轨道 ─────────────────────────────────── */
+.ghost{position:absolute;top:150px;left:50%;transform:translateX(-50%);z-index:0;max-width:100%;
+  font-family:var(--sans);font-weight:800;font-size:clamp(120px,17vw,250px);letter-spacing:-.04em;line-height:.8;
+  color:transparent;-webkit-text-stroke:1px rgba(239,234,225,.07);white-space:nowrap;pointer-events:none;user-select:none;overflow:hidden}
+.rail{position:fixed;top:0;bottom:0;width:34px;z-index:5;pointer-events:none;display:flex;align-items:center;justify-content:center}
+.rail.l{left:0;border-right:1px solid rgba(239,234,225,.06)}
+.rail.r{right:0;border-left:1px solid rgba(239,234,225,.06)}
+.rail span{writing-mode:vertical-rl;font-family:var(--mono);font-size:9.5px;letter-spacing:.32em;color:rgba(239,234,225,.26);text-transform:uppercase}
+@media(max-width:1180px){.rail{display:none}}
+
+/* ── 顶栏 ─────────────────────────────────────────────── */
+header{position:sticky;top:0;z-index:30;backdrop-filter:blur(16px);
+  background:linear-gradient(180deg,rgba(7,8,11,.94),rgba(7,8,11,.62));border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;gap:26px;height:66px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:600;letter-spacing:.01em;font-size:15px}
+.brand i{width:26px;height:26px;border-radius:7px;display:block;position:relative;
+  background:linear-gradient(150deg,#1a1d23,#0a0c10);border:1px solid var(--line2)}
+.brand i:before{content:"";position:absolute;inset:6px;border-radius:3px;
+  background:conic-gradient(from 210deg,var(--gold2),var(--gold) 40%,#6b4a24 70%,var(--gold2))}
+.brand em{font-style:normal;font-size:10px;letter-spacing:.24em;color:var(--dim);font-family:var(--mono);margin-left:2px}
+.nav .sp{flex:1}
+.nav .link{font-size:13px;color:var(--paper2);padding:8px 0;position:relative}
+.nav .link b{font-family:var(--mono);font-size:10px;color:var(--dim);margin-right:6px;font-weight:400}
+.nav .link:after{content:"";position:absolute;left:0;right:100%;bottom:2px;height:1px;background:var(--gold);transition:right .25s}
+.nav .link:hover:after{right:0}
+.nav .ver{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;
+  border:1px solid #3B2E1D;background:linear-gradient(180deg,#1A140C,#100C08);color:var(--gold2);padding:7px 12px;border-radius:6px}
+.nav .ver:before{content:"";width:5px;height:5px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold)}
+@media(max-width:1080px){.nav .link{display:none}}
+
+/* ── 首屏 ─────────────────────────────────────────────── */
+.hero{position:relative;z-index:2;padding:76px 0 0}
+.hero .kicker{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--paper2);
+  border:1px solid var(--line);padding:5px 10px;border-radius:4px;background:rgba(239,234,225,.03)}
+.chip.hot{color:#1A1206;background:linear-gradient(180deg,var(--gold2),var(--gold));border-color:transparent;font-weight:600}
+h1{margin:26px 0 0;font-family:var(--serif);font-weight:600;line-height:1.12;letter-spacing:-.01em;
+  font-size:clamp(38px,5.4vw,70px);text-wrap:balance}
+h1 .l2{display:block;color:var(--gold);font-size:.82em;margin-top:.14em}
+h1 .dot{color:var(--jade)}
+.hero .en{font-family:var(--mono);font-size:11px;letter-spacing:.34em;color:var(--dim);margin-top:20px}
+.hero .lead{margin-top:26px;max-width:560px;color:var(--paper2);font-size:16px;line-height:1.85}
+.hero .lead b{color:var(--paper);font-weight:600;box-shadow:inset 0 -6px 0 rgba(217,164,91,.16)}
+.hero .lead i{font-style:normal;color:var(--gold2)}
+.hero .cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:34px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:9px;padding:13px 22px;border-radius:5px;font-size:14px;font-weight:600;
+  border:1px solid var(--line2);background:rgba(239,234,225,.03);color:var(--paper);transition:.2s}
+.btn:hover{background:rgba(239,234,225,.07);transform:translateY(-1px)}
+.btn.p{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#1A1206;border-color:transparent;
+  box-shadow:0 14px 34px -14px rgba(217,164,91,.7)}
+.btn.p:hover{box-shadow:0 18px 40px -14px rgba(217,164,91,.9)}
+.btn .ar{font-family:var(--mono);opacity:.7}
+.hero .url{margin-top:22px;font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+.hero .url a{color:var(--paper2);border-bottom:1px dashed var(--line2)}
+
+/* 首屏布局 */
+.hero-grid{display:grid;grid-template-columns:minmax(0,1fr) 470px;gap:40px;align-items:start}
+@media(max-width:1080px){.hero-grid{grid-template-columns:1fr}}
+.fig{position:relative}
+.fig .cap{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.18em;
+  color:var(--dim);border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:18px}
+.devices{position:relative;height:682px;perspective:1400px}
+.devices .ph{position:absolute;border-radius:26px;overflow:hidden;border:1px solid rgba(239,234,225,.16);
+  box-shadow:0 60px 120px -40px rgba(0,0,0,.95),0 0 0 7px #0b0d11,0 0 0 8px rgba(239,234,225,.07);
+  background:#000;will-change:transform}
+.devices .p1{width:266px;right:6px;top:0;transform:rotate(3.5deg);z-index:3}
+.devices .p2{width:232px;left:22px;top:132px;transform:rotate(-5deg);z-index:2}
+.devices .p3{display:none}
+.devices .ph:after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(200deg,rgba(255,255,255,.14),transparent 32%,transparent 70%,rgba(0,0,0,.3))}
+.anno{margin-top:20px;border-top:1px solid var(--line)}
+.anno div{display:grid;grid-template-columns:84px 1fr;gap:14px;padding:10px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.anno k{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--dim);padding-top:3px}
+.anno p{color:var(--paper2)}
+@media(max-width:1080px){.devices{height:460px}.anno{display:none}}
+
+/* 指标条 */
+.metrics{margin-top:56px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(5,1fr);background:rgba(239,234,225,.02)}
+.metrics div{padding:22px 22px 20px;border-right:1px solid var(--line)}
+.metrics div:last-child{border-right:0}
+.metrics b{display:block;font-family:var(--mono);font-size:clamp(22px,2.6vw,32px);font-weight:500;letter-spacing:-.02em}
+.metrics b s{text-decoration:none;color:var(--dim);font-size:.6em;margin-left:3px}
+.metrics span{font-size:11.5px;color:var(--muted);letter-spacing:.02em}
+@media(max-width:900px){.metrics{grid-template-columns:1fr 1fr}.metrics div:nth-child(2n){border-right:0}}
+
+/* ── 段落系统 ──────────────────────────────────────────── */
+main{position:relative;z-index:2}
+section{padding:110px 0 0}
+.sec-head{display:grid;grid-template-columns:120px 1fr;gap:24px;align-items:end;
+  border-top:1px solid var(--line);padding-top:22px;margin-bottom:44px}
+.sec-head .idx{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:var(--gold);padding-bottom:6px}
+.sec-head .idx s{display:block;text-decoration:none;color:var(--dim);font-size:9.5px;letter-spacing:.18em;margin-top:5px}
+.sec-head h2{font-family:var(--serif);font-weight:600;font-size:clamp(26px,3.6vw,40px);line-height:1.22;letter-spacing:-.01em}
+.sec-head h2 em{font-style:normal;color:var(--gold2)}
+.sec-head .sub{color:var(--muted);font-size:13.5px;margin-top:10px;max-width:640px}
+@media(max-width:760px){.sec-head{grid-template-columns:1fr;gap:10px}}
+
+.cols{display:grid;grid-template-columns:repeat(12,1fr);gap:26px}
+.c7{grid-column:span 7}.c5{grid-column:span 5}.c4{grid-column:span 4}.c6{grid-column:span 6}.c3{grid-column:span 3}.c8{grid-column:span 8}
+@media(max-width:960px){.c7,.c5,.c6,.c4,.c8,.c3{grid-column:1/-1}}
+
+p.body{color:var(--paper2);font-size:14.5px;line-height:1.9}
+p.body b{color:var(--paper);font-weight:600}
+.mut{color:var(--muted)}
+.small{font-size:12.5px;color:var(--muted);line-height:1.8}
+
+/* 卡片通用 */
+.card{position:relative;border:1px solid var(--line);background:linear-gradient(180deg,rgba(239,234,225,.035),rgba(239,234,225,.008));
+  padding:26px;border-radius:3px;transition:.25s}
+.card:hover{border-color:var(--line2);background:linear-gradient(180deg,rgba(239,234,225,.05),rgba(239,234,225,.01))}
+.card:before,.card:after{content:"";position:absolute;width:7px;height:7px;border:1px solid rgba(217,164,91,.55);opacity:.7}
+.card:before{left:-1px;top:-1px;border-right:0;border-bottom:0}
+.card:after{right:-1px;bottom:-1px;border-left:0;border-top:0}
+.card h3{font-size:15.5px;font-weight:600;letter-spacing:.01em}
+.card .k{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--dim);margin-bottom:10px}
+
+/* 在线：规则行 */
+.rules-list{margin-top:22px;border-top:1px solid var(--line)}
+.rules-list .r{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:15px 2px;border-bottom:1px solid var(--line)}
+.rules-list .r b{font-family:var(--serif);font-size:19px;font-weight:600}
+.rules-list .r span{font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.1em}
+.rules-list .r .pill{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--gold2);
+  border:1px solid #3B2E1D;background:rgba(217,164,91,.08);padding:4px 9px;border-radius:3px}
+.room{padding:24px;border:1px solid var(--line2);border-radius:3px;
+  background:radial-gradient(120% 90% at 100% 0,rgba(217,164,91,.12),transparent 62%),linear-gradient(180deg,#0e1116,#0a0c10)}
+.room .k{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--dim)}
+.cells{display:flex;gap:6px;margin:16px 0 18px}
+.cells i{flex:1;height:52px;display:grid;place-items:center;font-style:normal;font-family:var(--mono);font-size:21px;
+  color:var(--paper);border:1px solid var(--line);border-radius:3px;background:rgba(239,234,225,.03)}
+.tags{display:flex;flex-wrap:wrap;gap:7px}
+.tag{font-size:11.5px;color:var(--paper2);border:1px solid var(--line);border-radius:3px;padding:4px 9px;background:rgba(239,234,225,.02)}
+.tag.g{color:var(--jade);border-color:rgba(111,195,172,.28);background:rgba(111,195,172,.06)}
+
+/* BOSS 阶梯 */
+.ladder{margin-top:26px;position:relative;padding:26px 0 8px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.ladder:before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line2)}
+.ladder ol{display:flex;justify-content:space-between;list-style:none;position:relative}
+.ladder li{display:flex;flex-direction:column;align-items:center;gap:9px;flex:1;text-align:center}
+.ladder .dot{width:9px;height:9px;border-radius:50%;background:var(--ink);border:1px solid var(--gold);position:relative;z-index:1;box-shadow:0 0 0 4px var(--ink)}
+.ladder li:last-child .dot{background:var(--gold);box-shadow:0 0 0 4px var(--ink),0 0 18px rgba(217,164,91,.8)}
+.ladder .no{font-family:var(--mono);font-size:10px;color:var(--gold2)}
+.ladder .nm{font-size:11px;color:var(--muted);white-space:nowrap}
+@media(max-width:860px){.ladder ol{flex-wrap:wrap;gap:14px}.ladder:before{display:none}.ladder li{flex:0 0 30%}}
+
+/* 技能格 */
+.skills{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:22px}
+@media(max-width:860px){.skills{grid-template-columns:1fr 1fr}}
+.skill{border:1px solid var(--line);padding:16px;border-radius:3px;background:rgba(239,234,225,.02)}
+.skill .top{display:flex;justify-content:space-between;align-items:center}
+.skill b{font-size:15px}
+.pips{display:flex;gap:3px}
+.pips i{width:10px;height:3px;background:rgba(239,234,225,.16);border-radius:1px}
+.pips i.on{background:var(--gold)}
+.skill p{font-size:11.5px;color:var(--muted);margin-top:7px;line-height:1.7}
+
+/* 变体格 */
+.vars{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:24px}
+@media(max-width:860px){.vars{grid-template-columns:1fr 1fr}}
+.v{border:1px solid var(--line);border-radius:3px;padding:18px;position:relative;overflow:hidden;background:rgba(239,234,225,.02)}
+.v .mini{position:absolute;right:12px;top:12px;width:46px;height:46px;opacity:.5;
+  background-image:linear-gradient(rgba(239,234,225,.28) 1px,transparent 1px),linear-gradient(90deg,rgba(239,234,225,.28) 1px,transparent 1px);
+  background-size:11.5px 11.5px;
+  -webkit-mask-image:radial-gradient(circle at 50% 50%,#000 55%,transparent 72%);
+          mask-image:radial-gradient(circle at 50% 50%,#000 55%,transparent 72%)}
+.v b{display:block;font-size:15.5px;font-family:var(--serif)}
+.v s{display:block;text-decoration:none;font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--dim);margin-top:4px}
+.v p{font-size:11.5px;color:var(--muted);margin-top:9px;max-width:150px}
+
+/* VCF 数字与深度条 */
+.bignums{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:24px}
+.bignums div{background:var(--ink2);padding:20px}
+.bignums b{display:block;font-family:var(--mono);font-size:clamp(20px,2.4vw,27px);font-weight:500}
+.bignums span{font-size:11px;color:var(--muted)}
+@media(max-width:860px){.bignums{grid-template-columns:1fr 1fr}}
+.depth{margin-top:26px}
+.depth .row{display:grid;grid-template-columns:110px 1fr 76px;gap:14px;align-items:center;padding:9px 0;
+  border-bottom:1px solid rgba(239,234,225,.06);font-size:12.5px}
+.depth .row k{font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.1em}
+.depth .bar{height:7px;background:rgba(239,234,225,.07);border-radius:2px;overflow:hidden}
+.depth .bar i{display:block;height:100%;background:linear-gradient(90deg,rgba(217,164,91,.45),var(--gold))}
+.depth .row em{font-style:normal;font-family:var(--mono);color:var(--paper2);text-align:right;font-size:11.5px}
+
+/* 识谱对比 */
+.compare{margin-top:26px;border:1px solid var(--line);padding:24px;border-radius:3px;background:rgba(239,234,225,.02)}
+.compare .line{display:grid;grid-template-columns:64px 1fr 66px;gap:14px;align-items:center;margin:12px 0}
+.compare .line k{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--dim)}
+.compare .track{height:22px;background:rgba(239,234,225,.05);border-radius:2px;position:relative;overflow:hidden}
+.compare .track i{position:absolute;left:0;top:0;bottom:0;border-radius:2px}
+.compare .old i{background:rgba(239,234,225,.16)}
+.compare .new i{background:linear-gradient(90deg,rgba(111,195,172,.5),var(--jade))}
+.compare .line em{font-style:normal;font-family:var(--mono);font-size:13px;text-align:right}
+.compare .gains{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px;border-top:1px solid var(--line);padding-top:18px}
+.compare .gains div b{display:block;font-family:var(--mono);font-size:15px;color:var(--jade)}
+.compare .gains div span{font-size:11px;color:var(--muted)}
+@media(max-width:760px){.compare .gains{grid-template-columns:1fr}}
+
+/* 棋魂账本 */
+.ledger{margin-top:24px;border-top:1px solid var(--line)}
+.ledger .row{display:grid;grid-template-columns:1fr 128px;gap:16px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.ledger .row span{color:var(--paper2)}
+.ledger .row b{font-family:var(--mono);font-weight:500;text-align:right;color:var(--paper)}
+.ledger .grp{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--dim);padding:18px 0 6px}
+.price{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:22px}
+.price div{border:1px solid var(--line);padding:16px;border-radius:3px;background:radial-gradient(120% 100% at 100% 0,rgba(217,164,91,.08),transparent 60%)}
+.price b{display:block;font-family:var(--mono);font-size:22px;color:var(--gold2);font-weight:500}
+.price s{display:block;text-decoration:none;font-size:12px;color:var(--paper2);margin-top:4px}
+.price em{display:block;font-style:normal;font-size:11px;color:var(--muted);margin-top:3px}
+@media(max-width:760px){.price{grid-template-columns:1fr}}
+
+/* 其他改动 */
+.list2{columns:2;column-gap:34px;margin-top:24px}
+.list2 div{break-inside:avoid;padding:13px 0;border-bottom:1px solid var(--line)}
+.list2 b{display:block;font-size:13.5px;color:var(--paper);font-weight:600}
+.list2 p{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.75}
+@media(max-width:860px){.list2{columns:1}}
+
+/* 下载 */
+.dl3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:26px}
+@media(max-width:960px){.dl3{grid-template-columns:1fr}}
+.dcard{border:1px solid var(--line);padding:26px;border-radius:3px;position:relative;
+  background:linear-gradient(180deg,rgba(239,234,225,.035),transparent)}
+.dcard .k{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--dim)}
+.dcard h3{font-family:var(--serif);font-size:22px;font-weight:600;margin:12px 0 6px}
+.dcard p{font-size:12.5px;color:var(--muted);min-height:40px}
+.dcard .btn{width:100%;justify-content:space-between;margin-top:18px}
+.sha{margin-top:22px;border:1px dashed rgba(217,164,91,.32);padding:14px 16px;border-radius:3px;
+  font-family:var(--mono);font-size:11px;color:var(--muted);word-break:break-all}
+
+/* 页脚 */
+footer{margin-top:110px;border-top:1px solid var(--line);padding:52px 0 70px;position:relative;z-index:2}
+.fgrid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:34px}
+@media(max-width:860px){.fgrid{grid-template-columns:1fr 1fr}}
+footer h5{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--dim);margin-bottom:12px}
+footer a{display:block;font-size:12.5px;color:var(--paper2);padding:4px 0}
+footer a:hover{color:var(--gold2)}
+.wordmark{font-family:var(--serif);font-size:clamp(28px,4vw,44px);line-height:1.2;color:rgba(239,234,225,.9)}
+.copyline{margin-top:38px;padding-top:18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.06em}
+
+/* 动效 */
+.rev{opacity:0;transform:translateY(22px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
+.rev.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.rev{opacity:1;transform:none}}
 </style>
 </head>
 <body>
-<a class="skip" href="#main">跳到主要内容</a>
+<div class="bg"><div class="grid"></div><div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div><div class="grain"></div><div class="vign"></div></div>
+<div class="rail l"><span>HALF-STEP GOMOKU · SPEC 1.2.1 · 2026</span></div>
+<div class="rail r"><span>ONLINE · SKILLS · VARIANTS · VCF · VISION</span></div>
 
-<nav class="nav">
-  <div class="wrap nav-in">
-    <a class="brand" href="#top"><span class="mark"><i></i><b></b></span>半步五子棋打谱<small>SPEC / v1.2.0</small></a>
-    <div class="nav-links">
-      <a href="#features">01 功能</a>
-      <a href="#look">02 外观</a>
-      <a href="#log">03 更新</a>
-      <a href="#spec">04 规格</a>
-      <a href="#limits">05 限制</a>
-    </div>
-    <a class="nav-cta" href="https://gugujiao953-ship-it.github.io/banbu-gomoku/app/">打开网页版 ↗</a>
-  </div>
-</nav>
-
-<header class="hero" id="top">
-  <div class="wrap">
-    <div class="hero-grid">
-      <div>
-        <div class="tags rv">
-          <span class="chip hot">开源免费</span>
-          <span class="chip">v1.2.0</span>
-          <span class="chip">MOBILE-FIRST</span>
-          <span class="chip hot">KATAGO ON DEVICE</span>
-          <span class="chip">WEB / ANDROID</span>
-        </div>
-        <h1 class="h1"><span class="row" data-split>半步五子棋</span><span class="row"><span data-split>打谱与研究</span><span class="v">v1.2.0</span></span></h1>
-        <p class="h-en">GOMOKU &amp; RENJU STUDY TOOLKIT</p>
-        <p class="lead rv" style="--d:.15s">旗舰引擎 <b>KataGo 随包进手机、本机原生运行</b>——不用下载任何东西：小网 3.2MB 适合边看边算，大网 int8 21.9MB 更强，开箱即用。</p>
-        <p class="hero-new rv" style="--d:.25s">新增：<b>识谱核对屏</b>可以直接改子、专门的对弈界面（中途退出能接着下）、四种计时制的<b>整屏比赛钟</b>、战绩与等级分、整局复盘，还有 <b>14 张棋盘 + 16 种棋子</b>材质。打谱、导入、分析、做题照旧<b>全程可离线</b>。</p>
-        <div class="cta-row rv" style="--d:.35s">
-          <a class="btn btn-pri" href="https://gugujiao953-ship-it.github.io/banbu-gomoku/app/">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 2.5h7.5L13 5v8.5H3z"/><path d="M6 8l4-2.5M6 8l4 2.5" stroke-linecap="round"/></svg>
-            打开网页版 · 含 iOS
-          </a>
-          <a class="btn btn-line" href="https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest">Android APK · 90.4MB</a>
-          <a class="btn-ghost" href="#log">看本版 18 条变化 →</a>
-        </div>
-        <p class="hero-url rv" style="--d:.45s">网页版网址（iPhone / iPad / 电脑浏览器均可直接打开）：<b>gugujiao953-ship-it.github.io/banbu-gomoku/app/</b></p>
-      </div>
-      <figure class="shot rv" style="--d:.3s">
-        <i class="corner c1"></i><i class="corner c2"></i>
-        <img src="assets/site-record.jpg" alt="半步五子棋打谱工作区实拍截图：棋盘、记谱流与导航工具坞" fetchpriority="high">
-        <figcaption><span>FIG.00 / 打谱工作区</span><span>应用实拍 · 15 路</span></figcaption>
-      </figure>
-    </div>
-  </div>
-  <div class="stats">
-    <div class="wrap stats-in">
-      <div class="stat rv"><div class="n"><span data-count="2.15" data-dec="2">0</span><small>×</small></div><div class="t">旗舰引擎解锁（大网 int8 vs 内置 rapfi，同机实测）</div></div>
-      <div class="stat rv" style="--d:.12s"><div class="n"><span data-count="1.95" data-dec="2">0</span><small>×</small></div><div class="t">INT8 大网提速（同一台机器，5.6 → 10.9 访问/秒）</div></div>
-      <div class="stat rv" style="--d:.24s"><div class="n"><span data-count="21.9" data-dec="1">0</span><small>MB</small></div><div class="t">大网模型体积（旧 fp16 42.4MB，升级自动删）</div></div>
-    </div>
-    <div class="wrap"><p class="stat-note">两个倍率都是同一台测试机（Redmi K20 Pro / 骁龙 855）、同局面、限预算的实测值，不是理论峰值，你的设备会不同。体积一律按 MiB 写作「MB」，与 GitHub 资产页、安卓安装器显示的数一致：大网 21.9MB、小网 3.2MB、网页版冠军权重包 38.4MB；安装包因引擎与权重随包 90.4MB。本页棋盘画面均为应用实拍截图。</p></div>
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top"><i></i>半步五子棋<em>打谱</em></a>
+    <div class="sp"></div>
+    <a class="link" href="#online"><b>01</b>在线</a>
+    <a class="link" href="#skill"><b>02</b>技能</a>
+    <a class="link" href="#variants"><b>03</b>变体</a>
+    <a class="link" href="#vcf"><b>04</b>VCF</a>
+    <a class="link" href="#ocr"><b>05</b>识谱</a>
+    <a class="link" href="#soul"><b>06</b>棋魂</a>
+    <a class="link" href="#download"><b>07</b>下载</a>
+    <a class="ver" href="#download">v1.2.1 · 开源免费</a>
   </div>
 </header>
 
-<div class="ticker" aria-hidden="true">
-  <div class="tick-track" id="tick"></div>
-</div>
+<div class="ghost" aria-hidden="true">BANBU GOMOKU</div>
 
-<main id="main">
-
-<section id="features">
-  <div class="wrap">
-    <p class="kicker rv">SEC.01 — CORE CAPABILITIES · MODULES 08</p>
-    <h2 class="sec-h rv" style="--d:.1s">打谱到复盘，<em>都在同一块盘上</em></h2>
-    <p class="sec-sub rv" style="--d:.2s">打谱 · 导入 · 识谱核对 · 分析 · 对弈 · 战绩 · 复盘 · 棋钟——八个模块共用同一套棋盘与棋谱会话，翻面时完整保留现场。</p>
-
-    <div class="shots3">
-      <figure class="shot rv"><i class="corner c1"></i><i class="corner c2"></i>
-        <img loading="lazy" src="assets/site-puzzle.jpg" alt="做题训练界面实拍：题目信息、棋盘与悔棋重来操作">
-        <figcaption><span>FIG.01 / 做题训练</span><span>应用实拍</span></figcaption>
-      </figure>
-      <figure class="shot rv" style="--d:.12s"><i class="corner c1"></i><i class="corner c2"></i>
-        <img loading="lazy" src="assets/site-duel.jpg" alt="人机对弈设置实拍：十项开局规则、对局时长与 AI 强度分档">
-        <figcaption><span>FIG.02 / 人机对弈</span><span>应用实拍</span></figcaption>
-      </figure>
-      <figure class="shot rv" style="--d:.24s"><i class="corner c1"></i><i class="corner c2"></i>
-        <img loading="lazy" src="assets/site-library.jpg" alt="棋谱库实拍：检索、筛选项、图片识谱入口与批量处理">
-        <figcaption><span>FIG.03 / 棋谱库</span><span>应用实拍</span></figcaption>
-      </figure>
-    </div>
-
-    <div class="mods">
-      <article class="mod rv"><div class="no">MODULE 01</div><h3>打谱与记谱流</h3>
-        <p>点空位落子、点棋子跳手；上/下一手、到首尾、90° 旋转与左右镜像。新增的<b>记谱流是默认页</b>：主线横排、变化缩进，主分支可以「设为 / 在这一支 / 切回」。画布降为「图谱」标签页，默认只画当前路径加一条最长分支，分支点标数量、可展开收起。</p>
-        <div class="chips"><span class="chip"><b>BOARD</b>5–30 路 · 缩放上限 2.35 → 6 倍</span><span class="chip"><b>LONG</b>长按环形菜单，可打三档标</span><span class="chip"><b>RULE</b>禁手点实时提示</span></div>
-      </article>
-      <article class="mod rv" style="--d:.08s"><div class="no">MODULE 02</div><h3>导入与导出</h3>
-        <p>SGF、RenLib 的 LIB 大型开局库、DP 分页谱、DB 索引、JSON、POS、ZIP 以及 SGF 同族扩展名照收。安卓上微信、QQ 或文件管理器里点棋谱，选<b>「用半步打开」</b>就进应用，一次可以选多份，冷启动也接得住。</p>
-        <div class="chips"><span class="chip"><b>FIXED</b>中等体积必失败、大 SGF 存空谱，两处修掉</span><span class="chip"><b>THREAD</b>解析移出主线程</span><span class="chip"><b>EXPORT</b>默认写进「下载」夹、可自选位置</span></div>
-      </article>
-      <article class="mod rv"><div class="no">MODULE 03</div><h3>识谱：先核对，能改子，再导入</h3>
-        <p>识别完不再直接建谱，而是停在<b>核对屏</b>：识别出的子按识别到的网格画成半透明圆圈叠在原图上，网格线一并画出来，顶上写明共几子（黑几 / 白几）与置信度，多子、少子、黑白反了、整体错一格都看得出来。确认导入才建谱。</p>
-        <div class="chips"><span class="chip"><b>VIEWS</b>叠图 / 原图 / 识别 / 编辑 四种看法</span><span class="chip"><b>EDIT</b>点交叉点改色、去子、补子、整盘挪</span><span class="chip"><b>GATE</b>确认导入才建谱</span></div>
-      </article>
-      <article class="mod rv" style="--d:.08s"><div class="no">MODULE 04</div><h3>持续分析</h3>
-        <p>KataGo 与 Rapfi <b>随包自带</b>，不用在应用外下载任何引擎。分析面板三页：计算 / 复盘 / 胜率；重开同一份棋谱能<b>载入上次的分析结果</b>；切出去引擎立刻停，回来自己续。</p>
-        <div class="chips"><span class="chip"><b>PACK</b>小网 3.2MB / 大网 21.9MB</span><span class="chip"><b>TABS</b>计算 / 复盘 / 胜率</span><span class="chip"><b>CACHE</b>载入上次结果</span><span class="chip"><b>BG</b>切出即停</span></div>
-      </article>
-      <article class="mod rv"><div class="no">MODULE 05</div><h3>对弈中</h3>
-        <p>对弈有<b>独立的一屏</b>：双方信息、时间、最近几手，不在打谱页里挤。中途退出，下次问你要不要接着下；引擎读数不再把界面顶得上下跳。</p>
-        <div class="chips"><span class="chip"><b>SCREEN</b>独立对弈界面</span><span class="chip"><b>RESUME</b>接着上局下</span><span class="chip"><b>STILL</b>读数不顶界面</span></div>
-      </article>
-      <article class="mod rv" style="--d:.08s"><div class="no">MODULE 06</div><h3>战绩与等级分</h3>
-        <p>人机 / VCF 两个标签：场次、胜负和、胜率、连串、累计用时。等级分<b>初级 AI = 1000 分，每档 +240</b>，锚的是自家 AI 档位。只存本机，上限 400 条。</p>
-        <div class="chips"><span class="chip"><b>GRID</b>场次 · 胜负和 · 胜率 · 连串</span><span class="chip"><b>ANCHOR</b>初级 1000 / 每档 +240</span><span class="chip"><b>LOCAL</b>上限 400 条</span></div>
-      </article>
-      <article class="mod rv"><div class="no">MODULE 07</div><h3>复盘本局</h3>
-        <p>整局复盘：失误分档（最佳 / 疑问 / 失误 / 败着 / 错失必胜）+ <b>最差三手</b> + 可复制的中文讲解词；游标竖线与棋盘双向联动，每手读秒，终局自动存档。</p>
-        <div class="chips"><span class="chip"><b>GRADE</b>失误分档 + 中文讲解</span><span class="chip"><b>CURVE</b>游标与棋盘联动</span><span class="chip"><b>CLOCK</b>终局自动存档</span></div>
-      </article>
-      <article class="mod rv" style="--d:.08s"><div class="no">MODULE 08</div><h3>棋钟 · 读秒</h3>
-        <p>四种计时制的<b>整屏比赛钟</b>：菲舍尔加秒 / 布龙斯坦延时 / 包干 / 读秒，点自己那半屏交时；剩余 ≤10 秒整屏转红，到 0 判负。VCF 出题生成器与题库增删改、合并也在这一版就位。</p>
-        <div class="chips"><span class="chip"><b>DUEL</b>整屏计时 · 半屏交时</span><span class="chip"><b>ALERT</b>≤10 秒整屏转红</span><span class="chip"><b>TRAIN</b>出题生成器 + 题库管理</span></div>
-      </article>
-    </div>
-  </div>
-</section>
-
-<section id="look" class="look">
-  <div class="wrap">
-    <p class="kicker rv">SEC.02 — APPEARANCE SYSTEM · 23 套主题</p>
-    <h2 class="sec-h rv" style="--d:.1s">14 张棋盘、16 种棋子，<em>搬进本体</em></h2>
-    <p class="sec-sub rv" style="--d:.2s">23 套主题（20 套逐屏量过对比度）· 公用效果实时预览 · 默认关闭，想要再开</p>
-
-    <div class="look-cols">
-      <p class="rv">外观新增成品材质：棋盘 <b>14 种</b>（原木、玉石、练习本、翡翠、青花瓷、白玉、深胡桃木、磨砂玻璃、电路、极简、尊贵黑金、苍白世界、卡哇伊、极光），棋子 <b>16 种</b>（经典、玉石、云子、墨蓝、黑白极简、勾叉、青花瓷、雪晶、终端字符、黑钻白金、鎏金、钻石等），每套都带预览，<b>不用下载</b>。棋盘 / 棋子材质与界面主题各自独立选。</p>
-      <p class="rv" style="--d:.1s">「外观 → 公用效果」多了<b>实时预览舞台</b>：跑的就是实盘那套动画代码，换方案立刻见效，不用进对局里试。落子交互 11 套、棋子进场 12 套，两档默认关闭，想要再开。另给外观补了三笔账：<b>34 处</b>「亮强调色底 + 写死白字」改成跟随主题，深色主题里约 <b>15 处</b>写死浅色底的卡片修掉（最低只有 2.17:1），「界面字号」原先只管两个页面、现在<b>覆盖全部界面</b>（产物里变量引用 253 → 1042 处）——逐条见「03 更新」第 17 条。</p>
-    </div>
-
-    <div class="themes rv" aria-label="主题示意色板">
-      <div class="theme"><div class="sw" style="background:linear-gradient(135deg,#1c1a17,#3a332a 55%,#c9a35c)"></div><div class="nm">TH-01 尊贵黑金</div></div>
-      <div class="theme"><div class="sw" style="background:linear-gradient(135deg,#eef2f4,#c8d8e2 55%,#3f6e9e)"></div><div class="nm">TH-02 青花瓷影</div></div>
-      <div class="theme"><div class="sw" style="background:linear-gradient(135deg,#0d0f1e,#232a55 55%,#4fe4df)"></div><div class="nm">TH-03 霓虹赛博</div></div>
-      <div class="theme"><div class="sw" style="background:linear-gradient(135deg,#0e1a2b,#1f4d6e 55%,#8fe3c9)"></div><div class="nm">TH-04 极光</div></div>
-      <div class="theme"><div class="sw" style="background:linear-gradient(135deg,#eef0e6,#c3cfb4 55%,#3c5a40)"></div><div class="nm">TH-05 水墨竹林</div></div>
-      <div class="theme"><div class="sw" style="background:linear-gradient(135deg,#f6f7f9,#dfe5ec 55%,#aebccd)"></div><div class="nm">TH-06 雪落</div></div>
-      <div class="theme"><div class="sw" style="background:linear-gradient(135deg,#f7f3e8,#e8dfc8 55%,#9c8a5e)"></div><div class="nm">TH-07 宣纸留白</div></div>
-      <div class="theme"><div class="sw" style="background:linear-gradient(135deg,#0a1524,#123055 55%,#2e6ea6)"></div><div class="nm">TH-08 深海幽蓝</div></div>
-    </div>
-    <div class="chips rv" style="margin-top:22px">
-      <span class="chip"><b>MAT</b>上架棋盘材质 41 套 + 多套棋子，带预览</span>
-      <span class="chip"><b>FX</b>公用效果实时预览舞台</span>
-      <span class="chip"><b>SCALE</b>界面字号覆盖全部界面</span>
-      <span class="chip"><b>CONTRAST</b>20 套配色逐屏量过对比度</span>
-    </div>
-    <p class="rv" style="margin-top:14px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--ink-3)">色板为页面示意 · 非应用截图</p>
-  </div>
-</section>
-
-<section id="log">
-  <div class="wrap">
-    <p class="kicker rv">SEC.03 — CHANGELOG / v1.2.0 · ENTRIES 18</p>
-    <h2 class="sec-h rv" style="--d:.1s">这一版，<em>改了什么</em></h2>
-    <p class="sec-sub rv" style="--d:.2s">本版新增：引擎 · 对弈 · 识谱复盘 · 界面——18 条逐一口径，含实测数字与边界。</p>
-    <div class="logs" id="logs"></div>
-  </div>
-</section>
-
-<section id="spec">
-  <div class="wrap">
-    <p class="kicker rv">SEC.04 — SPECIFICATION · WEB / ANDROID · PWA 可离线</p>
-    <h2 class="sec-h rv" style="--d:.1s">装在哪，<em>都能用</em></h2>
-    <div class="spec-grid">
-      <div class="spec rv">
-        <h3>导入、导出与识谱<span class="chip">FORMAT</span></h3>
-        <dl>
-          <dt>FORMAT</dt><dd><b>SGF · LIB · DP · DB · JSON · POS · ZIP</b>，另支持 SFG / FGF / PSQ / REN 等 SGF 同族扩展名与纯文本坐标谱</dd>
-          <dt>ANDROID</dt><dd>文件关联与「用半步打开」：外部棋谱可选本应用打开，支持一次多份、冷启动也接得住</dd>
-          <dt>识谱</dt><dd>先核对再导入：四种看法，点交叉点改子、去子、补子、整盘位移，<b>「确认导入」才建谱</b></dd>
-          <dt>粘贴坐标</dt><dd>一串 <b>H8 I9 …</b> 就能摆出局面，也能反向复制</dd>
-          <dt>安全</dt><dd>去子 / 位移不再静默覆盖原谱：覆盖 / 新建副本 / 放弃三选一</dd>
-        </dl>
-      </div>
-      <div class="spec rv" style="--d:.1s">
-        <h3>平台与体积<span class="chip">RUNTIME</span></h3>
-        <dl>
-          <dt>WEB</dt><dd>PWA 可离线运行；iPhone / iPad 用 Safari 添加到主屏</dd>
-          <dt>权重包</dt><dd>网页版的冠军权重包 rapfi-full-v3.data 约 <b>38.4MB</b>，首次需要强力 AI 时在应用内下载</dd>
-          <dt>ANDROID</dt><dd>版本 <b>1.2.0</b> · versionCode 101 · tag v1.2.0 · 包名 cn.renjunote.mobile</dd>
-          <dt>APK</dt><dd>banbu-gomoku-1.2.0-android-release.apk · <b>90.4MB</b> · SHA-256 34105380…40C4E9F</dd>
-          <dt>升级</dt><dd>可直接覆盖安装；装过 2026-09-17 的 1.1.9 引擎测试包（versionCode 28）需先卸载</dd>
-        </dl>
-      </div>
-      <div class="spec rv">
-        <h3>AI 引擎与算力<span class="chip">ENGINE</span></h3>
-        <dl>
-          <dt>随包三台</dt><dd>KataGo b10c128 小网 <b>3.2MB</b> + KataGo b24c256 大网 <b>21.9MB</b>（int8）+ Rapfi 原生 <b>0.43.02</b>，都不用在应用外下载</dd>
-          <dt>INT8</dt><dd>大网 42.4MB → 21.9MB，同机实测 5.6 → 10.9 访问/秒（1.95×）；旧 fp16 模型升级时自动删除</dd>
-          <dt>路数</dt><dd>应用摆盘 5–30 路；分析在 5–22 路可用（旗舰 KataGo 仅 15 路以内，超过自动让位内置引擎），23 路起如实提示，不静默降级</dd>
-          <dt>参数</dt><dd>搜索线程 4 / 6 / 8 / 12 / 16 / 20 / 24 七档（默认 16）、NN 缓存五档 100M / 200M / 400M / 800M / 1.6G</dd>
-          <dt>云端</dt><dd>可选 iKataGo：填自己的服务器即可用远端算力，凭据只存本机；目前只有「分析」走云端</dd>
-          <dt>后台</dt><dd>切出时分析、AI 应手、复盘、VCF 生成一起停，回前台自动续</dd>
-        </dl>
-      </div>
-      <div class="spec rv" style="--d:.1s">
-        <h3>棋盘、规则与外观<span class="chip">RULES</span></h3>
-        <dl>
-          <dt>棋盘</dt><dd>5–30 路，缩放上限 2.35 → 6 倍、放大后可平移，棋子大小滑杆与序号倍率可调</dd>
-          <dt>开局</dt><dd>十项开局规则（含 Swap2 / 山口 / 塔十），五手 N 打与索索夫打点按开局库好点自适应宣布</dd>
-          <dt>禁手</dt><dd>无禁手 / 有禁手切换，禁手点实时提示</dd>
-          <dt>外观</dt><dd>23 套主题（20 套逐屏量过对比度）+ 上架棋盘材质 41 套与多套棋子材质 + 界面字号缩放覆盖全部界面</dd>
-          <dt>横屏</dt><dd>一律双栏（右缘 56px 竖条导航），桌面浏览器同这套</dd>
-        </dl>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="limits" class="limits-sec">
-  <div class="wrap">
-    <p class="kicker rv">SEC.05 — KNOWN LIMITS · NOT FINISHED · 共 13 条</p>
-    <h2 class="sec-h rv" style="--d:.1s">如实说明，<em>哪些还不行</em></h2>
-    <p class="sec-sub rv" style="--d:.2s">还没验证 / 故意默认关闭——这一节和功能清单一样重要。</p>
-    <div class="limits" id="limits"></div>
-  </div>
-</section>
-
-</main>
-
-<footer class="get" id="get">
-  <div class="wrap">
-    <p class="kicker rv">DOWNLOAD — 开源免费 · MIT License</p>
-    <h2 class="sec-h rv" style="--d:.1s">现在就摆开第一局</h2>
-    <p class="sec-sub rv" style="--d:.2s">三条路都在：浏览器直接打开最快，手机装 APK 最全。</p>
-    <div class="dl-grid">
-      <a class="dl-card rv" href="https://gugujiao953-ship-it.github.io/banbu-gomoku/app/">
-        <span class="t">网页版 · 含 iOS</span>
-        <span class="d">手机 / 桌面浏览器直接用，可加到主屏当离线应用，无需安装。</span>
-        <span class="go">打开 ↗</span>
-      </a>
-      <a class="dl-card rv" style="--d:.1s" href="https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/latest">
-        <span class="t">Android APK</span>
-        <span class="d">v1.2.0 · 90.4MB · 引擎与权重随包自带 · 附 SHA-256 校验文件。</span>
-        <span class="go">去 Releases 下载 ↗</span>
-      </a>
-      <a class="dl-card rv" style="--d:.2s" href="https://wwbwc.lanzouq.com/ihYTE4c6aube">
-        <span class="t">蓝奏云镜像</span>
-        <span class="d">GitHub 直连慢时的备用通道。</span>
-        <span class="go">取件码 hrbj ↗</span>
-      </a>
-    </div>
-    <div class="ios-guide rv">
-      <div class="ios-head">
-        <span class="badge">iOS</span>
+<main id="top">
+  <!-- HERO -->
+  <section class="hero" style="padding-top:76px">
+    <div class="wrap">
+      <div class="hero-grid">
         <div>
-          <h3>iPhone / iPad 用户：不用安装，三十秒变应用</h3>
-          <p>网页版在 iOS 上就是「应用」——添加到主屏幕后是全屏独立窗口、离线可用、图标在桌面，装过的引擎包照常运行。</p>
+          <div class="kicker rev">
+            <span class="chip hot">开源免费</span>
+            <span class="chip mono">v1.2.1</span>
+            <span class="chip mono">15 × 15 棋盘</span>
+            <span class="chip mono">本机引擎</span>
+            <span class="chip mono">ANDROID / WEB</span>
+          </div>
+          <h1 class="rev">半步五子棋打谱<span class="l2">1.2.1 版本</span></h1>
+          <div class="en rev">v1.2.1 · 2026-11-10 · ANDROID / WEB</div>
+          <p class="lead rev">这一版加了<strong>在线对弈</strong>、<b>技能五子棋</b>（36 关）和<b>变体五子棋</b>（6 种）；VCF 出题手数到 <b>90–100 手</b>；手机识谱从 12 秒降到 <b>8 秒</b>左右。</p>
+          <div class="cta rev">
+            <a class="btn p" href="#download">下载 1.2.1 <span class="ar">↓</span></a>
+            <a class="btn" href="#online">先看在线对弈 <span class="ar">→</span></a>
+            <a class="btn" href="https://banbuwzq.site/wzq/" target="_blank" rel="noopener">在线版 · 备案域名 <span class="ar">↗</span></a>
+          </div>
+          <div class="url rev">WEB · <a href="https://gugujiao953-ship-it.github.io/banbu-gomoku/app/" target="_blank" rel="noopener">gugujiao953-ship-it.github.io/banbu-gomoku/app</a></div>
+        </div>
+
+        <div class="fig rev">
+          <div class="cap"><span>FIG. 01 / 界面</span><span>390 × 844 · ×3</span></div>
+          <div class="devices">
+            <img class="ph p1" src="assets/online-121.png" alt="在线对弈：四条规则与房间约战">
+            <img class="ph p2" src="assets/local-121.png" alt="本地页：AI 对战 / 变体玩法 / 技能五子棋">
+            <img class="ph p3" src="assets/board-121.png" alt="15×15 打谱页">
+          </div>
+          <div class="anno">
+            <div><k>ONLINE</k><p>四条规则各占一行，右侧「匹配」；房间约战可开房或输码。</p></div>
+            <div><k>LOCAL</k><p>本地页：AI 对战 / 变体玩法 / 技能五子棋 / VCF 挑战 / 每日一题。</p></div>
+            <div><k>SPEC</k><p>棋盘 15×15；本地页五个入口：AI 对战 / 变体玩法 / 技能五子棋 / VCF 挑战 / 每日一题。</p></div>
+          </div>
         </div>
       </div>
-      <ol class="ios-steps">
-        <li><span>用 <b>Safari</b> 打开网页版（必须是 Safari；微信、Chrome 内置浏览器不支持）。<a href="https://gugujiao953-ship-it.github.io/banbu-gomoku/app/">打开 ↗</a></span></li>
-        <li><span>点底部<b>「分享」</b>按钮（方框 + 向上箭头），菜单里选<b>「添加到主屏幕」</b>，确认添加。</span></li>
-        <li><span>回到桌面点图标：以后每次都是全屏启动，和普通应用一样，断网也能用。</span></li>
-      </ol>
-      <p class="ios-more">遇到问题看图文详解：<a href="https://github.com/gugujiao953-ship-it/banbu-gomoku/blob/main/docs/iOS-%E7%BD%91%E9%A1%B5%E7%89%88%E8%AF%B4%E6%98%8E.md">docs/iOS-网页版说明.md</a>（离线原理、图标不显示、iOS 升级后注意什么，都在里面）。</p>
+
+      <div class="metrics rev">
+        <div><b data-n="36">36</b><span>技能关卡（9 章 × 4）</span></div>
+        <div><b data-n="6">6</b><span>变体玩法</span></div>
+        <div><b data-n="7555">7,555</b><span>VCF 题池</span></div>
+        <div><b>90–100<s>手</s></b><span>出题手数上限</span></div>
+        <div><b data-n="8">8<s>s</s></b><span>手机识谱（原 12s+）</span></div>
+      </div>
     </div>
-    <p class="fb rv">有问题、想加功能：直接 <a href="https://github.com/gugujiao953-ship-it/banbu-gomoku/issues/new/choose">提一个 issue</a>（仓库带反馈模板，附上「设置 → 关于 → 兼容性自检」的输出定位更快）；随便聊聊去 <a href="https://github.com/gugujiao953-ship-it/banbu-gomoku/discussions">Discussions</a>。应用内「设置 → 关于 → 本版本更新内容」随时可看更新说明。</p>
-    <div class="end">
-      <span class="serif">半步五子棋打谱 · 手机端五子棋打谱软件</span>
-      <span><a href="https://github.com/gugujiao953-ship-it/banbu-gomoku">GitHub</a> · <a href="https://github.com/gugujiao953-ship-it/banbu-gomoku/blob/main/README.md">README</a> · <a href="https://github.com/gugujiao953-ship-it/banbu-gomoku/blob/main/RELEASE_NOTES.md">开发日志</a> · MIT License</span>
-      <span>END OF DOCUMENT</span>
+  </section>
+
+  <!-- 01 在线 -->
+  <section id="online">
+    <div class="wrap">
+      <div class="sec-head rev">
+        <div class="idx">01 / ONLINE<s>网络对局</s></div>
+        <div>
+          <h2>在线对弈</h2>
+          <p class="sub">对弈页第一项。四条规则各占一行，点哪条就按哪条进排队；观战与复盘收进顶栏，房间约战独占一行。</p>
+        </div>
+      </div>
+      <div class="cols">
+        <div class="c7 rev">
+          <p class="body">四条规则各占一整行，右边一个「匹配」按钮。<b>断线自动重连</b>；胜负和有结算弹窗；「再来一局」要双方都确认，不会被单方面重开。头像改成预设图集、昵称过审；<b>改名与重置战绩各 500 棋魂</b>。</p>
+          <div class="rules-list">
+            <div class="r"><b>无禁手</b><span>RENJU · FREE</span><span class="pill">匹配</span></div>
+            <div class="r"><b>有禁手</b><span>RENJU · STANDARD</span><span class="pill">匹配</span></div>
+            <div class="r"><b>五手两打</b><span>SWAP2</span><span class="pill">匹配</span></div>
+            <div class="r"><b>塔十</b><span>TARAGUCHI</span><span class="pill">匹配</span></div>
+          </div>
+          <p class="small" style="margin-top:16px">这一屏是独立全屏页：手机竖屏 / 横屏 / 平板 / 安全区各排过一遍；配色走主题令牌，不另造一层深色块。</p>
+        </div>
+        <div class="c5 rev">
+          <div class="room">
+            <div class="k">ROOM · 房间码 / 邀请链接</div>
+            <div class="cells"><i>B</i><i>A</i><i>N</i><i>B</i><i>U</i><i>1</i><i>2</i><i>1</i></div>
+            <div class="tags"><span class="tag g">复制房间码</span><span class="tag">复制邀请链接</span><span class="tag">系统分享</span><span class="tag">你执黑</span><span class="tag">5+30</span></div>
+            <p class="small" style="margin-top:16px">房间码与链接可以分别复制，对方点开直达；对局结束「再来一局」需双方确认。</p>
+          </div>
+          <p class="small" style="margin-top:14px">示意图：房间码与选项以应用内为准。在线需要联网；本机打谱、分析、做题不联网照旧。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 技能 -->
+  <section id="skill">
+    <div class="wrap">
+      <div class="sec-head rev">
+        <div class="idx">02 / SKILLS<s>技能五子棋</s></div>
+        <div>
+          <h2>技能五子棋</h2>
+          <p class="sub">成五扣对方 1 格血并消掉那串子。一手同时成两条线只算一次，六连整串也只算一次；血条 8 格，打满 240 手比血量。</p>
+        </div>
+      </div>
+
+      <div class="rev">
+        <div class="k mono" style="font-size:10px;letter-spacing:.2em;color:var(--dim)">九卷 × 四关 · 每卷第四关是 BOSS</div>
+        <div class="ladder">
+          <ol>
+            <li><span class="no">04</span><span class="dot"></span><span class="nm">黑石客</span></li>
+            <li><span class="no">08</span><span class="dot"></span><span class="nm">终结者</span></li>
+            <li><span class="no">12</span><span class="dot"></span><span class="nm">饮血拉菲</span></li>
+            <li><span class="no">16</span><span class="dot"></span><span class="nm">鬼面胚胎</span></li>
+            <li><span class="no">20</span><span class="dot"></span><span class="nm">昊天</span></li>
+            <li><span class="no">24</span><span class="dot"></span><span class="nm">卡塔魔</span></li>
+            <li><span class="no">28</span><span class="dot"></span><span class="nm">智子</span></li>
+            <li><span class="no">32</span><span class="dot"></span><span class="nm">最强智子</span></li>
+            <li><span class="no">36</span><span class="dot"></span><span class="nm">烂柯棋圣</span></li>
+          </ol>
+        </div>
+        <div class="tags" style="margin-top:16px">
+          <span class="tag g">三周目 · 冷眼</span><span class="tag g">二周目 · 既视感</span><span class="tag g">三周目 · 万世轮回</span>
+          <span class="tag">障碍石</span><span class="tag">红子（第三色）</span><span class="tag">禁手区</span><span class="tag">对手技能次数</span>
+        </div>
+      </div>
+
+      <div class="cols" style="margin-top:36px">
+        <div class="c7 rev">
+          <div class="k mono" style="font-size:10px;letter-spacing:.2em;color:var(--dim)">六个技能 · Lv1–Lv3 · 靠技能点解锁</div>
+          <div class="skills">
+            <div class="skill"><div class="top"><b>五雷</b><span class="pips"><i class="on"></i><i class="on"></i><i class="on"></i></span></div><p>拆子：满级拆 3 颗</p></div>
+            <div class="skill"><div class="top"><b>山阵</b><span class="pips"><i class="on"></i><i class="on"></i><i></i></span></div><p>造山：满级最多 5 块</p></div>
+            <div class="skill"><div class="top"><b>血狱</b><span class="pips"><i class="on"></i><i></i><i></i></span></div><p>生点：满级最多 5 颗</p></div>
+            <div class="skill"><div class="top"><b>困龙</b><span class="pips"><i class="on"></i><i class="on"></i><i></i></span></div><p>区域框：满级缩到 7×7</p></div>
+            <div class="skill"><div class="top"><b>铁壁</b><span class="pips"><i class="on"></i><i></i><i></i></span></div><p>挡一次，满级挡 2 次</p></div>
+            <div class="skill"><div class="top"><b>灵启</b><span class="pips"><i class="on"></i></span></div><p>每局一次；满级给其他技能各 +3 次</p></div>
+          </div>
+        </div>
+        <div class="c5 rev">
+          <div class="card">
+            <div class="k">PROGRESSION · 技能点</div>
+            <p class="body">首次通关 <b>+1 点</b>，上限 <b>33</b>；初始 2 槽、最多 6 槽，扩一格 2 点，升级 1 点/级。第一轮 36 关给 36 点 —— 够点满还有富余，但不让它无限堆着。</p>
+            <div class="ledger" style="margin-top:18px">
+              <div class="row"><span>解锁 6 个技能</span><b>13 点</b></div>
+              <div class="row"><span>升满 12 级</span><b>12 点</b></div>
+              <div class="row"><span>扩满 4 格</span><b>8 点</b></div>
+              <div class="row"><span>合计 / 上限</span><b>33 / 33</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 变体 -->
+  <section id="variants">
+    <div class="wrap">
+      <div class="sec-head rev">
+        <div class="idx">03 / VARIANTS<s>变体玩法</s></div>
+        <div>
+          <h2>变体五子棋</h2>
+          <p class="sub">六种规则共用同一块 15×15 棋盘。落子、吃子、生成、技能全部记成事件流，悔棋把整条重放到上一个决策点。</p>
+        </div>
+      </div>
+      <div class="vars rev">
+        <div class="v"><span class="mini"></span><b>Caro</b><s>CARO</s><p>两端不被封才算成五</p></div>
+        <div class="v"><span class="mini"></span><b>障碍</b><s>OBSTACLE</s><p>石头挡路，占位不算子</p></div>
+        <div class="v"><span class="mini"></span><b>三色</b><s>THREE-COLOR</s><p>黑白红，红子另算</p></div>
+        <div class="v"><span class="mini"></span><b>Pente</b><s>PENTE</s><p>夹吃翻转；吃满 5 对也算赢</p></div>
+        <div class="v"><span class="mini"></span><b>Connect6</b><s>CONNECT6</s><p>每手两子，节奏更快</p></div>
+        <div class="v"><span class="mini"></span><b>五连消</b><s>CLEAR</s><p>成五即消，盘面越下越空</p></div>
+      </div>
+      <p class="small rev" style="margin-top:16px">变体的棋盘状态正式引擎不认（石头、红子、Caro 的「两端不被封」、Connect6 双着都不懂），AI 走 <b style="color:var(--paper2)">rapfi</b>。</p>
+    </div>
+  </section>
+
+  <!-- 04 VCF -->
+  <section id="vcf">
+    <div class="wrap">
+      <div class="sec-head rev">
+        <div class="idx">04 / VCF<s>出题与题库</s></div>
+        <div>
+          <h2>VCF 出题与题库</h2>
+          <p class="sub">手数到 90–100（另含 40 / 41）、扩盘 20 / 24 / 30 路、长题节点上限 3000；一题最多 3 个正确首手。以下是实跑结果。</p>
+        </div>
+      </div>
+
+      <div class="bignums rev">
+        <div><b>90–100</b><span>手长题（另含 40 / 41）</span></div>
+        <div><b>20/24/30</b><span>自动扩盘路数</span></div>
+        <div><b>3000</b><span>节点上限（原 1000）</span></div>
+        <div><b>12.4s</b><span>90 手样题耗时</span></div>
+      </div>
+
+      <div class="cols" style="margin-top:34px">
+        <div class="c7 rev">
+          <div class="k mono" style="font-size:10px;letter-spacing:.2em;color:var(--dim)">一题最多 3 个正确首手，两条攻线汇合到同一个杀点</div>
+          <div class="depth">
+            <div class="row"><k>黑先 · 短</k><span class="bar"><i style="width:22%"></i></span><em>9–15 手</em></div>
+            <div class="row"><k>白先</k><span class="bar"><i style="width:46%"></i></span><em>20 手</em></div>
+            <div class="row"><k>深盘</k><span class="bar"><i style="width:66%"></i></span><em>40 / 41 手</em></div>
+            <div class="row"><k>长题</k><span class="bar"><i style="width:92%"></i></span><em>90–100 手</em></div>
+          </div>
+          <p class="small" style="margin-top:14px">显式选 15 路就按 15 路搜，不暗改棋盘；预算不够宁可不出，不强行凑移位搜索。</p>
+        </div>
+        <div class="c5 rev">
+          <div class="card">
+            <div class="k">COUNTER-PRESSURE · 反冲与错路</div>
+            <p class="body">强制<b>两次必经反冲</b>，并配 <b>2 类因果错路</b>（最长 3 攻手）：走错了能解释为什么错，而不是「反正你输了」。</p>
+            <div class="ledger" style="margin-top:16px">
+              <div class="row"><span>题池总量</span><b>7,555 道</b></div>
+              <div class="row"><span>新增批次</span><b>抓禁题 · 长手题</b></div>
+              <div class="row"><span>计分</span><b>清零 · 记录保留</b></div>
+              <div class="row"><span>旧积分</span><b>1 分 = 1 棋魂</b></div>
+            </div>
+            <p class="small" style="margin-top:14px">末 10 秒每秒读秒；加时后自动停、再掉回 10 秒重新开始。关掉「结果与警告音」后无声但计时照走。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 识谱 -->
+  <section id="ocr">
+    <div class="wrap">
+      <div class="sec-head rev">
+        <div class="idx">05 / VISION<s>识谱与复原</s></div>
+        <div>
+          <h2>识谱与手序复原</h2>
+          <p class="sub">手机整个流程从 12 秒以上降到 8 秒左右：模型扫描交回多核、导入跳过读号、复原复用网格；识别结果逐项不变。</p>
+        </div>
+      </div>
+      <div class="cols">
+        <div class="c7 rev">
+          <div class="compare">
+            <div class="line old"><k>改前</k><span class="track"><i style="width:100%"></i></span><em>12s+</em></div>
+            <div class="line new"><k>现在</k><span class="track"><i style="width:66%"></i></span><em>≈8s</em></div>
+            <div class="gains">
+              <div><b>9.6 → 3.6s</b><span>导入跳过读号（书谱）</span></div>
+              <div><b>5.8 → 1.3s</b><span>其中模型扫描</span></div>
+              <div><b>4.6 → 0.3s</b><span>复原复用网格</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="c5 rev">
+          <p class="body"><b>模型扫描交回多核</b>：上一版曾把模型计算改回单线程，实测反而慢 3 倍（15 手图 15.8 秒 vs 47.6 秒、书谱 19.6 vs 71.4 秒）。现在按环境分流 —— 网页版多核并行，手机不支持跨源隔离时把模型留在主线程。</p>
+          <p class="body" style="margin-top:14px">准确性没让步：采样点、对比度公式、阈值与浮点加法顺序都没动，320 个候选窗口逐字段一致；<b>89 手完整复原、书谱 66/66、15 手完整复原</b>逐项复测通过。</p>
+          <p class="small" style="margin-top:14px">8 秒是手机整体导入口径（按机型浮动）；电脑网页版 1–2 秒、密盘大图 10 秒内。你手改过的子，复原时照你的改法来。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 棋魂 -->
+  <section id="soul">
+    <div class="wrap">
+      <div class="sec-head rev">
+        <div class="idx">06 / SOUL<s>棋魂与外观</s></div>
+        <div>
+          <h2>棋魂与外观</h2>
+          <p class="sub">棋魂记参与度，和等级分分开算。下面是源码里的全部 14 条来源（<span class="mono" style="font-size:11px">soul-economy.ts</span>）。</p>
+        </div>
+      </div>
+      <div class="cols">
+        <div class="c7 rev">
+          <div class="ledger">
+            <div class="grp">对局</div>
+            <div class="row"><span>战胜人机 · 初级 / 中级 / 高级 / 大师</span><b>50 / 80 / 120 / 200</b></div>
+            <div class="grp">挑战与做题</div>
+            <div class="row"><span>解出 VCF 挑战（每多一手 +4，单题封顶 120）</span><b>20</b></div>
+            <div class="row"><span>完成每日一题</span><b>50</b></div>
+            <div class="row"><span>攻克一道题</span><b>3</b></div>
+            <div class="grp">玩法与工具</div>
+            <div class="row"><span>技能五子棋 · 第 1–4 / 5–24 / 25–36 关及轮回</span><b>120 / 180 / 260</b></div>
+            <div class="row"><span>识谱导入成功</span><b>10</b></div>
+            <div class="row"><span>点一下魂火</span><b>1</b></div>
+            <div class="grp">其他</div>
+            <div class="row"><span>解锁成就（按级别）</span><b>10–9999</b></div>
+            <div class="row"><span>提交一次反馈</span><b>200</b></div>
+          </div>
+        </div>
+        <div class="c5 rev">
+          <div class="k mono" style="font-size:10px;letter-spacing:.2em;color:var(--dim)">花在哪</div>
+          <div class="price">
+            <div><b>100</b><s>加时卡</s><em>本题 +30 秒</em></div>
+            <div><b>80</b><s>提示卡</s><em>亮下一手</em></div>
+            <div><b>25</b><s>悔棋卡</s><em>撤销本题上一手</em></div>
+          </div>
+          <div class="ledger" style="margin-top:18px">
+            <div class="row"><span>外观（主题 / 棋盘 / 棋子，两档）</span><b>500 / 700</b></div>
+            <div class="row"><span>在线档案 · 改名</span><b>500</b></div>
+            <div class="row"><span>在线档案 · 重置战绩</span><b>500</b></div>
+            <div class="row"><span>人机对弈悔棋 · 技能换词条</span><b>按次</b></div>
+          </div>
+          <p class="small" style="margin-top:14px">主题 28 项（含跟随系统与自定义背景），上架外观 42 项。默认那套本来就给你，收费的是「另一种样子」。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 其他 -->
+  <section id="other">
+    <div class="wrap">
+      <div class="sec-head rev">
+        <div class="idx">07 / DETAILS<s>其他改动</s></div>
+        <div>
+          <h2>其他改动</h2>
+          <p class="sub">横屏、过手、引擎参数、更新方式 —— 这一版顺手清的一批。</p>
+        </div>
+      </div>
+      <div class="list2 rev">
+        <div><b>打谱能记「过手」</b><p>黑白切换右边一枚按钮：不落子、手数 +1、换行棋方；同一局面下两条分支可以并存。</p></div>
+        <div><b>黑白切换不再「只往右滑」</b><p>点哪一色就是哪一色，高亮条正对选中格。</p></div>
+        <div><b>横屏三处重排</b><p>人机对弈 272×272（原 300×223）、每日一题 385×385、生成器 347×347（原 191）。</p></div>
+        <div><b>显示设置三处共用</b><p>棋盘线粗细与公用动效以前只在打谱生效，现在 VCF 挑战、每日一题一起变。</p></div>
+        <div><b>KataGo 参数更好调</b><p>缓存去掉 6M / 26M（最小 100M）；线程 4/6/8/12/16/20/24 七档，按核心数标「本机推荐」。</p></div>
+        <div><b>分析更少误报</b><p>引擎冷启动抖动先静默重试，连续 3 次起不来才降级。</p></div>
+        <div><b>启动更轻</b><p>识谱模型约 16MB 改成「用过识谱才预热」；本机功能统计默认关闭。</p></div>
+        <div><b>更新方式改了</b><p>应用内下载整条去掉（平板实测下完闪退）。只剩浏览器下载与蓝奏云；覆盖安装不影响棋谱与设置。</p></div>
+        <div><b>状态栏 / 老机型</b><p>安卓 15/16 顶栏不再被状态栏压住；Chrome 64–68 补齐运行时兜底，不再一进就白屏。</p></div>
+        <div><b>落子音效六款</b><p>经典（默认）/ 木鱼 / 木石 / 回响 / 干脆 / 沉木；旧的「实录」「清响」下线。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 下载 -->
+  <section id="download">
+    <div class="wrap">
+      <div class="sec-head rev">
+        <div class="idx">08 / DOWNLOAD<s>下载与在线</s></div>
+        <div>
+          <h2>下载与在线</h2>
+          <p class="sub">1.2.1 正式版已发布：Android 安装包、GitHub 网页版和备案域名在线版均可使用。</p>
+        </div>
+      </div>
+      <div class="dl3 rev">
+        <div class="dcard">
+          <div class="k">ANDROID · APK</div>
+          <h3>手机版</h3>
+          <p>正式版 92.0 MiB（versionCode 123）；可覆盖安装旧版。安装前建议备份本机棋谱。</p>
+          <a class="btn" href="https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/download/v1.2.1/banbu-gomoku-1.2.1-android-release.apk" target="_blank" rel="noopener">GitHub 下载 APK <span class="ar">↗</span></a>
+          <a class="btn" href="https://wwbwc.lanzouq.com/iq2B04fequpa" target="_blank" rel="noopener">蓝奏云下载 · 密码 4bxo <span class="ar">↗</span></a>
+        </div>
+        <div class="dcard">
+          <div class="k">WEB · PWA · iOS</div>
+          <h3>网页版</h3>
+          <p>Safari 打开后「分享 → 添加到主屏幕」，可离线当本地应用；电脑浏览器直接用。</p>
+          <a class="btn" href="https://gugujiao953-ship-it.github.io/banbu-gomoku/app/" target="_blank" rel="noopener">打开网页版 <span class="ar">↗</span></a>
+        </div>
+        <div class="dcard">
+          <div class="k">备案域名 · CN</div>
+          <h3>在线版</h3>
+          <p>国内直连：<span class="mono" style="font-size:11px">banbuwzq.site/wzq</span>；在线对弈走 <span class="mono" style="font-size:11px">wss://banbuwzq.site/online</span>。</p>
+          <a class="btn p" href="https://banbuwzq.site/wzq/" target="_blank" rel="noopener">打开在线版 <span class="ar">↗</span></a>
+        </div>
+      </div>
+      <div class="sha rev">Android APK · 96,433,869 字节 · SHA-256: 98FCB738EB461517A204FC05453F07B39337E15B9329B2C8A91376EE4EF57480 · <a href="https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/tag/v1.2.1" target="_blank" rel="noopener">查看发布说明</a></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="fgrid">
+      <div>
+        <div class="wordmark">半步五子棋<span style="color:var(--gold)">打谱</span></div>
+        <p class="small" style="margin-top:14px;max-width:320px">本地 KataGomo 引擎，功能丰富的五子棋手机打谱软件。打谱 · 分析 · 在线对弈 · 做题 · 识谱。</p>
+      </div>
+      <div>
+        <h5>这一版</h5>
+        <a href="#online">在线对弈</a><a href="#skill">技能五子棋</a><a href="#variants">变体五子棋</a><a href="#vcf">VCF 出题</a><a href="#ocr">识谱提速</a>
+      </div>
+      <div>
+        <h5>如实说明</h5>
+        <a href="#online">在线需要联网</a><a href="#vcf">长题受种子与预算限制</a><a href="#ocr">8 秒按机型浮动</a><a href="#variants">变体 AI 走 rapfi</a>
+      </div>
+      <div>
+        <h5>链接</h5>
+        <a href="https://github.com/gugujiao953-ship-it/banbu-gomoku" target="_blank" rel="noopener">GitHub 仓库</a>
+        <a href="https://github.com/gugujiao953-ship-it/banbu-gomoku/issues/new/choose" target="_blank" rel="noopener">问题反馈</a>
+        <a href="https://banbuwzq.site/wzq/" target="_blank" rel="noopener">在线版（备案）</a>
+        <a href="https://gugujiao953-ship-it.github.io/banbu-gomoku/" target="_blank" rel="noopener">项目主页</a>
+      </div>
+    </div>
+    <div class="copyline">
+      <span>© 2026 半步五子棋打谱 · 开源 MIT · 无内购 / 无会员 / 无广告</span>
+      <span>SPEC v1.2.1 · versionCode 123 · 2026-11-10</span>
     </div>
   </div>
 </footer>
 
 <script>
-(function(){
-"use strict";
-var reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-/* 逐字标题 */
-document.querySelectorAll("[data-split]").forEach(function(el){
-  var txt = el.textContent; el.textContent = ""; var i = 0;
-  Array.prototype.forEach.call(txt, function(ch){
-    var s = document.createElement("span");
-    s.className = "c"; s.style.setProperty("--i", i++); s.textContent = ch;
-    el.appendChild(s);
-  });
-});
-/* 跑马灯 */
-var FACTS = ["SGF / LIB / DP / DB / ZIP 全格式","KATAGO ON DEVICE","INT8 21.9MB","RAPFI 0.43.02","6,367 道内置题","23 套主题 · 20 套量过对比度","5–30 路棋盘","全程可离线","十项开局规则","成就与棋魂系统"];
-var tick = document.getElementById("tick");
-var half = document.createElement("span");
-FACTS.forEach(function(f){ half.innerHTML += f + "<i>◆</i>"; });
-tick.appendChild(half); tick.appendChild(half.cloneNode(true));
-/* 18 条更新 */
-var LOGS = [
- {no:"01",t:"「棋魂」上线：认真下过的每一手都算数",d:"下棋、做题、复盘、识谱、打谱批注、解锁成就都攒棋魂，点魂火也能攒。它衡量你做了多少，和等级分（你有多强）刻意分开记——账本是流水，余额是算出来的，最近 50 笔在棋魂说明页可查。",g:["参与度货币","点魂火可攒","余额可追溯"]},
- {no:"02",t:"棋魂「黑白水墨」主题成套上线",d:"配套主题跟棋魂一起到：解锁之后棋盘、棋子、界面一起换，不是只改一个颜色。",g:["棋魂主题","成套换肤"]},
- {no:"03",t:"成就 89 项，分六类",d:"对弈、做题、研究、识谱、探索、棋魂六类，目录里能看进度（例如「对弈 0/22」），解锁当场弹提示。判定只看已有账本，历史数据挂载时自动兑现一次。",g:["89 项","六类分组","解锁即提示"]},
- {no:"04",t:"棋魂商店：外观解锁 + 棋局道具",d:"攒下的棋魂能换主题、棋盘、棋子的另一种样子（默认那套本来就给你）；道具卡也能在同一个商店里买，支持批量解锁。解锁记录单独存，不会随账本折叠而过期。",g:["外观解锁","道具卡","批量解锁"]},
- {no:"05",t:"道具卡进对局：悔棋按次花棋魂",d:"人机对弈里的悔棋改成按次 10 棋魂；VCF 挑战的道具栏、计时与加减分也在这一版一起调过，挑战不再只拼手速。",g:["悔棋 10 棋魂","VCF 道具栏","计时与加减分"]},
- {no:"06",t:"人机对弈新增「自定义开局」",d:"自己摆子、随时点开始。摆好的一套固定开局能存进本机局面库，下次直接载入接着下——练一个布局不用每次重摆。",g:["自己摆子","存局面","随时开始"]},
- {no:"07",t:"开局也能从自己的棋谱库里挑",d:"从棋谱库或题库里挑一份当开局，分支照常在盘上显示，可以挑一条来打。",g:["棋库挑起手","分支可见"]},
- {no:"08",t:"自定义开局这一局不计棋魂、不计战绩",d:"摆出来的局面不参与棋魂与战绩统计，怎么试都不脏数据。",g:["不记战绩","练棋专用"]},
- {no:"09",t:"对弈屏收掉打谱顶栏，棋盘吃满宽度",d:"偏矮的手机上人机对局棋盘不再被压扁。自定义开局的摆子界面也重排过：棋盘居中、进度在上、按钮在下，落子不再弹提示。",g:["棋盘吃满宽度","摆子屏重排"]},
- {no:"10",t:"每日一题独立成页",d:"从对弈页直接进，棋盘、难度、用时、悔棋 / 重来都在自己一屏里，不再和打谱页共用界面。",g:["独立一页","分开的进度"]},
- {no:"11",t:"旗舰引擎 KataGo 随包进手机",d:"KataGo 与 ONNX Runtime 随安装包一起进手机、本机原生运行，两套权重一起装上（小网 3.2MB、int8 大网 21.9MB），装好就能用；内置 rapfi 同步升到 0.43.02。",g:["零下载","3.2MB + 21.9MB","0.43.02"]},
- {no:"12",t:"切到后台，引擎真的停了",d:"以前切出去几分钟再回来，局面和未保存的改动全没了——原因是自愈保活把引擎又点着、连烧 5 分钟满核 CPU，被系统按 EXCESSIVE CPU USAGE 杀掉。现在切出即停（分析、AI 应手、复盘、生成一起停），回前台自动续上。",g:["切出即停","回来自动续"]},
- {no:"13",t:"引擎把给定的思考时间用满",d:"不再提前收手；第一次用「图片识谱」也不用再等识别引擎装载。",g:["用满预算","识谱首开更快"]},
- {no:"14",t:"VCF 挑战：每手必须形成四",d:"计时三档随手数伸缩（上限 120 / 210 / 300 秒）；等级分 0 分起步，1–13 级每级 300 分、14 级起每级 200 分、封顶 9999；走错路线可以退回去重算，战绩留在本机。",g:["三档计时","封顶 9999","0 分起步"]},
- {no:"15",t:"本机凭证：换手机不用从头攒",d:"棋魂、成就与解锁记录跟着本机凭证走，换机可恢复——攒的东西不再只活在一台手机上。",g:["换机恢复","本机凭证"]},
- {no:"16",t:"分支树的预览能折成一颗小按钮",d:"看盘想多留点地方，点一下就收起来，需要时再展开。",g:["可折叠","让出棋盘空间"]},
- {no:"17",t:"使用手册逐条对过界面更正",d:"界面改过的说明都照着实物重写了一遍，避免「照手册点不到」。",g:["手册对齐界面"]},
- {no:"18",t:"背景透明度与主题在老手机上也生效",d:"安卓 83 一类的老 WebView 上，主题动效画面、功能区底色、外观里的选择卡片全都跟着主题与透明度走；标注高亮挪到预览上方，透明度并进「棋盘显示」。",g:["老机型修复","主题动效","透明度生效"]}
-];
-var logsEl = document.getElementById("logs");
-LOGS.forEach(function(l, i){
-  var a = document.createElement("article");
-  a.className = "log rv"; a.style.setProperty("--d", (i % 2) * 90 + "ms");
-  a.innerHTML = '<div class="no">LOG-' + l.no + '</div><h3></h3><p></p><div class="chips">' +
-    l.g.map(function(x){ return '<span class="chip">' + x + '</span>'; }).join("") + "</div>";
-  a.querySelector("h3").textContent = l.t;
-  a.querySelector("p").textContent = l.d;
-  logsEl.appendChild(a);
-});
-/* 14 条限制 */
-var LIMITS = [
- ["16 路以上的棋盘没有旗舰引擎","应用本身 5–30 路都能摆。旗舰 KataGo 只支持 15 路以内，16 路起自动让位给内置 rapfi（实测 5–22 路生效）；23 路起没有引擎可用，应用会如实提示，不静默降级。摆盘与研究不受限。"],
- ["大网比小网慢一个数量级，也更耗电","换成 int8 之后，小网仍比大网快约 10 倍（同一台测试机：小网 106.9 访问/秒，大网 fp16 时代 5.6、int8 之后 10.9）。日常分析请用默认的「b10c128 小网」，要棋力再切大网；限时越短差距越明显，长时间大网分析建议接电源。"],
- ["int8 的强度只做了小样本验证","同预算 4 局对抗 2:2 持平，policy 首选一致率 83.7%，没跑 20+ 局的大样本。所以本页只说「快了多少」，不说「强了多少」。"],
- ["云端引擎只接管「分析」","iKataGo 现在是分析通道，人机对弈仍跑本机引擎；而且要先自己填服务器地址、用户名、密码、平台才生效。连不上会如实报错，不会悄悄换回本机引擎。"],
- ["对局中不显示推荐点与胜率","对弈界面只显示哪台引擎、算到第几层、看了多少节点。要看引擎怎么想，请终局后用「复盘本局」。"],
- ["战绩与等级分只存在这台设备","账本上限 400 条，换设备、清除站点数据或清缓存都会丢，暂时不能同步；等级分是本机内部尺度，锚的是自家 AI 档位，不与任何官方或外部等级分换算。"],
- ["本页不谈识别准确率","识谱这条线这一版改的是核对屏（显式编辑模式、四种看法、确认才建谱）、选图入口与大图预览降采样，没有宣称「识别更准了」。按序号「复原手序」是实验开关，默认关闭。"],
- ["好几项默认是关的","公用效果（落子交互 11 套 / 棋子进场 12 套）默认关闭；在线棋谱库与自建题库收进「设置 → 可选增强功能」，默认关闭；触觉反馈默认关闭。出于站点条款，在线棋谱只给跳转链接、不代为抓取下载。"],
- ["两项只做了代码层验证","安卓文件关联与分享接收、落子 / 警告 / 导航的触觉反馈，改造记录明写「本机无法自动验证」，需要真机确认；桌面与 iOS 上震动会静默降级。"],
- ["升级时会发生三件事","① 首次启动清一次 WebView 缓存（不删棋谱）；② 旧的 fp16 大网模型被自动删除（回收 42.4MB）；③「平板横屏双栏」开关整项移除，横屏一律双栏。"],
- ["两组旧读数作废","分析缓存与整局复盘因胜率视角语义修正从 v1 升到 v2，需要重跑一次；三处默认值同时变了：候选点 1 → 5、分析刷新 0.2 → 0.1 秒、KataGo 线程默认 16。"],
- ["矮横屏还会多滚一点","844×390 一类档位：操作条保证在屏幕内，但整页仍会多滚十几像素，那一档做不到完全不滚。"],
- ["网页版不含引擎包","首次需要强力 AI 时在应用内下载（冠军权重包约 38.4MB）；另外网页版要另一次干净构建才会带上本版前端改动。"]
-];
-var limEl = document.getElementById("limits");
-LIMITS.forEach(function(l, i){
-  var d = document.createElement("div");
-  d.className = "lim rv"; d.style.setProperty("--d", (i % 2) * 70 + "ms");
-  var h = document.createElement("div");
-  h.innerHTML = '<h3></h3><p></p>';
-  h.querySelector("h3").textContent = l[0];
-  h.querySelector("p").textContent = l[1];
-  d.appendChild(Object.assign(document.createElement("span"), {className:"no", textContent:"L-" + String(i+1).padStart(2,"0")}));
-  d.appendChild(h);
-  limEl.appendChild(d);
-});
-/* 进场显现：首屏内的直接显示，其余滚动触发 */
-var revealEls = Array.prototype.slice.call(document.querySelectorAll(".rv"));
-if (!reduced && "IntersectionObserver" in window){
-  revealEls = revealEls.filter(function(el){
-    if (el.getBoundingClientRect().top < window.innerHeight * 0.96){ el.classList.add("in"); return false; }
-    return true;
-  });
-  var io = new IntersectionObserver(function(es){
-    es.forEach(function(e){ if (e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); } });
-  }, {threshold:.08, rootMargin:"0px 0px -6% 0px"});
-  revealEls.forEach(function(el){ io.observe(el); });
-} else {
-  revealEls.forEach(function(el){ el.classList.add("in"); });
-}
-/* 数字滚动 */
-function count(el){
-  var target = parseFloat(el.dataset.count), dec = +el.dataset.dec || 0, t0 = null;
-  function step(t){
-    if (!t0) t0 = t;
-    var p = Math.min((t - t0) / 1400, 1), e = 1 - Math.pow(1 - p, 3);
-    el.textContent = (target * e).toFixed(dec);
-    if (p < 1) requestAnimationFrame(step);
+(() => {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const els = document.querySelectorAll(".rev");
+  if (reduce || !("IntersectionObserver" in window)) { els.forEach((e) => e.classList.add("in")); }
+  else {
+    const io = new IntersectionObserver((es) => es.forEach((en) => { if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } }), { rootMargin: "0px 0px -10% 0px", threshold: 0.06 });
+    els.forEach((e) => io.observe(e));
   }
-  requestAnimationFrame(step);
-}
-if (!reduced && "IntersectionObserver" in window){
-  var cio = new IntersectionObserver(function(es){
-    es.forEach(function(e){ if (e.isIntersecting){ count(e.target); cio.unobserve(e.target); } });
-  }, {threshold:.6});
-  document.querySelectorAll("[data-count]").forEach(function(el){ cio.observe(el); });
-} else {
-  document.querySelectorAll("[data-count]").forEach(function(el){ el.textContent = el.dataset.count; });
-}
-/* 导航高亮（滚动判定，瞬时跳转也稳） */
-var secs = Array.prototype.filter.call(document.querySelectorAll("main section, footer.get"), function(s){ return s.id; });
-var links = Array.prototype.slice.call(document.querySelectorAll(".nav-links a"));
-function spy(){
-  var line = window.scrollY + window.innerHeight * 0.42, cur = "";
-  secs.forEach(function(s){ if (s.offsetTop <= line) cur = s.id; });
-  links.forEach(function(a){ a.classList.toggle("on", a.getAttribute("href") === "#" + cur); });
-}
-addEventListener("scroll", spy, {passive:true});
-addEventListener("resize", spy);
-spy();
+  /* 数字滚一下 */
+  const nums = document.querySelectorAll(".metrics b[data-n]");
+  if (!reduce && "IntersectionObserver" in window) {
+    const io2 = new IntersectionObserver((es) => es.forEach((en) => {
+      if (!en.isIntersecting) return;
+      const el = en.target, target = Number(el.dataset.n);
+      let cur = 0; const step = Math.max(1, Math.round(target / 26));
+      const t = setInterval(() => { cur += step; if (cur >= target) { cur = target; clearInterval(t); } el.textContent = target > 999 ? cur.toLocaleString("en-US") : String(cur); }, 26);
+      io2.unobserve(el);
+    }), { threshold: 0.5 });
+    nums.forEach((n) => io2.observe(n));
+  }
+  /* 首屏手机轻微视差 */
+  const ds = document.querySelectorAll(".devices .ph");
+  if (!reduce) addEventListener("scroll", () => {
+    const y = Math.min(innerHeight, scrollY);
+    ds.forEach((d, i) => { d.style.translate = `0 ${y * (0.02 + i * 0.012)}px`; });
+  }, { passive: true });
 })();
 </script>
 </body>
