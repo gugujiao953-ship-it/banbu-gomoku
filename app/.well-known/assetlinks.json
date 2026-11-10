@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "cn.renjunote.mobile",
+      "sha256_cert_fingerprints": [
+        "0E:4A:90:7F:D5:C3:86:26:7F:EF:CE:3C:06:8E:75:E7:49:27:BE:29:1D:CA:F5:B2:4B:F9:CD:9B:E2:E8:29:39"
+      ]
+    }
+  }
+]

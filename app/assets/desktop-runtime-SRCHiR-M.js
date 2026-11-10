@@ -1,0 +1,1 @@
+var e=()=>{let e=globalThis.__banbuDesktop;return!!(e&&e.shell)},t=()=>{try{let e=globalThis.location?.search??``;return new URLSearchParams(e).get(`desktop`)===`1`}catch{return!1}},n=()=>e()||t(),r=()=>{let e=globalThis.__banbuDesktop;return e&&e.shell?e:null};export{e as i,t as n,n as r,r as t};

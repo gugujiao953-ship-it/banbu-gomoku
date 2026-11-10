@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none">
+  <defs>
+    <pattern id="warp" width="3" height="3" patternUnits="userSpaceOnUse">
+      <path d="M0 .4H3" stroke="#ffd9b8" stroke-opacity=".05"/>
+      <path d="M.4 0V3" stroke="#3d0703" stroke-opacity=".06"/>
+    </pattern>
+  </defs>
+  <rect width="160" height="160" fill="url(#warp)"/>
+  <path d="M18 44c7-3 15-2 21 2M96 118c6-4 13-4 19 0M126 26c5-2 10-1 14 2"
+        stroke="#ffdcc0" stroke-opacity=".16" stroke-width=".8" stroke-linecap="round"/>
+</svg>

@@ -5,6 +5,7 @@
 const FULL_LOAD_TIMEOUT_MS = 30000;
 let engine = null;
 let loading = false;
+let loadingVariant = null;
 let loadToken = 0;
 let loadTimer = null;
 let fullBlocked = false;
@@ -31,12 +32,16 @@ let nativeAllowed = false;
 let nativeBlocked = false;
 let nativeReady = false;
 let nativeVersion = null;
+let nativeCores = null;
+let nativeBigCores = null;
+let nativeMemoryLimitMb = null;
 let pendingNative = null;
 const NATIVE_START_TIMEOUT_MS = 20000;
 let enginePreference = "auto";
 let dataUrlOverride = null;
 let activeVariant = "fallback";
 const waiting = [];
+const pendingBookRequests = new Set();
 let active = null;
 // ---- KataGo 旗舰引擎（仅安卓原生，GTP 协议）----
 // 与 native（Rapfi）变体并存但消息类型独立（kata-*）。协议差异：GTP 应答以
@@ -81,9 +86,10 @@ function pinIkatago(message) {
     // 配置变了：清放弃标记并断开旧连接（下次请求按新地址重连）
     if (changed) {
       ikatagoBlocked = false;
-      try { if (ikatagoSocket) ikatagoSocket.close(); } catch { /* 已关 */ }
-      ikatagoSocket = null;
-      ikatagoReady = false;
+      // Retire a pending load before rejecting it, so its late catch cannot
+      // mark the replacement connection failed or overwrite its loading state.
+      if (pendingIkatago) { loadToken += 1; clearLoadTimer(); loading = false; }
+      closeIkatagoConnection("云引擎配置已变更");
       if (activeVariant === "ikatago") { engine = null; loading = false; }
     }
   }
@@ -144,7 +150,8 @@ let kataSeenRoundAck = true;
 // **native rapfi 的轮次边界守卫**（2026-10-01，同 kataSeenRoundAck 的用意）：
 // 本轮 START 的 "OK" 应答到达前的输出一律丢弃（详见 parseOutput）。
 let rapfiRoundAckSeen = true;
-let rapfiRoundCommandsAt = 0;
+let rapfiPendingStartAcks = 0;
+const RAPFI_SETUP_TIMEOUT_MS = 30000;
 // **静默看门狗（两级）**：万一收尾行因任何意外没被认领（或搜索根本没跑起来），
 // active 会永久悬挂、面板卡「思考中」——旧实现的实际表现，用户无法自救。
 // 正常引擎每 0.4s 必出一条 info，静默只可能意味着「搜索已结束但收尾行没认领」
@@ -166,6 +173,18 @@ function kataSilenceDelays(request) {
   if (request.unlimited) return { first: KATA_UNLIMITED_FIRST_MS, idle: KATA_UNLIMITED_IDLE_MS };
   return null;
 }
+/**
+ * 兜底落点：优先取「当前 PV0」。finish() 的 stalePrimary 调和逻辑认的是 pvIndex，
+ * 而 candidates[0] 是**插入序**——order-0 易主后（首帧 H8、后帧 K10）两者分叉，
+ * 兜底取插入序首项会报出旧最优、并把真最优当 stalePrimary 删掉（探针实测）。
+ */
+function fallbackBestMove(request) {
+  const list = (request && request.stats && request.stats.candidates) || [];
+  if (!list.length) return null;
+  const primary = list.find((candidate) => (candidate.pvIndex != null ? candidate.pvIndex : 99) === 0);
+  return (primary || list[0]).move;
+}
+
 function armKataSilence(request, atStart) {
   const delays = kataSilenceDelays(request);
   if (!delays) return;
@@ -175,7 +194,7 @@ function armKataSilence(request, atStart) {
     if (!active || active !== request || request.finished) return;
     // 有候选就用当前最强点收尾；一个候选都没有才是真的失败，交给 finish 报错
     // （不吞问题：App 会据此走重试/降级，而不是永远转圈）。
-    finish(request, request.bestMove || (request.stats.candidates.length ? request.stats.candidates[0].move : null), request.stats);
+    finish(request, request.bestMove || fallbackBestMove(request), request.stats);
   }, atStart ? delays.first : delays.idle);
 }
 /** 每条 info 行续期（只有挂了看门狗的轮次需要）。 */
@@ -241,6 +260,7 @@ function canonicalBoardMoves(moves, mover) {
 
 function clearRequestTimers(request) {
   if (!request) return;
+  if (request.startupTimer) { clearTimeout(request.startupTimer); request.startupTimer = null; }
   if (request.stopTimer) { clearTimeout(request.stopTimer); request.stopTimer = null; }
   if (request.finishTimer) { clearTimeout(request.finishTimer); request.finishTimer = null; }
 }
@@ -258,7 +278,7 @@ function scheduleStop(request) {
     if (!active || active !== request || request.finished) return;
     request.finishTimer = setTimeout(() => {
       if (!active || active !== request || request.finished) return;
-      finish(request, request.bestMove || (request.stats.candidates[0] || {}).move, request.stats);
+      finish(request, request.bestMove || fallbackBestMove(request), request.stats);
     }, Math.max(250, Math.min(1200, Math.round(request.timeMs * 0.25))));
   }, delayMs);
 }
@@ -367,11 +387,22 @@ function candidateVisible(candidate, stats) {
 }
 
 // See finish(): drop shallow PV byproducts from live progress too.
-function searchedCandidates(stats) {
+function searchedCandidates(stats, nBest) {
   // 候选早现门槛：T12 曾用 max(8, 深度-8) 防浅层 PV 随机点，但滚动分析每轮/
   // 换面都要从 0 爬深度，用户实测「好几秒才有选点」（2026-09-11）——深度 4
   // 的 PV 已相当可靠，降到 max(4, 深度-8)：首轮约 1s 内出候选。primary 恒保留。
-  return (stats.candidates || []).filter((candidate) => candidateVisible(candidate, stats));
+  const visible = (stats.candidates || []).filter((candidate) => candidateVisible(candidate, stats));
+  // **必须在实时帧里也按 nBest 截断**（2026-10-29 用户报「选 3 个 5 个都直接
+  // 全部显示」）：以前只有搜索收尾的 finish() 里 slice(0, nBest)，而 progress
+  // 帧走的是本函数、不带截断 —— 于是整个搜索过程把 searchedCandidates 过滤出来的
+  // 全部候选都推给界面，满盘圆标；只有等一轮彻底结束才瞬间收敛。
+  // 这里按「引擎的 PV 序号」排序后截断，与 finish() 的口径保持一致：实时看到的前 N
+  // 名就是收尾时会保留的那 N 名，不会出现「过程中一批、结束后换一批」的跳变。
+  if (!Number.isFinite(nBest) || nBest <= 0) return visible;
+  return visible
+    .slice()
+    .sort((a, b) => (a.pvIndex != null ? a.pvIndex : 99) - (b.pvIndex != null ? b.pvIndex : 99))
+    .slice(0, Math.round(nBest));
 }
 
 function parseCoordinateList(value, size, player) {
@@ -386,9 +417,11 @@ function parseCoordinateList(value, size, player) {
 // 还没打印过就按「总节点 / 已用时」现算，保证界面上始终有个可比的数字。
 // 多线程线程数：引擎支持运行时 `INFO THREAD_NUM n`（config 的 default_thread_num
 // 只在启动时读一次，改它得重做数据包）。request.threads 为 0/缺省 = 按设备自动取
-// 一半核心；上限钉在 hardwareConcurrency，避免把机器压死反而更慢。
+// 一半核心；原生使用插件的实际核数，WASM 使用浏览器允许的核数。
 function threadCountFor(request) {
-  const cores = (typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 4;
+  const reported = typeof navigator !== "undefined" ? navigator.hardwareConcurrency : undefined;
+  const browserCores = Number.isFinite(reported) && reported > 0 ? Math.max(1, Math.floor(reported)) : 4;
+  const cores = activeVariant === "native" && nativeCores ? nativeCores : browserCores;
   const requested = Number(request.threads);
   // 「多线程引擎」是**网页版 wasm** 的实验开关（多线程 wasm 需要跨源隔离，安卓
   // WebView 永远拿不到），关掉时 wasm 固定单线程。原生引擎不受它约束：原生是真线程、
@@ -397,16 +430,23 @@ function threadCountFor(request) {
   // 手机常态不到 100k，别人能跑 225k）。原生要省电降温，请在「引擎线程数」里显式
   // 选 1 线程，而不是靠一个默认关的实验开关。
   if (!engineMultiAllowed && activeVariant !== "native") return 1;
-  // 0/缺省 = 自动（一半核心，与同类网页引擎的默认一致）；-2 = 大核；负数 = 全核；正数 = 指定。
+  // 0/缺省 = 自动（见下面的 auto 口径）；-2 = 大核；负数 = 全核；正数 = 指定。
   // 「大核」是 09-17 新增：手机多是 4 大 + 4 小，Lazy SMP 每一层迭代都被最慢的线程拖住，
   // 把小核算进来可能比只铺大核还慢。bigCores 由原生插件读 cpufreq 得出、App 随请求下发；
   // 拿不到（网页版 / 机器同构）就退回「自动」档的行为。
-  const bigCores = Number(request.bigCores);
-  const auto = Math.max(1, Math.round(cores / 2));
+  const requestedBig = Number(request.bigCores);
+  const bigCores = Number.isFinite(requestedBig) && requestedBig > 0 ? requestedBig : nativeBigCores;
+  // 2026-11-09 用户要「自动能真的自动、并且界面上看得到几线程」：
+  // 自动从「一半核心」改成**有大小核就只铺大核**（小核会拖慢 Lazy SMP），同构机仍取一半；
+  // 结果夹在 2..8（超过 8 对 rapfi 收益递减、手机明显发热降频）。
+  // ⚠ 这段必须与 src/features/settings/engine-threads.ts 的 autoEngineThreads 完全同口径，
+  //   否则界面（engineThreadBadge）显示的数字和引擎实际线程数会对不上。
+  const usableBig = Number.isFinite(bigCores) && Math.round(bigCores) > 0 && Math.round(bigCores) < cores ? Math.round(bigCores) : 0;
+  const auto = Math.max(2, Math.min(8, Math.min(usableBig > 0 ? usableBig : Math.round(cores / 2), cores)));
   const wanted = !Number.isFinite(requested) || requested === 0
     ? auto
     : requested === -2
-      ? (Number.isFinite(bigCores) && bigCores > 0 ? Math.min(Math.round(bigCores), cores) : auto)
+      ? (usableBig > 0 ? usableBig : auto)
       : requested < 0 ? cores : requested;
   return Math.max(1, Math.min(Math.round(cores), Math.round(wanted)));
 }
@@ -495,10 +535,24 @@ function rememberCandidate(request, move, options) {
 }
 
 function parseOutput(line) {
-  if (!active || typeof line !== "string") return;
-  const request = active;
+  if (typeof line !== "string") return;
   const text = line.trim();
   if (!text) return;
+  // Consume old START acknowledgements even between requests. A superseded
+  // request's delayed OK must not open the next request's output window.
+  if (text === "OK" || text.startsWith("OK ")) {
+    if (activeVariant === "native") {
+      rapfiPendingStartAcks = Math.max(0, rapfiPendingStartAcks - 1);
+      if (active && !rapfiRoundAckSeen && rapfiPendingStartAcks === 0) {
+        rapfiRoundAckSeen = true;
+        if (active.startupTimer) { clearTimeout(active.startupTimer); active.startupTimer = null; }
+        if (!active.stopRequested) markSearchStart(active);
+      }
+    }
+    return;
+  }
+  if (!active) return;
+  const request = active;
   if (request.rawDebug) post({ type: "log", message: "RAW " + text.slice(0, 140) });
   // **轮次起点守卫（native rapfi，2026-10-01）**：旧轮被新命令中止时，引擎会把旧
   // 搜索的收尾输出（最后几条 INFO/MESSAGE + 终局裸坐标）排在 START 的 "OK" 应答
@@ -506,16 +560,13 @@ function parseOutput(line) {
   // 算进新轮，就是用户看到的「前面的胜率/选点残留」，终局坐标还会被记成新轮的
   // bestMove。丢弃「本轮 OK 之前」的一切输出——与 kata 的「首个裸 = 之前丢弃」
   // 同构；升级 0.43.02 后时间管理变化让旧搜索尾巴更长，残留因此变明显。
-  // 兜底：>1.5s 等不到 OK 视为异常放行（宁可短暂残留也不能吞掉整轮）。
-  if (text === "OK" || text.startsWith("OK ")) { rapfiRoundAckSeen = true; return; }
-  if (!rapfiRoundAckSeen) {
-    if (performance.now() - rapfiRoundCommandsAt < 1500) return;
-    rapfiRoundAckSeen = true;
-  }
-  // "MESSAGE Bestline <move>" is the engine's end-of-search summary; the bare
-  // coordinate that follows it is the declared final answer, not an
-  // intermediate YXNBEST line. Any new INFO block reopens the search.
-  if (/^MESSAGE Bestline/i.test(text)) request.bestlineSummarySeen = true;
+  // Slow devices keep this boundary too; a separate bounded setup timeout
+  // reports failure instead of accepting stale coordinates as a fresh result.
+  if (activeVariant === "native" && !rapfiRoundAckSeen) return;
+  // NORMAL mode can end with Speed/Depth/Eval/Node/Time, without Bestline.
+  // The in-search Speed/Visit/Time message is not terminal.
+  const searchEnded = /^MESSAGE\s+Speed\s+.+\|\s*Depth\s+\d+-\d+\s*\|\s*Eval\s+.+\|\s*Node\s+.+\|\s*Time\s+/i.test(text);
+  if (/^MESSAGE Bestline/i.test(text) || searchEnded) request.bestlineSummarySeen = true;
   else if (text.startsWith("INFO")) request.bestlineSummarySeen = false;
   if (text.startsWith("INFO ")) {
     const match = text.match(/^INFO\s+(DEPTH|NODES|BESTLINE)\s+(.+)$/);
@@ -524,7 +575,9 @@ function parseOutput(line) {
     if (pvIndex) active.stats.pvIndex = Number(pvIndex[1]);
     if (parsed.depth !== undefined) active.stats.depth = parsed.depth;
     if (parsed.selDepth !== undefined) active.stats.selDepth = parsed.selDepth;
-    if (parsed.nodes !== undefined) active.stats.nodes = parsed.nodes;
+    if (parsed.nodes !== undefined) { active.stats.nodes = parsed.nodes; active.stats.nodesSeen = true; }
+    const totalTime = text.match(/^INFO\s+TOTALTIME\s+(\d+)$/i);
+    if (totalTime) active.stats.totalTimeMs = Number(totalTime[1]);
     const totalNodes = text.match(/^INFO\s+TOTALNODES\s+(\d+)$/i);
     if (totalNodes) active.stats.totalNodes = Number(totalNodes[1]);
     if (parsed.score !== undefined) active.stats.score = parsed.score;
@@ -532,7 +585,7 @@ function parseOutput(line) {
     if (parsed.speed !== undefined) active.stats.speed = parsed.speed;
     if (performance.now() - (active.lastProgressAt || 0) >= 100) {
       active.lastProgressAt = performance.now();
-      post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: active.stats.depth || 0, selDepth: active.stats.selDepth || 0, nodes: reportedNodes(active), speed: requestSpeed(active), score: active.stats.score, winRate: active.stats.winRate, candidates: searchedCandidates(active.stats) });
+      post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: active.stats.depth || 0, selDepth: active.stats.selDepth || 0, nodes: reportedNodes(active), speed: requestSpeed(active), score: active.stats.score, winRate: active.stats.winRate, candidates: searchedCandidates(active.stats, active.nBest) });
     }
     if (match && match[1] === "BESTLINE") {
       active.stats.bestline = parseCoordinateList(match[2], active.size, active.player);
@@ -550,32 +603,9 @@ function parseOutput(line) {
     // compact INFO BESTLINE form. Preserve the same PV contract.
     const pv = text.match(/(?:^|\s)(?:PV|pv)\s+(.+)$/);
     if (pv && !/^INFO\s+PV\b/i.test(text)) active.stats.bestline = parseCoordinateList(pv[1], active.size, active.player);
-    // The engine plans its iterations by the time budget and never announces
-    // completion on its own once the budget is generous, even for positions it
-    // has already proven won. When the primary line shows a proven win (a mate
-    // score, or a saturated win rate on the think path), stop it — the answer
-    // is proven, so ending here is lossless.
-    if (request.stopOnProvenWin && !request.provenWinStopSent) {
-      const mateText = /EVAL\s+\+M\d+/i.test(text);
-      const mateScore = typeof active.stats.primaryScore === "number" && active.stats.primaryScore >= 10000;
-      const wrSolved = request.finishOnBareMove && typeof active.stats.primaryWinRate === "number" && active.stats.primaryWinRate >= 0.999;
-      if (mateText || mateScore || wrSolved) {
-        request.provenWinStopSent = true;
-        // YXSTOP 的响应格式因构建而异：fallback 构建会回 "MESSAGE Bestline" +
-        // 裸坐标（bestlineSummarySeen 置位后立即 finish），full 构建可能只回裸
-        // 坐标甚至不回——provenWin 时绝不能只等它（用户 09-10：做题点分析卡
-        // 几十秒不落子，即 EVAL +M 触发本分支后清掉 stopTimer 兜底、引擎已停
-        // 而 worker 永等）。置 stopRequested 让裸坐标也能收尾，并保留兜底
-        // timer 用当前 PV0 强制 finish。
-        request.stopRequested = true;
-        if (request.stopTimer) { clearTimeout(request.stopTimer); request.stopTimer = null; }
-        send(stopCommand());
-        request.stopTimer = setTimeout(() => {
-          if (!active || active !== request || request.finished) return;
-          finish(request, request.bestMove || (request.stats.candidates[0] || {}).move, request.stats);
-        }, 800);
-      }
-    }
+    // A high win rate is an estimate. Even +M is followed by the engine's
+    // configured verification iterations; let it declare completion. Deadline
+    // and manual-stop watchdogs still handle an engine that fails to finish.
     return;
   }
   const coordinates = text.match(/^(?:(BESTMOVE|bestmove)\s+)?(\d+),(\d+)(?:\s+(\d+),(\d+))?$/i);
@@ -587,7 +617,7 @@ function parseOutput(line) {
   rememberCandidate(request, move);
   if (request.continuous && performance.now() - (request.lastProgressAt || 0) >= 100) {
     request.lastProgressAt = performance.now();
-    post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: request.stats.depth || 0, selDepth: request.stats.selDepth || 0, nodes: reportedNodes(request), score: request.stats.score, winRate: request.stats.winRate, candidates: searchedCandidates(request.stats) });
+    post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: request.stats.depth || 0, selDepth: request.stats.selDepth || 0, nodes: reportedNodes(request), score: request.stats.score, winRate: request.stats.winRate, candidates: searchedCandidates(request.stats, request.nBest) });
   }
   // A prefixed BESTMOVE is an explicit terminal response. Bare coordinate
   // lines are often intermediate YXNBEST/PV output, so never finish merely
@@ -598,7 +628,9 @@ function parseOutput(line) {
   // solved positions answer in milliseconds with no INFO lines) — both mean the
   // engine has declared its final answer, so easy positions return instantly
   // instead of burning the whole time budget.
-  if (coordinates[1] || (request.acceptBareFinal && request.bestlineSummarySeen) || (request.finishOnBareMove && !request.stats.depth && !request.stats.nodes) || request.stats.depth >= request.maxDepth || request.stopRequested) finish(request, move, request.stats);
+  const trivialFinal = !request.stats.depth && !request.stats.nodes
+    || request.stats.nodesSeen && request.stats.nodes === 0 && request.stats.totalTimeMs === 0;
+  if (coordinates[1] || (request.acceptBareFinal && request.bestlineSummarySeen) || (request.finishOnBareMove && trivialFinal) || request.stats.depth >= request.maxDepth || request.stopRequested) finish(request, move, request.stats);
 }
 
 // ---- KataGo（GTP）解析层 ------------------------------------------------
@@ -709,7 +741,7 @@ function emitKataProgress(request) {
   if (performance.now() - (request.lastProgressAt || 0) < 100) return;
   request.lastProgressAt = performance.now();
   // drawRate：本构建的和棋率（%），来自 order 0 的 scoreMean 字段（见 rememberKataLine）
-  post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: request.stats.depth || 0, selDepth: request.stats.selDepth || 0, nodes: reportedNodes(request), speed: requestSpeed(request), score: request.stats.score, winRate: request.stats.winRate, drawRate: request.stats.drawRate, candidates: searchedCandidates(request.stats) });
+  post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: request.stats.depth || 0, selDepth: request.stats.selDepth || 0, nodes: reportedNodes(request), speed: requestSpeed(request), score: request.stats.score, winRate: request.stats.winRate, drawRate: request.stats.drawRate, candidates: searchedCandidates(request.stats, request.nBest) });
 }
 
 /** 解析**单条** info 记录（一条 = 一个候选 + 它的数值）。
@@ -752,19 +784,7 @@ function parseKataRecord(text) {
     rememberKataLine(active, text);
     accumulateKataFrameVisits(active, [text]);
     emitKataProgress(active);
-    // 做题/提示场景的「已证胜即停」（与 rapfi 路径同一契约）：胜率饱和说明答案
-    // 已证明，提前收手别让用户白等满预算。停止后引擎会回 "play X"，走终局分支。
-    if (active.stopOnProvenWin && !active.provenWinStopSent
-        && typeof active.stats.primaryWinRate === "number" && active.stats.primaryWinRate >= 0.999) {
-      active.provenWinStopSent = true;
-      active.stopRequested = true;
-      if (active.stopTimer) { clearTimeout(active.stopTimer); active.stopTimer = null; }
-      send(stopCommand());
-      active.stopTimer = setTimeout(() => {
-        if (!active || active !== request || active.finished) return;
-        finish(request, request.bestMove || (request.stats.candidates.length ? request.stats.candidates[0].move : null), request.stats);
-      }, 800);
-    }
+    // MCTS winrate is not a proof; genmove/play or the deadline ends the search.
 }
 
 function parseKataOutput(line) {
@@ -835,7 +855,7 @@ function parseKataOutput(line) {
     // 常规 GTP 应答（setup 命令，或其它构建的 genmove 格式）。即使 parse 失败
     // 也要收尾（别把请求挂死）。
     const move = parseGtpVertex(text.slice(2), active.size);
-    const finalMove = move || active.bestMove || (active.stats.candidates.length ? active.stats.candidates[0].move : null);
+    const finalMove = move || active.bestMove || fallbackBestMove(active);
     if (move) { active.bestMove = move; rememberCandidate(active, move, { keepExistingVisits: true }); }
     finish(active, finalMove, active.stats);
     return;
@@ -846,7 +866,7 @@ function parseKataOutput(line) {
     if (kataSetupAcks > 0) { kataSetupAcks -= 1; return; }
     const move = parseGtpVertex(playResponse[1], active.size);
     if (move) { active.bestMove = move; rememberCandidate(active, move, { keepExistingVisits: true }); }
-    finish(active, move || active.bestMove || (active.stats.candidates.length ? active.stats.candidates[0].move : null), active.stats);
+    finish(active, move || active.bestMove || fallbackBestMove(active), active.stats);
     return;
   }
   // 其余（启动 banner、Chat: 行等）忽略。
@@ -915,8 +935,22 @@ function finishKataCalib(timedOut) {
   drain();
 }
 
-function send(command) {
-  if (engine) engine.sendCommand(command);
+function commandIdentity(request) {
+  return request ? { requestId: request.requestId, generation: request.generation, attempt: request.commandAttempt } : {};
+}
+
+function matchesActiveCommand(message) {
+  return active && !active.finished
+    && (message.requestId === undefined || message.requestId === active.requestId)
+    && (message.generation === undefined || message.generation === active.generation)
+    && (message.attempt === undefined || message.attempt === active.commandAttempt);
+}
+
+function send(command, request = active) {
+  if (engine) {
+    if (activeVariant === "native" || activeVariant === "kata") engine.sendCommand(command, request);
+    else engine.sendCommand(command);
+  }
   else diag("send DROPPED (no engine): " + command);
 }
 
@@ -1102,7 +1136,8 @@ function bookAnswer(request) {
       bookLabel: top.label,
       principalVariation: [],
       // rank 随书候选一起发出（T31：AI 宣布五手N打数量要用「库内好点数」推理）。
-      candidates: ranked.slice(0, Math.max(1, Math.min(10, request.topN || 3))).map((entry) => ({ move: { row: entry.row, col: entry.col }, depth: 0, rank: entry.rank, principalVariation: [] })),
+      // 截断上限与 nBest 对齐（2026-11-01）：同样不能偷偷砍到 10。
+      candidates: ranked.slice(0, Math.max(1, Math.min(50, request.topN || 3))).map((entry) => ({ move: { row: entry.row, col: entry.col }, depth: 0, rank: entry.rank, principalVariation: [] })),
     },
   });
   return true;
@@ -1110,8 +1145,13 @@ function bookAnswer(request) {
 
 function run(request) {
   active = request;
+  request.commandAttempt = (request.commandAttempt || 0) + 1;
   request.started = performance.now();
-  request.nBest = Math.max(1, Math.min(10, request.topN || 3));
+  // 选点数量上限与 App UI 的档位对齐（2026-11-01 补）：UI 提供 1..50（50=全部），
+  // 旧上限 10 会让 15/20/30/50 档静默回落到 10 —— 实时帧截断修复后这个不一致
+  // 变得可见（选 20 只出 10 个）。50 PV 的多 PV 搜索在手机上确实更贵（每层迭代
+  // 要多搜 PV 条数的根着法），但那是用户显式选高档换来的，不该在这里偷偷打折。
+  request.nBest = Math.max(1, Math.min(50, request.topN || 3));
   request.continuous = request.continuous === true;
   // 同一局面的续轮继承累计节点（见 continuousNodesBase）：换局面、或中间穿插了
   // 普通（非持续）请求时归零。
@@ -1139,10 +1179,10 @@ function run(request) {
   // → finish 报 error → App 判定「旗舰引擎启动失败」并**杀掉正在加载的引擎**
   // 重试，新进程又从零开始，永远起不来（用户 09-26 报「非常容易启动未成功」）。
   // 现在 started 语义改为「真正开始搜索的时刻」：runKata 在 GTP 全部同步命令
-  // 发完、genmove 发出前调用 markSearchStart()；rapfi 路径就在 run 里当场定。
+  // 发完、genmove 发出前调用 markSearchStart()；原生 Rapfi 等本轮 START 的 OK。
   request.started = performance.now();
   const budgetMs = request.timeMs;
-  const deferDeadline = isKataFamily();
+  const deferDeadline = isKataFamily() || activeVariant === "native";
   request.deadline = request.unlimited ? Number.POSITIVE_INFINITY
     : deferDeadline ? Number.POSITIVE_INFINITY          // 先不定，等 markSearchStart
     : request.started + budgetMs;
@@ -1155,19 +1195,54 @@ function run(request) {
   // at the deadline, which discarded the deepest finished iteration (the probe
   // measured the final line arriving ~800ms after our grace fired).
   request.acceptBareFinal = request.finishOnBareMove || (request.continuous === true && request.unlimited !== true);
-  request.stopOnProvenWin = request.stopOnProvenWin === true;
+  // Older callers may send stopOnProvenWin; only a terminal engine response
+  // ends a search early now, never an intermediate evaluation.
   request.bestlineSummarySeen = false;
   request.lastProgressAt = 0;
-  request.provenWinStopSent = false;
   scheduleStop(request);
   // KataGo 走 GTP 分支：stats/deadline/scheduleStop 等簿记已就绪，直接发 GTP 命令。
   if (isKataFamily()) { runKata(request); return; }
+  if (activeVariant === "native") {
+    rapfiRoundAckSeen = false;
+    rapfiPendingStartAcks += 1;
+    request.startupTimer = setTimeout(() => {
+      if (active !== request || request.finished || rapfiRoundAckSeen) return;
+      send("YXSTOP");
+      clearRequestTimers(request);
+      request.finished = true;
+      active = null;
+      nativeBlocked = true;
+      nativeReady = false;
+      engine = null;
+      post({ type: "native-stop" });
+      post({ type: "error", requestId: request.requestId, generation: request.generation,
+        message: "原生引擎启动失败：等待棋盘初始化响应超时" });
+    }, RAPFI_SETUP_TIMEOUT_MS);
+  }
   send(`START ${request.size}`);
   send(`INFO RULE ${ruleId(request.rule)}`);
+  // 选点范围（用户 2026-10-29 对标五子棋计算器的「扫描圈数」）：
+  // `INFO CAUTION_FACTOR 0..5` 决定引擎着法生成的**候选集合**——见 gomocup.cpp 的
+  // CAUTION_FACTOR 分支（0=SQUARE2 … 5=FULL_BOARD），board.cpp 据此建 candStencil，
+  // movegen.cpp 只在 FOR_EVERY_CAND_POS 里枚举着法。圈层越小搜得越深，但会漏掉远处的
+  // 做杀/防守点，所以由用户显式选档；**缺省/null = 不发**，引擎保持自身默认
+  // （SQUARE2_LINE3），与改造前的行为逐字一致。
+  //
+  // 必须发在 START 之后、YXBOARD 之前：CAUTION_FACTOR 的处理会「按新档位重建 Board 并
+  // 重放 board 上已有的历史着法」。此刻棋盘还是空的（YXBOARD 在下面才发），重放代价为零，
+  // 也不会把本轮要摆的盘面洗掉。
+  if (Number.isFinite(request.cautionFactor)) {
+    send(`INFO CAUTION_FACTOR ${Math.round(request.cautionFactor)}`);
+  }
   // 多线程变体与原生引擎都按设置下发线程数。单线程 wasm 构建会忽略这条命令。
   // 原生引擎的 config 里 default_thread_num=1，不发就等于只用 1 线程——白白少掉
   // 数倍算力（模拟器实测 1 线程 44.8k vs 4 线程 235k nps）。
-  if (activeVariant === "multi" || activeVariant === "native") send(`INFO THREAD_NUM ${threadCountFor(request)}`);
+  if (activeVariant === "multi" || activeVariant === "native") {
+    // ⚠ 大小写不能统一：wasm 构建认 `INFO THREAD_NUM`（大写），原生 pbrain-rapfi
+    // 只认小写 `INFO thread_num`（大写会被拆成两条 Unknown command 静默丢弃，
+    // 结果原生引擎一直跑 config 里的 default_thread_num=1，这就是「电脑上不到 100K」）。
+    send(`INFO ${activeVariant === "native" ? "thread_num" : "THREAD_NUM"} ${threadCountFor(request)}`);
+  }
   // Gomocup's default TT budget on desktop is 350MB, but this build's config
   // ships default_tt_size_kb=32768 (32MB) and nothing raised it — long rolling
   // analyses thrash a small table. MAX_MEMORY is the total budget (bytes); the
@@ -1178,9 +1253,12 @@ function run(request) {
   // 09-12 实测：TT 不是越大越快——同一局面 10s 预算 64/128MB 表比 256MB 快 29%
   // （大表缓存失配 + 大块清零），手机内存带宽更窄差距更大。默认档下调到甜点区。
   const ram = typeof navigator !== "undefined" ? navigator.deviceMemory : undefined;
-  if (request.maxMemoryMb) send(`INFO MAX_MEMORY ${Math.round(request.maxMemoryMb * 1024 * 1024)}`);
-  else if (typeof ram === "number" ? ram >= 4 : true) send("INFO MAX_MEMORY 134217728");
-  else if (ram >= 2) send("INFO MAX_MEMORY 67108864");
+  const memoryCap = activeVariant === "native" && nativeMemoryLimitMb ? nativeMemoryLimitMb : 2048;
+  const requestedMemory = Number(request.maxMemoryMb);
+  const memoryMb = Number.isFinite(requestedMemory) && requestedMemory > 0
+    ? Math.max(64, requestedMemory)
+    : (typeof ram === "number" ? ram >= 4 : true) ? 128 : ram >= 2 ? 64 : null;
+  if (memoryMb !== null) send(`INFO MAX_MEMORY ${Math.round(Math.min(memoryMb, memoryCap) * 1024 * 1024)}`);
   send(`INFO TIMEOUT_TURN ${request.unlimited ? 0 : request.timeMs}`);
   send(`INFO MAX_DEPTH ${request.maxDepth}`);
   // 深度范围的下界（用户 09-16：像五子棋计算器那样给「最小 / 最大」深度）。
@@ -1195,13 +1273,6 @@ function run(request) {
   const board = canonicalBoardMoves(request.moves, request.player).map((point) => protocolPoint(point, request.size)).join(" ");
   send(`YXBOARD${board ? ` ${board}` : ""} DONE`);
   send(`YXNBEST ${request.nBest}`);
-  // 本轮命令已发完：只有 native rapfi 需要等 START 的 OK 作轮次边界（见 parseOutput
-  // 的守卫）。WASM 变体不设防——它同线程同步执行，不存在「旧搜索尾巴」这种跨轮残行，
-  // 贸然丢弃反而可能吞掉它头 1.5 秒的正常输出。
-  if (activeVariant === "native") {
-    rapfiRoundAckSeen = false;
-    rapfiRoundCommandsAt = performance.now();
-  }
 }
 
 function drain() {
@@ -1239,6 +1310,7 @@ function kataBudgetSeconds(timeMs) {
   const margin = Math.max(0.05, 0.1 * kataOverhead);
   return Math.max(0.4, target - kataOverhead - margin);
 }
+
 /** 摆棋方案：决定用哪种命令序列把局面同步给引擎。
  *
  * 真机验收（2026-09-26，装机后的 katago-onnxcpu）实测三条：
@@ -1265,14 +1337,13 @@ function kataPositionPlan(moves, mover) {
 /** kata 的预算时钟起点：setup 命令发完、genmove 即将发出的时刻。
  *  与 run() 的 request.pendingBudgetMs 配合（见那里的注释：不能把模型加载
  *  与 setup 往返算进搜索预算，否则冷启动必然「预算耗尽却没有落点」）。
- *  持续分析（A 项改造）：**不设 deadline**——引擎在 info 流里持续产出，
- *  finish 只在「用户点停止 / 新局面到达（supersede）/ 胜率饱和」时发生，
- *  与弈境的持续制同构。预算制（落子/提示）照旧。 */
+ *  KataGo 持续分析不设 deadline；Rapfi 持续分析仍按有限轮次滚动。
+ *  中间胜率不用于提前结束搜索。 */
 function markSearchStart(request) {
   if (!request || active !== request || request.finished) return;
   const budget = Number(request.pendingBudgetMs) || 0;
   request.started = performance.now();
-  if (request.unlimited || request.continuous) {
+  if (request.unlimited || (isKataFamily() && request.continuous)) {
     request.deadline = Number.POSITIVE_INFINITY;
     return;
   }
@@ -1430,30 +1501,38 @@ function startNativeVariant() {
       pendingNative = null;
       reject(new Error("原生引擎启动超时"));
     }, NATIVE_START_TIMEOUT_MS);
-    pendingNative = { resolve, reject, timer };
-    post({ type: "native-start" });
+    pendingNative = { resolve, reject, timer, loadId: loadToken };
+    post({ type: "native-start", loadId: loadToken });
   });
 }
 
 /** 主线程回报进程已就绪。 */
 function resolveNativeReady(payload) {
   if (!pendingNative) return;
+  if (payload && payload.loadId !== undefined && payload.loadId !== pendingNative.loadId) return;
   const { resolve, timer } = pendingNative;
   clearTimeout(timer);
   pendingNative = null;
   nativeReady = true;
   nativeVersion = payload && payload.version ? payload.version : null;
+  const bounded = (value, max) => Number.isFinite(value) && value > 0 ? Math.max(1, Math.min(max, Math.floor(value))) : null;
+  nativeCores = bounded(payload && payload.cores, 256);
+  nativeBigCores = bounded(payload && payload.bigCores, nativeCores || 256);
+  nativeMemoryLimitMb = bounded(payload && payload.memoryLimitMb, 2048);
+  if (nativeMemoryLimitMb !== null) nativeMemoryLimitMb = Math.max(64, nativeMemoryLimitMb);
+  rapfiPendingStartAcks = 0;
   resolve({
     // 与 wasm 实例同一形状：只用到 sendCommand。
-    sendCommand: (command) => {
+    sendCommand: (command, request = active) => {
       if (!nativeReady) return;
-      post({ type: "native-command", line: command });
+      post({ type: "native-command", line: command, ...commandIdentity(request) });
     },
   });
 }
 
-function rejectNativeReady(reason) {
+function rejectNativeReady(reason, loadId) {
   if (!pendingNative) return;
+  if (loadId !== undefined && loadId !== pendingNative.loadId) return;
   const { reject, timer } = pendingNative;
   clearTimeout(timer);
   pendingNative = null;
@@ -1506,8 +1585,8 @@ function startKataVariant() {
       pendingKata = null;
       reject(new Error("KataGo 引擎启动超时"));
     }, KATA_START_TIMEOUT_MS);
-    pendingKata = { resolve, reject, timer };
-    post({ type: "kata-start" });
+    pendingKata = { resolve, reject, timer, loadId: loadToken };
+    post({ type: "kata-start", loadId: loadToken });
   })
     .then((instance) => {
       // **不再标定（E 项）**：弈境根本不标定——持续制下 maxTime 运行时下发，
@@ -1523,6 +1602,7 @@ function startKataVariant() {
 /** 主线程回报 KataGo 进程已就绪（payload.overhead 为已存标定值，可能为 null）。 */
 function resolveKataReady(payload) {
   if (!pendingKata) return;
+  if (payload && payload.loadId !== undefined && payload.loadId !== pendingKata.loadId) return;
   const { resolve, timer } = pendingKata;
   clearTimeout(timer);
   pendingKata = null;
@@ -1532,15 +1612,16 @@ function resolveKataReady(payload) {
   kataPendingOverhead = overhead;
   resolve({
     // 与 wasm 实例同一形状：只用到 sendCommand。
-    sendCommand: (command) => {
+    sendCommand: (command, request = active) => {
       if (!kataReady) { diag("sendCommand DROPPED (not ready): " + command); return; }
-      post({ type: "kata-command", line: command });
+      post({ type: "kata-command", line: command, ...commandIdentity(request) });
     },
   });
 }
 
-function rejectKataReady(reason) {
+function rejectKataReady(reason, loadId) {
   if (!pendingKata) return;
+  if (loadId !== undefined && loadId !== pendingKata.loadId) return;
   clearKataSlowHint();
   const { reject, timer } = pendingKata;
   clearTimeout(timer);
@@ -1569,8 +1650,21 @@ function postIkatagoLoading(percent, label) {
   post({ type: "engine-loading", engine: "ikatago", percent, label, done: percent >= 100 });
 }
 
+function closeIkatagoConnection(reason) {
+  const socket = ikatagoSocket;
+  const pending = pendingIkatago;
+  // Clear identity before close(): callbacks can be synchronous in a bridge.
+  ikatagoSocket = null;
+  pendingIkatago = null;
+  ikatagoReady = false;
+  ikatagoBuffer = "";
+  if (pending) { clearTimeout(pending.timer); pending.reject(new Error(reason)); }
+  try { if (socket) socket.close(); } catch { /* already closed */ }
+}
+
 /** 连接远端 KataGo。凭据按 iKataGo 约定走 query（见 ikatago.ts 的说明）。 */
 function startIkatagoVariant() {
+  let socket = null;
   return new Promise((resolve, reject) => {
     if (!ikatagoConfig || !ikatagoConfig.serverUrl) {
       reject(new Error("未配置 iKataGo 服务器地址"));
@@ -1578,10 +1672,7 @@ function startIkatagoVariant() {
     }
     ikatagoReady = false;
     const timer = setTimeout(() => {
-      pendingIkatago = null;
-      try { if (ikatagoSocket) ikatagoSocket.close(); } catch { /* 已关 */ }
-      ikatagoSocket = null;
-      reject(new Error("iKataGo 连接超时（服务器未响应）"));
+      if (ikatagoSocket === socket) closeIkatagoConnection("iKataGo 连接超时（服务器未响应）");
     }, IKATAGO_START_TIMEOUT_MS);
     pendingIkatago = { resolve, reject, timer };
     postIkatagoLoading(30, "连接云端引擎…");
@@ -1595,7 +1686,6 @@ function startIkatagoVariant() {
       ? (ikatagoConfig.serverUrl.includes("?") ? `${ikatagoConfig.serverUrl}&${query}` : `${ikatagoConfig.serverUrl}?${query}`)
       : ikatagoConfig.serverUrl;
 
-    let socket;
     try {
       socket = new WebSocket(url);
     } catch (error) {
@@ -1607,8 +1697,9 @@ function startIkatagoVariant() {
     ikatagoSocket = socket;
     ikatagoBuffer = "";
 
-    socket.onopen = () => { postIkatagoLoading(60, "云端已连接，等待引擎就绪…"); };
+    socket.onopen = () => { if (ikatagoSocket === socket) postIkatagoLoading(60, "云端已连接，等待引擎就绪…"); };
     socket.onmessage = (event) => {
+      if (ikatagoSocket !== socket) return;
       const text = typeof event.data === "string" ? event.data : "";
       if (!text) return;
       ikatagoBuffer += text;
@@ -1621,37 +1712,34 @@ function startIkatagoVariant() {
       }
     };
     socket.onerror = () => {
+      if (ikatagoSocket !== socket) return;
       if (pendingIkatago) {
-        const p = pendingIkatago;
-        clearTimeout(p.timer);
-        pendingIkatago = null;
-        p.reject(new Error("连接出错（检查地址、端口与用户名密码）"));
+        closeIkatagoConnection("连接出错（检查地址、端口与用户名密码）");
       } else if (ikatagoReady) {
         // 连上之后出错：当成断线处理（不静默）
         failIkatago("云端连接中断");
       }
     };
     socket.onclose = (event) => {
-      ikatagoSocket = null;
+      if (ikatagoSocket !== socket) return;
       if (pendingIkatago) {
-        const p = pendingIkatago;
-        clearTimeout(p.timer);
-        pendingIkatago = null;
-        p.reject(new Error(`连接被关闭（code ${event.code}${event.reason ? " " + event.reason : ""}）`));
+        closeIkatagoConnection(`连接被关闭（code ${event.code}${event.reason ? " " + event.reason : ""}）`);
         return;
       }
       if (ikatagoReady) failIkatago("云端连接已断开");
+      else closeIkatagoConnection("云端连接已关闭");
     };
   }).then(() => {
+    if (ikatagoSocket !== socket) throw new Error("云引擎连接已被替换");
     ikatagoReady = true;
     postIkatagoLoading(100, "云端就绪");
     return {
       sendCommand: (command) => {
-        if (!ikatagoReady || !ikatagoSocket || ikatagoSocket.readyState !== 1) {
+        if (!ikatagoReady || ikatagoSocket !== socket || socket.readyState !== 1) {
           diag("ikatago sendCommand DROPPED: " + command);
           return;
         }
-        try { ikatagoSocket.send(command + "\n"); } catch { /* 断线由 onclose 处理 */ }
+        try { socket.send(command + "\n"); } catch { failIkatago("云端命令发送失败"); }
       },
     };
   });
@@ -1673,13 +1761,15 @@ function ikatagoOnLine(line) {
 /** 云引擎失败：置放弃标记（不再自动重试，避免每手都赌一次网络往返），
  *  并把错误交给主线程决定降级。 */
 function failIkatago(reason) {
-  ikatagoReady = false;
   ikatagoBlocked = true;
+  closeIkatagoConnection(reason);
+  if (activeVariant !== "ikatago") return;
   clearKataSilence();
   kataSetupAcks = 0;
-  if (activeVariant === "ikatago") engine = null;
-  if (active) { active.finished = true; active = null; }
-  post({ type: "error", message: `iKataGo：${reason}` });
+  engine = null;
+  const request = active;
+  if (request) { clearRequestTimers(request); request.finished = true; active = null; }
+  post({ type: "error", requestId: request ? request.requestId : undefined, generation: request ? request.generation : undefined, message: `iKataGo：${reason}` });
   drain();
 }
 
@@ -1696,18 +1786,9 @@ function finishLoad(token, instance, variant) {
   engine = instance;
   activeVariant = variant;
   loading = false;
+  loadingVariant = null;
   post({ type: "ready", variant });
   drain();
-}
-
-function startFallback(token) {
-  Promise.resolve().then(() => startVariant("fallback")).then((instance) => {
-    finishLoad(token, instance, "fallback");
-  }).catch((error) => {
-    if (token !== loadToken) return;
-    loading = false;
-    post({ type: "error", message: error instanceof Error ? error.message : String(error) });
-  });
 }
 
 function chooseVariant(requested) {
@@ -1810,6 +1891,7 @@ async function startExperimentChain() {
 }
 
 function loadVariant(variant, token) {
+  loadingVariant = variant;
   // kata 不挂这个兜底：它有自己的两级超时（40s 启动 + 15s 标定）和重试上限，
   // 30s 的通用兜底会把「冷机慢启动/标定进行中」误判成失败并整链重跑——
   // 这正是 09-26「几分钟了一直加载中」的根因之一（kata 分支由此剔除）。
@@ -1829,6 +1911,7 @@ function loadVariant(variant, token) {
   }
   return Promise.resolve()
     .then(async () => {
+      if (token !== loadToken) return null;
       if (variant === "experiment") return startExperimentChain();
       return { instance: await startVariant(variant), variant };
     })
@@ -1902,19 +1985,9 @@ function failKataVariant(token, reason) {
   loading = false;
   postKataLoading(100, "KataGo 未能启动");
   post({ type: "log", message: "KataGo 连续两次启动失败，暂时改用 Rapfi 引擎（" + reason + "）。可在引擎选择里切回旗舰重试" });
-  startRapfiAfterKataFailure(token);
-}
-
-/** 放弃旗舰后的落点：本机最强的 Rapfi（安卓 = native 进程；native 也不可用再落 WASM）。 */
-function startRapfiAfterKataFailure(token) {
-  const useNative = nativeAllowed && !nativeBlocked;
-  Promise.resolve()
-    .then(() => startVariant(useNative ? "native" : "fallback"))
-    .then((instance) => {
-      if (token !== loadToken) return;
-      finishLoad(token, instance, useNative ? "native" : "fallback");
-    })
-    .catch(() => startFallback(token));
+  // Use the normal loading gate/token for the fallback too. Otherwise a newer
+  // analyze can start a second native load and overwrite the first waiter.
+  load();
 }
 
 function load() {
@@ -1935,11 +2008,23 @@ function load() {
  *  这里比对「目标变体」与「当前已加载变体」，不同就卸载旧引擎并重新走加载链。 */
 function ensureVariantMatchesPreference() {
   const target = chooseVariant(enginePreference);
+  if (loading && loadingVariant !== target) {
+    loadToken += 1;
+    clearLoadTimer();
+    loading = false;
+    loadingVariant = null;
+    if (pendingNative) { rejectNativeReady("已切换到其他引擎"); post({ type: "native-stop" }); }
+    if (pendingKata) { rejectKataReady("已切换到其他引擎"); post({ type: "kata-stop" }); }
+    if (pendingIkatago) closeIkatagoConnection("已切换到其他引擎");
+    load();
+    return;
+  }
   if (!engine) return;                       // 还没加载，交给 load()
   if (target === activeVariant) return;      // 已经是目标引擎
   // KataGo 系（本机旗舰 / 云引擎）→ 其它：停掉旧引擎。本机进程是单例，不停会与
   // rapfi 抢内存；云连接不停会一直占着服务端席位。
   if (isKataFamily()) { try { engine.sendCommand("quit"); } catch { /* 已退出 */ } void 0; }
+  if (activeVariant === "ikatago") closeIkatagoConnection("已切换到其他引擎");
   engine = null;
   loading = false;
   load();
@@ -1949,10 +2034,11 @@ self.onmessage = (event) => {
   const message = event.data || {};
   // ---- 原生引擎的回灌（主线程转发进程输出）----
   if (message.type === "native-ready") { resolveNativeReady(message); return; }
-  if (message.type === "native-start-failed") { rejectNativeReady(message.reason); return; }
+  if (message.type === "native-start-failed") { rejectNativeReady(message.reason, message.loadId); return; }
   if (message.type === "engine-loading") { post(message); return; }
   if (message.type === "native-stdout") { parseOutput(message.line); return; }
   if (message.type === "native-exit") {
+    if ((message.requestId !== undefined || message.attempt !== undefined) && !matchesActiveCommand(message)) return;
     // 每个桥都会收到单例进程的退出事件；旧 Rapfi 的收尾不能取消当前
     // KataGo 的加载/搜索，也不能被上层误判成新引擎切换失败。
     // 切换过程中 activeVariant 仍可能暂时保留旧的 native 值；若 KataGo 已
@@ -1963,7 +2049,11 @@ self.onmessage = (event) => {
     const hadEngine = engine !== null;
     if (activeVariant === "native") engine = null;
     if (message.intentional) return;         // 计划内停止（切引擎时 App 调 stop）：静默
-    if (active) { active.finished = true; active = null; }
+    if (pendingNative) {
+      rejectNativeReady(`原生引擎进程在启动时退出（code ${message.code}）`);
+      return;
+    }
+    if (active) { clearRequestTimers(active); active.finished = true; active = null; }
     // 只有真的带着活引擎在跑时崩溃才算事故；否则（启动失败后的余波）报了也只是噪音
     if (hadEngine || pendingNative) post({ type: "error", message: `原生引擎进程已退出（code ${message.code}）` });
     drain();
@@ -1971,14 +2061,21 @@ self.onmessage = (event) => {
   }
   if (message.type === "native-stopped") {
     // 计划内停 Rapfi 进程（App 切引擎互斥）：清失效实例，不发错误
+    if (pendingKata && !pendingNative) return;
     if (activeVariant !== "native" && !pendingNative) return;
     nativeReady = false;
+    if (pendingNative) {
+      loadToken += 1;
+      clearLoadTimer();
+      loading = false;
+      rejectNativeReady("原生引擎已按切换指令停止");
+    }
     if (activeVariant === "native") engine = null;
     return;
   }
   // ---- KataGo 旗舰引擎的回灌（主线程转发进程输出；类型独立不与 native 串线）----
   if (message.type === "kata-ready") { resolveKataReady(message); return; }
-  if (message.type === "kata-start-failed") { rejectKataReady(message.reason); return; }
+  if (message.type === "kata-start-failed") { rejectKataReady(message.reason, message.loadId); return; }
   if (message.type === "kata-start-deferred") {
     // 进程正被另一个 worker 的启动链持有（单例）：**不是失败**，别计入失败次数、
     // 别宣告失败。等持有者标定完，gate 放行时本 worker 会拿到现成的开销值就绪。
@@ -1988,6 +2085,7 @@ self.onmessage = (event) => {
   if (message.type === "kata-phase") { postKataLoadingPhase(message.phase); return; }
   if (message.type === "kata-stdout") { parseKataOutput(message.line); return; }
   if (message.type === "kata-stopped") {
+    if (!pendingKata && (activeVariant === "ikatago" || pendingIkatago)) return;
     // 计划内停旗舰进程（设置变更重启 / 切回 Rapfi）：清失效实例 + 重置失败记忆
     // （设置重启与显式切换一样算「用户动作」，给旗舰全新机会）。
     // kataStopIntended：在下一个显式 kata 请求到来前，禁止任何旧请求把它复活
@@ -2009,6 +2107,7 @@ self.onmessage = (event) => {
     return;
   }
   if (message.type === "kata-write-failed") {
+    if (activeVariant !== "kata" || !matchesActiveCommand(message)) return;
     // GTP 命令写入失败（Java 侧「引擎未运行」）。**不等于进程死了**，也不该按
     // 死亡处理——旧实现把它当 kata-exit，于是：清 engine → 重新 spawn → 重发
     // 整串 setup 命令，最坏 47.9 秒没有输出（真机 09-28 实锤）。
@@ -2034,6 +2133,14 @@ self.onmessage = (event) => {
         clearRequestTimers(req);
         post({ type: "error", requestId: req.requestId, generation: req.generation, message: "旗舰引擎已按切换指令停止" });
       } else {
+        req.kataWriteRetries = (req.kataWriteRetries || 0) + 1;
+        if (req.kataWriteRetries > 1) {
+          req.finished = true;
+          clearRequestTimers(req);
+          post({ type: "error", requestId: req.requestId, generation: req.generation,
+            message: "KataGo 命令连续写入失败，已停止本轮重连：" + (message.reason || "引擎未响应") });
+          return;
+        }
         // 本轮已发出的命令没被引擎收到，直接回池重发（保持原 requestId/generation，
         // App 侧的 generation 守卫仍然有效，不会把结果投给错误的局面）。
         req.finished = false;
@@ -2043,7 +2150,13 @@ self.onmessage = (event) => {
     }
     // 请主线程走一次启动链——**但主动停过就不请**：桥收到 kata-start 会
     // 直接 spawn（进程是我们刚杀的），这就是幽灵进程的另一条复活路径。
-    if (!kataStopIntended) post({ type: "kata-start" });
+    // ⚠ 2026-11-01 修正：必须走 `load()` 而不是裸发 kata-start。裸消息会让桥起
+    // 进程并回 kata-ready，但 worker 侧只有 resolveKataReady 一个处理点，而
+    // pendingKata 只在 loadVariant 里创建——没走 load() 时它是 null，ready 被
+    // 早退丢弃 ⇒ engine 永远不会被赋值，上面 unshift 回池的请求已清光定时器、
+    // 又无看门狗 ⇒ **永久卡死**（探针实测：回喂 kata-ready 后 0 条新命令）。
+    // load() 会建 pendingKata、经 finishLoad → drain 复跑回池请求，语义完整。
+    if (!kataStopIntended) load();
     drain();
     return;
   }
@@ -2061,13 +2174,32 @@ self.onmessage = (event) => {
       rejectKataReady(`KataGo 进程在启动时退出（code ${message.code}）`);
       return;
     }
-    if (active) { active.finished = true; active = null; }
+    if (active) { clearRequestTimers(active); active.finished = true; active = null; }
     if (hadEngine) post({ type: "error", message: `KataGo 引擎进程已退出（code ${message.code}）` });
     drain();
     return;
   }
   if (message.type === "stop") {
-      if (active && message.requestId && active.requestId && message.requestId !== active.requestId) return;
+    const matches = (request) => (!message.requestId || message.requestId === request.requestId)
+      && (message.generation === undefined || message.generation === request.generation);
+    // Cancellation applies before run() too: loading and opening-book waits
+    // must not resurrect work after the app has gone into the background.
+    if (message.toResult !== true) {
+      const cancelQueued = (request) => {
+        request.finished = true;
+        clearRequestTimers(request);
+        post({ type: "stopped", requestId: request.requestId, generation: request.generation });
+      };
+      for (let i = waiting.length - 1; i >= 0; i -= 1) {
+        if (matches(waiting[i])) cancelQueued(waiting.splice(i, 1)[0]);
+      }
+      for (const request of pendingBookRequests) {
+        if (matches(request)) { pendingBookRequests.delete(request); cancelQueued(request); }
+      }
+    }
+    // A warmed idle worker shares its native process with other workers.
+    // It owns no search to stop, even when it retains an engine instance.
+    if (!active || !matches(active)) return;
     if (engine) engine.sendCommand(isKataFamily() ? "stop" : "YXSTOP");
     if (active) {
       const request = active;
@@ -2077,12 +2209,12 @@ self.onmessage = (event) => {
       // 「不限时思考 → 点停止 → 棋局卡住」。所以保留 active 等引擎的收尾行，
       // 宽限到期仍无声才用进度快照兜底（和 deadline 兜底同一通路）。
       // 旗舰要等引擎真正收尾（搜索线程停 + 打印），宽限给足 2s；Rapfi 维持 500ms。
-      if (message.toResult === true && (isKataFamily() || !request.unlimited)) {
+      if (message.toResult === true && (activeVariant === "native" || isKataFamily() || !request.unlimited)) {
         request.stopRequested = true;
         clearRequestTimers(request);
         request.finishTimer = setTimeout(() => {
           if (!active || active !== request || request.finished) return;
-          finish(request, request.bestMove || (request.stats.candidates.length ? request.stats.candidates[0].move : null), request.stats);
+          finish(request, request.bestMove || fallbackBestMove(request), request.stats);
         }, isKataFamily() ? 2000 : 500);
         return;
       }
@@ -2170,7 +2302,10 @@ self.onmessage = (event) => {
       // 门禁 S3c 偶发假挂（2026-09-10 实测交替 hit/miss）。本地资源 fetch 恒
       // <1s，3s 只在真正异常时兜底。
       const bookReady = Promise.race([ensureBook(bookKind), new Promise((resolve) => setTimeout(resolve, 3000))]);
+      pendingBookRequests.add(bookRequest);
       bookReady.then(() => {
+        pendingBookRequests.delete(bookRequest);
+        if (bookRequest.finished) return;
         if (bookAnswer(bookRequest)) return;
         waiting.push(bookRequest);
         load();
@@ -2206,7 +2341,7 @@ self.onmessage = (event) => {
     // native rapfi：主动发 YXSTOP 中止旧搜索——引擎对「排队中的新命令」处理时机
     // 取决于它自己的输入轮询，靠新命令被动打断可能仍要等旧搜索跑完；显式 stop
     // 才能保证新轮马上开搜。旧搜索随后的收尾输出由轮次守卫丢弃。
-    if (!isKataFamily()) send(stopCommand());
+    if (!isKataFamily()) send(stopCommand(), old);
     // 旧轮立刻回 stopped（App 侧换手已在进行，不需要它的 result）
     post({ type: "stopped", requestId: old.requestId, generation: old.generation });
   }

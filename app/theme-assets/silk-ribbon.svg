@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" fill="none">
+  <defs>
+    <!-- 只有一条渐变，轴向 = 绸的长度方向。stop 的疏密就是"翻面的节奏"。 -->
+    <linearGradient id="face" gradientUnits="userSpaceOnUse" x1="36" y1="318" x2="964" y2="214">
+      <stop stop-color="#b0351a"/>
+      <stop offset=".17" stop-color="#ef7546"/>
+      <stop offset=".38" stop-color="#a8341a"/>
+      <stop offset=".545" stop-color="#6b180a"/>
+      <stop offset=".615" stop-color="#8f2611"/>
+      <stop offset=".80" stop-color="#f07c48"/>
+      <stop offset="1" stop-color="#99290f"/>
+    </linearGradient>
+    <!-- 上边缘的金边：两端淡出，中段最亮 —— 光只在绸"立起来"的那几段网住。 -->
+    <linearGradient id="rim" gradientUnits="userSpaceOnUse" x1="36" y1="300" x2="964" y2="200">
+      <stop stop-color="#f5c48c" stop-opacity="0"/>
+      <stop offset=".14" stop-color="#ffd2a0" stop-opacity=".7"/>
+      <stop offset=".42" stop-color="#ffe0b4" stop-opacity=".82"/>
+      <stop offset=".56" stop-color="#d59a6a" stop-opacity=".18"/>
+      <stop offset=".84" stop-color="#ffe2b8" stop-opacity=".88"/>
+      <stop offset="1" stop-color="#f5c48c" stop-opacity="0"/>
+    </linearGradient>
+    <!-- 反光必须裁进绸里：不裁的话笔画会露在轮廓外，变成一道"划痕"。 -->
+    <clipPath id="c"><path d="M36 318C53.3 312.7 104 300.3 140 286C176 271.7 213.3 242 252 232C290.7 222 335.7 220 372 226C408.3 232 439.3 252.7 470 268C500.7 283.3 526.7 311.7 556 318C585.3 324.3 615 318 646 306C677 294 708.7 265.3 742 246C775.3 226.7 809 195.3 846 190C883 184.7 944.3 210 964 214C945.3 218 887.7 224 852 238C816.3 252 784 281 750 298C716 315 680.3 333 648 340C615.7 347 585 345.7 556 340C527 334.3 503.7 318 474 306C444.3 294 414 273 378 268C342 263 296.7 265.3 258 276C219.3 286.7 183 325 146 332C109 339 54.3 320.3 36 318Z"/></clipPath>
+  </defs>
+  <path d="M36 318C53.3 312.7 104 300.3 140 286C176 271.7 213.3 242 252 232C290.7 222 335.7 220 372 226C408.3 232 439.3 252.7 470 268C500.7 283.3 526.7 311.7 556 318C585.3 324.3 615 318 646 306C677 294 708.7 265.3 742 246C775.3 226.7 809 195.3 846 190C883 184.7 944.3 210 964 214C945.3 218 887.7 224 852 238C816.3 252 784 281 750 298C716 315 680.3 333 648 340C615.7 347 585 345.7 556 340C527 334.3 503.7 318 474 306C444.3 294 414 273 378 268C342 263 296.7 265.3 258 276C219.3 286.7 183 325 146 332C109 339 54.3 320.3 36 318Z" fill="url(#face)"/>
+  <path d="M36 318C54.3 320.3 109 339 146 332C183 325 219.3 286.7 258 276C296.7 265.3 342 263 378 268C414 273 444.3 294 474 306C503.7 318 527 334.3 556 340C585 345.7 615.7 347 648 340C680.3 333 716 315 750 298C784 281 816.3 252 852 238C887.7 224 945.3 218 964 214" stroke="#420c02" stroke-width="3.6" stroke-opacity=".38" stroke-linecap="round"/>
+  <path d="M36 318C53.3 312.7 104 300.3 140 286C176 271.7 213.3 242 252 232C290.7 222 335.7 220 372 226C408.3 232 439.3 252.7 470 268C500.7 283.3 526.7 311.7 556 318C585.3 324.3 615 318 646 306C677 294 708.7 265.3 742 246C775.3 226.7 809 195.3 846 190C883 184.7 944.3 210 964 214" stroke="url(#rim)" stroke-width="2.6"/>
+  <g clip-path="url(#c)">
+    <path d="M690 300C704 276 712 246 742 232" stroke="#ffe0b8" stroke-width="3" stroke-opacity=".26" stroke-linecap="round"/>
+    <path d="M206 296C220 280 226 262 262 250" stroke="#ffd9ac" stroke-width="2.2" stroke-opacity=".16" stroke-linecap="round"/>
+  </g>
+</svg>
