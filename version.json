@@ -1,13 +1,13 @@
 {
-  "version": "1.2.0",
-  "tag": "v1.2.0",
-  "publishedAt": "2026-10-16T05:46:19Z",
-  "url": "https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/tag/v1.2.0",
-  "apk": "https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/download/v1.2.0/banbu-gomoku-1.2.0-android-release.apk",
-  "sha256": "34105380C066A61DA78E1EF51436B9650276644B49D168E9A77106B8D40C4E9F",
+  "version": "1.2.1",
+  "tag": "v1.2.1",
+  "publishedAt": "2026-11-10T03:40:32Z",
+  "url": "https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/tag/v1.2.1",
+  "apk": "https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/download/v1.2.1/banbu-gomoku-1.2.1-android-release.apk",
+  "sha256": "98FCB738EB461517A204FC05453F07B39337E15B9329B2C8A91376EE4EF57480",
   "mirrors": {
-    "lanzou": "https://wwbwc.lanzouq.com/ihYTE4c6aube",
-    "lanzouCode": "hrbj",
-    "accel": "https://gh-proxy.com/https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/download/v1.2.0/banbu-gomoku-1.2.0-android-release.apk"
+    "lanzou": "https://wwbwc.lanzouq.com/iq2B04fequpa",
+    "lanzouCode": "4bxo",
+    "accel": "https://gh-proxy.com/https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/download/v1.2.1/banbu-gomoku-1.2.1-android-release.apk"
   }
 }
