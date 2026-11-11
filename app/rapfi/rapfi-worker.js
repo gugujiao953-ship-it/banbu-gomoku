@@ -34,6 +34,7 @@ let nativeReady = false;
 let nativeVersion = null;
 let nativeCores = null;
 let nativeBigCores = null;
+let nativeAbi = null;
 let nativeMemoryLimitMb = null;
 let pendingNative = null;
 const NATIVE_START_TIMEOUT_MS = 20000;
@@ -104,16 +105,15 @@ let kataAttempts = 0;                  // 本轮加载链已失败的次数
  *  又被拉起来常驻（~800MB），进程表里两套引擎并存、下一次切回旗舰的行为也跟着
  *  变得不可预期——正是「切换很慢/像卡住」这类现象的温床。 */
 let kataStopIntended = false;
-const KATA_MAX_START_ATTEMPTS = 2;
 let kataReady = false;
 let pendingKata = null;
 // 冷启动要过四道关：复制模型 → fork+exec → ORT 初始化 → stdout 打出横幅。
 // 热机全流程 ~3-8s，但冷机（应用刚起、CPU 被前台渲染抢占、热降频）实测可超
 // 25s——旧值 25s 会把「正在正常加载」误判成失败并触发整链重试（09-26 报
 // 「几分钟了一直加载中」的根因之一）。用户又反馈「宁可得等、也别误报失败」，
-// 所以再放宽到 90s：**正常加载几乎不可能超过**，而超时后仍有完整的失败/重试
-// 链路兜底。宁可等，不要把「正在加载」说成「启动失败」。
+// 安卓维持 90s；桌面 OpenCL 的首次调优约需 210s，桥会按 loadId 下发更长上限。
 const KATA_START_TIMEOUT_MS = 90000;
+let kataMaxStartAttempts = 2;
 // 标定协议 v1（固定等待上限，最大化搜索）：首启 4 手 genmove@1s（首手弃掉，
 // 含模型加载尾延迟），overhead = median(墙钟) − 1.0。预算 = 档位秒数 − overhead − 余量。
 // 墙钟噪声 ±0.2%，是手机上唯一可信的指标（访问数噪声 ±3.4% 且受热漂移支配）。
@@ -220,7 +220,7 @@ function parseGtpVertex(token, size) {
   if (!m) return null;
   const col = GTP_LETTERS.indexOf(m[1].toUpperCase());
   const row = size - Number(m[2]);
-  if (col < 0 || row < 0 || row >= size) return null;
+  if (col < 0 || col >= size || row < 0 || row >= size) return null;
   return { row, col };
 }
 const isAlternatingSequence = (moves) => moves.every((point, index) => point.player === (index % 2 === 0 ? "black" : "white"));
@@ -263,6 +263,7 @@ function clearRequestTimers(request) {
   if (request.startupTimer) { clearTimeout(request.startupTimer); request.startupTimer = null; }
   if (request.stopTimer) { clearTimeout(request.stopTimer); request.stopTimer = null; }
   if (request.finishTimer) { clearTimeout(request.finishTimer); request.finishTimer = null; }
+  if (request.progressTimer) { clearTimeout(request.progressTimer); request.progressTimer = null; }
 }
 
 function scheduleStop(request) {
@@ -310,8 +311,8 @@ function finish(request, move, stats) {
     // 用后者覆盖前者会让「首选候选」的访问数虚高（回归测试实测 13 → 20）。
     // rapfi 路径没有这个区分（它的 stats.nodes 就是该候选的节点数）。
     const keepKataVisits = isKataFamily() && typeof matching.nodes === "number";
-    Object.assign(matching, { move, pvIndex: -1, score: stats.primaryScore != null ? stats.primaryScore : stats.score, winRate: stats.primaryWinRate != null ? stats.primaryWinRate : stats.winRate, ...(keepKataVisits ? {} : { nodes: stats.totalNodes || stats.nodes }), depth: stats.depth, principalVariation: primaryLine });
-  } else stats.candidates.push({ move, pvIndex: -1, score: stats.primaryScore != null ? stats.primaryScore : stats.score, winRate: stats.primaryWinRate != null ? stats.primaryWinRate : stats.winRate, nodes: stats.totalNodes || stats.nodes, depth: stats.depth, principalVariation: primaryLine });
+    Object.assign(matching, { move, pvIndex: -1, score: stats.primaryScore, winRate: stats.primaryWinRate, ...(keepKataVisits ? {} : { nodes: stats.totalNodes || stats.nodes }), depth: stats.depth, principalVariation: primaryLine });
+  } else stats.candidates.push({ move, pvIndex: -1, score: stats.primaryScore, winRate: stats.primaryWinRate, nodes: stats.totalNodes || stats.nodes, depth: stats.depth, principalVariation: primaryLine });
   const elapsedMs = performance.now() - request.started;
   // Root move ordering (history/killer heuristics) makes the engine emit PV
   // lines 2..N that were only probed at shallow depth — displaying them reads
@@ -359,8 +360,8 @@ function finish(request, move, stats) {
       reason: isKataFamily() ? activeVariant : "rapfi",
       source: isKataFamily() ? activeVariant : "rapfi",
       principalVariation: primaryLine,
-    ...(stats.primaryWinRate === undefined ? stats.winRate === undefined ? {} : { winRate: stats.winRate } : { winRate: stats.primaryWinRate }),
-    ...(stats.primaryScore === undefined && stats.score === undefined ? {} : { scoreAvailable: true }),
+    ...(stats.primaryWinRate === undefined ? {} : { winRate: stats.primaryWinRate }),
+    ...(stats.primaryScore === undefined ? {} : { scoreAvailable: true }),
       candidates: candidates.length ? candidates : undefined,
     },
   });
@@ -442,13 +443,17 @@ function threadCountFor(request) {
   // ⚠ 这段必须与 src/features/settings/engine-threads.ts 的 autoEngineThreads 完全同口径，
   //   否则界面（engineThreadBadge）显示的数字和引擎实际线程数会对不上。
   const usableBig = Number.isFinite(bigCores) && Math.round(bigCores) > 0 && Math.round(bigCores) < cores ? Math.round(bigCores) : 0;
-  const auto = Math.max(2, Math.min(8, Math.min(usableBig > 0 ? usableBig : Math.round(cores / 2), cores)));
+  const auto = activeVariant === "native" && (nativeAbi === "x86_64" || nativeAbi === "x64")
+    ? Math.min(8, cores)
+    : Math.max(2, Math.min(8, Math.min(usableBig > 0 ? usableBig : Math.round(cores / 2), cores)));
   const wanted = !Number.isFinite(requested) || requested === 0
     ? auto
     : requested === -2
       ? (usableBig > 0 ? usableBig : auto)
       : requested < 0 ? cores : requested;
-  return Math.max(1, Math.min(Math.round(cores), Math.round(wanted)));
+  // 16/24 是原生引擎的手动实验档；WebAssembly 仍受浏览器报告的核心数限制。
+  const manualLimit = activeVariant === "native" && cores >= 4 ? Math.max(cores, 24) : cores;
+  return Math.max(1, Math.min(Math.round(requested) > 0 ? manualLimit : cores, Math.round(wanted)));
 }
 
 function requestSpeed(request) {
@@ -521,11 +526,14 @@ function rememberCandidate(request, move, options) {
   // （`play X` / `= X`）再次登记同一着法时若照搬 stats.nodes，会把该候选的
   // visits 覆盖成根总量（回归测试实测：13 → 20）。所以 kata 路径下保留原值。
   const keepVisits = options && options.keepExistingVisits && existing && typeof existing.nodes === "number";
+  // PV 1..N 的评估属于备选着法；PV0 缺少新数值时也不能借上一条备选线。
+  const score = stats.pvIndex === 0 ? stats.primaryScore : stats.score;
+  const winRate = stats.pvIndex === 0 ? stats.primaryWinRate : stats.winRate;
   const next = {
     move,
     pvIndex: stats.pvIndex,
-    ...(stats.score === undefined ? {} : { score: stats.score }),
-    ...(stats.winRate === undefined ? {} : { winRate: stats.winRate }),
+    ...(score === undefined ? {} : { score }),
+    ...(winRate === undefined ? {} : { winRate }),
     ...(keepVisits || (stats.nodes === undefined && stats.totalNodes === undefined) ? {} : { nodes: stats.totalNodes || stats.nodes }),
     ...(stats.depth === undefined ? {} : { depth: stats.depth }),
     principalVariation: stats.bestline || [],
@@ -580,12 +588,20 @@ function parseOutput(line) {
     if (totalTime) active.stats.totalTimeMs = Number(totalTime[1]);
     const totalNodes = text.match(/^INFO\s+TOTALNODES\s+(\d+)$/i);
     if (totalNodes) active.stats.totalNodes = Number(totalNodes[1]);
-    if (parsed.score !== undefined) active.stats.score = parsed.score;
-    if (parsed.winRate !== undefined) active.stats.winRate = parsed.winRate;
+    // stats.score/winRate follow the current PV candidate; primary* remains the
+    // PV0 root evaluation shown in the panel and recorded in the final result.
+    if (parsed.score !== undefined) {
+      active.stats.score = parsed.score;
+      if (active.stats.pvIndex === 0) active.stats.primaryScore = parsed.score;
+    }
+    if (parsed.winRate !== undefined) {
+      active.stats.winRate = parsed.winRate;
+      if (active.stats.pvIndex === 0) active.stats.primaryWinRate = parsed.winRate;
+    }
     if (parsed.speed !== undefined) active.stats.speed = parsed.speed;
     if (performance.now() - (active.lastProgressAt || 0) >= 100) {
       active.lastProgressAt = performance.now();
-      post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: active.stats.depth || 0, selDepth: active.stats.selDepth || 0, nodes: reportedNodes(active), speed: requestSpeed(active), score: active.stats.score, winRate: active.stats.winRate, candidates: searchedCandidates(active.stats, active.nBest) });
+      post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: active.stats.depth || 0, selDepth: active.stats.selDepth || 0, nodes: reportedNodes(active), speed: requestSpeed(active), score: active.stats.primaryScore, winRate: active.stats.primaryWinRate, candidates: searchedCandidates(active.stats, active.nBest) });
     }
     if (match && match[1] === "BESTLINE") {
       active.stats.bestline = parseCoordinateList(match[2], active.size, active.player);
@@ -594,8 +610,6 @@ function parseOutput(line) {
         rememberCandidate(active, { row: root.row, col: root.col });
         if (active.stats.pvIndex === 0) {
           active.stats.primaryBestline = active.stats.bestline;
-          active.stats.primaryScore = active.stats.score;
-          active.stats.primaryWinRate = active.stats.winRate;
         }
       }
     }
@@ -617,7 +631,7 @@ function parseOutput(line) {
   rememberCandidate(request, move);
   if (request.continuous && performance.now() - (request.lastProgressAt || 0) >= 100) {
     request.lastProgressAt = performance.now();
-    post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: request.stats.depth || 0, selDepth: request.stats.selDepth || 0, nodes: reportedNodes(request), score: request.stats.score, winRate: request.stats.winRate, candidates: searchedCandidates(request.stats, request.nBest) });
+    post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: request.stats.depth || 0, selDepth: request.stats.selDepth || 0, nodes: reportedNodes(request), score: request.stats.primaryScore, winRate: request.stats.primaryWinRate, candidates: searchedCandidates(request.stats, request.nBest) });
   }
   // A prefixed BESTMOVE is an explicit terminal response. Bare coordinate
   // lines are often intermediate YXNBEST/PV output, so never finish merely
@@ -648,6 +662,15 @@ function rememberKataLine(request, text) {
   const orderMatch = text.match(/\border\s+(\d+)/i);
   const isPrimary = !orderMatch || Number(orderMatch[1]) === 0;
   const stats = request.stats;
+  if (orderMatch && Number(orderMatch[1]) === 0) {
+    // Every order-0 line begins a complete new Kata frame. Keep only this frame's
+    // candidates, or an old order-0 move can remain first after the best move changes.
+    stats.candidates = [];
+    stats.bestline = [];
+    stats.winRate = undefined;
+    stats.primaryWinRate = undefined;
+    stats.drawRate = undefined;
+  }
   // PV 交替着色，首格是行棋方（request.player）
   let lineMoves = null;
   const pv = text.match(/\bpv\s+(.+)$/i);
@@ -738,7 +761,17 @@ function updateKataSpeed(request) {
 /** 发一次 progress（带 100ms 节流）。整行候选解析完后调用（见 parseKataOutput）。 */
 function emitKataProgress(request) {
   updateKataSpeed(request);
-  if (performance.now() - (request.lastProgressAt || 0) < 100) return;
+  const sinceLast = performance.now() - (request.lastProgressAt || 0);
+  if (sinceLast < 100) {
+    // One-record-per-line engines may send the rest of a frame during this window.
+    // Publish a trailing update so Top-N does not stay stuck at the first candidate.
+    if (!request.progressTimer) request.progressTimer = setTimeout(() => {
+      request.progressTimer = null;
+      if (active === request && !request.finished) emitKataProgress(request);
+    }, Math.max(1, 100 - sinceLast));
+    return;
+  }
+  if (request.progressTimer) { clearTimeout(request.progressTimer); request.progressTimer = null; }
   request.lastProgressAt = performance.now();
   // drawRate：本构建的和棋率（%），来自 order 0 的 scoreMean 字段（见 rememberKataLine）
   post({ type: "progress", requestId: request.requestId, generation: request.generation, variant: activeVariant, depth: request.stats.depth || 0, selDepth: request.stats.selDepth || 0, nodes: reportedNodes(request), speed: requestSpeed(request), score: request.stats.score, winRate: request.stats.winRate, drawRate: request.stats.drawRate, candidates: searchedCandidates(request.stats, request.nBest) });
@@ -1518,6 +1551,7 @@ function resolveNativeReady(payload) {
   const bounded = (value, max) => Number.isFinite(value) && value > 0 ? Math.max(1, Math.min(max, Math.floor(value))) : null;
   nativeCores = bounded(payload && payload.cores, 256);
   nativeBigCores = bounded(payload && payload.bigCores, nativeCores || 256);
+  nativeAbi = payload && typeof payload.abi === "string" ? payload.abi : null;
   nativeMemoryLimitMb = bounded(payload && payload.memoryLimitMb, 2048);
   if (nativeMemoryLimitMb !== null) nativeMemoryLimitMb = Math.max(64, nativeMemoryLimitMb);
   rapfiPendingStartAcks = 0;
@@ -1544,9 +1578,9 @@ function rejectNativeReady(reason, loadId) {
  *  标定值由主线程桥统一持有：桥带回已存值就跳过标定（多 worker 共用单例进程，
  *  各自标定会互相污染），自己标定则回报给桥缓存+持久化。
  *  全程发 engine-loading 进度（App 画进度条），100% 即就绪。 */
-function postKataLoading(percent, label) {
+function postKataLoading(percent, label, failed = false) {
   if (percent >= 100) clearKataSlowHint();      // 就绪：慢速提示撤掉
-  post({ type: "engine-loading", engine: "kata", percent, label, done: percent >= 100 });
+  post({ type: "engine-loading", engine: "kata", percent, label, done: percent >= 100, failed });
 }
 const KATA_PHASE_LABEL = {
   prepare: "准备引擎文件",
@@ -1556,10 +1590,13 @@ const KATA_PHASE_LABEL = {
      只要几秒，目测我切换要四五十秒」：旧文案「首次较慢，约几秒」与实际不符，反而像卡死。
      这里只如实说「冷启动较慢、可能数十秒」；超过 12 秒还会自动升级一句（见 postKataLoadingPhase）。 */
   model: "加载神经网络（冷启动较慢，可能数十秒）",
+  gpu: "初始化显卡模型（首次显卡调优可能数分钟）",
+  "gpu-tuning": "检测到显卡调优（首次可能数分钟）",
 };
 /** 加载超过这么久，把文案升级成「仍在继续」——让长时间等待有明确的「没卡死」反馈。 */
 const KATA_SLOW_HINT_MS = 12000;
 let kataSlowTimer = null;
+let kataTuningSeen = false;
 function clearKataSlowHint() {
   if (kataSlowTimer !== null) {
     clearTimeout(kataSlowTimer);
@@ -1567,26 +1604,41 @@ function clearKataSlowHint() {
   }
 }
 function postKataLoadingPhase(phase) {
-  const percent = phase === "prepare" ? 10 : phase === "start" ? 30 : 55;
+  if (!pendingKata || (phase === "gpu" && kataTuningSeen)) return;
+  if (phase === "gpu-tuning") kataTuningSeen = true;
+  const percent = phase === "prepare" ? 10 : phase === "start" ? 30 : phase === "gpu-tuning" ? 65 : 55;
   clearKataSlowHint();
   postKataLoading(percent, KATA_PHASE_LABEL[phase] || "加载中");
-  if (phase === "model") {
-    kataSlowTimer = setTimeout(() => {
+  if (phase === "model" || phase === "gpu" || phase === "gpu-tuning") {
+    const startedAt = pendingKata.startedAt;
+    const stillLoading = () => {
       kataSlowTimer = null;
-      postKataLoading(percent, "加载神经网络仍在继续（这次比较慢，请再等一会儿）");
-    }, KATA_SLOW_HINT_MS);
+      if (!pendingKata) return;
+      const elapsedSeconds = Math.floor((performance.now() - startedAt) / 1000);
+      postKataLoading(percent, (phase === "gpu" || phase === "gpu-tuning")
+        ? `显卡初始化仍在进行（已等待 ${elapsedSeconds} 秒；首次调优可能数分钟，可放弃切换）`
+        : "加载神经网络仍在继续（这次比较慢，请再等一会儿）");
+      if (phase === "gpu" || phase === "gpu-tuning") kataSlowTimer = setTimeout(stillLoading, 30000);
+    };
+    kataSlowTimer = setTimeout(stillLoading, KATA_SLOW_HINT_MS);
   }
 }
 function startKataVariant() {
   return new Promise((resolve, reject) => {
     kataReady = false;
     kataPendingOverhead = null;
-    const timer = setTimeout(() => {
+    kataTuningSeen = false;
+    const startedAt = performance.now();
+    const loadId = loadToken;
+    const onTimeout = () => {
+      if (!pendingKata || pendingKata.loadId !== loadId) return;
       pendingKata = null;
+      clearKataSlowHint();
       reject(new Error("KataGo 引擎启动超时"));
-    }, KATA_START_TIMEOUT_MS);
-    pendingKata = { resolve, reject, timer, loadId: loadToken };
-    post({ type: "kata-start", loadId: loadToken });
+    };
+    const timer = setTimeout(onTimeout, KATA_START_TIMEOUT_MS);
+    pendingKata = { resolve, reject, timer, loadId, startedAt, onTimeout };
+    post({ type: "kata-start", loadId });
   })
     .then((instance) => {
       // **不再标定（E 项）**：弈境根本不标定——持续制下 maxTime 运行时下发，
@@ -1773,13 +1825,6 @@ function failIkatago(reason) {
   drain();
 }
 
-function clearLoadTimer() {
-  if (loadTimer !== null) {
-    clearTimeout(loadTimer);
-    loadTimer = null;
-  }
-}
-
 function finishLoad(token, instance, variant) {
   if (token !== loadToken) return;
   clearLoadTimer();
@@ -1798,7 +1843,7 @@ function chooseVariant(requested) {
   if (requested === "ikatago" && ikatagoAllowed && !ikatagoBlocked) return "ikatago";
   // KataGo 旗舰档：显式选择 + 已授权 + 不在放弃期才走。放弃期（kataBlocked，
   // 连续启动失败后置位）里继续请求旗舰会落到下面的 Rapfi 决策链——每一手都
-  // 重新赌 2×40s 启动用户等不起；重新给机会的条件是用户显式切走再切回
+  // 重新赌长时间启动用户等不起；重新给机会的条件是用户显式切走再切回
   // （analyze 分支清标记）或设置变更重启（kata-stopped 分支）。
   if (requested === "kata" && kataAllowed && !kataBlocked) {
     // 注意：这里**不能**动 loading——load() 已把它置真表示「加载链在飞」，早期
@@ -1892,7 +1937,7 @@ async function startExperimentChain() {
 
 function loadVariant(variant, token) {
   loadingVariant = variant;
-  // kata 不挂这个兜底：它有自己的两级超时（40s 启动 + 15s 标定）和重试上限，
+  // kata 不挂这个兜底：它有独立启动超时（桌面由桥延长）和重试上限，
   // 30s 的通用兜底会把「冷机慢启动/标定进行中」误判成失败并整链重跑——
   // 这正是 09-26「几分钟了一直加载中」的根因之一（kata 分支由此剔除）。
   if (variant === "full" || variant === "experiment" || variant === "multi" || variant === "native") {
@@ -1973,7 +2018,7 @@ function failKataVariant(token, reason) {
     return;
   }
   kataAttempts += 1;
-  if (kataAttempts < KATA_MAX_START_ATTEMPTS) {
+  if (kataAttempts < kataMaxStartAttempts) {
     // 让桥把进程真正杀掉：下一次 start() 走全新 spawn（顺带 killStaleEngines
     // 清残留），而不是复用可能已僵死的旧进程。
     post({ type: "kata-stop" });
@@ -1983,8 +2028,8 @@ function failKataVariant(token, reason) {
   }
   kataBlocked = true;
   loading = false;
-  postKataLoading(100, "KataGo 未能启动");
-  post({ type: "log", message: "KataGo 连续两次启动失败，暂时改用 Rapfi 引擎（" + reason + "）。可在引擎选择里切回旗舰重试" });
+  postKataLoading(100, "KataGo 未能启动", true);
+  post({ type: "log", message: `KataGo 启动失败（尝试 ${kataAttempts} 次），暂时改用 Rapfi 引擎（${reason}）。可在引擎选择里切回旗舰重试` });
   // Use the normal loading gate/token for the fallback too. Otherwise a newer
   // analyze can start a second native load and overwrite the first waiter.
   load();
@@ -2074,6 +2119,16 @@ self.onmessage = (event) => {
     return;
   }
   // ---- KataGo 旗舰引擎的回灌（主线程转发进程输出；类型独立不与 native 串线）----
+  if (message.type === "kata-start-policy") {
+    const pending = pendingKata;
+    if (!pending || message.loadId !== pending.loadId) return;
+    const timeoutMs = Number(message.timeoutMs);
+    if (!Number.isFinite(timeoutMs) || timeoutMs < KATA_START_TIMEOUT_MS || timeoutMs > 660000) return;
+    clearTimeout(pending.timer);
+    pending.timer = setTimeout(pending.onTimeout, Math.max(0, timeoutMs - (performance.now() - pending.startedAt)));
+    if (message.maxAttempts === 1) kataMaxStartAttempts = 1;
+    return;
+  }
   if (message.type === "kata-ready") { resolveKataReady(message); return; }
   if (message.type === "kata-start-failed") { rejectKataReady(message.reason, message.loadId); return; }
   if (message.type === "kata-start-deferred") {
@@ -2170,7 +2225,7 @@ self.onmessage = (event) => {
     if (isKataFamily()) engine = null;
     if (message.intentional) return;         // 计划内退出（quit/stop）：静默
     if (pendingKata) {
-      // 启动阶段就崩了：立刻走失败链（重试→放弃），比干等 40s 超时快
+      // 启动阶段就崩了：立刻走失败链，比干等完整启动超时快
       rejectKataReady(`KataGo 进程在启动时退出（code ${message.code}）`);
       return;
     }
