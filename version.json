@@ -6,6 +6,8 @@
   "apk": "https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/download/v1.2.1.4/banbu-gomoku-1.2.1.4-android-release.apk",
   "sha256": "C26828CC43B038F4788D2DD8A4A492FE069B5047A0D95C3E04AE0E73855FD76F",
   "mirrors": {
-    "accel": "https://gh-proxy.com/https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/download/v1.2.1.4/banbu-gomoku-1.2.1.4-android-release.apk"
+    "accel": "https://gh-proxy.com/https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/download/v1.2.1.4/banbu-gomoku-1.2.1.4-android-release.apk",
+    "lanzou": "https://wwbwc.lanzouq.com/igbIN4fl5zmd",
+    "lanzouCode": "7emg"
   }
 }
