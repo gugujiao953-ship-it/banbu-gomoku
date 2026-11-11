@@ -1,13 +1,11 @@
 {
-  "version": "1.2.1.3",
-  "tag": "v1.2.1.3",
-  "publishedAt": "2026-11-11T14:55:12Z",
-  "url": "https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/tag/v1.2.1.3",
-  "apk": "https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/download/v1.2.1.3/banbu-gomoku-1.2.1.3-android-release.apk",
-  "sha256": "E4D4F9A549CE0C1878F36AC2110F943A1219644F38B7ACAF259EC66AEF3A354C",
+  "version": "1.2.1.4",
+  "tag": "v1.2.1.4",
+  "publishedAt": "2026-11-11T18:31:37Z",
+  "url": "https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/tag/v1.2.1.4",
+  "apk": "https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/download/v1.2.1.4/banbu-gomoku-1.2.1.4-android-release.apk",
+  "sha256": "C26828CC43B038F4788D2DD8A4A492FE069B5047A0D95C3E04AE0E73855FD76F",
   "mirrors": {
-    "lanzou": "https://wwbwc.lanzouq.com/i2L3G4fkapch",
-    "lanzouCode": "6ckd",
-    "accel": "https://banbuwzq.site/wzq/releases/1.2.1.3/banbu-gomoku-1.2.1.3-android-release.apk"
+    "accel": "https://gh-proxy.com/https://github.com/gugujiao953-ship-it/banbu-gomoku/releases/download/v1.2.1.4/banbu-gomoku-1.2.1.4-android-release.apk"
   }
 }
