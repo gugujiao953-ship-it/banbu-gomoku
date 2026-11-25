@@ -169,4 +169,7 @@ marketing/   落地页源、应用截图与当前版本宣传素材
 - 做题交互和题集格式参考开宝五子棋。
 - AI 搜索思路参考 SlowRenju 等公开项目。
 
-感谢这些前辈软件、开发者和开源社区。本项目代码以 MIT License 开放；第三方名称与内容的原始权利归各自权利人所有（见 [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md)）。
+感谢这些前辈软件、开发者和开源社区。
+
+本项目**原创内容**——源代码、题库与棋谱数据、主题与视觉资产、文档教程、「半步五子棋」品牌与文案——统一以 [MIT License](./LICENSE) 开放，可自由使用、修改与再分发，保留版权声明即可。
+第三方组件（Rapfi 引擎 GPL-3.0、KataGo 与 ONNX Runtime 等）权利归各自权利人，详见 [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md)。
