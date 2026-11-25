@@ -1,6 +1,7 @@
 {
   "name": "banbu-gomoku",
   "private": true,
+  "license": "MIT",
   "version": "1.2.0",
   "type": "module",
   "scripts": {
