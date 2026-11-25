@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 gugujiao953-ship-it (半步五子棋打谱 / Banbu Gomoku)
+Copyright (c) 2026 gugujiao953-ship-it
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,35 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-────────────────────────────────────────────────────────────────────────────
-适用范围 / Scope of this License
-────────────────────────────────────────────────────────────────────────────
-
-本许可覆盖本仓库中**由本项目作者原创的全部内容**，不只限于可执行代码。
-
-「原创内容」指下列由作者独立创作、且未标注其他许可的成果：
-
-1. **源代码与算法实现** —— `src/`、`vcf-generator/`、`scripts/`、`android/`、
-   `design-lab/`、`qa/` 内的 TypeScript / JavaScript / Kotlin / CSS 等，
-   含打谱引擎、读谱与做题流程、AI 对接桥接、PWA 与原生打包脚本、构建与测试工具。
-2. **题库与棋谱数据** —— `public/puzzles/` 下的 VCF 题库、`vcf-generator` 的出题逻辑
-   与生成结果，以及自行整理的棋谱与题面数据。
-3. **主题与视觉资产** —— `src/themes/`、`public/theme-assets/`、`design-lab/board-themes/`
-   下的棋盘皮肤、材质与配色，以及 `public/` 内的应用图标、Logo、启动画面等原创美术资源。
-4. **文档与教程** —— `README.md`、`README.en.md`、`RELEASE_NOTES.md`、`docs/`
-   （含架构决策记录 `docs/adr/`、项目全景说明、发布流程、出题方法论等文字内容）。
-5. **品牌与文案** —— 「半步五子棋」名称与标识、界面文案、宣传物料（`marketing/`）。
-
-你可以对上述内容自由使用、修改、合并、发布、再许可和销售，
-只需在副本或实质部分中保留上方的版权声明与本许可声明。
-
-**不在此许可范围内的内容**（权利归各自权利人，详见 `THIRD-PARTY-NOTICES.md`）：
-
-- Rapfi 引擎及其构建产物（GPL-3.0）、KataGo 五子棋分支与 ONNX Runtime 等第三方引擎与依赖；
-- 第三方字体、第三方商标、所引用的公开棋谱与题集来源；
-- 通过 `node_modules/` 安装的第三方包（各自许可）。
-
-引用或再分发上述第三方内容时，请遵循其各自的许可条款。
-本许可不授予商标使用权：使用「半步五子棋」名称做衍生发行时，
-请注明来源，避免让使用者误认为是官方版本。

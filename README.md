@@ -172,4 +172,5 @@ marketing/   落地页源、应用截图与当前版本宣传素材
 感谢这些前辈软件、开发者和开源社区。
 
 本项目**原创内容**——源代码、题库与棋谱数据、主题与视觉资产、文档教程、「半步五子棋」品牌与文案——统一以 [MIT License](./LICENSE) 开放，可自由使用、修改与再分发，保留版权声明即可。
+具体覆盖范围见 [LICENSE-SCOPE.md](./LICENSE-SCOPE.md)。
 第三方组件（Rapfi 引擎 GPL-3.0、KataGo 与 ONNX Runtime 等）权利归各自权利人，详见 [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md)。

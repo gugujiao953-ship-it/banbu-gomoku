@@ -135,7 +135,7 @@ marketing/    landing page source, app screenshots and current-release promo ass
 - Problem interaction and problem-set format inspired by 开宝五子棋.
 - AI search ideas from SlowRenju and other public projects.
 
-All **original content** in this repository — source code, puzzle and kifu data, board themes and visual assets, documentation, and the "Banbu Gomoku" name and copy — is released under the [MIT License](./LICENSE). Keep the copyright notice and you are free to use, modify, and redistribute it.
+All **original content** in this repository — source code, puzzle and kifu data, board themes and visual assets, documentation, and the "Banbu Gomoku" name and copy — is released under the [MIT License](./LICENSE) — see [LICENSE-SCOPE.md](./LICENSE-SCOPE.md) for exactly what is covered. Keep the copyright notice and you are free to use, modify, and redistribute it.
 
 Third-party components (Rapfi under GPL-3.0, KataGo, ONNX Runtime, etc.) remain with their owners; see [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md).
 
